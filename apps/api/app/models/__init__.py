@@ -1,1 +1,16 @@
-from . import user  # noqa: F401 — registers models with Base
+from . import (  # noqa: F401
+    asset,
+    audit_log,
+    calibration,
+    calibration_coefficient,
+    calibration_throughput,
+    certificate,
+    data_acquisition,
+    instrument,
+    laboratory,
+    organization,
+    sensor,
+    site,
+    stored_file,
+    user,
+)

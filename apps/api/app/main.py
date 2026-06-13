@@ -4,16 +4,27 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 
 from .api.v1 import auth as auth_router
+from .api.v1 import dashboard as dashboard_router
+from .api.v1 import organizations as org_router
+from .api.v1 import sites as site_router
+from .api.v1 import laboratories as lab_router
+from .api.v1 import assets as asset_router
+from .api.v1 import calibrations as cal_router
+from .api.v1 import certificates as cert_router
+from .api.v1 import audit_logs as log_router
+from .api.v1 import users as user_router
 from .core.config import settings
-from .core.database import Base, engine
-from .models import user  # noqa: F401 — registers models with Base
+from .core.database import SessionLocal
+from .seeds.seed import seed_database
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as db:
+        seed_database(db)
     yield
 
 
@@ -33,6 +44,15 @@ app.add_middleware(
 )
 
 app.include_router(auth_router.router, prefix="/api/v1")
+app.include_router(dashboard_router.router, prefix="/api/v1")
+app.include_router(org_router.router, prefix="/api/v1")
+app.include_router(site_router.router, prefix="/api/v1")
+app.include_router(lab_router.router, prefix="/api/v1")
+app.include_router(asset_router.router, prefix="/api/v1")
+app.include_router(cal_router.router, prefix="/api/v1")
+app.include_router(cert_router.router, prefix="/api/v1")
+app.include_router(log_router.router, prefix="/api/v1")
+app.include_router(user_router.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])

@@ -1,18 +1,18 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 interface ApiError {
   detail: string;
 }
 
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+function getBaseUrl(): string {
+  if (typeof window === "undefined") {
+    // Server-side: use internal Docker network URL when available
+    return process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  }
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+}
+
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
+    headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
 

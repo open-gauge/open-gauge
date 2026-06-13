@@ -19,13 +19,11 @@ export default function LoginPage() {
         <nav className="flex items-center justify-between px-8 py-5">
           <div className="flex items-center gap-2.5">
             <Image
-              src="/assets/Icon.svg"
+              src="/assets/Logo dark.svg"
               alt="MAR icon"
-              width={28}
-              height={28}
+              height={35}
               priority
             />
-            <span className="font-semibold text-[#152330] text-sm tracking-tight">MAR</span>
             <span className="text-gray-400 text-sm select-none">/</span>
             <span className="text-sm text-gray-500">Measurement Asset Registry</span>
           </div>

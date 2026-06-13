@@ -41,8 +41,18 @@ services:
         NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
       - "3000:3000"
+    environment:
+      API_INTERNAL_URL: http://api:8000
     depends_on:
       - api
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:4
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
     restart: unless-stopped
 
   minio:
