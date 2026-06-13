@@ -1,10 +1,46 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+
+const ROLE_LABEL: Record<string, string> = {
+  superadmin: "Super Admin",
+  admin: "Admin",
+  technician: "Technician",
+  viewer: "Viewer",
+};
+
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 interface TopBarProps {
   breadcrumb?: string[];
 }
 
 export default function TopBar({ breadcrumb = [] }: TopBarProps) {
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const initials = getInitials(user.name);
+
   return (
     <header className="h-14 flex-shrink-0 flex items-center justify-between px-6 bg-white border-b border-gray-100">
       {/* Breadcrumb */}
@@ -48,8 +84,47 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
           <MoonIcon />
         </button>
 
-        <div className="w-8 h-8 rounded-full bg-[#2f819b] flex items-center justify-center text-white text-xs font-semibold">
-          AL
+        {/* Avatar + dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="w-8 h-8 rounded-full bg-[#2f819b] flex items-center justify-center text-white text-xs font-semibold hover:bg-[#256a81] transition-colors focus:outline-none focus:ring-2 focus:ring-[#2f819b]/40"
+            aria-haspopup="true"
+            aria-expanded={open}
+          >
+            {initials}
+          </button>
+
+          {open && (
+            <div className="absolute right-0 top-10 w-56 bg-white rounded-xl border border-gray-100 shadow-lg z-50 overflow-hidden">
+              {/* User info */}
+              <div className="px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-[#152330] leading-tight truncate">
+                  {user.name}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">{user.email}</p>
+                <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-[10px] font-medium bg-[#e8f4f8] text-[#1b4f64]">
+                  {ROLE_LABEL[user.role] ?? user.role}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-red-600 transition-colors text-left"
+                >
+                  <SignOutIcon />
+                  Sign out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
@@ -78,6 +153,16 @@ function MoonIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SignOutIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M10 11l3-3-3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }

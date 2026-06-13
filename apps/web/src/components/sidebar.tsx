@@ -34,7 +34,7 @@ export default function Sidebar() {
           <Image
             src="/assets/Logo light.svg"
             alt="MAR"
-            width={80}
+            width={100}
             priority
           />
         </Link>
