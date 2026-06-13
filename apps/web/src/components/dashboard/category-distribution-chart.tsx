@@ -2,61 +2,11 @@
 
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import type { CategoryDistribution } from "@/types/dashboard";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  sensor: "Sensors",
-  instrument: "Instruments",
-  reference_standard: "Ref. Standards",
-  data_acquisition: "DAQ",
-};
-
-const SUBTYPE_COLOR: Record<string, string> = {
-  // sensor types
-  temperature: "#06b6d4",
-  pressure: "#3b82f6",
-  flow: "#22c55e",
-  humidity: "#f59e0b",
-  electrical: "#8b5cf6",
-  distance: "#ec4899",
-  angle: "#f97316",
-  force: "#14b8a6",
-  angular_speed: "#6366f1",
-  acceleration: "#ef4444",
-  // instrument types
-  transmitter: "#0ea5e9",
-  controller: "#7c3aed",
-  indicator: "#16a34a",
-  recorder: "#d97706",
-  // daq types
-  data_logger: "#06b6d4",
-  signal_conditioner: "#3b82f6",
-  gateway: "#22c55e",
-  // reference standard (no subtype)
-  reference_standard: "#f59e0b",
-  other: "#6b7280",
-};
-
-const SUBTYPE_LABEL: Record<string, string> = {
-  temperature: "Temp.",
-  pressure: "Pressure",
-  flow: "Flow",
-  humidity: "Humidity",
-  electrical: "Electrical",
-  distance: "Distance",
-  angle: "Angle",
-  force: "Force",
-  angular_speed: "Ang. Speed",
-  acceleration: "Accel.",
-  transmitter: "Transmitter",
-  controller: "Controller",
-  indicator: "Indicator",
-  recorder: "Recorder",
-  data_logger: "Data Logger",
-  signal_conditioner: "Sig. Cond.",
-  gateway: "Gateway",
-  reference_standard: "Ref. Std.",
-  other: "Other",
-};
+import {
+  ASSET_CATEGORY_LABEL_PLURAL,
+  SUBTYPE_COLOR,
+  SUBTYPE_LABEL,
+} from "@/lib/tokens";
 
 const CATEGORY_ORDER = ["sensor", "instrument", "reference_standard", "data_acquisition"];
 
@@ -72,8 +22,8 @@ function MiniDonut({ dist }: { dist: CategoryDistribution }) {
 
   return (
     <div className="flex flex-col items-center">
-      <p className="text-[11px] font-semibold text-[#152330] text-center leading-tight mb-1">
-        {CATEGORY_LABEL[dist.category] ?? dist.category}
+      <p className="text-[11px] font-semibold text-mar-text text-center leading-tight mb-1">
+        {ASSET_CATEGORY_LABEL_PLURAL[dist.category] ?? dist.category}
       </p>
 
       <div className="relative" style={{ width: 90, height: 90 }}>
@@ -108,7 +58,7 @@ function MiniDonut({ dist }: { dist: CategoryDistribution }) {
         </PieChart>
         <span
           className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${
-            isEmpty ? "text-gray-300" : "text-[#152330]"
+            isEmpty ? "text-gray-300" : "text-mar-text"
           }`}
         >
           {dist.total}
@@ -143,7 +93,7 @@ export default function CategoryDistributionChart({
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-[#152330]">Asset distribution</h3>
+        <h3 className="text-sm font-semibold text-mar-text">Asset distribution</h3>
         <p className="text-xs text-gray-400 mt-0.5">By sensor, instrument and DAQ type</p>
       </div>
 

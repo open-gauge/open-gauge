@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import AuthCard from "@/components/auth-card";
 import ParticleBackground from "@/components/particle-background";
+import {
+  ActivityIcon,
+  GitBranchIcon,
+  ShieldCheckIcon,
+} from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "MAR — Measurement Asset Registry",
@@ -47,10 +52,10 @@ export default function LoginPage() {
 
             {/* Headline */}
             <div>
-              <h1 className="text-5xl font-bold text-[#152330] leading-[1.1] tracking-tight">
+              <h1 className="text-5xl font-bold text-mar-text leading-[1.1] tracking-tight">
                 Version control
               </h1>
-              <h1 className="text-5xl font-bold text-[#2f819b] leading-[1.1] tracking-tight">
+              <h1 className="text-5xl font-bold text-mar-accent leading-[1.1] tracking-tight">
                 for metrology.
               </h1>
             </div>
@@ -65,22 +70,22 @@ export default function LoginPage() {
             {/* Feature list */}
             <ul className="space-y-3.5">
               <li className="flex items-center gap-3 text-sm text-gray-600">
-                <GitBranchIcon />
+                <GitBranchIcon size={16} className="text-mar-accent flex-shrink-0" />
                 Git-style history for every coefficient change
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-600">
-                <ShieldCheckIcon />
+                <ShieldCheckIcon size={16} className="text-mar-accent flex-shrink-0" />
                 Cryptographically signed calibration certificates
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-600">
-                <ActivityIcon />
+                <ActivityIcon size={16} className="text-mar-accent flex-shrink-0" />
                 Live telemetry &amp; drift monitoring
               </li>
             </ul>
 
             {/* CLI snippet */}
-            <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#152330] rounded-lg text-xs font-mono text-gray-300 shadow-md">
-              <span className="text-[#2f819b] select-none">$</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-mar-bg rounded-lg text-xs font-mono text-gray-300 shadow-md">
+              <span className="text-mar-accent select-none">$</span>
               mar auth login --org acme-metrology
             </div>
           </div>
@@ -98,76 +103,5 @@ export default function LoginPage() {
         </footer>
       </div>
     </div>
-  );
-}
-
-function GitBranchIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className="text-[#2f819b] flex-shrink-0"
-    >
-      <circle cx="5" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="5" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <circle cx="11" cy="5.5" r="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M5 5v4M5 5c0 0 0 1.5 1.5 2.5S11 7 11 7"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ShieldCheckIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className="text-[#2f819b] flex-shrink-0"
-    >
-      <path
-        d="M8 1.5 2.5 4v3.667C2.5 10.9 4.922 13.593 8 14.333c3.078-.74 5.5-3.433 5.5-6.666V4L8 1.5Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m5.5 8 1.5 1.5 3.5-3"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ActivityIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className="text-[#2f819b] flex-shrink-0"
-    >
-      <path
-        d="M1 8h2.5l2-5 3 10 2-6.5 1.5 1.5H15"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

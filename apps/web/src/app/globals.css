@@ -5,8 +5,14 @@
 :root {
   --background: #ffffff;
   --foreground: #152330;
-  --brand: #2f819b;
-  --brand-dark: #1b4f64;
+
+  /* MAR brand palette */
+  --mar-bg:           #0f1c26;
+  --mar-text:         #152330;
+  --mar-action:       #1b4f64;
+  --mar-action-dark:  #154050;
+  --mar-accent:       #2f819b;
+  --mar-accent-dark:  #256a81;
 }
 
 body {

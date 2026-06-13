@@ -3,6 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  ActivityIcon,
+  ApiIcon,
+  AssetRegistryIcon,
+  DashboardIcon,
+  DocumentIcon,
+  SettingsIcon,
+  SitesIcon,
+} from "@/components/icons";
 
 interface NavItem {
   href: string;
@@ -11,32 +20,27 @@ interface NavItem {
 }
 
 const WORKSPACE_NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: <DashboardIcon /> },
-  { href: "/assets", label: "Asset Registry", icon: <AssetIcon /> },
-  { href: "/sites", label: "Projects & Sites", icon: <SitesIcon /> },
-  { href: "/certificates", label: "Certificates", icon: <CertIcon /> },
-  { href: "/activity", label: "Activity", icon: <ActivityIcon /> },
+  { href: "/dashboard",    label: "Dashboard",      icon: <DashboardIcon size={15} /> },
+  { href: "/assets",       label: "Asset Registry", icon: <AssetRegistryIcon size={15} /> },
+  { href: "/sites",        label: "Projects & Sites", icon: <SitesIcon size={15} /> },
+  { href: "/certificates", label: "Certificates",   icon: <DocumentIcon size={15} /> },
+  { href: "/activity",     label: "Activity",       icon: <ActivityIcon size={15} /> },
 ];
 
 const SYSTEM_NAV: NavItem[] = [
-  { href: "/api-explorer", label: "API Explorer", icon: <ApiIcon /> },
-  { href: "/settings", label: "Settings", icon: <SettingsIcon /> },
+  { href: "/api-explorer", label: "API Explorer", icon: <ApiIcon size={15} /> },
+  { href: "/settings",     label: "Settings",     icon: <SettingsIcon size={15} /> },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 flex-shrink-0 flex flex-col h-full bg-[#0f1c26]">
+    <aside className="w-56 flex-shrink-0 flex flex-col h-full bg-mar-bg">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-white/5">
         <Link href="/dashboard" className="block">
-          <Image
-            src="/assets/Logo light.svg"
-            alt="MAR"
-            width={100}
-            priority
-          />
+          <Image src="/assets/Logo light.svg" alt="MAR" width={100} priority />
         </Link>
       </div>
 
@@ -87,71 +91,8 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
       }`}
     >
-      <span className={active ? "text-[#2f819b]" : "text-gray-500"}>{item.icon}</span>
+      <span className={active ? "text-mar-accent" : "text-gray-500"}>{item.icon}</span>
       {item.label}
     </Link>
-  );
-}
-
-function DashboardIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  );
-}
-
-function AssetIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <rect x="1" y="3" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
-      <rect x="1" y="7.5" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
-      <rect x="1" y="12" width="14" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  );
-}
-
-function SitesIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1v14M1 8h14M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CertIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="1" width="12" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ActivityIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <path d="M1 8h2.5l2-5 3 10 2-6.5 1.5 1.5H15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ApiIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <path d="M4.5 6 2 8l2.5 2M11.5 6 14 8l-2.5 2M9 4l-2 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 1v1.5M8 13.5V15M15 8h-1.5M2.5 8H1M12.95 3.05l-1.06 1.06M4.11 11.89l-1.06 1.06M12.95 12.95l-1.06-1.06M4.11 4.11 3.05 3.05" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
   );
 }

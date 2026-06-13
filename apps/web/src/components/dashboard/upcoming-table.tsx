@@ -1,32 +1,24 @@
 import type { UpcomingAsset } from "@/types/dashboard";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  sensor: "Sensor",
-  instrument: "Instrument",
-  reference_standard: "Ref. Standard",
-  data_acquisition: "DAQ",
-  other: "Other",
-};
+import { ExternalLinkIcon } from "@/components/icons";
+import {
+  ASSET_CATEGORY_LABEL,
+  CALIBRATION_STATUS_LABEL,
+  CALIBRATION_STATUS_STYLE,
+} from "@/lib/tokens";
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === "expired") {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-600 border border-red-100">
-        ● Expired
-      </span>
-    );
-  }
+  const cls = CALIBRATION_STATUS_STYLE[status] ?? CALIBRATION_STATUS_STYLE.not_calibrated;
+  const label = CALIBRATION_STATUS_LABEL[status] ?? status;
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100">
-      ● Due soon
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>
+      ● {label}
     </span>
   );
 }
 
 function HealthBar({ score }: { score: number }) {
   const color =
-    score >= 80 ? "bg-[#2f819b]" : score >= 50 ? "bg-amber-400" : "bg-red-400";
-
+    score >= 80 ? "bg-mar-accent" : score >= 50 ? "bg-amber-400" : "bg-red-400";
   return (
     <div className="flex items-center gap-2 justify-end">
       <div className="w-28 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -39,11 +31,7 @@ function HealthBar({ score }: { score: number }) {
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function UpcomingTable({ data }: { data: UpcomingAsset[] }) {
@@ -51,14 +39,12 @@ export default function UpcomingTable({ data }: { data: UpcomingAsset[] }) {
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-[#152330]">Upcoming &amp; overdue</h3>
+          <h3 className="text-sm font-semibold text-mar-text">Upcoming &amp; overdue</h3>
           <p className="text-xs text-gray-400 mt-0.5">Assets requiring attention</p>
         </div>
-        <a href="/assets" className="text-xs text-gray-400 hover:text-[#2f819b] flex items-center gap-1 transition-colors">
+        <a href="/assets" className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors">
           View all
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M2 8 8 2M8 2H4M8 2v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ExternalLinkIcon />
         </a>
       </div>
 
@@ -70,13 +56,13 @@ export default function UpcomingTable({ data }: { data: UpcomingAsset[] }) {
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-[#152330] truncate">{asset.name}</span>
+                <span className="text-sm font-medium text-mar-text truncate">{asset.name}</span>
                 <span className="text-[10px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
                   {asset.asset_id}
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-0.5 truncate">
-                {CATEGORY_LABEL[asset.category] ?? asset.category} · next due {formatDate(asset.next_due_at)}
+                {ASSET_CATEGORY_LABEL[asset.category] ?? asset.category} · next due {formatDate(asset.next_due_at)}
               </p>
             </div>
 

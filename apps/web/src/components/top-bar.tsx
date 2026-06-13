@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { BellIcon, MoonIcon, SearchIcon, SignOutIcon } from "@/components/icons";
 
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "Super Admin",
-  admin: "Admin",
+  admin:      "Admin",
   technician: "Technician",
-  viewer: "Viewer",
+  viewer:     "Viewer",
 };
 
 function getInitials(name: string): string {
@@ -31,9 +32,7 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (!dropdownRef.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -56,7 +55,7 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
       {/* Search */}
       <div className="flex-1 max-w-md mx-8">
         <div className="flex items-center gap-2 w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-400">
-          <SearchIcon />
+          <SearchIcon size={13} />
           <span className="flex-1 text-gray-400 text-xs">
             Search assets, certificates, serial numbers...
           </span>
@@ -70,7 +69,7 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1b4f64] hover:bg-[#154050] text-white text-xs font-medium rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
         >
           <span className="text-base leading-none">+</span>
           New Asset
@@ -89,7 +88,7 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="w-8 h-8 rounded-full bg-[#2f819b] flex items-center justify-center text-white text-xs font-semibold hover:bg-[#256a81] transition-colors focus:outline-none focus:ring-2 focus:ring-[#2f819b]/40"
+            className="w-8 h-8 rounded-full bg-mar-accent flex items-center justify-center text-white text-xs font-semibold hover:bg-mar-accent-dark transition-colors focus:outline-none focus:ring-2 focus:ring-mar-accent/40"
             aria-haspopup="true"
             aria-expanded={open}
           >
@@ -100,11 +99,11 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
             <div className="absolute right-0 top-10 w-56 bg-white rounded-xl border border-gray-100 shadow-lg z-50 overflow-hidden">
               {/* User info */}
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-[#152330] leading-tight truncate">
+                <p className="text-sm font-semibold text-mar-text leading-tight truncate">
                   {user.name}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{user.email}</p>
-                <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-[10px] font-medium bg-[#e8f4f8] text-[#1b4f64]">
+                <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-[10px] font-medium bg-mar-accent/10 text-mar-action">
                   {ROLE_LABEL[user.role] ?? user.role}
                 </span>
               </div>
@@ -113,13 +112,10 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
               <div className="py-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    logout();
-                  }}
+                  onClick={() => { setOpen(false); logout(); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 hover:text-red-600 transition-colors text-left"
                 >
-                  <SignOutIcon />
+                  <SignOutIcon size={14} />
                   Sign out
                 </button>
               </div>
@@ -128,41 +124,5 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
         </div>
       </div>
     </header>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-      <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
-      <path d="m11 11 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1a5 5 0 0 0-5 5v3l-1.5 2h13L13 9V6a5 5 0 0 0-5-5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M6.5 13a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SignOutIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M10 11l3-3-3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
   );
 }

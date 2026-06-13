@@ -7,6 +7,7 @@ import CategoryDistributionChart from "@/components/dashboard/category-distribut
 import RecentAssets from "@/components/dashboard/recent-assets";
 import StatsCards from "@/components/dashboard/stats-cards";
 import UpcomingTable from "@/components/dashboard/upcoming-table";
+import { DocumentIcon } from "@/components/icons";
 import {
   getActivity,
   getCalibrationThroughput,
@@ -34,7 +35,7 @@ export default async function DashboardPage() {
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#152330]">Operations dashboard</h1>
+          <h1 className="text-xl font-bold text-mar-text">Operations dashboard</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Real-time status across all sites, labs and instrumentation.
           </p>
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
           type="button"
           className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          <ReportIcon />
+          <DocumentIcon size={14} />
           Generate report
         </button>
       </div>
@@ -70,14 +71,5 @@ export default async function DashboardPage() {
       {/* Recent assets */}
       <RecentAssets data={recentAssets} />
     </div>
-  );
-}
-
-function ReportIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="1" width="12" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M5 5h6M5 8h6M5 11h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
   );
 }
