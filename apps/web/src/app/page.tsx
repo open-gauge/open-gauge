@@ -1,101 +1,175 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+import AuthCard from "@/components/auth-card";
+import ParticleBackground from "@/components/particle-background";
 
-export default function Home() {
+export const metadata: Metadata = {
+  title: "MAR — Measurement Asset Registry",
+  description:
+    "Version control for metrology. Manage sensors, calibration coefficients, and traceable certificates in one auditable registry.",
+};
+
+export default function LoginPage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="relative min-h-screen" style={{ backgroundColor: "#dce8ec" }}>
+      <ParticleBackground />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Nav */}
+        <nav className="flex items-center justify-between px-8 py-5">
+          <div className="flex items-center gap-2.5">
             <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+              src="/assets/Icon.svg"
+              alt="MAR icon"
+              width={28}
+              height={28}
+              priority
             />
-            Deploy now
-          </a>
+            <span className="font-semibold text-[#152330] text-sm tracking-tight">MAR</span>
+            <span className="text-gray-400 text-sm select-none">/</span>
+            <span className="text-sm text-gray-500">Measurement Asset Registry</span>
+          </div>
           <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#"
+            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
-            Read our docs
+            ← back to marketing
           </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </nav>
+
+        {/* Main content */}
+        <main className="flex-1 flex items-center justify-between gap-16 px-8 py-8 max-w-6xl mx-auto w-full">
+          {/* Left: marketing copy */}
+          <div className="flex-1 space-y-7">
+            {/* Status badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/60 backdrop-blur-sm rounded-full text-xs text-gray-600 border border-white/80 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              registry online · v0.4.2
+            </div>
+
+            {/* Headline */}
+            <div>
+              <h1 className="text-5xl font-bold text-[#152330] leading-[1.1] tracking-tight">
+                Version control
+              </h1>
+              <h1 className="text-5xl font-bold text-[#2f819b] leading-[1.1] tracking-tight">
+                for metrology.
+              </h1>
+            </div>
+
+            {/* Subtitle */}
+            <p className="text-gray-500 text-base leading-relaxed max-w-[420px]">
+              Sign in to your workspace to manage sensors, calibration
+              coefficients, and traceable certificates — all in one auditable
+              registry.
+            </p>
+
+            {/* Feature list */}
+            <ul className="space-y-3.5">
+              <li className="flex items-center gap-3 text-sm text-gray-600">
+                <GitBranchIcon />
+                Git-style history for every coefficient change
+              </li>
+              <li className="flex items-center gap-3 text-sm text-gray-600">
+                <ShieldCheckIcon />
+                Cryptographically signed calibration certificates
+              </li>
+              <li className="flex items-center gap-3 text-sm text-gray-600">
+                <ActivityIcon />
+                Live telemetry &amp; drift monitoring
+              </li>
+            </ul>
+
+            {/* CLI snippet */}
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#152330] rounded-lg text-xs font-mono text-gray-300 shadow-md">
+              <span className="text-[#2f819b] select-none">$</span>
+              mar auth login --org acme-metrology
+            </div>
+          </div>
+
+          {/* Right: auth card */}
+          <div className="w-[420px] flex-shrink-0">
+            <AuthCard />
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="flex items-center justify-between px-8 py-4 text-xs text-gray-400">
+          <span>© 2026 MAR · self-hosted edition</span>
+          <span>build c8f1e2a · region eu-west</span>
+        </footer>
+      </div>
     </div>
+  );
+}
+
+function GitBranchIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className="text-[#2f819b] flex-shrink-0"
+    >
+      <circle cx="5" cy="3.5" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="5" cy="12.5" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="11" cy="5.5" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M5 5v4M5 5c0 0 0 1.5 1.5 2.5S11 7 11 7"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ShieldCheckIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className="text-[#2f819b] flex-shrink-0"
+    >
+      <path
+        d="M8 1.5 2.5 4v3.667C2.5 10.9 4.922 13.593 8 14.333c3.078-.74 5.5-3.433 5.5-6.666V4L8 1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m5.5 8 1.5 1.5 3.5-3"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className="text-[#2f819b] flex-shrink-0"
+    >
+      <path
+        d="M1 8h2.5l2-5 3 10 2-6.5 1.5 1.5H15"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
