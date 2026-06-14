@@ -21,7 +21,7 @@ function HealthBar({ score }: { score: number }) {
     score >= 80 ? "bg-mar-accent" : score >= 50 ? "bg-amber-400" : "bg-red-400";
   return (
     <div className="flex items-center gap-2 justify-end">
-      <div className="w-28 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="w-28 h-1.5 bg-mar-border-md rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
       </div>
       <span className="text-xs text-gray-500 w-14 text-right">{score}% health</span>
@@ -36,7 +36,7 @@ function formatDate(iso: string | null) {
 
 export default function UpcomingTable({ data }: { data: UpcomingAsset[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-mar-text">Upcoming &amp; overdue</h3>
@@ -52,12 +52,12 @@ export default function UpcomingTable({ data }: { data: UpcomingAsset[] }) {
         {data.map((asset) => (
           <div
             key={asset.asset_id}
-            className="flex items-center gap-4 py-3 border-b border-gray-50 last:border-0"
+            className="flex items-center gap-4 py-3 border-b border-mar-border last:border-0"
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-mar-text truncate">{asset.name}</span>
-                <span className="text-[10px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-mono text-gray-400 bg-mar-surface-alt px-1.5 py-0.5 rounded">
                   {asset.asset_id}
                 </span>
               </div>

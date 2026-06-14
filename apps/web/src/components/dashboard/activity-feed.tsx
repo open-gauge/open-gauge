@@ -13,7 +13,7 @@ function timeAgo(iso: string): string {
 
 export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-mar-text">Activity</h3>
         <p className="text-xs text-gray-400 mt-0.5">Recent audit events</p>
@@ -27,7 +27,7 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
               <span className="font-semibold text-mar-text">{item.actor_email}</span>{" "}
               <span className="text-gray-500">{item.action}</span>
               {item.entity_asset_id && (
-                <span className="ml-1 font-mono text-[10px] text-gray-400 bg-gray-50 px-1 rounded">
+                <span className="ml-1 font-mono text-[10px] text-gray-400 bg-mar-surface-alt px-1 rounded">
                   {item.entity_asset_id}
                 </span>
               )}

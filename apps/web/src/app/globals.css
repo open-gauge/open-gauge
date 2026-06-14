@@ -6,13 +6,32 @@
   --background: #ffffff;
   --foreground: #152330;
 
-  /* MAR brand palette */
+  /* MAR brand palette — light mode */
   --mar-bg:           #0f1c26;
   --mar-text:         #152330;
   --mar-action:       #1b4f64;
   --mar-action-dark:  #154050;
-  --mar-accent:       #2f819b;
+  --mar-accent-rgb:   47 129 155;   /* #2f819b */
   --mar-accent-dark:  #256a81;
+
+  /* Semantic surface tokens — switch automatically in dark mode */
+  --mar-surface:      #ffffff;
+  --mar-surface-alt:  #f9fafb;
+  --mar-border:       #f3f4f6;
+  --mar-border-md:    #e5e7eb;
+}
+
+.dark {
+  --mar-text:         #d0e8f0;
+  --mar-action:       #256a81;
+  --mar-action-dark:  #1b5f72;
+  --mar-accent-rgb:   61 154 184;   /* #3d9ab8 */
+  --mar-accent-dark:  #2f819b;
+
+  --mar-surface:      #0f1c26;
+  --mar-surface-alt:  #080f16;
+  --mar-border:       #1a2e3d;
+  --mar-border-md:    #1e3a52;
 }
 
 body {

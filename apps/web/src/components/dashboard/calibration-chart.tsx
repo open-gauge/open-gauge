@@ -16,7 +16,7 @@ import { COLORS } from "@/lib/tokens";
 
 export default function CalibrationChart({ data }: { data: ThroughputPoint[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
       <div className="flex items-start justify-between mb-1">
         <div>
           <h3 className="text-sm font-semibold text-mar-text">Calibration throughput</h3>

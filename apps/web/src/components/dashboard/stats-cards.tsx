@@ -22,7 +22,7 @@ function StatCard({ label, value, sub, icon, accent = "teal" }: StatCardProps) {
   }[accent];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+    <div className="bg-mar-surface rounded-xl border border-mar-border p-5 shadow-sm">
       <div className="flex items-start justify-between mb-3">
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
         <span className={accentClass}>{icon}</span>

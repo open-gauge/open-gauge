@@ -37,24 +37,26 @@ export default function AuthCard() {
   const switchTab = (t: Tab) => { setTab(t); setError(null); };
 
   const inputClass =
-    "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-mar-accent focus:ring-2 focus:ring-mar-accent/20 transition-all placeholder:text-gray-400";
+    "w-full px-3 py-2 text-sm border border-mar-border-md dark:border-mar-border bg-mar-surface rounded-lg outline-none focus:border-mar-accent focus:ring-2 focus:ring-mar-accent/20 transition-all placeholder:text-gray-400 text-mar-text";
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 w-full">
+    <div className="bg-mar-surface rounded-2xl shadow-xl border border-mar-border p-8 w-full">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Access your workspace</h2>
+        <h2 className="text-xl font-semibold text-mar-text">Access your workspace</h2>
         <p className="text-sm text-gray-500 mt-1">Authenticate to continue to the registry.</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+      <div className="flex bg-mar-surface-alt rounded-lg p-1 mb-6 border border-mar-border">
         {(["signin", "register"] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => switchTab(t)}
             className={`flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all ${
-              tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              tab === t
+                ? "bg-mar-surface text-mar-text shadow-sm"
+                : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
             {t === "signin" ? "Sign in" : "Create account"}
@@ -65,21 +67,21 @@ export default function AuthCard() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {tab === "register" && (
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-mar-text mb-1">Name</label>
             <input id="name" type="text" autoComplete="name" required placeholder="Jane Smith"
               value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label htmlFor="email" className="block text-sm font-medium text-mar-text mb-1">Email</label>
           <input id="email" type="email" autoComplete="email" required placeholder="engineer@lab.io"
             value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-mar-text">Password</label>
             {tab === "signin" && (
               <a href="/auth/forgot-password" className="text-xs text-gray-400 hover:text-mar-accent transition-colors">
                 Forgot?
@@ -98,7 +100,7 @@ export default function AuthCard() {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2 text-sm text-red-600">
+          <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-3 py-2 text-sm text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
@@ -117,16 +119,16 @@ export default function AuthCard() {
       </form>
 
       <div className="my-6 flex items-center gap-3">
-        <div className="flex-1 h-px bg-gray-100" />
+        <div className="flex-1 h-px bg-mar-border-md" />
         <span className="text-xs text-gray-400 font-medium tracking-wide">OR CONTINUE WITH</span>
-        <div className="flex-1 h-px bg-gray-100" />
+        <div className="flex-1 h-px bg-mar-border-md" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => alert("GitHub OAuth not configured in this deployment.")}
-          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
         >
           <GitHubIcon />
           GitHub
@@ -134,7 +136,7 @@ export default function AuthCard() {
         <button
           type="button"
           onClick={() => alert("SSO / SAML not configured in this deployment.")}
-          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
         >
           <SSOIcon />
           SSO / SAML
@@ -143,9 +145,9 @@ export default function AuthCard() {
 
       <p className="mt-6 text-center text-xs text-gray-400">
         By continuing you agree to the{" "}
-        <a href="#" className="underline hover:text-gray-600 transition-colors">Terms</a>
+        <a href="#" className="underline hover:text-gray-600 dark:hover:text-gray-200 transition-colors">Terms</a>
         {" "}and{" "}
-        <a href="#" className="underline hover:text-gray-600 transition-colors">Privacy Policy</a>.
+        <a href="#" className="underline hover:text-gray-600 dark:hover:text-gray-200 transition-colors">Privacy Policy</a>.
       </p>
     </div>
   );

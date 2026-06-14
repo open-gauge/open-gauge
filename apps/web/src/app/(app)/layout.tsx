@@ -5,7 +5,7 @@ import TopBar from "@/components/top-bar";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="flex h-screen overflow-hidden bg-mar-surface-alt">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <TopBar breadcrumb={["Workspace", "Overview"]} />

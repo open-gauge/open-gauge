@@ -4,7 +4,7 @@ import { CALIBRATION_STATUS_LABEL, CALIBRATION_STATUS_STYLE } from "@/lib/tokens
 
 export default function RecentAssets({ data }: { data: RecentAsset[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-mar-text">Recently updated assets</h3>
@@ -21,7 +21,7 @@ export default function RecentAssets({ data }: { data: RecentAsset[] }) {
           return (
             <div
               key={asset.asset_id}
-              className="flex-shrink-0 w-52 border border-gray-100 rounded-xl p-4 hover:border-gray-200 hover:shadow-sm transition-all cursor-pointer"
+              className="flex-shrink-0 w-52 border border-mar-border rounded-xl p-4 hover:border-mar-border-md transition-all cursor-pointer"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-mono text-gray-400">{asset.asset_id}</span>

@@ -40,7 +40,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-white/5">
         <Link href="/dashboard" className="block">
-          <Image src="/assets/Logo light.svg" alt="MAR" width={100} priority />
+          <Image src="/assets/Logo light.svg" alt="MAR" height={35} priority />
         </Link>
       </div>
 
@@ -75,7 +75,8 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-white/5">
-        <p className="text-[11px] text-gray-600">v1.4.2 · self-hosted</p>
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <p className="text-[11px] text-gray-600">v1.0.0 · self-hosted</p>
       </div>
     </aside>
   );
