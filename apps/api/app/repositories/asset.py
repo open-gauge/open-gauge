@@ -10,6 +10,7 @@ from ..models.sensor import Sensor
 from ..models.daq import DAQ
 from ..models.location import Location
 from ..models.asset_location import AssetLocation
+from ..models.team import Team
 from ..schemas.sensor import SensorChannelCreate
 from ..schemas.daq import DaqCreate
 
@@ -238,6 +239,72 @@ def retire(db: Session, asset: Asset, retired_by: uuid.UUID, reason: str | None 
     db.commit()
     db.refresh(asset)
     return asset
+
+
+def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
+    """Compute enriched fields for the asset profile endpoint."""
+    asset = get_by_id(db, asset_pk)
+    if not asset:
+        return {}
+    today = date.today()
+
+    # Location path
+    all_locs: dict[str, Location] = {
+        str(loc.id): loc for loc in db.query(Location).all()
+    }
+    site_name, location_name = _resolve_location_path(asset.location_id, all_locs)
+
+    # Owner team name
+    owner_name: str | None = None
+    if asset.owner:
+        team = db.query(Team).filter(Team.id == asset.owner).first()
+        if team:
+            owner_name = team.name
+
+    # Calibration summary
+    cals = (
+        db.query(Calibration)
+        .filter(Calibration.asset_id == asset_pk)
+        .order_by(Calibration.calibration_date.desc())
+        .all()
+    )
+    cal_count = len(cals)
+    last_cal_date: date | None = cals[0].calibration_date if cals else None
+    latest_due: date | None = max((c.due_date for c in cals), default=None)
+
+    if not asset.is_active:
+        cal_status = "retired"
+    elif not cals:
+        cal_status = "not_calibrated"
+    elif latest_due < today:  # type: ignore[operator]
+        cal_status = "expired"
+    elif latest_due <= today + timedelta(days=30):  # type: ignore[operator]
+        cal_status = "due_soon"
+    else:
+        cal_status = "valid"
+
+    # Subtype / technology from first channel
+    channels = get_sensor_channels(db, asset_pk)
+    daq = get_daq_details(db, asset_pk)
+    subtype: str | None = None
+    technology: str | None = None
+    if asset.asset_type == AssetType.sensor and channels:
+        subtype = channels[0].physical_quantity
+        technology = channels[0].technology
+    elif asset.asset_type == AssetType.daq and daq:
+        subtype = daq.daq_type
+
+    return {
+        "site_name": site_name,
+        "location_name": location_name,
+        "calibration_status": cal_status,
+        "next_due_at": latest_due,
+        "last_calibration_date": last_cal_date,
+        "calibration_count": cal_count,
+        "subtype": subtype,
+        "technology": technology,
+        "owner_name": owner_name,
+    }
 
 
 def get_sensor_channels(db: Session, asset_pk: uuid.UUID) -> list[Sensor]:

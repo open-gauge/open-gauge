@@ -124,6 +124,18 @@ class AssetResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AssetProfileResponse(AssetResponse):
+    site_name: str | None = None
+    location_name: str | None = None
+    calibration_status: str = "not_calibrated"
+    next_due_at: date | None = None
+    last_calibration_date: date | None = None
+    calibration_count: int = 0
+    subtype: str | None = None
+    technology: str | None = None
+    owner_name: str | None = None
+
+
 class AssetListItem(BaseModel):
     id: uuid.UUID
     asset_id: str

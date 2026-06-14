@@ -10,11 +10,15 @@ from ...models.user import User
 from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import certificate as cert_repo
-from ...schemas.asset import AssetCreate, AssetListItem, AssetResponse, AssetUpdate
+from ...repositories import audit_log as audit_log_repo
+from ...repositories import stored_file as file_repo
+from ...schemas.asset import AssetCreate, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
 from ...schemas.calibration import CalibrationResponse
 from ...schemas.certificate import CertificateResponse
 from ...schemas.sensor import SensorChannelResponse
 from ...schemas.daq import DaqResponse
+from ...schemas.audit_log import AuditLogResponse
+from ...schemas.stored_file import StoredFileResponse
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
@@ -60,6 +64,20 @@ def create_asset(
     data = body.model_dump()
     asset = asset_repo.create(db, created_by=current_user.id, **data)
     return _enrich(asset, db)
+
+
+@router.get("/{asset_pk}/profile", response_model=AssetProfileResponse)
+def get_asset_profile(
+    asset_pk: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> AssetProfileResponse:
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    base = _enrich(asset, db)
+    extras = asset_repo.get_profile_extras(db, asset_pk)
+    return AssetProfileResponse(**base.model_dump(), **extras)
 
 
 @router.get("/{asset_pk}", response_model=AssetResponse)
@@ -127,3 +145,29 @@ def list_asset_certificates(
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     return cert_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit)
+
+
+@router.get("/{asset_pk}/audit-logs", response_model=list[AuditLogResponse])
+def list_asset_audit_logs(
+    asset_pk: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[AuditLogResponse]:
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    return audit_log_repo.list_logs(db, entity_id=asset_pk, skip=skip, limit=limit)
+
+
+@router.get("/{asset_pk}/files", response_model=list[StoredFileResponse])
+def list_asset_files(
+    asset_pk: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[StoredFileResponse]:
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    return file_repo.list_by_entity(db, asset_pk)

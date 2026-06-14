@@ -323,6 +323,34 @@ export function ChevronRightIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+export function EditIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M11 2.5a1.5 1.5 0 0 1 2.5 1.5L5 12.5 2 13.5l1-3L11 2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function MapPinIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M8 1.5a4.5 4.5 0 0 1 4.5 4.5C12.5 9.5 8 14.5 8 14.5S3.5 9.5 3.5 6A4.5 4.5 0 0 1 8 1.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <circle cx="8" cy="6" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function ShareIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="13" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="13" cy="13" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="3" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M4.4 7.2 11.6 3.8M4.4 8.8l7.2 3.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ size = 16, className }: IconProps = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>

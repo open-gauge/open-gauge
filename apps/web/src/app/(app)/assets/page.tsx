@@ -521,7 +521,7 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
   const subtypeLabel = asset.subtype ? (SUBTYPE_LABEL[asset.subtype] ?? asset.subtype) : null;
   const range = formatRange(asset.range_min, asset.range_max, asset.range_unit);
   return (
-    <div className="bg-mar-surface border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-sm transition-all cursor-pointer">
+    <a href={`/assets/${asset.id}`} className="block bg-mar-surface border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-sm transition-all cursor-pointer">
       <div className="flex items-start justify-between mb-3">
         <span className="font-mono text-[10px] font-semibold text-mar-accent">{asset.asset_id}</span>
         <StatusBadge status={asset.calibration_status} />
@@ -536,7 +536,7 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
         <span className="font-mono">{range ?? asset.serial_number ?? "—"}</span>
         <span className="font-mono">{formatDate(asset.next_due_at)}</span>
       </div>
-    </div>
+    </a>
   );
 }
 
