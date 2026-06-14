@@ -27,14 +27,16 @@ Organization
 └── Location (self-referencing hierarchy: site → building → lab → bench…)
     └── Asset
         ├── Sensor (subtype, multi-channel via sensor_channels)
+        │   └── CalibrationMethod (FK — calibration procedure for the channel)
         ├── DAQ (subtype)
         ├── Calibration (append-only)
         │   ├── CalibrationCoefficients
         │   └── Certificate
         │       └── File
-        └── File (datasheets, images)
+        └── File (datasheets, images, pinout diagrams, schematics)
 
-asset_locations  →  movement history (asset × location × timestamp)
+asset_locations      →  movement history (asset × location × timestamp)
+calibration_methods  →  reusable calibration procedure definitions
 ```
 
 ---
@@ -181,6 +183,10 @@ Top-level table for all physical assets (sensors and DAQ systems). Subtype-speci
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `notes` | TEXT | nullable | |
+| `pinout_table` | JSONB | nullable | Array of `{pin_number, name, description}` objects describing connector pinout |
+| `pinout_image_id` | UUID | FK → files, nullable | Reference to a pinout diagram image |
+| `sensor_image_id` | UUID | FK → files, nullable | Reference to a sensor/instrument photo |
+| `sensor_schematic_id` | UUID | FK → files, nullable | Reference to a wiring or block diagram schematic |
 
 ---
 
@@ -219,6 +225,8 @@ Sensor subtype. One row per measurement channel. An asset with `asset_type = sen
 | `output_signal_max` | DECIMAL(18,8) | nullable | |
 | `output_signal_unit` | VARCHAR(50) | nullable | e.g. `mA`, `V` |
 | `output_type` | VARCHAR(255) | nullable | `analog`, `digital`, `pulse`, `frequency`, `resistance`, `capacitance` |
+| `calibration_method_id` | UUID | FK → calibration_methods, nullable, indexed | Procedure used to calibrate this channel |
+| `calibration_interval` | INTEGER | nullable | Recommended recalibration interval in days |
 | `calibration_role` | VARCHAR(255) | nullable | `working`, `reference`, `transfer`, `master` |
 | `criticality` | VARCHAR(255) | nullable | `critical`, `non-critical`, `safety-related` |
 | `is_active` | BOOLEAN | NOT NULL, default true | |
@@ -258,6 +266,24 @@ Data acquisition system subtype. One row per asset with `asset_type = daq`.
 | `communication_protocol` | VARCHAR(100) | nullable | e.g. `Modbus`, `OPC UA`, `MQTT` |
 | `interface_type` | VARCHAR(100) | nullable | `USB`, `Ethernet`, `PCIe`, `WiFi` |
 | `trigger_modes` | VARCHAR(255) | nullable | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+---
+
+### `calibration_methods`
+
+Reusable calibration procedure definitions. Describes how to calibrate a sensor channel — the equipment required and the step-by-step procedure. Referenced from `sensors.calibration_method_id`.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | UUID | PK | |
+| `physical_quantity` | VARCHAR(255) | NOT NULL, indexed | e.g. `temperature`, `pressure` — for filtering by measurand |
+| `name` | VARCHAR(255) | NOT NULL | Short procedure name, e.g. `PT100 Comparison Calibration` |
+| `description` | TEXT | nullable | Full prose description of the procedure |
+| `required_equipment` | TEXT | nullable | List of required reference standards and tools |
+| `steps` | JSONB | nullable | Ordered array of `{step_number: int, description: str}` objects |
+| `created_by` | UUID | FK → users, NOT NULL | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 
@@ -387,17 +413,19 @@ Immutable append-only audit trail.
 ```
 organizations ─┬─< locations (self-referencing hierarchy)
                │       └─< assets (location_id — current)
-               │             ├─< sensors (multi-channel, asset_id + channel_id)
+               │             ├─< sensors ─────────────────> calibration_methods
+               │             │   (multi-channel, asset_id + channel_id)
                │             ├─< daq
                │             ├─< calibrations >─< calibration_coefficients
                │             │        └─< certificates >─< files
-               │             └─< files (datasheets, images)
+               │             └─< files (datasheets, images, pinout, schematics)
                │
-               └─< users
+               └─< users ──> calibration_methods (created_by)
                      └─< teams
 
-asset_locations  →  (asset × location × timestamp — movement history)
-audit_logs       →  (references entities loosely by UUID + entity_type)
+asset_locations      →  (asset × location × timestamp — movement history)
+audit_logs           →  (references entities loosely by UUID + entity_type)
+calibration_methods  →  (procedure library, referenced by sensors.calibration_method_id)
 ```
 
 ---
@@ -421,6 +449,8 @@ audit_logs       →  (references entities loosely by UUID + entity_type)
 | `audit_logs` | `created_at` | Time-range audit queries |
 | `audit_logs` | `action` | Action-type filtering |
 | `users` | `email` | Login lookup |
+| `calibration_methods` | `physical_quantity` | Filter by measurand |
+| `sensors` | `calibration_method_id` | Procedure lookup per channel |
 
 ---
 

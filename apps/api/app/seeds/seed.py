@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..core.security import hash_password
 from ..models.asset import Asset, AssetType
+from ..models.stored_file import StoredFile
 from ..models.asset_location import AssetLocation
 from ..models.audit_log import AuditLog
 from ..models.calibration import Calibration, CalibrationResult
@@ -782,7 +783,104 @@ def seed_database(db: Session) -> None:
         uncertainty_coverage_factor=2.0,
     ))
 
-    # Certificates
+    # cal_pt01_prev — MAR-00421 previous annual cycle (2024)
+    db.add(CalibrationCoefficient(
+        calibration_id=cal_pt01_prev.id,
+        channel="Pressure",
+        coefficient_type=CoefficientType.linear,
+        gain=1.00080000,
+        offset_value=0.00300000,
+        unit_input="mA",
+        unit_output="bar",
+        range_min=4.0, range_max=20.0,
+        uncertainty=0.00012000,
+        uncertainty_coverage_factor=2.0,
+        notes="Previous annual cycle — minor drift observed",
+    ))
+    # cal_rh01 — MAR-00423 Cleanroom RH-Sensor (two channels)
+    db.add(CalibrationCoefficient(
+        calibration_id=cal_rh01.id,
+        channel="Humidity",
+        coefficient_type=CoefficientType.linear,
+        gain=1.00150000,
+        offset_value=-0.20000000,
+        unit_input="V",
+        unit_output="%RH",
+        range_min=0.0, range_max=1.0,
+        uncertainty=0.50000000,
+        uncertainty_coverage_factor=2.0,
+        notes="Humidity channel — capacitive sensor linear fit",
+    ))
+    db.add(CalibrationCoefficient(
+        calibration_id=cal_rh01.id,
+        channel="Temperature",
+        coefficient_type=CoefficientType.linear,
+        gain=0.99950000,
+        offset_value=0.05000000,
+        unit_input="V",
+        unit_output="°C",
+        range_min=0.0, range_max=1.0,
+        uncertainty=0.10000000,
+        uncertainty_coverage_factor=2.0,
+        notes="Temperature channel — embedded RTD linear fit",
+    ))
+    # cal_tt22_new — MAR-00427 Furnace TT-22 recalibration (conditional pass)
+    db.add(CalibrationCoefficient(
+        calibration_id=cal_tt22_new.id,
+        channel="Temperature",
+        coefficient_type=CoefficientType.linear,
+        gain=0.99850000,
+        offset_value=0.12000000,
+        unit_input="mA",
+        unit_output="°C",
+        range_min=4.0, range_max=20.0,
+        uncertainty=0.05000000,
+        uncertainty_coverage_factor=2.0,
+        notes="Recalibration after expiry — gain correction applied (conditional pass)",
+    ))
+    # cal_tt38_1 — MAR-00438 Ambient reference thermometer cycle 1
+    db.add(CalibrationCoefficient(
+        calibration_id=cal_tt38_1.id,
+        channel="Temperature",
+        coefficient_type=CoefficientType.linear,
+        gain=1.00002000,
+        offset_value=-0.00300000,
+        unit_input="mA",
+        unit_output="°C",
+        range_min=4.0, range_max=20.0,
+        uncertainty=0.00100000,
+        uncertainty_coverage_factor=2.0,
+    ))
+    # cal_tt38_2 — MAR-00438 Ambient reference thermometer cycle 2
+    db.add(CalibrationCoefficient(
+        calibration_id=cal_tt38_2.id,
+        channel="Temperature",
+        coefficient_type=CoefficientType.linear,
+        gain=1.00001500,
+        offset_value=-0.00250000,
+        unit_input="mA",
+        unit_output="°C",
+        range_min=4.0, range_max=20.0,
+        uncertainty=0.00100000,
+        uncertainty_coverage_factor=2.0,
+    ))
+    # cal_rps_prev — MAR-00504 reference pressure standard historical (2024)
+    db.add(CalibrationCoefficient(
+        calibration_id=cal_rps_prev.id,
+        channel="Pressure",
+        coefficient_type=CoefficientType.linear,
+        gain=1.00003000,
+        offset_value=0.00000800,
+        unit_input="mA",
+        unit_output="bar",
+        range_min=0.0, range_max=10.0,
+        uncertainty=0.000006,
+        uncertainty_coverage_factor=2.0,
+    ))
+
+    # ------------------------------------------------------------------ #
+    # Certificates                                                       #
+    # ------------------------------------------------------------------ #
     db.add(Certificate(
         asset_id=asset_map["MAR-00421"].id,
         calibration_id=cal_pt01.id,
@@ -818,9 +916,106 @@ def seed_database(db: Session) -> None:
     ))
 
     # ------------------------------------------------------------------ #
+    # Stored files (seed — placeholder MinIO paths)                      #
+    # ------------------------------------------------------------------ #
+    stored_files = [
+        StoredFile(
+            original_filename="CERT-2025-NMI-0421.pdf",
+            storage_path="assets/MAR-00421/CERT-2025-NMI-0421.pdf",
+            bucket="mar-files",
+            content_type="application/pdf",
+            size_bytes=245_760,
+            checksum_sha256="a3f1c2d4e5b6789012345678901234567890abcdef1234567890abcdef123456",
+            entity_type="asset",
+            entity_id=asset_map["MAR-00421"].id,
+            uploaded_by=admin.id,
+        ),
+        StoredFile(
+            original_filename="EH-Cerabar-PMP55-Datasheet.pdf",
+            storage_path="assets/MAR-00421/EH-Cerabar-PMP55-Datasheet.pdf",
+            bucket="mar-files",
+            content_type="application/pdf",
+            size_bytes=1_572_864,
+            checksum_sha256="b4e2d3c5f6a7890123456789012345678901bcdef2345678901bcdef234567",
+            entity_type="asset",
+            entity_id=asset_map["MAR-00421"].id,
+            uploaded_by=admin.id,
+        ),
+        StoredFile(
+            original_filename="CERT-2025-PTB-0427.pdf",
+            storage_path="assets/MAR-00427/CERT-2025-PTB-0427.pdf",
+            bucket="mar-files",
+            content_type="application/pdf",
+            size_bytes=312_320,
+            checksum_sha256="c5f3e4d6a7b8901234567890123456789012cdef3456789012cdef345678ab",
+            entity_type="asset",
+            entity_id=asset_map["MAR-00427"].id,
+            uploaded_by=admin.id,
+        ),
+        StoredFile(
+            original_filename="Calibration-Report-TT22-Jun2026.pdf",
+            storage_path="assets/MAR-00427/Calibration-Report-TT22-Jun2026.pdf",
+            bucket="mar-files",
+            content_type="application/pdf",
+            size_bytes=89_600,
+            checksum_sha256="d6a4f5e7b8c9012345678901234567890123def4567890123def456789abcd",
+            entity_type="asset",
+            entity_id=asset_map["MAR-00427"].id,
+            uploaded_by=tech.id,
+        ),
+        StoredFile(
+            original_filename="Vaisala-HMP110-Datasheet.pdf",
+            storage_path="assets/MAR-00423/Vaisala-HMP110-Datasheet.pdf",
+            bucket="mar-files",
+            content_type="application/pdf",
+            size_bytes=819_200,
+            checksum_sha256="e7b5a6f8c9d0123456789012345678901234ef567890123ef56789012abcde",
+            entity_type="asset",
+            entity_id=asset_map["MAR-00423"].id,
+            uploaded_by=admin.id,
+        ),
+        StoredFile(
+            original_filename="RH-Calibration-Raw-2025-09.csv",
+            storage_path="assets/MAR-00423/RH-Calibration-Raw-2025-09.csv",
+            bucket="mar-files",
+            content_type="text/csv",
+            size_bytes=14_336,
+            checksum_sha256="f8c6b7a9d0e1234567890123456789012345f0678901234f067890123bcdef",
+            entity_type="asset",
+            entity_id=asset_map["MAR-00423"].id,
+            uploaded_by=admin.id,
+        ),
+        StoredFile(
+            original_filename="CERT-2025-PTB-0504.pdf",
+            storage_path="assets/MAR-00504/CERT-2025-PTB-0504.pdf",
+            bucket="mar-files",
+            content_type="application/pdf",
+            size_bytes=278_528,
+            checksum_sha256="09d7c8b0e1f234567890123456789012345601789012345067890234cdef01",
+            entity_type="asset",
+            entity_id=asset_map["MAR-00504"].id,
+            uploaded_by=admin.id,
+        ),
+    ]
+    for sf in stored_files:
+        db.add(sf)
+
+    # ------------------------------------------------------------------ #
     # Audit logs                                                          #
     # ------------------------------------------------------------------ #
     audit_entries = [
+        dict(actor_id=admin.id, actor_email="admin@mar.local", action="asset.created",
+             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
+             entity_asset_id="MAR-00421", created_at=now - timedelta(days=365)),
+        dict(actor_id=admin.id, actor_email="admin@mar.local", action="calibration.recorded",
+             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
+             entity_asset_id="MAR-00421", created_at=now - timedelta(days=192)),
+        dict(actor_id=admin.id, actor_email="admin@mar.local", action="certificate.uploaded",
+             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
+             entity_asset_id="MAR-00421", created_at=now - timedelta(days=192, hours=1)),
+        dict(actor_id=admin.id, actor_email="admin@mar.local", action="calibration.recorded",
+             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
+             entity_asset_id="MAR-00421", created_at=now - timedelta(minutes=30)),
         dict(actor_id=admin.id, actor_email="admin@mar.local", action="certificate.uploaded",
              entity_type="asset", entity_id=asset_map["MAR-00421"].id,
              entity_asset_id="MAR-00421", created_at=now - timedelta(minutes=12)),

@@ -32,6 +32,8 @@ class SensorChannelCreate(BaseModel):
     output_type: str | None = None
     calibration_role: str | None = None
     criticality: str | None = None
+    calibration_method_id: uuid.UUID | None = None
+    calibration_interval: int | None = None
 
 
 class SensorChannelResponse(SensorChannelCreate):
@@ -40,5 +42,6 @@ class SensorChannelResponse(SensorChannelCreate):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    calibration_method_name: str | None = None  # resolved via join in _enrich
 
     model_config = {"from_attributes": True}

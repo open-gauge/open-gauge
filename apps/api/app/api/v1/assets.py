@@ -7,6 +7,7 @@ from ...core.database import get_db
 from ...dependencies.deps import get_current_user
 from ...models.asset import AssetType
 from ...models.user import User
+from ...models.calibration_method import CalibrationMethod
 from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import certificate as cert_repo
@@ -25,9 +26,23 @@ router = APIRouter(prefix="/assets", tags=["Assets"])
 
 def _enrich(asset, db: Session) -> AssetResponse:
     channels = asset_repo.get_sensor_channels(db, asset.id)
+
+    # Resolve calibration method names in one query
+    method_ids = {ch.calibration_method_id for ch in channels if ch.calibration_method_id}
+    method_map: dict[uuid.UUID, str] = {}
+    if method_ids:
+        methods = db.query(CalibrationMethod).filter(CalibrationMethod.id.in_(method_ids)).all()
+        method_map = {m.id: m.name for m in methods}
+
     daq = asset_repo.get_daq_details(db, asset.id)
     data = AssetResponse.model_validate(asset)
-    data.sensor_channels = [SensorChannelResponse.model_validate(ch) for ch in channels]
+    enriched_channels = []
+    for ch in channels:
+        ch_data = SensorChannelResponse.model_validate(ch)
+        if ch.calibration_method_id:
+            ch_data.calibration_method_name = method_map.get(ch.calibration_method_id)
+        enriched_channels.append(ch_data)
+    data.sensor_channels = enriched_channels
     if daq:
         data.daq_details = DaqResponse.model_validate(daq)
     return data

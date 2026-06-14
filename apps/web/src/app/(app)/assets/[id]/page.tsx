@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   getAssetAuditLogs,
   getAssetCalibrations,
@@ -21,12 +21,12 @@ import {
   SUBTYPE_LABEL,
 } from "@/lib/tokens";
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
   DownloadIcon,
   EditIcon,
   MapPinIcon,
   QrCodeIcon,
-  ShareIcon,
 } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
@@ -100,110 +100,253 @@ function SpecRow({ label, value, accent }: { label: string; value: string | null
 }
 
 // ---------------------------------------------------------------------------
+// Collapsible section
+// ---------------------------------------------------------------------------
+
+function CollapsibleSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-mar-surface border border-mar-border rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-mar-surface-alt transition-colors"
+      >
+        <span className="text-sm font-semibold text-mar-text">{title}</span>
+        <span className={`transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`}>
+          <ChevronDownIcon size={16} />
+        </span>
+      </button>
+      {open && (
+        <div className="px-5 pb-4 border-t border-mar-border">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Overview tab
 // ---------------------------------------------------------------------------
 
 function OverviewTab({ profile }: { profile: AssetProfile }) {
-  const ch = profile.sensor_channels[0];
   const daq = profile.daq_details;
-
-  const measurementRange = ch
-    ? `${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`
-    : null;
-
-  const accuracyStr = ch?.accuracy_value != null
-    ? `±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}${ch.accuracy_type ? " (" + ch.accuracy_type + ")" : ""}`
-    : null;
-
-  const outputSignal = ch?.output_signal_min != null
-    ? `${ch.output_signal_min}–${ch.output_signal_max} ${ch.output_signal_unit ?? ""}${ch.output_type ? " / " + ch.output_type : ""}`.trim()
-    : null;
 
   const operatingTemp =
     profile.operating_temperature_min != null || profile.operating_temperature_max != null
       ? `${profile.operating_temperature_min ?? "—"} to ${profile.operating_temperature_max ?? "—"} °C`
       : null;
 
-  const samplingRate = daq?.sampling_rate_hz != null ? `${daq.sampling_rate_hz.toLocaleString()} Hz` : null;
-  const adcBits = daq?.adc_resolution_bits != null ? `${daq.adc_resolution_bits}-bit` : null;
+  const operatingHumidity =
+    profile.operating_humidity_min != null || profile.operating_humidity_max != null
+      ? `${profile.operating_humidity_min ?? "—"} to ${profile.operating_humidity_max ?? "—"} %RH`
+      : null;
+
+  const locationCoords =
+    profile.location_latitude != null || profile.location_longitude != null
+      ? `${profile.location_latitude ?? "—"}, ${profile.location_longitude ?? "—"}`
+      : null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      {/* Technical specs */}
-      <div className="lg:col-span-2 bg-mar-surface border border-mar-border rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-mar-text mb-1">Technical specifications</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
-          {profile.asset_type === "sensor" && (
-            <>
-              <SpecRow label="Sensor type" value={ch ? (SUBTYPE_LABEL[ch.physical_quantity] ?? ch.physical_quantity) : null} />
-              <SpecRow label="Manufacturer" value={profile.manufacturer} />
-              <SpecRow label="Model" value={profile.model} />
-              <SpecRow label="Serial number" value={profile.serial_number} />
-              <SpecRow label="Technology" value={ch?.technology} />
-              <SpecRow label="Measurement range" value={measurementRange} />
-              <SpecRow label="Accuracy class" value={accuracyStr} />
-              <SpecRow label="Output signal" value={outputSignal} />
-              <SpecRow label="Ingress protection" value={profile.ip_rating} accent />
-              <SpecRow label="Hazardous area" value={profile.hazardous_area_rating} />
-              <SpecRow label="Operating temperature" value={operatingTemp} />
-              <SpecRow label="Power supply" value={profile.power_supply} />
-              {profile.power_consumption_w != null && (
-                <SpecRow label="Power consumption" value={`${profile.power_consumption_w} W`} />
-              )}
-              <SpecRow label="Firmware" value={profile.firmware_version} />
-              <SpecRow label="Mounting" value={profile.mounting_type} />
-              <SpecRow label="Connection" value={profile.connection_type} />
-              <SpecRow label="Dimensions" value={profile.dimensions} />
-              {profile.weight_kg != null && (
-                <SpecRow label="Weight" value={`${profile.weight_kg} kg`} />
-              )}
-              <SpecRow label="Notes" value={profile.notes} />
-            </>
-          )}
-          {profile.asset_type === "daq" && daq && (
-            <>
-              <SpecRow label="Type" value={daq.daq_type} />
-              <SpecRow label="Manufacturer" value={profile.manufacturer} />
-              <SpecRow label="Model" value={profile.model} />
-              <SpecRow label="Serial number" value={profile.serial_number} />
-              <SpecRow label="Input channels" value={String(daq.input_channels)} />
-              <SpecRow label="Output channels" value={String(daq.output_channels)} />
-              <SpecRow label="Input signal types" value={daq.input_signal_types} />
-              <SpecRow label="Output signal types" value={daq.output_signal_types} />
-              <SpecRow label="Sampling rate" value={samplingRate} />
-              <SpecRow label="ADC resolution" value={adcBits} />
-              <SpecRow label="ADC type" value={daq.adc_type} />
-              {daq.input_voltage_range_min != null && daq.input_voltage_range_max != null && (
-                <SpecRow label="Input voltage range" value={`${daq.input_voltage_range_min} – ${daq.input_voltage_range_max} V`} />
-              )}
-              <SpecRow label="Communication" value={daq.communication_protocol} />
-              <SpecRow label="Interface" value={daq.interface_type} accent />
-              <SpecRow label="Synchronization" value={daq.synchronization_supported ? "Supported" : null} />
-              <SpecRow label="Power supply" value={profile.power_supply} />
-              <SpecRow label="Ingress protection" value={profile.ip_rating} />
-              <SpecRow label="Firmware" value={profile.firmware_version} />
-              <SpecRow label="Notes" value={profile.notes} />
-            </>
-          )}
+      {/* Left 2/3: grouped sections */}
+      <div className="lg:col-span-2 space-y-3">
+        {/* General — always open */}
+        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-mar-text mb-3">General</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+            <SpecRow label="Asset ID" value={profile.asset_id} accent />
+            <SpecRow label="Name" value={profile.name} />
+            <SpecRow label="Manufacturer" value={profile.manufacturer} />
+            <SpecRow label="Model" value={profile.model} />
+            <SpecRow label="Serial number" value={profile.serial_number} />
+            <SpecRow label="Part number" value={profile.manufacturer_part_number} />
+            <SpecRow label="Description" value={profile.description} />
+          </div>
         </div>
+
+        {/* Location — collapsible */}
+        <CollapsibleSection title="Location">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
+            <SpecRow label="Owner" value={profile.owner_name} />
+            <SpecRow label="Site" value={profile.site_name} />
+            <SpecRow label="Location" value={profile.location_name} />
+            <SpecRow label="Location code" value={profile.location_code} />
+            <SpecRow label="Description" value={profile.location_description} />
+            {locationCoords && <SpecRow label="Coordinates" value={locationCoords} />}
+          </div>
+        </CollapsibleSection>
+
+        {/* Mechanical — collapsible */}
+        <CollapsibleSection title="Mechanical">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
+            <SpecRow label="Dimensions" value={profile.dimensions} />
+            {profile.weight_kg != null && (
+              <SpecRow label="Weight" value={`${profile.weight_kg} kg`} />
+            )}
+            <SpecRow label="Mounting type" value={profile.mounting_type} />
+            <SpecRow label="Connection type" value={profile.connection_type} />
+            <SpecRow label="IP rating" value={profile.ip_rating} />
+            <SpecRow label="Hazardous area" value={profile.hazardous_area_rating} />
+            {operatingTemp && <SpecRow label="Operating temperature" value={operatingTemp} />}
+            {operatingHumidity && <SpecRow label="Operating humidity" value={operatingHumidity} />}
+          </div>
+        </CollapsibleSection>
+
+        {/* Electrical — collapsible */}
+        <CollapsibleSection title="Electrical">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
+            <SpecRow label="Power supply" value={profile.power_supply} />
+            {profile.power_consumption_w != null && (
+              <SpecRow label="Power consumption" value={`${profile.power_consumption_w} W`} />
+            )}
+            <SpecRow label="Firmware" value={profile.firmware_version} />
+          </div>
+          {profile.pinout_table && profile.pinout_table.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs text-gray-400 mb-2">Pinout</p>
+              <div className="overflow-x-auto rounded-lg border border-mar-border">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-mar-border bg-mar-surface-alt">
+                      <th className="px-3 py-2 font-semibold text-gray-400 w-16">Pin</th>
+                      <th className="px-3 py-2 font-semibold text-gray-400 w-32">Name</th>
+                      <th className="px-3 py-2 font-semibold text-gray-400">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-mar-border">
+                    {profile.pinout_table.map((row) => (
+                      <tr key={row.pin_number}>
+                        <td className="px-3 py-2 font-mono text-mar-text">{row.pin_number}</td>
+                        <td className="px-3 py-2 text-mar-text">{row.name}</td>
+                        <td className="px-3 py-2 text-gray-400">{row.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </CollapsibleSection>
+
+        {/* Commercial — collapsible */}
+        <CollapsibleSection title="Commercial">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
+            {profile.purchase_date && (
+              <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} />
+            )}
+            {profile.price_eur != null && (
+              <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} />
+            )}
+            {profile.warranty_expiry_date && (
+              <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} />
+            )}
+          </div>
+        </CollapsibleSection>
       </div>
 
-      {/* Installation */}
+      {/* Right 1/3: Specifications */}
       <div className="bg-mar-surface border border-mar-border rounded-xl p-6 h-fit">
-        <h3 className="text-sm font-semibold text-mar-text mb-1">Installation</h3>
-        <div className="divide-y divide-mar-border">
-          <SpecRow label="Site" value={profile.site_name} />
-          <SpecRow label="Location" value={profile.location_name} />
-          <SpecRow label="Commissioned" value={fmtDate(profile.purchase_date)} />
-          <SpecRow label="Owner" value={profile.owner_name} />
-          {profile.warranty_expiry_date && (
-            <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} />
-          )}
-          {profile.price_eur != null && (
-            <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} />
-          )}
-          <SpecRow label="Version" value={`v${profile.version}`} />
-        </div>
+        {profile.asset_type === "sensor" && (
+          <>
+            <h3 className="text-sm font-semibold text-mar-text mb-4">Specifications</h3>
+            {profile.sensor_channels.length === 0 ? (
+              <p className="text-sm text-gray-400">No channel data recorded.</p>
+            ) : (
+              <div className="space-y-0">
+                {profile.sensor_channels.map((ch, i) => (
+                  <div key={ch.id} className={i > 0 ? "mt-4 pt-4 border-t border-mar-border" : ""}>
+                    <p className="text-[11px] font-semibold text-mar-accent uppercase tracking-wide mb-1">
+                      {ch.channel_id}
+                    </p>
+                    <SpecRow label="Physical quantity" value={SUBTYPE_LABEL[ch.physical_quantity] ?? ch.physical_quantity} />
+                    <SpecRow label="Technology" value={ch.technology} />
+                    {(ch.measurement_min != null || ch.measurement_max != null) && (
+                      <SpecRow label="Range" value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} />
+                    )}
+                    {ch.accuracy_value != null && (
+                      <SpecRow
+                        label="Accuracy"
+                        value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}${ch.accuracy_type ? " (" + ch.accuracy_type + ")" : ""}`}
+                      />
+                    )}
+                    {ch.resolution != null && (
+                      <SpecRow label="Resolution" value={`${ch.resolution}${ch.resolution_unit ? " " + ch.resolution_unit : ""}`} />
+                    )}
+                    {ch.drift_rate != null && (
+                      <SpecRow label="Drift rate" value={`${ch.drift_rate}${ch.drift_unit ? " " + ch.drift_unit : ""}`} />
+                    )}
+                    {ch.sensitivity != null && (
+                      <SpecRow label="Sensitivity" value={`${ch.sensitivity}${ch.sensitivity_unit ? " " + ch.sensitivity_unit : ""}`} />
+                    )}
+                    {ch.response_time_ms != null && (
+                      <SpecRow label="Response time" value={`${ch.response_time_ms} ms`} />
+                    )}
+                    {ch.bandwidth_hz != null && (
+                      <SpecRow label="Bandwidth" value={`${ch.bandwidth_hz.toLocaleString()} Hz`} />
+                    )}
+                    {ch.calibration_interval != null && (
+                      <SpecRow label="Cal. interval" value={`${ch.calibration_interval} days`} />
+                    )}
+                    <SpecRow label="Cal. method" value={ch.calibration_method_name} />
+                    <SpecRow label="Cal. role" value={ch.calibration_role} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {profile.asset_type === "daq" && daq && (
+          <>
+            <h3 className="text-sm font-semibold text-mar-text mb-4">Specifications</h3>
+            <SpecRow label="DAQ type" value={daq.daq_type} />
+            <SpecRow label="Input channels" value={String(daq.input_channels)} />
+            <SpecRow label="Output channels" value={String(daq.output_channels)} />
+            <SpecRow label="Input signal types" value={daq.input_signal_types} />
+            <SpecRow label="Output signal types" value={daq.output_signal_types} />
+            {daq.sampling_rate_hz != null && (
+              <SpecRow label="Sampling rate" value={`${daq.sampling_rate_hz.toLocaleString()} Hz`} />
+            )}
+            {daq.per_channel_sampling_rate_hz != null && (
+              <SpecRow label="Per-channel rate" value={`${daq.per_channel_sampling_rate_hz.toLocaleString()} Hz`} />
+            )}
+            {daq.adc_resolution_bits != null && (
+              <SpecRow label="ADC resolution" value={`${daq.adc_resolution_bits}-bit`} />
+            )}
+            <SpecRow label="ADC type" value={daq.adc_type} />
+            {daq.input_voltage_range_min != null && daq.input_voltage_range_max != null && (
+              <SpecRow label="Input voltage range" value={`${daq.input_voltage_range_min} – ${daq.input_voltage_range_max} V`} />
+            )}
+            {daq.noise_floor_uv_rms != null && (
+              <SpecRow label="Noise floor" value={`${daq.noise_floor_uv_rms} µV RMS`} />
+            )}
+            {daq.dynamic_range_db != null && (
+              <SpecRow label="Dynamic range" value={`${daq.dynamic_range_db} dB`} />
+            )}
+            {daq.input_impedance_ohm != null && (
+              <SpecRow label="Input impedance" value={`${daq.input_impedance_ohm.toLocaleString()} Ω`} />
+            )}
+            <SpecRow label="Communication" value={daq.communication_protocol} />
+            <SpecRow label="Interface" value={daq.interface_type} accent />
+            <SpecRow label="Synchronization" value={daq.synchronization_supported ? "Supported" : null} />
+            <SpecRow label="Clock source" value={daq.clock_source} />
+          </>
+        )}
+
+        {profile.asset_type === "daq" && !daq && (
+          <>
+            <h3 className="text-sm font-semibold text-mar-text mb-4">Specifications</h3>
+            <p className="text-sm text-gray-400">No DAQ data recorded.</p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -242,33 +385,36 @@ function CoeffCard({ label, sub, value, unit }: { label: string; sub: string; va
 }
 
 function CalibrationFormula({ coeff }: { coeff: CalibrationCoefficient }) {
-  const unitOut = coeff.unit_output ?? "";
-  const unitIn = coeff.unit_input ?? "x";
-
   let formula = "";
   if (coeff.coefficient_type === "linear") {
-    const a1 = fmtNum(coeff.gain);
-    const b = fmtNum(coeff.offset_value);
-    formula = `y = ${a1}·${unitIn} + ${b}`;
+    const a = fmtNum(coeff.gain);
+    const b = coeff.offset_value ?? 0;
+    const bAbs = fmtNum(Math.abs(b));
+    const bPart = b >= 0 ? `+ ${bAbs}` : `− ${bAbs}`;
+    formula = `f(x) = ${a}·x ${bPart}`;
   } else if (coeff.poly_coefficients && coeff.poly_coefficients.length > 0) {
-    const terms = coeff.poly_coefficients
+    const terms = [...coeff.poly_coefficients]
       .map((c, i) => {
-        const val = fmtNum(c, 6);
-        if (i === 0) return `${val}`;
-        if (i === 1) return `${val}·${unitIn}`;
-        return `${val}·${unitIn}^${i}`;
+        if (i === 0) return fmtNum(c, 6);
+        if (i === 1) return `${fmtNum(c, 6)}·x`;
+        return `${fmtNum(c, 6)}·x^${i}`;
       })
       .reverse()
       .join(" + ");
-    formula = `y = ${terms}`;
+    formula = `f(x) = ${terms}`;
   }
 
   if (!formula) return null;
 
+  const note =
+    coeff.unit_input || coeff.unit_output
+      ? `Where x is the input in ${coeff.unit_input ?? "—"} and f(x) is the output in ${coeff.unit_output ?? "—"}`
+      : null;
+
   return (
-    <div className="mt-4 rounded-lg bg-mar-surface-alt border border-mar-border px-4 py-3 font-mono text-sm text-mar-text">
-      {unitOut && <p className="text-xs text-gray-400 mb-1">Output unit: {unitOut}</p>}
-      <p className="whitespace-pre-wrap break-all">{formula}</p>
+    <div className="mt-4 rounded-lg bg-mar-surface-alt border border-mar-border px-4 py-3">
+      <p className="font-mono text-sm text-mar-text">{formula}</p>
+      {note && <p className="text-xs text-gray-400 mt-1.5">{note}</p>}
     </div>
   );
 }
@@ -289,84 +435,102 @@ function CalibrationResultBadge({ result }: { result: string }) {
 }
 
 function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabProps) {
-  // Calibrations arrive sorted newest → oldest from the API (order_by date desc)
+  // Calibrations arrive sorted newest → oldest (order_by date desc)
   const total = calibrations.length;
-  const latest = calibrations[0];
-  const latestCoeffs = latest ? (coeffsByCalId[latest.id] ?? []) : [];
-  const latestCert = latest ? certs.find((c) => c.calibration_id === latest.id) : undefined;
+  const [selectedCalId, setSelectedCalId] = useState<string | null>(
+    calibrations[0]?.id ?? null
+  );
+
+  const selectedCal = calibrations.find((c) => c.id === selectedCalId) ?? calibrations[0] ?? null;
+  const selectedIdx = calibrations.findIndex((c) => c.id === selectedCalId);
+  const selectedCoeffs = selectedCal ? (coeffsByCalId[selectedCal.id] ?? []) : [];
+  const selectedCert = selectedCal ? certs.find((c) => c.calibration_id === selectedCal.id) : undefined;
 
   // Version numbers: newest = vN (total), oldest = v1
-  function versionOf(idx: number) {
-    return total - idx;
+  function versionOf(idx: number) { return total - idx; }
+
+  // Group coefficients by channel
+  const channelGroups: Record<string, CalibrationCoefficient[]> = {};
+  for (const coeff of selectedCoeffs) {
+    const key = coeff.channel ?? "Main";
+    if (!channelGroups[key]) channelGroups[key] = [];
+    channelGroups[key].push(coeff);
   }
+  const channelKeys = Object.keys(channelGroups);
+  const hasMultipleChannels = channelKeys.length > 1;
 
   return (
     <div className="space-y-5">
-      {/* Coefficients for latest calibration */}
-      {latest ? (
+      {/* Coefficients panel — shows selected calibration */}
+      {selectedCal ? (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-mar-text">Calibration coefficients</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                <span className="font-mono font-semibold text-mar-text">v{versionOf(0)}</span>
-                {" · "}{fmtDate(latest.calibration_date)}
-                {" · "}<span>by {latest.performed_by_name}</span>
+                <span className="font-mono font-semibold text-mar-text">
+                  v{versionOf(selectedIdx >= 0 ? selectedIdx : 0)}
+                </span>
+                {" · "}{fmtDate(selectedCal.calibration_date)}
+                {" · "}<span>by {selectedCal.performed_by_name}</span>
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100">
-                ACTIVE
-              </span>
-              {latestCert && (
-                <button type="button"
-                  className="flex items-center gap-1.5 text-xs text-mar-accent border border-mar-border rounded-lg px-3 py-1.5 hover:bg-mar-surface-alt transition-colors">
-                  <span className="text-mar-accent opacity-60">📄</span>
-                  {latestCert.certificate_number}
-                </button>
-              )}
-            </div>
+            {selectedCert && (
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-xs text-mar-accent border border-mar-border rounded-lg px-3 py-1.5 hover:bg-mar-surface-alt transition-colors flex-shrink-0">
+                <span className="opacity-60">📄</span>
+                {selectedCert.certificate_number}
+              </button>
+            )}
           </div>
 
-          {latestCoeffs.length > 0 ? (
-            <>
-              <div className="flex flex-wrap gap-3">
-                {latestCoeffs.map((coeff) => {
-                  if (coeff.coefficient_type === "linear") {
-                    return (
-                      <div key={coeff.id} className="flex gap-3 flex-wrap">
-                        {coeff.offset_value != null && (
-                          <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.offset_value)} unit={coeff.unit_output ?? undefined} />
+          {selectedCoeffs.length > 0 ? (
+            <div className="space-y-5">
+              {channelKeys.map((chKey, chIdx) => {
+                const coeffs = channelGroups[chKey];
+                return (
+                  <div key={chKey} className={chIdx > 0 ? "pt-5 border-t border-mar-border" : ""}>
+                    {hasMultipleChannels && (
+                      <p className="text-[11px] font-semibold text-mar-accent uppercase tracking-wide mb-3">
+                        {chKey}
+                      </p>
+                    )}
+                    {coeffs.map((coeff) => (
+                      <div key={coeff.id}>
+                        {coeff.coefficient_type === "linear" && (
+                          <div className="flex flex-wrap gap-3">
+                            {coeff.gain != null && (
+                              <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.gain)} />
+                            )}
+                            {coeff.offset_value != null && (
+                              <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.offset_value)} />
+                            )}
+                          </div>
                         )}
-                        {coeff.gain != null && (
-                          <CoeffCard label="Gain" sub="a₁" value={fmtNum(coeff.gain)} />
+                        {coeff.coefficient_type === "polynomial" && coeff.poly_coefficients && (
+                          <div className="flex flex-wrap gap-3">
+                            {coeff.poly_coefficients[1] != null && (
+                              <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.poly_coefficients[1])} />
+                            )}
+                            {coeff.poly_coefficients[0] != null && (
+                              <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.poly_coefficients[0])} />
+                            )}
+                            {coeff.poly_coefficients[2] != null && (
+                              <CoeffCard label="Quadratic" sub="a₂" value={fmtNum(coeff.poly_coefficients[2])} />
+                            )}
+                          </div>
+                        )}
+                        <CalibrationFormula coeff={coeff} />
+                        {coeff.notes && (
+                          <p className="mt-2 text-xs text-gray-400">{coeff.notes}</p>
                         )}
                       </div>
-                    );
-                  }
-                  if (coeff.coefficient_type === "polynomial" && coeff.poly_coefficients) {
-                    return (
-                      <div key={coeff.id} className="flex gap-3 flex-wrap">
-                        {coeff.poly_coefficients[0] != null && (
-                          <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.poly_coefficients[0])} unit={coeff.unit_output ?? undefined} />
-                        )}
-                        {coeff.poly_coefficients[1] != null && (
-                          <CoeffCard label="Gain" sub="a₁" value={fmtNum(coeff.poly_coefficients[1])} />
-                        )}
-                        {coeff.poly_coefficients[2] != null && (
-                          <CoeffCard label="Quadratic" sub="a₂" value={fmtNum(coeff.poly_coefficients[2])} unit={coeff.unit_output ? `${coeff.unit_output}⁻¹` : undefined} />
-                        )}
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-              {latestCoeffs[0] && <CalibrationFormula coeff={latestCoeffs[0]} />}
-              {latestCoeffs[0]?.notes && (
-                <p className="mt-3 text-xs text-gray-400">{latestCoeffs[0].notes}</p>
-              )}
-            </>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <p className="text-sm text-gray-400">No coefficients recorded for this calibration.</p>
           )}
@@ -377,23 +541,27 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
         </div>
       )}
 
-      {/* Calibration history */}
+      {/* Calibration history — clickable rows update the coefficients panel */}
       {calibrations.length > 0 && (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-mar-text mb-4">Calibration history</h3>
-          <p className="text-xs text-gray-400 mb-3">Select an entry to view its details.</p>
+          <h3 className="text-sm font-semibold text-mar-text mb-1">Calibration history</h3>
+          <p className="text-xs text-gray-400 mb-4">Select a calibration to view its coefficients.</p>
           <div className="space-y-0 divide-y divide-mar-border">
             {calibrations.map((cal, idx) => {
-              const isLatest = idx === 0;
-              const coeffs = coeffsByCalId[cal.id] ?? [];
-              const offsetVal = coeffs[0]?.offset_value;
+              const isSelected = cal.id === selectedCalId;
               const certForCal = certs.find((c) => c.calibration_id === cal.id);
 
               return (
-                <div key={cal.id}
-                  className={`flex items-start gap-4 py-3 ${isLatest ? "opacity-100" : "opacity-80"}`}>
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
-                    border-mar-border bg-mar-surface-alt text-mar-accent">
+                <button
+                  key={cal.id}
+                  type="button"
+                  onClick={() => setSelectedCalId(cal.id)}
+                  className={`w-full flex items-start gap-4 py-3 px-2 -mx-2 text-left rounded-lg transition-colors
+                    ${isSelected ? "bg-mar-surface-alt" : "hover:bg-mar-surface-alt/50"}`}>
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
+                    ${isSelected
+                      ? "border-mar-accent text-mar-accent"
+                      : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
                     <span className="text-[10px] font-bold">v{versionOf(idx)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -412,14 +580,7 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
                       <p className="text-xs text-gray-500 mt-1 italic">{cal.notes}</p>
                     )}
                   </div>
-                  {offsetVal != null && (
-                    <div className="flex-shrink-0 text-right">
-                      <span className="text-xs font-mono text-gray-400">
-                        Δ offset {offsetVal >= 0 ? "+" : ""}{fmtNum(offsetVal)} {coeffs[0]?.unit_output ?? ""}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -586,7 +747,6 @@ export default function AssetProfilePage() {
     );
   }
 
-  const subtypeLabel = profile.subtype ? (SUBTYPE_LABEL[profile.subtype] ?? profile.subtype) : null;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
@@ -626,24 +786,6 @@ export default function AssetProfilePage() {
               )}
               <span>{profile.manufacturer} · {profile.model}</span>
             </div>
-            {/* Technology / subtype tags */}
-            <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-              {profile.technology && (
-                <span className="px-2 py-0.5 rounded bg-mar-surface-alt border border-mar-border text-xs text-gray-500">
-                  {profile.technology}
-                </span>
-              )}
-              {subtypeLabel && (
-                <span className="px-2 py-0.5 rounded bg-mar-surface-alt border border-mar-border text-xs text-gray-500">
-                  {subtypeLabel}
-                </span>
-              )}
-              {!profile.is_active && (
-                <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 border border-mar-border text-xs text-gray-400">
-                  Retired
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Actions */}
@@ -652,11 +794,6 @@ export default function AssetProfilePage() {
               className="p-2 rounded-lg border border-mar-border hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors"
               title="QR code">
               <QrCodeIcon size={16} />
-            </button>
-            <button type="button"
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-mar-border-md rounded-lg text-gray-500 hover:bg-mar-surface-alt transition-colors">
-              <ShareIcon size={14} />
-              Share
             </button>
             <button type="button"
               className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors">

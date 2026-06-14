@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..models.asset import Asset, AssetType
 from ..models.calibration import Calibration
+from ..models.calibration_method import CalibrationMethod
 from ..models.sensor import Sensor
 from ..models.daq import DAQ
 from ..models.location import Location
@@ -248,11 +249,23 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
         return {}
     today = date.today()
 
-    # Location path
+    # Location path + leaf location details
     all_locs: dict[str, Location] = {
         str(loc.id): loc for loc in db.query(Location).all()
     }
     site_name, location_name = _resolve_location_path(asset.location_id, all_locs)
+
+    location_code: str | None = None
+    location_description: str | None = None
+    location_latitude: float | None = None
+    location_longitude: float | None = None
+    if asset.location_id:
+        leaf = all_locs.get(str(asset.location_id))
+        if leaf:
+            location_code = leaf.code
+            location_description = leaf.description
+            location_latitude = float(leaf.latitude) if leaf.latitude is not None else None
+            location_longitude = float(leaf.longitude) if leaf.longitude is not None else None
 
     # Owner team name
     owner_name: str | None = None
@@ -297,6 +310,10 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
     return {
         "site_name": site_name,
         "location_name": location_name,
+        "location_code": location_code,
+        "location_description": location_description,
+        "location_latitude": location_latitude,
+        "location_longitude": location_longitude,
         "calibration_status": cal_status,
         "next_due_at": latest_due,
         "last_calibration_date": last_cal_date,

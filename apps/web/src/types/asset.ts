@@ -15,12 +15,25 @@ export interface SensorChannelFull {
   accuracy_unit: string | null;
   resolution: number | null;
   resolution_unit: string | null;
+  measurement_uncertainty: number | null;
+  uncertainty_unit: string | null;
+  confidence_level: number | null;
+  coverage_factor: number | null;
+  drift_rate: number | null;
+  drift_unit: string | null;
+  sensitivity: number | null;
+  sensitivity_unit: string | null;
+  response_time_ms: number | null;
+  bandwidth_hz: number | null;
   output_signal_min: number | null;
   output_signal_max: number | null;
   output_signal_unit: string | null;
   output_type: string | null;
   calibration_role: string | null;
   criticality: string | null;
+  calibration_method_id: string | null;
+  calibration_method_name: string | null;
+  calibration_interval: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -47,8 +60,12 @@ export interface DaqDetailsFull {
   dynamic_range_db: number | null;
   synchronization_supported: boolean;
   clock_source: string | null;
+  time_sync_precision_ns: number | null;
+  jitter_ns: number | null;
   communication_protocol: string | null;
   interface_type: string | null;
+  trigger_modes: string | null;
+  input_impedance_ohm: number | null;
   is_active: boolean;
 }
 
@@ -89,6 +106,10 @@ export interface AssetProfile {
   retired_reason: string | null;
   version: number;
   notes: string | null;
+  pinout_table: Array<{ pin_number: number; name: string; description: string }> | null;
+  pinout_image_id: string | null;
+  sensor_image_id: string | null;
+  sensor_schematic_id: string | null;
   created_at: string;
   updated_at: string;
   sensor_channels: SensorChannelFull[];
@@ -96,6 +117,10 @@ export interface AssetProfile {
   // enriched
   site_name: string | null;
   location_name: string | null;
+  location_code: string | null;
+  location_description: string | null;
+  location_latitude: number | null;
+  location_longitude: number | null;
   calibration_status: CalibrationStatus;
   next_due_at: string | null;
   last_calibration_date: string | null;

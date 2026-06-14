@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -47,6 +48,10 @@ class AssetCreate(BaseModel):
     purchase_date: date | None = None
     warranty_expiry_date: date | None = None
     notes: str | None = None
+    pinout_table: list[dict[str, Any]] | None = None
+    pinout_image_id: uuid.UUID | None = None
+    sensor_image_id: uuid.UUID | None = None
+    sensor_schematic_id: uuid.UUID | None = None
     sensor_channels: list[SensorChannelCreate] | None = None
     daq_details: DaqCreate | None = None
 
@@ -118,6 +123,10 @@ class AssetResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     notes: str | None
+    pinout_table: list[dict[str, Any]] | None = None
+    pinout_image_id: uuid.UUID | None = None
+    sensor_image_id: uuid.UUID | None = None
+    sensor_schematic_id: uuid.UUID | None = None
     sensor_channels: list[SensorChannelResponse] = []
     daq_details: DaqResponse | None = None
 
@@ -127,6 +136,10 @@ class AssetResponse(BaseModel):
 class AssetProfileResponse(AssetResponse):
     site_name: str | None = None
     location_name: str | None = None
+    location_code: str | None = None
+    location_description: str | None = None
+    location_latitude: float | None = None
+    location_longitude: float | None = None
     calibration_status: str = "not_calibrated"
     next_due_at: date | None = None
     last_calibration_date: date | None = None
