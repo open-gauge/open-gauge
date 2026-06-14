@@ -1,6 +1,8 @@
 import uuid
+from datetime import date, datetime
+from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
@@ -111,13 +113,56 @@ def get_asset(
 def update_asset(
     asset_pk: uuid.UUID,
     body: AssetUpdate,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> AssetResponse:
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    asset_repo.update(db, asset, **body.model_dump(exclude_none=True))
+
+    update_data = body.model_dump(exclude_unset=True)
+
+    # Snapshot the fields being changed (before state)
+    def _serialize(v: object) -> object:
+        if isinstance(v, (date, datetime)):
+            return v.isoformat()
+        if isinstance(v, uuid.UUID):
+            return str(v)
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
+
+    before_state = {
+        k: _serialize(getattr(asset, k, None))
+        for k in update_data
+        if k != "sensor_channels"
+    }
+
+    asset_repo.update(db, asset, **update_data)
+
+    after_state = {
+        k: _serialize(getattr(asset, k, None))
+        for k in update_data
+        if k != "sensor_channels"
+    }
+    if "sensor_channels" in update_data:
+        after_state["sensor_channels_count"] = len(update_data["sensor_channels"])
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.updated",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        before_state=before_state,
+        after_state=after_state,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return _enrich(asset, db)
 
 

@@ -137,6 +137,77 @@ export type CalibrationStatus =
   | "not_calibrated"
   | "retired";
 
+// ---------------------------------------------------------------------------
+// Location option (for location picker in edit mode)
+// ---------------------------------------------------------------------------
+export interface LocationOption {
+  id: string;
+  path: string;
+}
+
+// ---------------------------------------------------------------------------
+// Asset update request (PUT /assets/{id})
+// ---------------------------------------------------------------------------
+export interface SensorChannelUpdateInput {
+  channel_id: string;
+  physical_quantity: string;
+  unit: string;
+  technology?: string | null;
+  measurement_min?: number | null;
+  measurement_max?: number | null;
+  accuracy_value?: number | null;
+  accuracy_type?: string | null;
+  accuracy_unit?: string | null;
+  resolution?: number | null;
+  resolution_unit?: string | null;
+  measurement_uncertainty?: number | null;
+  uncertainty_unit?: string | null;
+  confidence_level?: number | null;
+  coverage_factor?: number | null;
+  drift_rate?: number | null;
+  drift_unit?: string | null;
+  sensitivity?: number | null;
+  sensitivity_unit?: string | null;
+  response_time_ms?: number | null;
+  bandwidth_hz?: number | null;
+  output_signal_min?: number | null;
+  output_signal_max?: number | null;
+  output_signal_unit?: string | null;
+  output_type?: string | null;
+  calibration_role?: string | null;
+  criticality?: string | null;
+  calibration_interval?: number | null;
+}
+
+export interface AssetUpdateRequest {
+  name?: string;
+  description?: string | null;
+  manufacturer?: string;
+  model?: string;
+  serial_number?: string | null;
+  manufacturer_part_number?: string | null;
+  location_id?: string | null;
+  firmware_version?: string | null;
+  power_supply?: string | null;
+  power_consumption_w?: number | null;
+  dimensions?: string | null;
+  weight_kg?: number | null;
+  mounting_type?: string | null;
+  connection_type?: string | null;
+  ip_rating?: string | null;
+  hazardous_area_rating?: string | null;
+  operating_temperature_min?: number | null;
+  operating_temperature_max?: number | null;
+  operating_humidity_min?: number | null;
+  operating_humidity_max?: number | null;
+  price_eur?: number | null;
+  purchase_date?: string | null;
+  warranty_expiry_date?: string | null;
+  notes?: string | null;
+  pinout_table?: Array<{ pin_number: number; name: string; description: string }> | null;
+  sensor_channels?: SensorChannelUpdateInput[];
+}
+
 export interface ChannelListItem {
   channel_id: string;
   physical_quantity: string;

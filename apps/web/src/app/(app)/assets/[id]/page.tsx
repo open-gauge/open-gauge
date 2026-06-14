@@ -10,8 +10,10 @@ import {
   getAssetFiles,
   getAssetProfile,
   getCalibrationCoefficients,
+  listLocations,
+  updateAsset,
 } from "@/services/asset.service";
-import type { AssetProfile } from "@/types/asset";
+import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
 import type { CalibrationRecord, CalibrationCoefficient } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
@@ -21,12 +23,27 @@ import {
   SUBTYPE_LABEL,
 } from "@/lib/tokens";
 import {
+  PHYSICAL_QUANTITIES,
+  parseTechnology,
+  MOUNTING_TYPE_OPTIONS,
+  IP_RATING_OPTIONS,
+  HAZARDOUS_AREA_OPTIONS,
+  CAL_ROLE_OPTIONS,
+  OUTPUT_TYPE_OPTIONS,
+  ACCURACY_TYPE_OPTIONS,
+  CRITICALITY_OPTIONS,
+} from "@/lib/sensor-options";
+import {
+  CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   DownloadIcon,
   EditIcon,
   MapPinIcon,
+  PlusIcon,
   QrCodeIcon,
+  TrashIcon,
+  XIcon,
 } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
@@ -86,7 +103,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Spec row
+// Spec row (display mode)
 // ---------------------------------------------------------------------------
 
 function SpecRow({ label, value, accent }: { label: string; value: string | null | undefined; accent?: boolean }) {
@@ -100,30 +117,639 @@ function SpecRow({ label, value, accent }: { label: string; value: string | null
 }
 
 // ---------------------------------------------------------------------------
-// Collapsible section
+// Edit form types
+// ---------------------------------------------------------------------------
+
+interface EditChannelForm {
+  _key: string;
+  channel_id: string;
+  physical_quantity: string;
+  unit: string;
+  _techFamily: string;
+  technology: string;
+  measurement_min: string;
+  measurement_max: string;
+  accuracy_value: string;
+  accuracy_type: string;
+  accuracy_unit: string;
+  resolution: string;
+  resolution_unit: string;
+  measurement_uncertainty: string;
+  uncertainty_unit: string;
+  confidence_level: string;
+  coverage_factor: string;
+  drift_rate: string;
+  drift_unit: string;
+  sensitivity: string;
+  sensitivity_unit: string;
+  response_time_ms: string;
+  bandwidth_hz: string;
+  output_signal_min: string;
+  output_signal_max: string;
+  output_signal_unit: string;
+  output_type: string;
+  calibration_role: string;
+  criticality: string;
+  calibration_interval: string;
+}
+
+interface EditFormState {
+  name: string;
+  description: string;
+  manufacturer: string;
+  model: string;
+  serial_number: string;
+  manufacturer_part_number: string;
+  location_id: string;
+  firmware_version: string;
+  power_supply: string;
+  power_consumption_w: string;
+  dimensions: string;
+  weight_kg: string;
+  mounting_type: string;
+  connection_type: string;
+  ip_rating: string;
+  hazardous_area_rating: string;
+  operating_temperature_min: string;
+  operating_temperature_max: string;
+  operating_humidity_min: string;
+  operating_humidity_max: string;
+  price_eur: string;
+  purchase_date: string;
+  warranty_expiry_date: string;
+  notes: string;
+  sensor_channels: EditChannelForm[];
+}
+
+function s(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+function profileToForm(profile: AssetProfile): EditFormState {
+  return {
+    name: s(profile.name),
+    description: s(profile.description),
+    manufacturer: s(profile.manufacturer),
+    model: s(profile.model),
+    serial_number: s(profile.serial_number),
+    manufacturer_part_number: s(profile.manufacturer_part_number),
+    location_id: s(profile.location_id),
+    firmware_version: s(profile.firmware_version),
+    power_supply: s(profile.power_supply),
+    power_consumption_w: s(profile.power_consumption_w),
+    dimensions: s(profile.dimensions),
+    weight_kg: s(profile.weight_kg),
+    mounting_type: s(profile.mounting_type),
+    connection_type: s(profile.connection_type),
+    ip_rating: s(profile.ip_rating),
+    hazardous_area_rating: s(profile.hazardous_area_rating),
+    operating_temperature_min: s(profile.operating_temperature_min),
+    operating_temperature_max: s(profile.operating_temperature_max),
+    operating_humidity_min: s(profile.operating_humidity_min),
+    operating_humidity_max: s(profile.operating_humidity_max),
+    price_eur: s(profile.price_eur),
+    purchase_date: profile.purchase_date ?? "",
+    warranty_expiry_date: profile.warranty_expiry_date ?? "",
+    notes: s(profile.notes),
+    sensor_channels: profile.sensor_channels.map((ch, i) => {
+      const { family } = parseTechnology(ch.physical_quantity, ch.technology ?? "");
+      return {
+        _key: `existing-${i}`,
+        channel_id: s(ch.channel_id),
+        physical_quantity: s(ch.physical_quantity),
+        unit: s(ch.unit),
+        _techFamily: family,
+        technology: s(ch.technology),
+        measurement_min: s(ch.measurement_min),
+        measurement_max: s(ch.measurement_max),
+        accuracy_value: s(ch.accuracy_value),
+        accuracy_type: s(ch.accuracy_type),
+        accuracy_unit: s(ch.accuracy_unit),
+        resolution: s(ch.resolution),
+        resolution_unit: s(ch.resolution_unit),
+        measurement_uncertainty: s(ch.measurement_uncertainty),
+        uncertainty_unit: s(ch.uncertainty_unit),
+        confidence_level: s(ch.confidence_level),
+        coverage_factor: s(ch.coverage_factor),
+        drift_rate: s(ch.drift_rate),
+        drift_unit: s(ch.drift_unit),
+        sensitivity: s(ch.sensitivity),
+        sensitivity_unit: s(ch.sensitivity_unit),
+        response_time_ms: s(ch.response_time_ms),
+        bandwidth_hz: s(ch.bandwidth_hz),
+        output_signal_min: s(ch.output_signal_min),
+        output_signal_max: s(ch.output_signal_max),
+        output_signal_unit: s(ch.output_signal_unit),
+        output_type: s(ch.output_type),
+        calibration_role: s(ch.calibration_role),
+        criticality: s(ch.criticality),
+        calibration_interval: s(ch.calibration_interval),
+      };
+    }),
+  };
+}
+
+function orNull(v: string): string | null {
+  return v.trim() === "" ? null : v.trim();
+}
+
+function numOrNull(v: string): number | null {
+  if (v.trim() === "") return null;
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+function formToUpdate(form: EditFormState): AssetUpdateRequest {
+  const channels: SensorChannelUpdateInput[] = form.sensor_channels.map((ch) => ({
+    channel_id: ch.channel_id.trim(),
+    physical_quantity: ch.physical_quantity,
+    unit: ch.unit,
+    technology: orNull(ch.technology),
+    measurement_min: numOrNull(ch.measurement_min),
+    measurement_max: numOrNull(ch.measurement_max),
+    accuracy_value: numOrNull(ch.accuracy_value),
+    accuracy_type: orNull(ch.accuracy_type),
+    accuracy_unit: orNull(ch.accuracy_unit),
+    resolution: numOrNull(ch.resolution),
+    resolution_unit: orNull(ch.resolution_unit),
+    measurement_uncertainty: numOrNull(ch.measurement_uncertainty),
+    uncertainty_unit: orNull(ch.uncertainty_unit),
+    confidence_level: numOrNull(ch.confidence_level),
+    coverage_factor: numOrNull(ch.coverage_factor),
+    drift_rate: numOrNull(ch.drift_rate),
+    drift_unit: orNull(ch.drift_unit),
+    sensitivity: numOrNull(ch.sensitivity),
+    sensitivity_unit: orNull(ch.sensitivity_unit),
+    response_time_ms: numOrNull(ch.response_time_ms),
+    bandwidth_hz: numOrNull(ch.bandwidth_hz),
+    output_signal_min: numOrNull(ch.output_signal_min),
+    output_signal_max: numOrNull(ch.output_signal_max),
+    output_signal_unit: orNull(ch.output_signal_unit),
+    output_type: orNull(ch.output_type),
+    calibration_role: orNull(ch.calibration_role),
+    criticality: orNull(ch.criticality),
+    calibration_interval: numOrNull(ch.calibration_interval),
+  }));
+
+  return {
+    name: form.name.trim() || undefined,
+    description: orNull(form.description),
+    manufacturer: form.manufacturer.trim() || undefined,
+    model: form.model.trim() || undefined,
+    serial_number: orNull(form.serial_number),
+    manufacturer_part_number: orNull(form.manufacturer_part_number),
+    location_id: orNull(form.location_id),
+    firmware_version: orNull(form.firmware_version),
+    power_supply: orNull(form.power_supply),
+    power_consumption_w: numOrNull(form.power_consumption_w),
+    dimensions: orNull(form.dimensions),
+    weight_kg: numOrNull(form.weight_kg),
+    mounting_type: orNull(form.mounting_type),
+    connection_type: orNull(form.connection_type),
+    ip_rating: orNull(form.ip_rating),
+    hazardous_area_rating: orNull(form.hazardous_area_rating),
+    operating_temperature_min: numOrNull(form.operating_temperature_min),
+    operating_temperature_max: numOrNull(form.operating_temperature_max),
+    operating_humidity_min: numOrNull(form.operating_humidity_min),
+    operating_humidity_max: numOrNull(form.operating_humidity_max),
+    price_eur: numOrNull(form.price_eur),
+    purchase_date: orNull(form.purchase_date),
+    warranty_expiry_date: orNull(form.warranty_expiry_date),
+    notes: orNull(form.notes),
+    sensor_channels: channels,
+  };
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validateForm(form: EditFormState): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  if (!form.name.trim()) errors.name = "Name is required";
+  if (!form.manufacturer.trim()) errors.manufacturer = "Manufacturer is required";
+  if (!form.model.trim()) errors.model = "Model is required";
+
+  const numFields: (keyof EditFormState)[] = [
+    "weight_kg", "power_consumption_w",
+    "operating_temperature_min", "operating_temperature_max",
+    "operating_humidity_min", "operating_humidity_max",
+    "price_eur",
+  ];
+  for (const f of numFields) {
+    const v = form[f] as string;
+    if (v && isNaN(parseFloat(v))) errors[f] = "Must be a number";
+  }
+
+  if (form.purchase_date && !DATE_RE.test(form.purchase_date))
+    errors.purchase_date = "Format: YYYY-MM-DD";
+  if (form.warranty_expiry_date && !DATE_RE.test(form.warranty_expiry_date))
+    errors.warranty_expiry_date = "Format: YYYY-MM-DD";
+
+  const channelIds = new Set<string>();
+  form.sensor_channels.forEach((ch, i) => {
+    const p = `ch_${i}_`;
+    if (!ch.channel_id.trim()) errors[`${p}channel_id`] = "Required";
+    else if (channelIds.has(ch.channel_id.trim().toLowerCase())) errors[`${p}channel_id`] = "Duplicate channel ID";
+    else channelIds.add(ch.channel_id.trim().toLowerCase());
+
+    if (!ch.physical_quantity) errors[`${p}physical_quantity`] = "Required";
+    if (!ch.unit.trim()) errors[`${p}unit`] = "Required";
+
+    const chNums = [
+      "measurement_min", "measurement_max", "accuracy_value", "resolution",
+      "drift_rate", "sensitivity", "response_time_ms", "bandwidth_hz",
+      "output_signal_min", "output_signal_max", "calibration_interval",
+      "measurement_uncertainty", "confidence_level", "coverage_factor",
+    ];
+    for (const f of chNums) {
+      const v = ch[f as keyof EditChannelForm] as string;
+      if (v && isNaN(parseFloat(v))) errors[`${p}${f}`] = "Must be a number";
+    }
+  });
+
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
+// Edit field components
+// ---------------------------------------------------------------------------
+
+const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder-gray-300";
+const INPUT_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const INPUT_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
+
+function ELabel({ label, required }: { label: string; required?: boolean }) {
+  return (
+    <span className="text-xs text-gray-400">
+      {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+    </span>
+  );
+}
+
+function EError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <p className="text-xs text-red-500 mt-0.5">{msg}</p>;
+}
+
+function EditInput({
+  label, value, onChange, error, required, placeholder, type = "text", readOnly,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  error?: string; required?: boolean; placeholder?: string; type?: string; readOnly?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <ELabel label={label} required={required} />
+      <input
+        type={type}
+        value={value}
+        readOnly={readOnly}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK} ${readOnly ? "opacity-60 cursor-not-allowed" : ""}`}
+      />
+      <EError msg={error} />
+    </div>
+  );
+}
+
+function EditTextArea({
+  label, value, onChange, error, required, placeholder, rows = 3,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  error?: string; required?: boolean; placeholder?: string; rows?: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <ELabel label={label} required={required} />
+      <textarea
+        value={value}
+        rows={rows}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`${INPUT_BASE} resize-none ${error ? INPUT_ERR : INPUT_OK}`}
+      />
+      <EError msg={error} />
+    </div>
+  );
+}
+
+function EditSelect({
+  label, value, onChange, options, error, required, placeholder,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  error?: string; required?: boolean; placeholder?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <ELabel label={label} required={required} />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK}`}
+      >
+        <option value="">{placeholder ?? "Select…"}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <EError msg={error} />
+    </div>
+  );
+}
+
+// Select with "Other" that shows a text input when a non-listed value is active
+function EditSelectWithOther({
+  label, value, onChange, options, error, required, placeholder,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  error?: string; required?: boolean; placeholder?: string;
+}) {
+  const isKnown = value === "" || options.some((o) => o.value === value);
+  const selectVal = isKnown ? value : "__other__";
+  const customVal = isKnown ? "" : value;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <ELabel label={label} required={required} />
+      <select
+        value={selectVal}
+        onChange={(e) => {
+          if (e.target.value === "__other__") onChange("");
+          else onChange(e.target.value);
+        }}
+        className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK}`}
+      >
+        <option value="">{placeholder ?? "Select…"}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+        <option value="__other__">Other…</option>
+      </select>
+      {selectVal === "__other__" && (
+        <input
+          type="text"
+          value={customVal}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Specify…"
+          className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK} mt-1`}
+        />
+      )}
+      <EError msg={error} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Physical quantity cascade (quantity → unit → technology family → subtype)
+// ---------------------------------------------------------------------------
+
+function PhysicalQuantityCascade({
+  physicalQuantity, unit, techFamily, technology,
+  onQuantityChange, onUnitChange, onTechChange,
+  errors, prefix,
+}: {
+  physicalQuantity: string;
+  unit: string;
+  techFamily: string;
+  technology: string;
+  onQuantityChange: (q: string) => void;
+  onUnitChange: (u: string) => void;
+  onTechChange: (family: string, tech: string) => void;
+  errors: Record<string, string>;
+  prefix: string;
+}) {
+  const quantityDef = PHYSICAL_QUANTITIES.find((q) => q.value === physicalQuantity);
+  const units = quantityDef?.units ?? [];
+  const techs = quantityDef?.technologies ?? [];
+  const selectedFamily = techs.find((t) => t.value === techFamily);
+
+  function handleQuantityChange(q: string) {
+    onQuantityChange(q);
+    const def = PHYSICAL_QUANTITIES.find((x) => x.value === q);
+    onUnitChange(def?.units[0]?.value ?? "");
+    onTechChange("", "");
+  }
+
+  function handleFamilyChange(fam: string) {
+    if (fam === "" || fam === "__other__") {
+      onTechChange(fam, "");
+    } else {
+      const famDef = techs.find((t) => t.value === fam);
+      if (famDef?.subtypes) {
+        onTechChange(fam, "");
+      } else {
+        onTechChange(fam, fam);
+      }
+    }
+  }
+
+  const techSubtypeVal = selectedFamily?.subtypes ? technology : "";
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <EditSelect
+          label="Physical quantity"
+          value={physicalQuantity}
+          onChange={handleQuantityChange}
+          options={PHYSICAL_QUANTITIES.map((q) => ({ value: q.value, label: q.label }))}
+          error={errors[`${prefix}physical_quantity`]}
+          required
+        />
+        <EditSelect
+          label="Unit"
+          value={unit}
+          onChange={onUnitChange}
+          options={units.map((u) => ({ value: u.value, label: u.label }))}
+          error={errors[`${prefix}unit`]}
+          required
+        />
+      </div>
+      {quantityDef && (
+        <div className="grid grid-cols-2 gap-3">
+          <EditSelectWithOther
+            label="Technology"
+            value={techFamily}
+            onChange={handleFamilyChange}
+            options={techs.map((t) => ({ value: t.value, label: t.label }))}
+          />
+          {selectedFamily?.subtypes && techFamily !== "__other__" && (
+            <EditSelect
+              label="Type / variant"
+              value={techSubtypeVal}
+              onChange={(v) => onTechChange(techFamily, v)}
+              options={selectedFamily.subtypes.map((s) => ({ value: s.value, label: s.label }))}
+            />
+          )}
+          {techFamily === "__other__" && (
+            <EditInput
+              label="Technology (custom)"
+              value={technology}
+              onChange={(v) => onTechChange("__other__", v)}
+              placeholder="e.g. optical fiber"
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Channel editor row
+// ---------------------------------------------------------------------------
+
+function ChannelEditor({
+  ch, index, onChange, onRemove, errors,
+}: {
+  ch: EditChannelForm;
+  index: number;
+  onChange: (updated: EditChannelForm) => void;
+  onRemove: () => void;
+  errors: Record<string, string>;
+}) {
+  const p = `ch_${index}_`;
+  const set = (field: keyof EditChannelForm) => (v: string) =>
+    onChange({ ...ch, [field]: v });
+
+  return (
+    <div className="border border-mar-border-md rounded-xl p-4 space-y-4 bg-mar-surface-alt">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-mar-accent uppercase tracking-wide">
+          Channel {index + 1}
+        </span>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          title="Remove channel"
+        >
+          <TrashIcon size={14} />
+        </button>
+      </div>
+
+      {/* Channel ID + cascade */}
+      <EditInput
+        label="Channel ID"
+        value={ch.channel_id}
+        onChange={set("channel_id")}
+        error={errors[`${p}channel_id`]}
+        placeholder="e.g. CH1, Temperature, Humidity"
+        required
+      />
+
+      <PhysicalQuantityCascade
+        physicalQuantity={ch.physical_quantity}
+        unit={ch.unit}
+        techFamily={ch._techFamily}
+        technology={ch.technology}
+        onQuantityChange={(q) => onChange({ ...ch, physical_quantity: q, unit: "", _techFamily: "", technology: "" })}
+        onUnitChange={set("unit")}
+        onTechChange={(fam, tech) => onChange({ ...ch, _techFamily: fam, technology: tech })}
+        errors={errors}
+        prefix={p}
+      />
+
+      {/* Range */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Range min" value={ch.measurement_min} onChange={set("measurement_min")} error={errors[`${p}measurement_min`]} placeholder="e.g. -200" />
+        <EditInput label="Range max" value={ch.measurement_max} onChange={set("measurement_max")} error={errors[`${p}measurement_max`]} placeholder="e.g. 850" />
+      </div>
+
+      {/* Accuracy */}
+      <div className="grid grid-cols-3 gap-3">
+        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" />
+        <EditSelectWithOther label="Accuracy type" value={ch.accuracy_type} onChange={set("accuracy_type")} options={ACCURACY_TYPE_OPTIONS} />
+        <EditInput label="Accuracy unit" value={ch.accuracy_unit} onChange={set("accuracy_unit")} placeholder="e.g. °C, %" />
+      </div>
+
+      {/* Resolution */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" />
+        <EditInput label="Resolution unit" value={ch.resolution_unit} onChange={set("resolution_unit")} placeholder="e.g. °C" />
+      </div>
+
+      {/* Uncertainty */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" />
+        <EditInput label="Uncertainty unit" value={ch.uncertainty_unit} onChange={set("uncertainty_unit")} placeholder="e.g. °C" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Confidence level (%)" value={ch.confidence_level} onChange={set("confidence_level")} error={errors[`${p}confidence_level`]} placeholder="e.g. 95" />
+        <EditInput label="Coverage factor (k)" value={ch.coverage_factor} onChange={set("coverage_factor")} error={errors[`${p}coverage_factor`]} placeholder="e.g. 2" />
+      </div>
+
+      {/* Drift */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" />
+        <EditInput label="Drift unit" value={ch.drift_unit} onChange={set("drift_unit")} placeholder="e.g. °C/year" />
+      </div>
+
+      {/* Sensitivity */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Sensitivity" value={ch.sensitivity} onChange={set("sensitivity")} error={errors[`${p}sensitivity`]} placeholder="e.g. 10" />
+        <EditInput label="Sensitivity unit" value={ch.sensitivity_unit} onChange={set("sensitivity_unit")} placeholder="e.g. mV/V" />
+      </div>
+
+      {/* Dynamic */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" />
+        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" />
+      </div>
+
+      {/* Output */}
+      <div className="grid grid-cols-3 gap-3">
+        <EditInput label="Output min" value={ch.output_signal_min} onChange={set("output_signal_min")} error={errors[`${p}output_signal_min`]} placeholder="e.g. 4" />
+        <EditInput label="Output max" value={ch.output_signal_max} onChange={set("output_signal_max")} error={errors[`${p}output_signal_max`]} placeholder="e.g. 20" />
+        <EditInput label="Output unit" value={ch.output_signal_unit} onChange={set("output_signal_unit")} placeholder="e.g. mA" />
+      </div>
+      <EditSelectWithOther label="Output type" value={ch.output_type} onChange={set("output_type")} options={OUTPUT_TYPE_OPTIONS} />
+
+      {/* Role / Criticality */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditSelectWithOther label="Calibration role" value={ch.calibration_role} onChange={set("calibration_role")} options={CAL_ROLE_OPTIONS} />
+        <EditSelectWithOther label="Criticality" value={ch.criticality} onChange={set("criticality")} options={CRITICALITY_OPTIONS} />
+      </div>
+
+      {/* Calibration interval */}
+      <EditInput label="Calibration interval (days)" value={ch.calibration_interval} onChange={set("calibration_interval")} error={errors[`${p}calibration_interval`]} placeholder="e.g. 365" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collapsible section (forceOpen for edit mode)
 // ---------------------------------------------------------------------------
 
 function CollapsibleSection({
-  title,
-  children,
+  title, children, forceOpen,
 }: {
   title: string;
   children: ReactNode;
+  forceOpen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const isOpen = forceOpen || open;
+
   return (
     <div className="bg-mar-surface border border-mar-border rounded-xl overflow-hidden">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-mar-surface-alt transition-colors"
+        onClick={() => { if (!forceOpen) setOpen((v) => !v); }}
+        className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${forceOpen ? "cursor-default" : "hover:bg-mar-surface-alt"}`}
       >
         <span className="text-sm font-semibold text-mar-text">{title}</span>
-        <span className={`transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`}>
-          <ChevronDownIcon size={16} />
-        </span>
+        {!forceOpen && (
+          <span className={`transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+            <ChevronDownIcon size={16} />
+          </span>
+        )}
       </button>
-      {open && (
+      {isOpen && (
         <div className="px-5 pb-4 border-t border-mar-border">
           {children}
         </div>
@@ -136,7 +762,15 @@ function CollapsibleSection({
 // Overview tab
 // ---------------------------------------------------------------------------
 
-function OverviewTab({ profile }: { profile: AssetProfile }) {
+function OverviewTab({
+  profile, isEditing, form, onChange, errors,
+}: {
+  profile: AssetProfile;
+  isEditing: boolean;
+  form: EditFormState | null;
+  onChange: (f: EditFormState) => void;
+  errors: Record<string, string>;
+}) {
   const daq = profile.daq_details;
 
   const operatingTemp =
@@ -154,11 +788,167 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
       ? `${profile.location_latitude ?? "—"}, ${profile.location_longitude ?? "—"}`
       : null;
 
+  if (isEditing && form) {
+    const set = (field: keyof EditFormState) => (v: string) =>
+      onChange({ ...form, [field]: v });
+    const setChannels = (channels: EditChannelForm[]) =>
+      onChange({ ...form, sensor_channels: channels });
+
+    const addChannel = () => {
+      if (!form) return;
+      const newKey = `new-${Date.now()}`;
+      const firstQ = PHYSICAL_QUANTITIES[0];
+      setChannels([
+        ...form.sensor_channels,
+        {
+          _key: newKey,
+          channel_id: "",
+          physical_quantity: firstQ.value,
+          unit: firstQ.units[0]?.value ?? "",
+          _techFamily: "",
+          technology: "",
+          measurement_min: "", measurement_max: "",
+          accuracy_value: "", accuracy_type: "", accuracy_unit: "",
+          resolution: "", resolution_unit: "",
+          measurement_uncertainty: "", uncertainty_unit: "",
+          confidence_level: "", coverage_factor: "",
+          drift_rate: "", drift_unit: "",
+          sensitivity: "", sensitivity_unit: "",
+          response_time_ms: "", bandwidth_hz: "",
+          output_signal_min: "", output_signal_max: "", output_signal_unit: "",
+          output_type: "", calibration_role: "", criticality: "",
+          calibration_interval: "",
+        },
+      ]);
+    }
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left 2/3: edit sections */}
+        <div className="lg:col-span-2 space-y-3">
+
+          {/* General */}
+          <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-mar-text mb-4">General</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <EditInput label="Asset ID" value={profile.asset_id} onChange={() => {}} readOnly />
+              <EditInput label="Name" value={form.name} onChange={set("name")} error={errors.name} required placeholder="e.g. PT100 Temperature Sensor" />
+              <EditInput label="Manufacturer" value={form.manufacturer} onChange={set("manufacturer")} error={errors.manufacturer} required placeholder="e.g. WIKA" />
+              <EditInput label="Model" value={form.model} onChange={set("model")} error={errors.model} required placeholder="e.g. TF53" />
+              <EditInput label="Serial number" value={form.serial_number} onChange={set("serial_number")} placeholder="e.g. SN-20240001" />
+              <EditInput label="Part number" value={form.manufacturer_part_number} onChange={set("manufacturer_part_number")} placeholder="e.g. 4250041" />
+              <div className="sm:col-span-2">
+                <EditTextArea label="Description" value={form.description} onChange={set("description")} placeholder="Short description of the asset's purpose and context" />
+              </div>
+            </div>
+          </div>
+
+          {/* Location */}
+          <CollapsibleSection title="Location" forceOpen={isEditing}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <EditInput label="Location ID" value={form.location_id} onChange={set("location_id")} placeholder="Paste location UUID or leave blank" />
+              {profile.site_name && <SpecRow label="Current site" value={profile.site_name} />}
+              {profile.location_name && <SpecRow label="Current location" value={profile.location_name} />}
+            </div>
+          </CollapsibleSection>
+
+          {/* Mechanical */}
+          <CollapsibleSection title="Mechanical" forceOpen={isEditing}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <EditInput label="Dimensions" value={form.dimensions} onChange={set("dimensions")} placeholder='e.g. 150×30×30 mm' />
+              <EditInput label="Weight (kg)" value={form.weight_kg} onChange={set("weight_kg")} error={errors.weight_kg} placeholder="e.g. 0.45" />
+              <EditSelectWithOther label="Mounting type" value={form.mounting_type} onChange={set("mounting_type")} options={MOUNTING_TYPE_OPTIONS} />
+              <EditInput label="Connection type" value={form.connection_type} onChange={set("connection_type")} placeholder="e.g. M12 4-pin" />
+              <EditSelectWithOther label="IP rating" value={form.ip_rating} onChange={set("ip_rating")} options={IP_RATING_OPTIONS} />
+              <EditSelectWithOther label="Hazardous area rating" value={form.hazardous_area_rating} onChange={set("hazardous_area_rating")} options={HAZARDOUS_AREA_OPTIONS} />
+              <EditInput label="Operating temp min (°C)" value={form.operating_temperature_min} onChange={set("operating_temperature_min")} error={errors.operating_temperature_min} placeholder="e.g. -40" />
+              <EditInput label="Operating temp max (°C)" value={form.operating_temperature_max} onChange={set("operating_temperature_max")} error={errors.operating_temperature_max} placeholder="e.g. 125" />
+              <EditInput label="Operating humidity min (%RH)" value={form.operating_humidity_min} onChange={set("operating_humidity_min")} error={errors.operating_humidity_min} placeholder="e.g. 0" />
+              <EditInput label="Operating humidity max (%RH)" value={form.operating_humidity_max} onChange={set("operating_humidity_max")} error={errors.operating_humidity_max} placeholder="e.g. 95" />
+            </div>
+          </CollapsibleSection>
+
+          {/* Electrical */}
+          <CollapsibleSection title="Electrical" forceOpen={isEditing}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <EditInput label="Power supply" value={form.power_supply} onChange={set("power_supply")} placeholder="e.g. 24 VDC" />
+              <EditInput label="Power consumption (W)" value={form.power_consumption_w} onChange={set("power_consumption_w")} error={errors.power_consumption_w} placeholder="e.g. 2.5" />
+              <EditInput label="Firmware version" value={form.firmware_version} onChange={set("firmware_version")} placeholder="e.g. 1.4.2" />
+            </div>
+          </CollapsibleSection>
+
+          {/* Commercial */}
+          <CollapsibleSection title="Commercial" forceOpen={isEditing}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <EditInput label="Purchase date" value={form.purchase_date} onChange={set("purchase_date")} error={errors.purchase_date} placeholder="YYYY-MM-DD" type="date" />
+              <EditInput label="Purchase price (€)" value={form.price_eur} onChange={set("price_eur")} error={errors.price_eur} placeholder="e.g. 350.00" />
+              <EditInput label="Warranty expiry" value={form.warranty_expiry_date} onChange={set("warranty_expiry_date")} error={errors.warranty_expiry_date} placeholder="YYYY-MM-DD" type="date" />
+            </div>
+          </CollapsibleSection>
+
+          {/* Notes */}
+          <CollapsibleSection title="Notes" forceOpen={isEditing}>
+            <div className="mt-4">
+              <EditTextArea label="Notes" value={form.notes} onChange={set("notes")} placeholder="Free-form notes, maintenance history, etc." rows={4} />
+            </div>
+          </CollapsibleSection>
+        </div>
+
+        {/* Right 1/3: Specifications (sensor channels edit) */}
+        <div className="space-y-4">
+          {profile.asset_type === "sensor" && (
+            <>
+              <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-semibold text-mar-text">Sensor channels</h3>
+                  <button
+                    type="button"
+                    onClick={addChannel}
+                    className="flex items-center gap-1 text-xs text-mar-accent border border-mar-border rounded-lg px-2.5 py-1.5 hover:bg-mar-surface-alt transition-colors"
+                  >
+                    <PlusIcon size={12} />
+                    Add channel
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">Define measurement channels for this sensor.</p>
+              </div>
+              <div className="space-y-3">
+                {form.sensor_channels.map((ch, i) => (
+                  <ChannelEditor
+                    key={ch._key}
+                    ch={ch}
+                    index={i}
+                    onChange={(updated) => {
+                      const updated_channels = [...form.sensor_channels];
+                      updated_channels[i] = updated;
+                      setChannels(updated_channels);
+                    }}
+                    onRemove={() => setChannels(form.sensor_channels.filter((_, j) => j !== i))}
+                    errors={errors}
+                  />
+                ))}
+                {form.sensor_channels.length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-4">No channels. Click &ldquo;Add channel&rdquo; to add one.</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {profile.asset_type === "daq" && daq && (
+            <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-mar-text mb-1">DAQ specifications</h3>
+              <p className="text-xs text-gray-400">DAQ specifications are managed separately.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Display mode
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-      {/* Left 2/3: grouped sections */}
       <div className="lg:col-span-2 space-y-3">
-        {/* General — always open */}
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-mar-text mb-3">General</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
@@ -172,7 +962,6 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
           </div>
         </div>
 
-        {/* Location — collapsible */}
         <CollapsibleSection title="Location">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
             <SpecRow label="Owner" value={profile.owner_name} />
@@ -184,13 +973,10 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
           </div>
         </CollapsibleSection>
 
-        {/* Mechanical — collapsible */}
         <CollapsibleSection title="Mechanical">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
             <SpecRow label="Dimensions" value={profile.dimensions} />
-            {profile.weight_kg != null && (
-              <SpecRow label="Weight" value={`${profile.weight_kg} kg`} />
-            )}
+            {profile.weight_kg != null && <SpecRow label="Weight" value={`${profile.weight_kg} kg`} />}
             <SpecRow label="Mounting type" value={profile.mounting_type} />
             <SpecRow label="Connection type" value={profile.connection_type} />
             <SpecRow label="IP rating" value={profile.ip_rating} />
@@ -200,7 +986,6 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
           </div>
         </CollapsibleSection>
 
-        {/* Electrical — collapsible */}
         <CollapsibleSection title="Electrical">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
             <SpecRow label="Power supply" value={profile.power_supply} />
@@ -236,23 +1021,15 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
           )}
         </CollapsibleSection>
 
-        {/* Commercial — collapsible */}
         <CollapsibleSection title="Commercial">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-            {profile.purchase_date && (
-              <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} />
-            )}
-            {profile.price_eur != null && (
-              <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} />
-            )}
-            {profile.warranty_expiry_date && (
-              <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} />
-            )}
+            {profile.purchase_date && <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} />}
+            {profile.price_eur != null && <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} />}
+            {profile.warranty_expiry_date && <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} />}
           </div>
         </CollapsibleSection>
       </div>
 
-      {/* Right 1/3: Specifications */}
       <div className="bg-mar-surface border border-mar-border rounded-xl p-6 h-fit">
         {profile.asset_type === "sensor" && (
           <>
@@ -272,10 +1049,7 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
                       <SpecRow label="Range" value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} />
                     )}
                     {ch.accuracy_value != null && (
-                      <SpecRow
-                        label="Accuracy"
-                        value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}${ch.accuracy_type ? " (" + ch.accuracy_type + ")" : ""}`}
-                      />
+                      <SpecRow label="Accuracy" value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}${ch.accuracy_type ? " (" + ch.accuracy_type + ")" : ""}`} />
                     )}
                     {ch.resolution != null && (
                       <SpecRow label="Resolution" value={`${ch.resolution}${ch.resolution_unit ? " " + ch.resolution_unit : ""}`} />
@@ -286,15 +1060,9 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
                     {ch.sensitivity != null && (
                       <SpecRow label="Sensitivity" value={`${ch.sensitivity}${ch.sensitivity_unit ? " " + ch.sensitivity_unit : ""}`} />
                     )}
-                    {ch.response_time_ms != null && (
-                      <SpecRow label="Response time" value={`${ch.response_time_ms} ms`} />
-                    )}
-                    {ch.bandwidth_hz != null && (
-                      <SpecRow label="Bandwidth" value={`${ch.bandwidth_hz.toLocaleString()} Hz`} />
-                    )}
-                    {ch.calibration_interval != null && (
-                      <SpecRow label="Cal. interval" value={`${ch.calibration_interval} days`} />
-                    )}
+                    {ch.response_time_ms != null && <SpecRow label="Response time" value={`${ch.response_time_ms} ms`} />}
+                    {ch.bandwidth_hz != null && <SpecRow label="Bandwidth" value={`${ch.bandwidth_hz.toLocaleString()} Hz`} />}
+                    {ch.calibration_interval != null && <SpecRow label="Cal. interval" value={`${ch.calibration_interval} days`} />}
                     <SpecRow label="Cal. method" value={ch.calibration_method_name} />
                     <SpecRow label="Cal. role" value={ch.calibration_role} />
                   </div>
@@ -312,28 +1080,16 @@ function OverviewTab({ profile }: { profile: AssetProfile }) {
             <SpecRow label="Output channels" value={String(daq.output_channels)} />
             <SpecRow label="Input signal types" value={daq.input_signal_types} />
             <SpecRow label="Output signal types" value={daq.output_signal_types} />
-            {daq.sampling_rate_hz != null && (
-              <SpecRow label="Sampling rate" value={`${daq.sampling_rate_hz.toLocaleString()} Hz`} />
-            )}
-            {daq.per_channel_sampling_rate_hz != null && (
-              <SpecRow label="Per-channel rate" value={`${daq.per_channel_sampling_rate_hz.toLocaleString()} Hz`} />
-            )}
-            {daq.adc_resolution_bits != null && (
-              <SpecRow label="ADC resolution" value={`${daq.adc_resolution_bits}-bit`} />
-            )}
+            {daq.sampling_rate_hz != null && <SpecRow label="Sampling rate" value={`${daq.sampling_rate_hz.toLocaleString()} Hz`} />}
+            {daq.per_channel_sampling_rate_hz != null && <SpecRow label="Per-channel rate" value={`${daq.per_channel_sampling_rate_hz.toLocaleString()} Hz`} />}
+            {daq.adc_resolution_bits != null && <SpecRow label="ADC resolution" value={`${daq.adc_resolution_bits}-bit`} />}
             <SpecRow label="ADC type" value={daq.adc_type} />
             {daq.input_voltage_range_min != null && daq.input_voltage_range_max != null && (
               <SpecRow label="Input voltage range" value={`${daq.input_voltage_range_min} – ${daq.input_voltage_range_max} V`} />
             )}
-            {daq.noise_floor_uv_rms != null && (
-              <SpecRow label="Noise floor" value={`${daq.noise_floor_uv_rms} µV RMS`} />
-            )}
-            {daq.dynamic_range_db != null && (
-              <SpecRow label="Dynamic range" value={`${daq.dynamic_range_db} dB`} />
-            )}
-            {daq.input_impedance_ohm != null && (
-              <SpecRow label="Input impedance" value={`${daq.input_impedance_ohm.toLocaleString()} Ω`} />
-            )}
+            {daq.noise_floor_uv_rms != null && <SpecRow label="Noise floor" value={`${daq.noise_floor_uv_rms} µV RMS`} />}
+            {daq.dynamic_range_db != null && <SpecRow label="Dynamic range" value={`${daq.dynamic_range_db} dB`} />}
+            {daq.input_impedance_ohm != null && <SpecRow label="Input impedance" value={`${daq.input_impedance_ohm.toLocaleString()} Ω`} />}
             <SpecRow label="Communication" value={daq.communication_protocol} />
             <SpecRow label="Interface" value={daq.interface_type} accent />
             <SpecRow label="Synchronization" value={daq.synchronization_supported ? "Supported" : null} />
@@ -435,21 +1191,16 @@ function CalibrationResultBadge({ result }: { result: string }) {
 }
 
 function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabProps) {
-  // Calibrations arrive sorted newest → oldest (order_by date desc)
   const total = calibrations.length;
-  const [selectedCalId, setSelectedCalId] = useState<string | null>(
-    calibrations[0]?.id ?? null
-  );
+  const [selectedCalId, setSelectedCalId] = useState<string | null>(calibrations[0]?.id ?? null);
 
   const selectedCal = calibrations.find((c) => c.id === selectedCalId) ?? calibrations[0] ?? null;
   const selectedIdx = calibrations.findIndex((c) => c.id === selectedCalId);
   const selectedCoeffs = selectedCal ? (coeffsByCalId[selectedCal.id] ?? []) : [];
   const selectedCert = selectedCal ? certs.find((c) => c.calibration_id === selectedCal.id) : undefined;
 
-  // Version numbers: newest = vN (total), oldest = v1
   function versionOf(idx: number) { return total - idx; }
 
-  // Group coefficients by channel
   const channelGroups: Record<string, CalibrationCoefficient[]> = {};
   for (const coeff of selectedCoeffs) {
     const key = coeff.channel ?? "Main";
@@ -461,24 +1212,19 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
 
   return (
     <div className="space-y-5">
-      {/* Coefficients panel — shows selected calibration */}
       {selectedCal ? (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-mar-text">Calibration coefficients</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                <span className="font-mono font-semibold text-mar-text">
-                  v{versionOf(selectedIdx >= 0 ? selectedIdx : 0)}
-                </span>
+                <span className="font-mono font-semibold text-mar-text">v{versionOf(selectedIdx >= 0 ? selectedIdx : 0)}</span>
                 {" · "}{fmtDate(selectedCal.calibration_date)}
                 {" · "}<span>by {selectedCal.performed_by_name}</span>
               </p>
             </div>
             {selectedCert && (
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-xs text-mar-accent border border-mar-border rounded-lg px-3 py-1.5 hover:bg-mar-surface-alt transition-colors flex-shrink-0">
+              <button type="button" className="flex items-center gap-1.5 text-xs text-mar-accent border border-mar-border rounded-lg px-3 py-1.5 hover:bg-mar-surface-alt transition-colors flex-shrink-0">
                 <span className="opacity-60">📄</span>
                 {selectedCert.certificate_number}
               </button>
@@ -492,39 +1238,25 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
                 return (
                   <div key={chKey} className={chIdx > 0 ? "pt-5 border-t border-mar-border" : ""}>
                     {hasMultipleChannels && (
-                      <p className="text-[11px] font-semibold text-mar-accent uppercase tracking-wide mb-3">
-                        {chKey}
-                      </p>
+                      <p className="text-[11px] font-semibold text-mar-accent uppercase tracking-wide mb-3">{chKey}</p>
                     )}
                     {coeffs.map((coeff) => (
                       <div key={coeff.id}>
                         {coeff.coefficient_type === "linear" && (
                           <div className="flex flex-wrap gap-3">
-                            {coeff.gain != null && (
-                              <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.gain)} />
-                            )}
-                            {coeff.offset_value != null && (
-                              <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.offset_value)} />
-                            )}
+                            {coeff.gain != null && <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.gain)} />}
+                            {coeff.offset_value != null && <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.offset_value)} />}
                           </div>
                         )}
                         {coeff.coefficient_type === "polynomial" && coeff.poly_coefficients && (
                           <div className="flex flex-wrap gap-3">
-                            {coeff.poly_coefficients[1] != null && (
-                              <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.poly_coefficients[1])} />
-                            )}
-                            {coeff.poly_coefficients[0] != null && (
-                              <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.poly_coefficients[0])} />
-                            )}
-                            {coeff.poly_coefficients[2] != null && (
-                              <CoeffCard label="Quadratic" sub="a₂" value={fmtNum(coeff.poly_coefficients[2])} />
-                            )}
+                            {coeff.poly_coefficients[1] != null && <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.poly_coefficients[1])} />}
+                            {coeff.poly_coefficients[0] != null && <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.poly_coefficients[0])} />}
+                            {coeff.poly_coefficients[2] != null && <CoeffCard label="Quadratic" sub="a₂" value={fmtNum(coeff.poly_coefficients[2])} />}
                           </div>
                         )}
                         <CalibrationFormula coeff={coeff} />
-                        {coeff.notes && (
-                          <p className="mt-2 text-xs text-gray-400">{coeff.notes}</p>
-                        )}
+                        {coeff.notes && <p className="mt-2 text-xs text-gray-400">{coeff.notes}</p>}
                       </div>
                     ))}
                   </div>
@@ -541,44 +1273,36 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
         </div>
       )}
 
-      {/* Calibration history — clickable rows update the coefficients panel */}
       {calibrations.length > 0 && (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
           <h3 className="text-sm font-semibold text-mar-text mb-1">Calibration history</h3>
           <p className="text-xs text-gray-400 mb-4">Select a calibration to view its coefficients.</p>
-          <div className="space-y-0 divide-y divide-mar-border">
+          <div className="divide-y divide-mar-border">
             {calibrations.map((cal, idx) => {
               const isSelected = cal.id === selectedCalId;
               const certForCal = certs.find((c) => c.calibration_id === cal.id);
-
               return (
                 <button
                   key={cal.id}
                   type="button"
                   onClick={() => setSelectedCalId(cal.id)}
                   className={`w-full flex items-start gap-4 py-3 px-2 -mx-2 text-left rounded-lg transition-colors
-                    ${isSelected ? "bg-mar-surface-alt" : "hover:bg-mar-surface-alt/50"}`}>
+                    ${isSelected ? "bg-mar-surface-alt" : "hover:bg-mar-surface-alt/50"}`}
+                >
                   <div className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
-                    ${isSelected
-                      ? "border-mar-accent text-mar-accent"
-                      : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
+                    ${isSelected ? "border-mar-accent text-mar-accent" : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
                     <span className="text-[10px] font-bold">v{versionOf(idx)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-mar-text">{fmtDate(cal.calibration_date)}</span>
                       <CalibrationResultBadge result={cal.result} />
-                      {certForCal && (
-                        <span className="text-[10px] text-gray-400">{certForCal.certificate_number}</span>
-                      )}
+                      {certForCal && <span className="text-[10px] text-gray-400">{certForCal.certificate_number}</span>}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      by {cal.performed_by_name}
-                      {cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
+                      by {cal.performed_by_name}{cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
                     </p>
-                    {cal.notes && (
-                      <p className="text-xs text-gray-500 mt-1 italic">{cal.notes}</p>
-                    )}
+                    {cal.notes && <p className="text-xs text-gray-500 mt-1 italic">{cal.notes}</p>}
                   </div>
                 </button>
               );
@@ -613,8 +1337,7 @@ function FilesTab({ files }: { files: StoredFile[] }) {
             const type = fileIcon(f.content_type);
             const typeLabel: Record<string, string> = { pdf: "PDF", csv: "CSV", zip: "Archive", doc: "File" };
             return (
-              <div key={f.id}
-                className="flex items-center gap-3 p-3 rounded-lg border border-mar-border hover:border-mar-border-md hover:bg-mar-surface-alt transition-colors">
+              <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg border border-mar-border hover:border-mar-border-md hover:bg-mar-surface-alt transition-colors">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold
                   ${type === "pdf" ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
                     type === "csv" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
@@ -626,8 +1349,7 @@ function FilesTab({ files }: { files: StoredFile[] }) {
                   <p className="text-sm font-medium text-mar-text truncate">{f.original_filename}</p>
                   <p className="text-xs text-gray-400">{typeLabel[type]} · {fmtBytes(f.size_bytes)}</p>
                 </div>
-                <button type="button"
-                  className="p-1.5 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors flex-shrink-0">
+                <button type="button" className="p-1.5 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors flex-shrink-0">
                   <DownloadIcon size={14} />
                 </button>
               </div>
@@ -650,7 +1372,7 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
       {logs.length === 0 ? (
         <p className="text-sm text-gray-400 py-4">No activity recorded for this asset.</p>
       ) : (
-        <div className="space-y-0 divide-y divide-mar-border">
+        <div className="divide-y divide-mar-border">
           {logs.map((log) => {
             const d = new Date(log.created_at);
             const dateStr = d.toLocaleDateString("en-GB", { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -696,6 +1418,14 @@ export default function AssetProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormState | null>(null);
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [, setLocations] = useState<LocationOption[]>([]);
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -714,11 +1444,8 @@ export default function AssetProfilePage() {
         setAuditLogs(logsData);
         setFiles(filesData);
 
-        // Load coefficients for all calibrations in parallel
         if (calsData.length > 0) {
-          const coeffResults = await Promise.all(
-            calsData.map((cal) => getCalibrationCoefficients(cal.id))
-          );
+          const coeffResults = await Promise.all(calsData.map((cal) => getCalibrationCoefficients(cal.id)));
           const map: Record<string, CalibrationCoefficient[]> = {};
           calsData.forEach((cal, i) => { map[cal.id] = coeffResults[i]; });
           setCoeffsByCalId(map);
@@ -727,6 +1454,60 @@ export default function AssetProfilePage() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  function handleStartEdit() {
+    if (!profile) return;
+    setEditForm(profileToForm(profile));
+    setEditErrors({});
+    setSaveError(null);
+    setIsEditing(true);
+    setActiveTab("overview");
+    // Load locations in background
+    listLocations().then(setLocations).catch(() => {});
+  }
+
+  function handleCancelEdit() {
+    setIsEditing(false);
+    setEditForm(null);
+    setEditErrors({});
+    setSaveError(null);
+  }
+
+  function handleFormChange(form: EditFormState) {
+    setEditForm(form);
+    // Re-validate only if there were previous errors (real-time feedback)
+    if (Object.keys(editErrors).length > 0) {
+      setEditErrors(validateForm(form));
+    }
+  }
+
+  async function handleSave() {
+    if (!profile || !editForm) return;
+    const errors = validateForm(editForm);
+    if (Object.keys(errors).length > 0) {
+      setEditErrors(errors);
+      return;
+    }
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await updateAsset(profile.id, formToUpdate(editForm));
+      // Reload the full profile + audit logs
+      const [updatedProfile, updatedLogs] = await Promise.all([
+        getAssetProfile(id),
+        getAssetAuditLogs(id),
+      ]);
+      setProfile(updatedProfile);
+      setAuditLogs(updatedLogs);
+      setIsEditing(false);
+      setEditForm(null);
+      setEditErrors({});
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : "Failed to save changes.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -747,6 +1528,7 @@ export default function AssetProfilePage() {
     );
   }
 
+  const hasErrors = Object.keys(editErrors).length > 0;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
@@ -769,7 +1551,9 @@ export default function AssetProfilePage() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-mar-text">{profile.name}</h1>
+              <h1 className="text-2xl font-bold text-mar-text">
+                {isEditing && editForm ? (editForm.name || profile.name) : profile.name}
+              </h1>
               <StatusBadge status={profile.calibration_status} />
             </div>
             <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-sm text-gray-400">
@@ -779,62 +1563,93 @@ export default function AssetProfilePage() {
                   <MapPinIcon size={12} className="text-mar-accent" />
                   <span>
                     {profile.location_name}
-                    {profile.site_name && profile.site_name !== profile.location_name
-                      ? ` · ${profile.site_name}` : ""}
+                    {profile.site_name && profile.site_name !== profile.location_name ? ` · ${profile.site_name}` : ""}
                   </span>
                 </span>
               )}
               <span>{profile.manufacturer} · {profile.model}</span>
             </div>
+            {isEditing && (
+              <p className="text-xs text-amber-500 mt-2 font-medium">● Editing — unsaved changes</p>
+            )}
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button type="button"
-              className="p-2 rounded-lg border border-mar-border hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors"
-              title="QR code">
-              <QrCodeIcon size={16} />
-            </button>
-            <button type="button"
-              className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors">
-              <EditIcon size={14} />
-              Edit
-            </button>
+            {!isEditing ? (
+              <>
+                <button type="button"
+                  className="p-2 rounded-lg border border-mar-border hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors"
+                  title="QR code">
+                  <QrCodeIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartEdit}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <EditIcon size={14} />
+                  Edit
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-mar-border-md text-sm font-medium rounded-lg hover:bg-mar-surface-alt text-mar-text transition-colors disabled:opacity-50"
+                >
+                  <XIcon size={14} />
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving || hasErrors}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <CheckIcon size={14} />
+                  )}
+                  {isSaving ? "Saving…" : "Save changes"}
+                </button>
+              </>
+            )}
           </div>
         </div>
+
+        {saveError && (
+          <div className="mt-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 px-4 py-2.5 text-sm text-red-600 dark:text-red-400">
+            {saveError}
+          </div>
+        )}
+        {hasErrors && isEditing && (
+          <div className="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 px-4 py-2.5 text-sm text-amber-600 dark:text-amber-400">
+            Please fix the validation errors before saving.
+          </div>
+        )}
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Health score */}
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <p className="text-xs text-gray-400 mb-1">Health score</p>
           <p className="text-2xl font-bold text-mar-text">{profile.health_score}%</p>
           <div className="mt-2 h-1.5 rounded-full bg-mar-border overflow-hidden">
-            <div
-              className="h-full rounded-full bg-mar-accent transition-all"
-              style={{ width: `${profile.health_score}%` }}
-            />
+            <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.health_score}%` }} />
           </div>
         </div>
-
-        {/* Last calibration */}
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <p className="text-xs text-gray-400 mb-1">Last calibration</p>
-          <p className="text-xl font-semibold font-mono text-mar-text tabular-nums">
-            {fmtDate(profile.last_calibration_date)}
-          </p>
+          <p className="text-xl font-semibold font-mono text-mar-text tabular-nums">{fmtDate(profile.last_calibration_date)}</p>
         </div>
-
-        {/* Next due */}
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <p className="text-xs text-gray-400 mb-1">Next due</p>
-          <p className="text-xl font-semibold font-mono text-mar-text tabular-nums">
-            {fmtDate(profile.next_due_at)}
-          </p>
+          <p className="text-xl font-semibold font-mono text-mar-text tabular-nums">{fmtDate(profile.next_due_at)}</p>
         </div>
-
-        {/* Calibrations count */}
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <p className="text-xs text-gray-400 mb-1">Calibrations</p>
           <p className="text-2xl font-bold text-mar-text">{profile.calibration_count}</p>
@@ -854,21 +1669,25 @@ export default function AssetProfilePage() {
                 activeTab === tab.key
                   ? "border-mar-accent text-mar-accent"
                   : "border-transparent text-gray-400 hover:text-mar-text"
-              }`}>
+              }`}
+            >
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Tab content */}
         <div className="p-5">
-          {activeTab === "overview" && <OverviewTab profile={profile} />}
-          {activeTab === "calibration" && (
-            <CalibrationTab
-              calibrations={calibrations}
-              coeffsByCalId={coeffsByCalId}
-              certs={certs}
+          {activeTab === "overview" && (
+            <OverviewTab
+              profile={profile}
+              isEditing={isEditing}
+              form={editForm}
+              onChange={handleFormChange}
+              errors={editErrors}
             />
+          )}
+          {activeTab === "calibration" && (
+            <CalibrationTab calibrations={calibrations} coeffsByCalId={coeffsByCalId} certs={certs} />
           )}
           {activeTab === "files" && <FilesTab files={files} />}
           {activeTab === "activity" && <ActivityTab logs={auditLogs} />}

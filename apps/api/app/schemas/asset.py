@@ -63,6 +63,7 @@ class AssetUpdate(BaseModel):
     model: str | None = None
     serial_number: str | None = None
     manufacturer_part_number: str | None = None
+    location_id: uuid.UUID | None = None
     firmware_version: str | None = None
     power_supply: str | None = None
     power_consumption_w: int | None = None
@@ -82,6 +83,8 @@ class AssetUpdate(BaseModel):
     purchase_date: date | None = None
     warranty_expiry_date: date | None = None
     notes: str | None = None
+    pinout_table: list[dict[str, Any]] | None = None
+    sensor_channels: list[SensorChannelCreate] | None = None
 
 
 class AssetResponse(BaseModel):

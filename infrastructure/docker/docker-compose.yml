@@ -31,6 +31,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
 
   web:
@@ -44,7 +50,8 @@ services:
     environment:
       API_INTERNAL_URL: http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
   adminer:

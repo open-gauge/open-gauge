@@ -189,7 +189,8 @@ def create(db: Session, created_by: uuid.UUID, **kwargs) -> Asset:
 
     if sensor_channels:
         for ch in sensor_channels:
-            db.add(Sensor(asset_id=asset.id, **ch.model_dump()))
+            ch_dict = ch.model_dump() if hasattr(ch, "model_dump") else ch
+            db.add(Sensor(asset_id=asset.id, **ch_dict))
 
     if daq_data:
         db.add(DAQ(asset_id=asset.id, **daq_data.model_dump()))
@@ -223,9 +224,20 @@ def move(db: Session, asset: Asset, location_id: uuid.UUID, moved_by: uuid.UUID,
 
 def update(db: Session, asset: Asset, **kwargs) -> Asset:
     asset.version += 1
+
+    # Handle sensor channel replacement separately
+    sensor_channels_data = kwargs.pop("sensor_channels", None)
+
     for key, value in kwargs.items():
-        if value is not None:
-            setattr(asset, key, value)
+        setattr(asset, key, value)  # Allow None to clear optional fields
+
+    if sensor_channels_data is not None:
+        # Delete all existing channels and recreate from new list
+        db.query(Sensor).filter(Sensor.asset_id == asset.id).delete(synchronize_session=False)
+        for ch in sensor_channels_data:
+            ch_dict = ch.model_dump() if hasattr(ch, "model_dump") else ch
+            db.add(Sensor(asset_id=asset.id, **ch_dict))
+
     db.commit()
     db.refresh(asset)
     return asset

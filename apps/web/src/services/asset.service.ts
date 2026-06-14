@@ -1,6 +1,6 @@
 import { apiFetch, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
-import type { AssetListItem, AssetProfile } from "@/types/asset";
+import type { AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
 import type { CalibrationRecord, CalibrationCoefficient } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
@@ -57,4 +57,29 @@ export async function getAssetFiles(id: string): Promise<StoredFile[]> {
   return apiFetch<StoredFile[]>(`/api/v1/assets/${id}/files`, {
     headers: tokenHeader(),
   });
+}
+
+export async function updateAsset(id: string, body: AssetUpdateRequest): Promise<AssetProfile> {
+  return apiFetch<AssetProfile>(`/api/v1/assets/${id}`, {
+    method: "PUT",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listLocations(): Promise<LocationOption[]> {
+  const raw = await apiFetch<{ id: string; name: string; parent_location_id: string | null }[]>(
+    `/api/v1/locations?limit=500`,
+    { headers: tokenHeader() },
+  );
+  // Build path labels
+  const byId = new Map(raw.map(l => [l.id, l]));
+  function getPath(id: string): string {
+    const loc = byId.get(id);
+    if (!loc) return "";
+    if (!loc.parent_location_id) return loc.name;
+    const parent = getPath(loc.parent_location_id);
+    return parent ? `${parent} › ${loc.name}` : loc.name;
+  }
+  return raw.map(l => ({ id: l.id, path: getPath(l.id) })).sort((a, b) => a.path.localeCompare(b.path));
 }
