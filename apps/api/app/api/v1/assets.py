@@ -33,7 +33,7 @@ def _enrich(asset, db: Session) -> AssetResponse:
 def list_assets(
     skip: int = 0,
     limit: int = Query(50, le=200),
-    is_active: bool | None = True,
+    is_active: bool | None = None,
     asset_type: AssetType | None = None,
     location_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),

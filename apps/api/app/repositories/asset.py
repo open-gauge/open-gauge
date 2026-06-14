@@ -1,9 +1,11 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models.asset import Asset, AssetType
+from ..models.calibration import Calibration
 from ..models.sensor import Sensor
 from ..models.daq import DAQ
 from ..models.location import Location
@@ -20,18 +22,41 @@ def get_by_asset_id(db: Session, asset_id: str) -> Asset | None:
     return db.query(Asset).filter(Asset.asset_id == asset_id).first()
 
 
+def _resolve_location_path(loc_id: uuid.UUID | None, all_locs: dict) -> tuple[str | None, str | None]:
+    """Walk the location ancestor chain and return (root_name, leaf_name)."""
+    if not loc_id:
+        return None, None
+    path: list[str] = []
+    current = str(loc_id)
+    while current and current in all_locs:
+        loc = all_locs[current]
+        path.append(loc.name)
+        current = str(loc.parent_location_id) if loc.parent_location_id else ""
+    path.reverse()  # [root, …, leaf]
+    return path[0] if path else None, path[-1] if path else None
+
+
 def list_assets(
     db: Session,
     skip: int = 0,
     limit: int = 50,
-    is_active: bool | None = True,
+    is_active: bool | None = None,
     asset_type: AssetType | None = None,
     location_id: uuid.UUID | None = None,
 ) -> list[dict]:
-    q = (
-        db.query(Asset, Location.name)
-        .outerjoin(Location, Location.id == Asset.location_id)
-    )
+    today = date.today()
+
+    # ------------------------------------------------------------------
+    # 1. Load all locations once for path resolution (avoids N+1)
+    # ------------------------------------------------------------------
+    all_locs: dict[str, Location] = {
+        str(loc.id): loc for loc in db.query(Location).all()
+    }
+
+    # ------------------------------------------------------------------
+    # 2. Load assets
+    # ------------------------------------------------------------------
+    q = db.query(Asset)
     if is_active is not None:
         q = q.filter(Asset.is_active == is_active)
     if asset_type:
@@ -39,10 +64,94 @@ def list_assets(
     if location_id:
         q = q.filter(Asset.location_id == location_id)
 
-    rows = q.order_by(Asset.updated_at.desc()).offset(skip).limit(limit).all()
+    assets = q.order_by(Asset.updated_at.desc()).offset(skip).limit(limit).all()
+    if not assets:
+        return []
 
-    result = []
-    for asset, location_name in rows:
+    asset_uuids = [a.id for a in assets]
+
+    # ------------------------------------------------------------------
+    # 3. Latest calibration due_date per asset (single aggregate query)
+    # ------------------------------------------------------------------
+    cal_rows = (
+        db.query(Calibration.asset_id, func.max(Calibration.due_date))
+        .filter(Calibration.asset_id.in_(asset_uuids))
+        .group_by(Calibration.asset_id)
+        .all()
+    )
+    cal_map: dict[str, date] = {str(row[0]): row[1] for row in cal_rows}
+
+    # ------------------------------------------------------------------
+    # 4. Sensor channels per asset
+    # ------------------------------------------------------------------
+    sensor_rows = (
+        db.query(Sensor)
+        .filter(Sensor.asset_id.in_(asset_uuids))
+        .order_by(Sensor.created_at)
+        .all()
+    )
+    sensor_map: dict[str, list[Sensor]] = {}
+    for s in sensor_rows:
+        sensor_map.setdefault(str(s.asset_id), []).append(s)
+
+    # ------------------------------------------------------------------
+    # 5. DAQ details per asset
+    # ------------------------------------------------------------------
+    daq_rows = db.query(DAQ).filter(DAQ.asset_id.in_(asset_uuids)).all()
+    daq_map: dict[str, DAQ] = {str(d.asset_id): d for d in daq_rows}
+
+    # ------------------------------------------------------------------
+    # 6. Build result list
+    # ------------------------------------------------------------------
+    result: list[dict] = []
+    for asset in assets:
+        aid = str(asset.id)
+
+        site_name, location_name = _resolve_location_path(asset.location_id, all_locs)
+
+        # Calibration status
+        due_date = cal_map.get(aid)
+        if not asset.is_active:
+            cal_status = "retired"
+        elif due_date is None:
+            cal_status = "not_calibrated"
+        elif due_date < today:
+            cal_status = "expired"
+        elif due_date <= today + timedelta(days=30):
+            cal_status = "due_soon"
+        else:
+            cal_status = "valid"
+
+        # Sensor / DAQ specific fields
+        channels: list[dict] = []
+        subtype: str | None = None
+        technology: str | None = None
+        range_min: float | None = None
+        range_max: float | None = None
+        range_unit: str | None = None
+
+        if asset.asset_type == AssetType.sensor:
+            for ch in sensor_map.get(aid, []):
+                channels.append({
+                    "channel_id": ch.channel_id,
+                    "physical_quantity": ch.physical_quantity,
+                    "technology": ch.technology,
+                    "measurement_min": float(ch.measurement_min) if ch.measurement_min is not None else None,
+                    "measurement_max": float(ch.measurement_max) if ch.measurement_max is not None else None,
+                    "unit": ch.unit,
+                })
+            if channels:
+                first = channels[0]
+                subtype = first["physical_quantity"]
+                technology = first["technology"]
+                range_min = first["measurement_min"]
+                range_max = first["measurement_max"]
+                range_unit = first["unit"]
+        elif asset.asset_type == AssetType.daq:
+            daq = daq_map.get(aid)
+            if daq:
+                subtype = daq.daq_type
+
         result.append({
             "id": asset.id,
             "asset_id": asset.asset_id,
@@ -54,7 +163,16 @@ def list_assets(
             "health_score": asset.health_score,
             "is_active": asset.is_active,
             "updated_at": asset.updated_at,
+            "site_name": site_name,
             "location_name": location_name,
+            "calibration_status": cal_status,
+            "next_due_at": due_date,
+            "subtype": subtype,
+            "technology": technology,
+            "range_min": range_min,
+            "range_max": range_max,
+            "range_unit": range_unit,
+            "channels": channels,
         })
     return result
 

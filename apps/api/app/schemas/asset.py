@@ -8,6 +8,15 @@ from .sensor import SensorChannelCreate, SensorChannelResponse
 from .daq import DaqCreate, DaqResponse
 
 
+class ChannelListItem(BaseModel):
+    channel_id: str
+    physical_quantity: str
+    technology: str | None
+    measurement_min: float | None
+    measurement_max: float | None
+    unit: str
+
+
 class AssetCreate(BaseModel):
     asset_id: str = Field(min_length=1, max_length=20, pattern=r"^MAR-\d{5}$")
     asset_type: AssetType
@@ -126,6 +135,18 @@ class AssetListItem(BaseModel):
     health_score: int
     is_active: bool
     updated_at: datetime
-    location_name: str | None = None
-
-    model_config = {"from_attributes": True}
+    # location path
+    site_name: str | None = None       # highest-level ancestor
+    location_name: str | None = None   # direct location (may equal site_name)
+    # calibration
+    calibration_status: str = "not_calibrated"
+    next_due_at: date | None = None
+    # type info
+    subtype: str | None = None         # physical_quantity (sensor) or daq_type (DAQ)
+    technology: str | None = None      # sensor technology (first channel)
+    # measurement range (first / primary channel)
+    range_min: float | None = None
+    range_max: float | None = None
+    range_unit: str | None = None
+    # all sensor channels
+    channels: list[ChannelListItem] = []

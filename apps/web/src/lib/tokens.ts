@@ -29,13 +29,15 @@ export const CALIBRATION_STATUS_STYLE: Record<string, string> = {
   due_soon:       "bg-amber-50 text-amber-600 border-amber-100",
   expired:        "bg-red-50 text-red-600 border-red-100",
   not_calibrated: "bg-gray-50 text-gray-500 border-gray-100",
+  retired:        "bg-gray-100 text-gray-400 border-gray-200",
 };
 
 export const CALIBRATION_STATUS_LABEL: Record<string, string> = {
-  valid:          "Valid",
+  valid:          "Active",
   due_soon:       "Due soon",
   expired:        "Expired",
   not_calibrated: "Uncalibrated",
+  retired:        "Retired",
 };
 
 // ---------------------------------------------------------------------------
