@@ -3,29 +3,24 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class SubtypeItem(BaseModel):
-    type: str
-    count: int
-
-
-class CategoryDistribution(BaseModel):
-    category: str
-    total: int
-    items: list[SubtypeItem]
-
-
 class DashboardSummary(BaseModel):
     registered_assets: int
-    valid_calibrations: int
-    valid_coverage_pct: int
-    due_within_30_days: int
-    expired: int
+    sensors: int
+    daqs: int
+    low_health_assets: int
 
 
-class ThroughputPoint(BaseModel):
-    month: str
-    completed: int
-    expired: int
+class CalibrationEvent(BaseModel):
+    asset_id: str
+    name: str
+    due_date: str  # YYYY-MM-DD
+
+
+class CalendarEvent(BaseModel):
+    asset_id: str
+    name: str
+    date: str        # YYYY-MM-DD
+    event_type: str  # "performed" | "due"
 
 
 class DistributionItem(BaseModel):
@@ -33,13 +28,9 @@ class DistributionItem(BaseModel):
     count: int
 
 
-class UpcomingAsset(BaseModel):
-    asset_id: str
-    name: str
-    category: str
-    next_due_at: datetime | None
-    health_score: int
-    calibration_status: str
+class AssetTypeDistribution(BaseModel):
+    sensors: list[DistributionItem]
+    daqs: list[DistributionItem]
 
 
 class ActivityItem(BaseModel):
@@ -54,5 +45,5 @@ class RecentAsset(BaseModel):
     name: str
     manufacturer: str
     model: str
-    calibration_status: str
+    asset_type: str
     updated_at: datetime

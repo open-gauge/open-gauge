@@ -16,9 +16,8 @@ config.set_main_option("sqlalchemy.url", database_url)
 # Import all models so their metadata is registered
 from app.core.database import Base  # noqa: E402
 from app.models import (  # noqa: E402, F401
-    asset, audit_log, calibration, calibration_coefficient,
-    calibration_throughput, certificate, data_acquisition,
-    instrument, laboratory, organization, sensor, site, stored_file, user,
+    asset, asset_location, audit_log, calibration, calibration_coefficient,
+    certificate, daq, location, organization, sensor, stored_file, team, user,
 )
 
 target_metadata = Base.metadata

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 import ActivityFeed from "@/components/dashboard/activity-feed";
-import CalibrationChart from "@/components/dashboard/calibration-chart";
+import CalibrationCalendar from "@/components/dashboard/calibration-calendar";
 import CategoryDistributionChart from "@/components/dashboard/category-distribution-chart";
 import RecentAssets from "@/components/dashboard/recent-assets";
 import StatsCards from "@/components/dashboard/stats-cards";
@@ -10,25 +10,26 @@ import UpcomingTable from "@/components/dashboard/upcoming-table";
 import { DocumentIcon } from "@/components/icons";
 import {
   getActivity,
-  getCalibrationThroughput,
-  getCategoryDistribution,
+  getAssetTypeDistribution,
+  getCalendarEvents,
+  getCalibrationEvents,
   getDashboardSummary,
   getRecentAssets,
-  getUpcomingAssets,
 } from "@/services/dashboard.service";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const [summary, throughput, categoryDistribution, upcoming, activity, recentAssets] =
-    await Promise.all([
-      getDashboardSummary(),
-      getCalibrationThroughput(),
-      getCategoryDistribution(),
-      getUpcomingAssets(),
-      getActivity(),
-      getRecentAssets(),
-    ]);
+  const currentYear = new Date().getFullYear();
+
+  const [summary, calEvents, calendarEvents, assetTypeDistribution, activity, recentAssets] = await Promise.all([
+    getDashboardSummary(),
+    getCalibrationEvents(),
+    getCalendarEvents(currentYear),
+    getAssetTypeDistribution(),
+    getActivity(),
+    getRecentAssets(),
+  ]);
 
   return (
     <div className="p-6 space-y-6">
@@ -52,18 +53,18 @@ export default async function DashboardPage() {
       {/* Stats */}
       <StatsCards data={summary} />
 
-      {/* Charts */}
+      {/* Calendar + Distribution */}
       <div className="grid grid-cols-3 gap-5">
         <div className="col-span-2">
-          <CalibrationChart data={throughput} />
+          <CalibrationCalendar initialEvents={calendarEvents} initialYear={currentYear} />
         </div>
-        <CategoryDistributionChart data={categoryDistribution} />
+        <CategoryDistributionChart data={assetTypeDistribution} />
       </div>
 
       {/* Upcoming + Activity */}
       <div className="grid grid-cols-3 gap-5">
         <div className="col-span-2">
-          <UpcomingTable data={upcoming} />
+          <UpcomingTable data={calEvents} />
         </div>
         <ActivityFeed data={activity} />
       </div>

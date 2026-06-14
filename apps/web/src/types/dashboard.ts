@@ -1,15 +1,21 @@
 export interface DashboardSummary {
   registered_assets: number;
-  valid_calibrations: number;
-  valid_coverage_pct: number;
-  due_within_30_days: number;
-  expired: number;
+  sensors: number;
+  daqs: number;
+  low_health_assets: number;
 }
 
-export interface ThroughputPoint {
-  month: string;
-  completed: number;
-  expired: number;
+export interface CalibrationEvent {
+  asset_id: string;
+  name: string;
+  due_date: string; // YYYY-MM-DD
+}
+
+export interface CalendarEvent {
+  asset_id: string;
+  name: string;
+  date: string;        // YYYY-MM-DD
+  event_type: "performed" | "due";
 }
 
 export interface DistributionItem {
@@ -17,24 +23,9 @@ export interface DistributionItem {
   count: number;
 }
 
-export interface SubtypeItem {
-  type: string;
-  count: number;
-}
-
-export interface CategoryDistribution {
-  category: string;
-  total: number;
-  items: SubtypeItem[];
-}
-
-export interface UpcomingAsset {
-  asset_id: string;
-  name: string;
-  category: string;
-  next_due_at: string | null;
-  health_score: number;
-  calibration_status: string;
+export interface AssetTypeDistribution {
+  sensors: DistributionItem[];
+  daqs: DistributionItem[];
 }
 
 export interface ActivityItem {
@@ -49,6 +40,6 @@ export interface RecentAsset {
   name: string;
   manufacturer: string;
   model: string;
-  calibration_status: string;
+  asset_type: string;
   updated_at: string;
 }

@@ -3,66 +3,104 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
-from ..models.asset import AssetCategory, CalibrationStatus
-from .sensor import SensorDetails
-from .instrument import InstrumentDetails
-from .data_acquisition import DaqDetails
+from ..models.asset import AssetType
+from .sensor import SensorChannelCreate, SensorChannelResponse
+from .daq import DaqCreate, DaqResponse
 
 
 class AssetCreate(BaseModel):
     asset_id: str = Field(min_length=1, max_length=20, pattern=r"^MAR-\d{5}$")
-    laboratory_id: uuid.UUID | None = None
+    asset_type: AssetType
     name: str = Field(min_length=1, max_length=255)
     description: str | None = None
-    category: AssetCategory
     manufacturer: str = Field(min_length=1, max_length=255)
     model: str = Field(min_length=1, max_length=255)
     serial_number: str | None = None
+    manufacturer_part_number: str | None = None
+    location_id: uuid.UUID | None = None
+    owner: uuid.UUID | None = None
+    datasheet_url: str | None = None
     firmware_version: str | None = None
+    power_supply: str | None = None
+    power_consumption_w: int | None = None
+    dimensions: str | None = None
+    weight_kg: float | None = None
+    mounting_type: str | None = None
+    connection_type: str | None = None
+    displays_readings: bool = False
+    ip_rating: str | None = None
+    hazardous_area_rating: str | None = None
+    operating_temperature_min: float | None = None
+    operating_temperature_max: float | None = None
+    operating_humidity_min: float | None = None
+    operating_humidity_max: float | None = None
+    price_eur: float | None = None
     purchase_date: date | None = None
     warranty_expiry_date: date | None = None
-    calibration_interval_days: int | None = None
     notes: str | None = None
-    sensor_details: SensorDetails | None = None
-    instrument_details: InstrumentDetails | None = None
-    daq_details: DaqDetails | None = None
+    sensor_channels: list[SensorChannelCreate] | None = None
+    daq_details: DaqCreate | None = None
 
 
 class AssetUpdate(BaseModel):
-    laboratory_id: uuid.UUID | None = None
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     manufacturer: str | None = None
     model: str | None = None
     serial_number: str | None = None
+    manufacturer_part_number: str | None = None
     firmware_version: str | None = None
+    power_supply: str | None = None
+    power_consumption_w: int | None = None
+    dimensions: str | None = None
+    weight_kg: float | None = None
+    mounting_type: str | None = None
+    connection_type: str | None = None
+    displays_readings: bool | None = None
+    ip_rating: str | None = None
+    hazardous_area_rating: str | None = None
+    operating_temperature_min: float | None = None
+    operating_temperature_max: float | None = None
+    operating_humidity_min: float | None = None
+    operating_humidity_max: float | None = None
+    health_score: int | None = Field(None, ge=0, le=100)
+    price_eur: float | None = None
     purchase_date: date | None = None
     warranty_expiry_date: date | None = None
-    calibration_interval_days: int | None = None
-    calibration_status: CalibrationStatus | None = None
-    next_due_at: datetime | None = None
-    health_score: int | None = Field(None, ge=0, le=100)
     notes: str | None = None
 
 
 class AssetResponse(BaseModel):
     id: uuid.UUID
     asset_id: str
-    laboratory_id: uuid.UUID | None
+    asset_type: AssetType
     name: str
     description: str | None
-    category: AssetCategory
     manufacturer: str
     model: str
     serial_number: str | None
+    manufacturer_part_number: str | None
+    location_id: uuid.UUID | None
+    owner: uuid.UUID | None
+    datasheet_url: str | None
     firmware_version: str | None
+    power_supply: str | None
+    power_consumption_w: int | None
+    dimensions: str | None
+    weight_kg: float | None
+    mounting_type: str | None
+    connection_type: str | None
+    displays_readings: bool
+    ip_rating: str | None
+    hazardous_area_rating: str | None
+    operating_temperature_min: float | None
+    operating_temperature_max: float | None
+    operating_humidity_min: float | None
+    operating_humidity_max: float | None
+    health_score: int
+    price_eur: float | None
     purchase_date: date | None
     warranty_expiry_date: date | None
-    calibration_status: CalibrationStatus
-    calibration_interval_days: int | None
-    next_due_at: datetime | None
-    health_score: int
-    notes: str | None
     is_active: bool
     retired_at: datetime | None
     retired_reason: str | None
@@ -70,9 +108,9 @@ class AssetResponse(BaseModel):
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
-    sensor_details: SensorDetails | None = None
-    instrument_details: InstrumentDetails | None = None
-    daq_details: DaqDetails | None = None
+    notes: str | None
+    sensor_channels: list[SensorChannelResponse] = []
+    daq_details: DaqResponse | None = None
 
     model_config = {"from_attributes": True}
 
@@ -80,14 +118,14 @@ class AssetResponse(BaseModel):
 class AssetListItem(BaseModel):
     id: uuid.UUID
     asset_id: str
+    asset_type: AssetType
     name: str
-    category: AssetCategory
     manufacturer: str
     model: str
-    calibration_status: CalibrationStatus
-    next_due_at: datetime | None
+    serial_number: str | None = None
     health_score: int
     is_active: bool
     updated_at: datetime
+    location_name: str | None = None
 
     model_config = {"from_attributes": True}

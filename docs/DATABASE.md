@@ -24,14 +24,17 @@ MAR uses PostgreSQL as its authoritative source of truth. The schema is designed
 
 ```
 Organization
-└── Site
-    └── Laboratory
-        └── Asset
-            ├── Calibration (append-only)
-            │   ├── CalibrationCoefficients
-            │   └── Certificate
-            │       └── File
-            └── File (datasheets, images)
+└── Location (self-referencing hierarchy: site → building → lab → bench…)
+    └── Asset
+        ├── Sensor (subtype, multi-channel via sensor_channels)
+        ├── DAQ (subtype)
+        ├── Calibration (append-only)
+        │   ├── CalibrationCoefficients
+        │   └── Certificate
+        │       └── File
+        └── File (datasheets, images)
+
+asset_locations  →  movement history (asset × location × timestamp)
 ```
 
 ---
@@ -55,40 +58,45 @@ The root grouping. Represents a company, customer, or enterprise running MAR.
 
 ---
 
-### `sites`
+### `locations`
 
-Physical or logical locations belonging to an organization.
+Unified hierarchical location table. Replaces the former `sites` + `laboratories` split. Any node in the tree can be a site, building, floor, lab, bench, etc.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `organization_id` | UUID | FK → organizations, NOT NULL | |
-| `name` | VARCHAR(255) | NOT NULL | e.g. "Plant A", "Madrid Lab" |
+| `parent_location_id` | UUID | FK → locations, nullable, indexed | Parent node — null for top-level |
+| `name` | VARCHAR(255) | NOT NULL | e.g. "Vienna Plant", "Pressure Lab", "Bench 3" |
 | `description` | TEXT | nullable | |
-| `location` | TEXT | nullable | Address or coordinates |
+| `location_type` | VARCHAR(255) | NOT NULL | `site`, `building`, `floor`, `laboratory`, `room`, `test_bench`, `production_line`, `warehouse`, `office`, `field`, `vehicle`, `other` |
+| `code` | VARCHAR(50) | nullable | Short identifier, e.g. `LAB-PRES-01` — unique per organization |
+| `address` | TEXT | nullable | Physical address |
+| `latitude` | DECIMAL(10,8) | nullable | |
+| `longitude` | DECIMAL(11,8) | nullable | |
 | `is_active` | BOOLEAN | NOT NULL, default true | |
 | `archived_at` | TIMESTAMPTZ | nullable | |
 | `created_by` | UUID | FK → users, NOT NULL | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 
+> **Unique constraint on `code`:** must be enforced as `UNIQUE(organization_id, code)` — a simple column-level UNIQUE would incorrectly block the same code across different organizations.
+
 ---
 
-### `laboratories`
+### `asset_locations`
 
-Functional groups or rooms within a site.
+Movement history for assets. Every time an asset changes location a new row is inserted; the current location is the row with the latest `moved_at`.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `site_id` | UUID | FK → sites, NOT NULL | |
-| `name` | VARCHAR(255) | NOT NULL | e.g. "Pressure Lab", "Clean Room 1" |
-| `description` | TEXT | nullable | |
-| `is_active` | BOOLEAN | NOT NULL, default true | |
-| `archived_at` | TIMESTAMPTZ | nullable | |
-| `created_by` | UUID | FK → users, NOT NULL | |
-| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
-| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `asset_id` | UUID | FK → assets, NOT NULL, indexed | |
+| `location_id` | UUID | FK → locations, NOT NULL, indexed | |
+| `moved_at` | TIMESTAMPTZ | NOT NULL, default now() | When the asset arrived at this location |
+| `moved_by` | UUID | FK → users, nullable | |
+| `reason` | TEXT | nullable | Relocation reason |
+| `notes` | TEXT | nullable | |
 
 ---
 
@@ -119,105 +127,139 @@ Platform users. Supports local credentials and future OAuth/SSO.
 
 ---
 
+### `teams`
+
+Organizational teams or groups. Assets can be assigned to a team as the responsible owner.
+
+> **Note:** Schema not yet fully defined. Required because `assets.owner` references this table.
+
+---
+
 ### `assets`
 
-Sensors, instruments, reference standards, and data acquisition systems.
+Top-level table for all physical assets (sensors and DAQ systems). Subtype-specific fields live in `sensors` or `daq`.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `asset_id` | VARCHAR(20) | NOT NULL, UNIQUE, indexed | e.g. `MAR-00421` |
-| `laboratory_id` | UUID | FK → laboratories, nullable | Where the asset lives |
-| `name` | VARCHAR(255) | NOT NULL | e.g. "Reactor Inlet PT-01" |
+| `asset_id` | VARCHAR(20) | NOT NULL, UNIQUE, indexed | Human-readable ID, e.g. `MAR-00421` |
+| `asset_type` | ENUM | NOT NULL | `sensor`, `daq` |
+| `name` | VARCHAR(255) | NOT NULL | |
 | `description` | TEXT | nullable | |
-| `category` | ENUM | NOT NULL | `sensor`, `instrument`, `reference_standard`, `data_acquisition` |
 | `manufacturer` | VARCHAR(255) | NOT NULL | |
 | `model` | VARCHAR(255) | NOT NULL | |
 | `serial_number` | VARCHAR(255) | nullable | |
-| `firmware_version` | VARCHAR(100) | nullable | For smart/IoT instruments |
+| `manufacturer_part_number` | VARCHAR(255) | nullable | |
+| `location_id` | UUID | FK → locations, nullable | Current location (denormalized for fast lookup — keep in sync with `asset_locations`) |
+| `owner` | UUID | FK → teams, nullable | Responsible team |
+| `datasheet_file_id` | UUID | FK → files, nullable | |
+| `datasheet_url` | TEXT | nullable | |
+| `firmware_version` | VARCHAR(100) | nullable | |
+| `power_supply` | VARCHAR(100) | nullable | e.g. `24 VDC` |
+| `power_consumption_w` | INTEGER | nullable | |
+| `dimensions` | VARCHAR(100) | nullable | |
+| `weight_kg` | DECIMAL(10,3) | nullable | |
+| `mounting_type` | VARCHAR(100) | nullable | |
+| `connection_type` | VARCHAR(100) | nullable | |
+| `displays_readings` | BOOLEAN | NOT NULL, default false | Whether the device has a local display |
+| `ip_rating` | VARCHAR(20) | nullable | e.g. `IP67` |
+| `hazardous_area_rating` | VARCHAR(100) | nullable | e.g. `ATEX Zone 1` |
+| `operating_temperature_min` | DECIMAL(18,8) | nullable | °C |
+| `operating_temperature_max` | DECIMAL(18,8) | nullable | °C |
+| `operating_humidity_min` | DECIMAL(5,2) | nullable | %RH |
+| `operating_humidity_max` | DECIMAL(5,2) | nullable | %RH |
+| `health_score` | INTEGER | NOT NULL, default 100 | 0–100 composite score |
+| `price_eur` | DECIMAL(12,2) | nullable | |
 | `purchase_date` | DATE | nullable | |
 | `warranty_expiry_date` | DATE | nullable | |
-| `calibration_status` | ENUM | NOT NULL, default `not_calibrated` | `valid`, `due_soon`, `expired`, `not_calibrated` |
-| `calibration_interval_days` | INTEGER | nullable | How often calibration is required |
-| `next_due_at` | TIMESTAMPTZ | nullable | Computed from last calibration + interval |
-| `power_supply` | VARCHAR(100) | nullable | Power supply requirements, e.g. `24 VDC` |
-| `power_consumption_w` | INTEGER | nullable | Power consumption in watts |
-| `dimensions` | VARCHAR(100) | nullable | Physical dimensions, e.g. `100×50×30 mm` |
-| `weight_kg` | DECIMAL(10,3) | nullable | Weight in kilograms |
-| `datasheet_file_id` | UUID | FK → files, nullable | PDF datasheet |
-| `notes` | TEXT | nullable | Free-form technician notes |
 | `is_active` | BOOLEAN | NOT NULL, default true | |
 | `retired_at` | TIMESTAMPTZ | nullable | |
 | `retired_by` | UUID | FK → users, nullable | |
 | `retired_reason` | TEXT | nullable | |
-| `version` | INTEGER | NOT NULL, default 1 | Incremented on each update |
+| `version` | INTEGER | NOT NULL, default 1 | Incremented on each update (optimistic concurrency) |
 | `created_by` | UUID | FK → users, NOT NULL | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `notes` | TEXT | nullable | |
 
-**Category descriptions:**
-- `sensor` — physical transducer measuring a quantity
-- `instrument` — device that measures, processes, or indicates a physical quantity (e.g. force gauge, multimeter)
-- `reference_standard` — high-accuracy device used for calibration
-- `data_acquisition` — DAQ systems, loggers, or IoT gateways
+---
 
 ### `sensors`
 
-Sensors and reference standards. It's a subtype of `assets` with additional physical and electrical properties.
+Sensor subtype. One row per measurement channel. An asset with `asset_type = sensor` may have multiple rows in this table (one per channel, e.g. Temperature + Humidity for a combo sensor).
+
+> **Constraint note:** `asset_id` is **NOT** UNIQUE here — a single sensor asset can expose multiple channels.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `asset_id` | UUID | FK → assets, NOT NULL, UNIQUE | |
-| `sensor_type` | ENUM | NOT NULL | See sensor types below |
-| `measurement_range` | VARCHAR(100) | nullable | The measurement range of the asset, e.g. `0–100` |
-| `measurement_unit` | VARCHAR(50) | nullable | The unit of measurement, e.g. `°C`, `bar` |
-| `operating_range` | VARCHAR(100) | nullable | The operating range of the asset without damage, e.g. `0–100` |
-| `operating_temperature_range` | VARCHAR(100) | nullable | Operating temperature range in degrees Celsius, e.g. `-20–80 °C` |
-| `output_signal` | VARCHAR(100) | nullable | e.g. `4–20` |
-| `output_signal_unit` | VARCHAR(50) | nullable | The unit of the output signal, e.g. `mA`, `V` |
-| `health_score` | INTEGER | NOT NULL, default 100 | 0–100 composite score |
+| `asset_id` | UUID | FK → assets, NOT NULL, indexed | |
+| `channel_id` | VARCHAR(255) | NOT NULL | Channel identifier, e.g. `Temperature`, `Humidity`, `X Axis` |
+| `physical_quantity` | VARCHAR(255) | NOT NULL | e.g. `temperature`, `pressure`, `acceleration` |
+| `unit` | VARCHAR(50) | NOT NULL | e.g. `°C`, `bar`, `m/s²` |
+| `technology` | VARCHAR(255) | nullable | e.g. `RTD`, `strain gauge`, `piezoelectric`, `capacitive` |
+| `measurement_min` | DECIMAL(18,8) | nullable | Lower measurement limit |
+| `measurement_max` | DECIMAL(18,8) | nullable | Upper measurement limit |
+| `accuracy_value` | DECIMAL(18,8) | nullable | |
+| `accuracy_type` | VARCHAR(255) | nullable | `absolute`, `percent_of_reading`, `percent_of_span`, `full_scale` |
+| `accuracy_unit` | VARCHAR(50) | nullable | |
+| `resolution` | DECIMAL(18,8) | nullable | |
+| `resolution_unit` | VARCHAR(50) | nullable | |
+| `measurement_uncertainty` | DECIMAL(18,8) | nullable | Expanded uncertainty |
+| `uncertainty_unit` | VARCHAR(50) | nullable | |
+| `confidence_level` | DECIMAL(5,2) | nullable | e.g. `95.00` |
+| `coverage_factor` | DECIMAL(5,2) | nullable | e.g. `2.00` (k=2) |
+| `drift_rate` | DECIMAL(18,8) | nullable | |
+| `drift_unit` | VARCHAR(50) | nullable | e.g. `°C/year`, `%RH/year` |
+| `sensitivity` | DECIMAL(18,8) | nullable | |
+| `sensitivity_unit` | VARCHAR(100) | nullable | e.g. `mV/V`, `pC/g` |
+| `response_time_ms` | DECIMAL(18,8) | nullable | |
+| `bandwidth_hz` | DECIMAL(18,8) | nullable | |
+| `output_signal_min` | DECIMAL(18,8) | nullable | |
+| `output_signal_max` | DECIMAL(18,8) | nullable | |
+| `output_signal_unit` | VARCHAR(50) | nullable | e.g. `mA`, `V` |
+| `output_type` | VARCHAR(255) | nullable | `analog`, `digital`, `pulse`, `frequency`, `resistance`, `capacitance` |
+| `calibration_role` | VARCHAR(255) | nullable | `working`, `reference`, `transfer`, `master` |
+| `criticality` | VARCHAR(255) | nullable | `critical`, `non-critical`, `safety-related` |
+| `is_active` | BOOLEAN | NOT NULL, default true | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 
-**Sensor types (`sensor_type`):**
-`temperature`, `pressure`, `flow`, `humidity`, `electrical`, `distance`, `angle`, `force`, `angular speed`, `acceleration`, `other`
+**Unique constraint:** `UNIQUE(asset_id, channel_id)` — prevents duplicate channel names on the same asset.
 
-### `instruments`
+---
 
-Instruments and transducers. It's a subtype of `assets` with additional physical and electrical properties.
+### `daq`
+
+Data acquisition system subtype. One row per asset with `asset_type = daq`.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `asset_id` | UUID | FK → assets, NOT NULL, UNIQUE | |
-| `instrument_type` | ENUM | NOT NULL | See instrument types below |
-| `measurement_range` | VARCHAR(100) | nullable | The measurement range of the asset, e.g. `0–100` |
-| `measurement_unit` | VARCHAR(50) | nullable | The unit of measurement, e.g. `°C`, `bar` |
-| `operating_range` | VARCHAR(100) | nullable | The operating range of the asset without damage, e.g. `0–100` |
-| `operating_temperature_range` | VARCHAR(100) | nullable | Operating temperature range in degrees Celsius, e.g. `-20–80 °C` |
-| `output_signal` | VARCHAR(100) | nullable | e.g. `4–20` |
-| `output_signal_unit` | VARCHAR(50) | nullable | The unit of the output signal, e.g. `mA`, `V` |
-| `health_score` | INTEGER | NOT NULL, default 100 | 0–100 composite score |
-
-**Instrument types (`instrument_type`):**
-`transmitter`, `controller`, `indicator`, `recorder`, `other`
-
-### `data_acquisition`
-Data acquisition systems, loggers, and IoT gateways. It's a subtype of `assets` with additional physical and electrical properties.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | UUID | PK | |
-| `asset_id` | UUID | FK → assets, NOT NULL, UNIQUE | |
-| `daq_type` | ENUM | NOT NULL | See DAQ types below |
-| `input_channels` | INTEGER | NOT NULL | Number of input channels |
-| `output_channels` | INTEGER | NOT NULL | Number of output channels |
-| `sampling_rate_hz` | DECIMAL(10,2) | nullable | Maximum sampling rate in Hz |
+| `asset_id` | UUID | FK → assets, NOT NULL, UNIQUE | One DAQ config per asset |
+| `daq_type` | VARCHAR(255) | NOT NULL | e.g. `USB`, `Ethernet`, `PCIe`, `WiFi` |
+| `input_channels` | INTEGER | NOT NULL | |
+| `output_channels` | INTEGER | NOT NULL | |
+| `input_signal_types` | VARCHAR(255) | nullable | |
+| `output_signal_types` | VARCHAR(255) | nullable | |
+| `sampling_rate_hz` | DECIMAL(12,4) | nullable | Aggregate sampling rate |
+| `per_channel_sampling_rate_hz` | DECIMAL(12,4) | nullable | |
+| `adc_resolution_bits` | INTEGER | nullable | |
+| `adc_type` | VARCHAR(255) | nullable | `successive_approximation`, `sigma_delta`, `pipeline` |
+| `input_voltage_range_min` | DECIMAL(18,8) | nullable | |
+| `input_voltage_range_max` | DECIMAL(18,8) | nullable | |
+| `input_impedance_ohm` | DECIMAL(18,2) | nullable | |
+| `noise_floor_uv_rms` | DECIMAL(18,8) | nullable | |
+| `dynamic_range_db` | DECIMAL(10,4) | nullable | |
+| `synchronization_supported` | BOOLEAN | NOT NULL, default false | |
+| `clock_source` | VARCHAR(255) | nullable | `internal`, `external`, `gps`, `ptp`, `ieee1588` |
+| `time_sync_precision_ns` | DECIMAL(18,4) | nullable | |
+| `jitter_ns` | DECIMAL(18,4) | nullable | |
 | `communication_protocol` | VARCHAR(100) | nullable | e.g. `Modbus`, `OPC UA`, `MQTT` |
-| `ADC_resolution` | DECIMAL(10,2) | nullable | ADC resolution in bits |
-
-
-**DAQ types (`daq_type`):**
-`data_logger`, `signal_conditioner`, `gateway`, `other`
+| `interface_type` | VARCHAR(100) | nullable | `USB`, `Ethernet`, `PCIe`, `WiFi` |
+| `trigger_modes` | VARCHAR(255) | nullable | |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 
 ---
 
@@ -232,7 +274,7 @@ Point-in-time calibration records. **Immutable — never updated after creation.
 | `calibration_date` | DATE | NOT NULL | When calibration was performed |
 | `due_date` | DATE | NOT NULL | Next calibration due date |
 | `performed_by_user_id` | UUID | FK → users, nullable | Internal technician |
-| `performed_by_name` | VARCHAR(255) | NOT NULL | Name of who performed it (denormalized for history) |
+| `performed_by_name` | VARCHAR(255) | NOT NULL | Denormalized — preserves history if user is deleted |
 | `external_lab_name` | VARCHAR(255) | nullable | If done by external lab |
 | `external_lab_accreditation` | VARCHAR(255) | nullable | e.g. ISO 17025 cert number |
 | `result` | ENUM | NOT NULL | `pass`, `fail`, `conditional_pass` |
@@ -240,7 +282,7 @@ Point-in-time calibration records. **Immutable — never updated after creation.
 | `humidity_pct` | DECIMAL(5,2) | nullable | Environmental condition |
 | `pressure_hpa` | DECIMAL(8,2) | nullable | Environmental condition |
 | `notes` | TEXT | nullable | |
-| `certificate_id` | UUID | FK → certificates, nullable | The certificate for this calibration |
+| `certificate_id` | UUID | FK → certificates, nullable | |
 | `calibration_file_id` | UUID | FK → files, nullable | Raw calibration data file |
 | `created_by` | UUID | FK → users, NOT NULL | User who recorded this entry |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
@@ -257,16 +299,16 @@ Correction coefficients derived from a calibration. Stored per channel.
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `calibration_id` | UUID | FK → calibrations, NOT NULL, indexed | |
-| `channel` | VARCHAR(50) | nullable | For multi-channel instruments (e.g. "CH1", "Axis X") |
+| `channel` | VARCHAR(50) | nullable | Should match `sensors.channel_id` for sensor assets |
 | `coefficient_type` | ENUM | NOT NULL | `linear`, `polynomial` |
 | `offset` | DECIMAL(18,8) | nullable | For linear: y = gain·x + offset |
-| `gain` | DECIMAL(18,8) | nullable | For linear correction |
-| `poly_degree` | INTEGER | nullable | Degree for polynomial fit |
-| `poly_coefficients` | JSONB | nullable | `[a0, a1, a2, ...]` lowest-to-highest degree |
+| `gain` | DECIMAL(18,8) | nullable | |
+| `poly_degree` | INTEGER | nullable | |
+| `poly_coefficients` | JSONB | nullable | `[a0, a1, a2, …]` lowest-to-highest degree |
 | `unit_input` | VARCHAR(50) | nullable | e.g. `mV`, `mA` |
 | `unit_output` | VARCHAR(50) | nullable | e.g. `°C`, `bar` |
-| `range_min` | DECIMAL(18,4) | nullable | Valid range minimum |
-| `range_max` | DECIMAL(18,4) | nullable | Valid range maximum |
+| `range_min` | DECIMAL(18,4) | nullable | |
+| `range_max` | DECIMAL(18,4) | nullable | |
 | `uncertainty` | DECIMAL(18,8) | nullable | Expanded measurement uncertainty |
 | `uncertainty_coverage_factor` | DECIMAL(5,3) | nullable | Coverage factor k (usually 2 for 95%) |
 | `notes` | TEXT | nullable | |
@@ -282,7 +324,7 @@ Calibration certificates and compliance documents.
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `asset_id` | UUID | FK → assets, NOT NULL, indexed | |
-| `calibration_id` | UUID | FK → calibrations, nullable | The calibration this cert belongs to |
+| `calibration_id` | UUID | FK → calibrations, nullable | |
 | `certificate_number` | VARCHAR(255) | NOT NULL, UNIQUE | Official cert number |
 | `issued_by` | VARCHAR(255) | NOT NULL | Issuing lab or organization |
 | `accreditation_body` | VARCHAR(255) | nullable | e.g. ENAC, UKAS, A2LA |
@@ -308,7 +350,7 @@ Metadata for all files stored in MinIO. Binary content never touches PostgreSQL.
 | `bucket` | VARCHAR(255) | NOT NULL | MinIO bucket name |
 | `content_type` | VARCHAR(100) | NOT NULL | MIME type (e.g. `application/pdf`) |
 | `size_bytes` | BIGINT | NOT NULL | |
-| `checksum_sha256` | VARCHAR(64) | NOT NULL | For integrity verification |
+| `checksum_sha256` | VARCHAR(64) | NOT NULL | Integrity verification |
 | `entity_type` | VARCHAR(50) | NOT NULL | `certificate`, `asset_image`, `datasheet`, `raw_calibration` |
 | `entity_id` | UUID | nullable | ID of the related entity |
 | `uploaded_by` | UUID | FK → users, NOT NULL | |
@@ -318,7 +360,7 @@ Metadata for all files stored in MinIO. Binary content never touches PostgreSQL.
 
 ### `audit_logs`
 
-Immutable append-only audit trail. Captures every significant action in the system.
+Immutable append-only audit trail.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
@@ -326,50 +368,36 @@ Immutable append-only audit trail. Captures every significant action in the syst
 | `actor_id` | UUID | FK → users, nullable | null for system actions |
 | `actor_email` | VARCHAR(255) | NOT NULL | Denormalized — preserves history if user is deleted |
 | `action` | VARCHAR(100) | NOT NULL, indexed | Dot-namespaced: `asset.created`, `calibration.recorded`, `user.login` |
-| `entity_type` | VARCHAR(50) | NOT NULL, indexed | `asset`, `calibration`, `certificate`, `user`, `site` |
+| `entity_type` | VARCHAR(50) | NOT NULL, indexed | `asset`, `calibration`, `certificate`, `user`, `location` |
 | `entity_id` | UUID | nullable, indexed | |
-| `entity_asset_id` | VARCHAR(20) | nullable | For assets — enables fast lookup by MAR ID |
-| `before_state` | JSONB | nullable | Snapshot of entity before change |
-| `after_state` | JSONB | nullable | Snapshot of entity after change |
+| `entity_asset_id` | VARCHAR(20) | nullable | For assets — fast lookup by MAR ID |
+| `before_state` | JSONB | nullable | Snapshot before change |
+| `after_state` | JSONB | nullable | Snapshot after change |
 | `ip_address` | VARCHAR(45) | nullable | Supports IPv6 |
 | `user_agent` | VARCHAR(500) | nullable | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now(), indexed | |
 
 **Common action values:**
-`asset.created`, `asset.updated`, `asset.archived`, `calibration.recorded`, `certificate.uploaded`, `user.login`, `user.created`, `user.deactivated`
-
----
-
-### `calibration_throughput`
-
-Pre-aggregated monthly calibration statistics. Used by the dashboard.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | INTEGER | PK, auto-increment | |
-| `year` | INTEGER | NOT NULL | |
-| `month` | INTEGER | NOT NULL, 1–12 | |
-| `completed_count` | INTEGER | NOT NULL, default 0 | Calibrations with result = pass/conditional |
-| `expired_count` | INTEGER | NOT NULL, default 0 | Assets that expired in this month |
-
-**Unique constraint:** `(year, month)`
-
-> This table is a materialized aggregate, updated by a background job or trigger. It is not the source of truth — `calibrations` is.
+`asset.created`, `asset.updated`, `asset.archived`, `asset.moved`, `calibration.recorded`, `certificate.uploaded`, `user.login`, `user.created`, `user.deactivated`
 
 ---
 
 ## Relationships Summary
 
 ```
-organizations ─┬─< sites >─< laboratories >─< assets
-               │                                 │
-               └─< users                         ├─< calibrations >─< calibration_coefficients
-                                                 │        │
-                                                 │        └─< certificates >─< files
-                                                 │
-                                                 └─< files (images, datasheets)
+organizations ─┬─< locations (self-referencing hierarchy)
+               │       └─< assets (location_id — current)
+               │             ├─< sensors (multi-channel, asset_id + channel_id)
+               │             ├─< daq
+               │             ├─< calibrations >─< calibration_coefficients
+               │             │        └─< certificates >─< files
+               │             └─< files (datasheets, images)
+               │
+               └─< users
+                     └─< teams
 
-audit_logs  →  (references entities loosely by UUID + entity_type)
+asset_locations  →  (asset × location × timestamp — movement history)
+audit_logs       →  (references entities loosely by UUID + entity_type)
 ```
 
 ---
@@ -378,16 +406,46 @@ audit_logs  →  (references entities loosely by UUID + entity_type)
 
 | Table | Column(s) | Reason |
 |---|---|---|
-| `assets` | `asset_id` | Primary lookup key for humans and QR codes |
-| `assets` | `calibration_status` | Dashboard filtering |
-| `assets` | `next_due_at` | Upcoming calibration queries |
-| `assets` | `laboratory_id` | Scoped asset lists |
+| `assets` | `asset_id` | Primary human/QR lookup key |
+| `assets` | `location_id` | Scoped asset lists by location |
+| `sensors` | `asset_id` | Channel lookup by asset |
 | `calibrations` | `asset_id` | History lookup |
 | `calibrations` | `calibration_date` | Date range queries |
 | `certificates` | `asset_id` | Certificate lookup by asset |
+| `locations` | `parent_location_id` | Tree traversal queries |
+| `locations` | `organization_id` | Org-scoped location lists |
+| `asset_locations` | `asset_id` | Movement history per asset |
+| `asset_locations` | `location_id` | Assets currently at a location |
 | `audit_logs` | `entity_id` | Entity history lookup |
 | `audit_logs` | `actor_id` | User activity lookup |
 | `audit_logs` | `created_at` | Time-range audit queries |
 | `audit_logs` | `action` | Action-type filtering |
 | `users` | `email` | Login lookup |
 
+---
+
+## Weak Points & Design Risks
+
+### W1 — `sensors.asset_id` uniqueness in original spec
+The MODIFICATIONS.md spec defines `asset_id` on `sensors` with `UNIQUE`, but describes multi-channel support via `channel_id`. These are contradictory: a sensor with Temperature and Humidity channels would need two rows and thus a non-unique `asset_id`. **Resolution adopted here:** the UNIQUE constraint is dropped in favor of `UNIQUE(asset_id, channel_id)`. Confirm this is intentional before migration.
+
+### W2 — `teams` table undefined
+`assets.owner` references `teams`, but no `teams` table is defined in the schema. Any FK enforcement will fail until this table is created. Consider whether `team` is a simple VARCHAR (like `users.team`) or a full normalized entity. If the latter, define `teams` before writing the Alembic migration.
+
+### W3 — `locations.code` uniqueness scope
+The spec says "unique per organization", but a bare column-level `UNIQUE` on `code` would make the same code globally unique. The constraint must be `UNIQUE(organization_id, code)` at the table level (and should be partial to exclude NULLs).
+
+### W4 — Dual-write risk: `assets.location_id` vs `asset_locations`
+`assets.location_id` is a denormalized pointer to the current location. Every asset move must update **both** this column and insert into `asset_locations`. If either write fails or is omitted, the tables diverge. Mitigate by wrapping moves in a transaction and preferably in a single stored procedure or service method — never rely on callers to do both.
+
+### W5 — `daq` table missing `is_active`
+`sensors` has `is_active` but `daq` does not. If a DAQ configuration needs to be logically disabled without retiring the parent asset, there is no mechanism for it. Add `is_active BOOLEAN NOT NULL DEFAULT true` to `daq` for symmetry unless DAQ configs are always active if the parent asset is active.
+
+### W6 — `calibration_coefficients.channel` not FK-linked to `sensors.channel_id`
+Calibration coefficients reference a channel by a free-text `channel` string. There is no FK to `sensors(channel_id)`, so it is possible to record coefficients for a channel name that does not exist in `sensors`. This is intentional for flexibility (DAQ channels, external instrument channels) but should be validated at the application layer, not left entirely unchecked.
+
+### W7 — `asset_type` ENUM drops `reference_standard`
+The old schema had `sensor`, `instrument`, `reference_standard`, `data_acquisition`. The new schema collapses to `sensor` and `daq`. Reference standards (high-accuracy devices used for calibration) no longer have a dedicated type. If reference standards need to be traceable (as required by ISO 17025), their `calibration_role` can be captured on the `sensors` row — but verify this satisfies your compliance requirements before the old `reference_standard` type is retired.
+
+### W8 — No `updated_by` audit field on `assets`
+`assets` tracks `created_by` and `retired_by` but not who last updated it. The `version` counter shows *that* something changed, and `audit_logs` shows *who* changed it, but the asset row itself has no quick `updated_by` pointer. This is acceptable if audit_logs is always queried for attribution — but if direct queries against the asset table need the last editor, add `updated_by UUID FK → users`.

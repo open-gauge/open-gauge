@@ -3,13 +3,13 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from ..models.asset import Asset, AssetCategory, CalibrationStatus
-from ..models.sensor import Sensor, SensorType
-from ..models.instrument import Instrument, InstrumentType
-from ..models.data_acquisition import DataAcquisition, DaqType
-from ..schemas.sensor import SensorDetails
-from ..schemas.instrument import InstrumentDetails
-from ..schemas.data_acquisition import DaqDetails
+from ..models.asset import Asset, AssetType
+from ..models.sensor import Sensor
+from ..models.daq import DAQ
+from ..models.location import Location
+from ..models.asset_location import AssetLocation
+from ..schemas.sensor import SensorChannelCreate
+from ..schemas.daq import DaqCreate
 
 
 def get_by_id(db: Session, asset_pk: uuid.UUID) -> Asset | None:
@@ -25,38 +25,77 @@ def list_assets(
     skip: int = 0,
     limit: int = 50,
     is_active: bool | None = True,
-    calibration_status: CalibrationStatus | None = None,
-    category: AssetCategory | None = None,
-    laboratory_id: uuid.UUID | None = None,
-) -> list[Asset]:
-    q = db.query(Asset)
+    asset_type: AssetType | None = None,
+    location_id: uuid.UUID | None = None,
+) -> list[dict]:
+    q = (
+        db.query(Asset, Location.name)
+        .outerjoin(Location, Location.id == Asset.location_id)
+    )
     if is_active is not None:
         q = q.filter(Asset.is_active == is_active)
-    if calibration_status:
-        q = q.filter(Asset.calibration_status == calibration_status)
-    if category:
-        q = q.filter(Asset.category == category)
-    if laboratory_id:
-        q = q.filter(Asset.laboratory_id == laboratory_id)
-    return q.order_by(Asset.updated_at.desc()).offset(skip).limit(limit).all()
+    if asset_type:
+        q = q.filter(Asset.asset_type == asset_type)
+    if location_id:
+        q = q.filter(Asset.location_id == location_id)
+
+    rows = q.order_by(Asset.updated_at.desc()).offset(skip).limit(limit).all()
+
+    result = []
+    for asset, location_name in rows:
+        result.append({
+            "id": asset.id,
+            "asset_id": asset.asset_id,
+            "asset_type": asset.asset_type,
+            "name": asset.name,
+            "manufacturer": asset.manufacturer,
+            "model": asset.model,
+            "serial_number": asset.serial_number,
+            "health_score": asset.health_score,
+            "is_active": asset.is_active,
+            "updated_at": asset.updated_at,
+            "location_name": location_name,
+        })
+    return result
 
 
 def create(db: Session, created_by: uuid.UUID, **kwargs) -> Asset:
-    sensor_data: SensorDetails | None = kwargs.pop("sensor_details", None)
-    instrument_data: InstrumentDetails | None = kwargs.pop("instrument_details", None)
-    daq_data: DaqDetails | None = kwargs.pop("daq_details", None)
+    sensor_channels: list[SensorChannelCreate] | None = kwargs.pop("sensor_channels", None)
+    daq_data: DaqCreate | None = kwargs.pop("daq_details", None)
 
     asset = Asset(created_by=created_by, **kwargs)
     db.add(asset)
     db.flush()
 
-    if sensor_data:
-        db.add(Sensor(asset_id=asset.id, **sensor_data.model_dump()))
-    if instrument_data:
-        db.add(Instrument(asset_id=asset.id, **instrument_data.model_dump()))
-    if daq_data:
-        db.add(DataAcquisition(asset_id=asset.id, **daq_data.model_dump()))
+    if sensor_channels:
+        for ch in sensor_channels:
+            db.add(Sensor(asset_id=asset.id, **ch.model_dump()))
 
+    if daq_data:
+        db.add(DAQ(asset_id=asset.id, **daq_data.model_dump()))
+
+    if asset.location_id:
+        db.add(AssetLocation(
+            asset_id=asset.id,
+            location_id=asset.location_id,
+            moved_by=created_by,
+            reason="Initial placement",
+        ))
+
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+def move(db: Session, asset: Asset, location_id: uuid.UUID, moved_by: uuid.UUID, reason: str | None = None) -> Asset:
+    asset.location_id = location_id
+    asset.version += 1
+    db.add(AssetLocation(
+        asset_id=asset.id,
+        location_id=location_id,
+        moved_by=moved_by,
+        reason=reason,
+    ))
     db.commit()
     db.refresh(asset)
     return asset
@@ -83,13 +122,18 @@ def retire(db: Session, asset: Asset, retired_by: uuid.UUID, reason: str | None 
     return asset
 
 
-def get_sensor_details(db: Session, asset_pk: uuid.UUID) -> Sensor | None:
-    return db.query(Sensor).filter(Sensor.asset_id == asset_pk).first()
+def get_sensor_channels(db: Session, asset_pk: uuid.UUID) -> list[Sensor]:
+    return db.query(Sensor).filter(Sensor.asset_id == asset_pk).all()
 
 
-def get_instrument_details(db: Session, asset_pk: uuid.UUID) -> Instrument | None:
-    return db.query(Instrument).filter(Instrument.asset_id == asset_pk).first()
+def get_daq_details(db: Session, asset_pk: uuid.UUID) -> DAQ | None:
+    return db.query(DAQ).filter(DAQ.asset_id == asset_pk).first()
 
 
-def get_daq_details(db: Session, asset_pk: uuid.UUID) -> DataAcquisition | None:
-    return db.query(DataAcquisition).filter(DataAcquisition.asset_id == asset_pk).first()
+def get_location_history(db: Session, asset_pk: uuid.UUID) -> list[AssetLocation]:
+    return (
+        db.query(AssetLocation)
+        .filter(AssetLocation.asset_id == asset_pk)
+        .order_by(AssetLocation.moved_at.desc())
+        .all()
+    )

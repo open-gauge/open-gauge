@@ -61,7 +61,7 @@ export const ASSET_CATEGORY_LABEL_PLURAL: Record<string, string> = {
 // Asset subtypes — used by the category distribution donut charts
 // ---------------------------------------------------------------------------
 export const SUBTYPE_COLOR: Record<string, string> = {
-  // sensor types
+  // physical quantities (sensor channels)
   temperature:        "#06b6d4",
   pressure:           "#3b82f6",
   flow:               "#22c55e",
@@ -72,22 +72,23 @@ export const SUBTYPE_COLOR: Record<string, string> = {
   force:              "#14b8a6",
   angular_speed:      "#6366f1",
   acceleration:       "#ef4444",
-  // instrument types
-  transmitter:        "#0ea5e9",
-  controller:         "#7c3aed",
-  indicator:          "#16a34a",
-  recorder:           "#d97706",
-  // daq types
+  // daq_type values (from daq table)
+  USB:                "#06b6d4",
+  Wireless:           "#8b5cf6",
+  Ethernet:           "#3b82f6",
+  PCIe:               "#f97316",
+  PXI:                "#14b8a6",
+  // legacy / fallback
   data_logger:        "#06b6d4",
   signal_conditioner: "#3b82f6",
   gateway:            "#22c55e",
-  // reference standard (no subtype breakdown)
   reference_standard: "#f59e0b",
   other:              "#6b7280",
 };
 
 export const SUBTYPE_LABEL: Record<string, string> = {
-  temperature:        "Temp.",
+  // physical quantities
+  temperature:        "Temperature",
   pressure:           "Pressure",
   flow:               "Flow",
   humidity:           "Humidity",
@@ -97,10 +98,13 @@ export const SUBTYPE_LABEL: Record<string, string> = {
   force:              "Force",
   angular_speed:      "Ang. Speed",
   acceleration:       "Accel.",
-  transmitter:        "Transmitter",
-  controller:         "Controller",
-  indicator:          "Indicator",
-  recorder:           "Recorder",
+  // daq_type values
+  USB:                "USB",
+  Wireless:           "Wireless",
+  Ethernet:           "Ethernet",
+  PCIe:               "PCIe",
+  PXI:                "PXI",
+  // legacy / fallback
   data_logger:        "Data Logger",
   signal_conditioner: "Sig. Cond.",
   gateway:            "Gateway",

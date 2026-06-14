@@ -9,8 +9,7 @@ from sqlalchemy.orm import Session
 from .api.v1 import auth as auth_router
 from .api.v1 import dashboard as dashboard_router
 from .api.v1 import organizations as org_router
-from .api.v1 import sites as site_router
-from .api.v1 import laboratories as lab_router
+from .api.v1 import locations as location_router
 from .api.v1 import assets as asset_router
 from .api.v1 import calibrations as cal_router
 from .api.v1 import certificates as cert_router
@@ -46,8 +45,7 @@ app.add_middleware(
 app.include_router(auth_router.router, prefix="/api/v1")
 app.include_router(dashboard_router.router, prefix="/api/v1")
 app.include_router(org_router.router, prefix="/api/v1")
-app.include_router(site_router.router, prefix="/api/v1")
-app.include_router(lab_router.router, prefix="/api/v1")
+app.include_router(location_router.router, prefix="/api/v1")
 app.include_router(asset_router.router, prefix="/api/v1")
 app.include_router(cal_router.router, prefix="/api/v1")
 app.include_router(cert_router.router, prefix="/api/v1")

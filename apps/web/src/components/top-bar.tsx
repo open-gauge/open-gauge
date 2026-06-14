@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { BellIcon, SearchIcon, SignOutIcon } from "@/components/icons";
 import ThemeToggle from "@/components/theme-toggle";
@@ -12,6 +13,16 @@ const ROLE_LABEL: Record<string, string> = {
   viewer:     "Viewer",
 };
 
+const BREADCRUMBS: Record<string, string[]> = {
+  "/dashboard":    ["Workspace", "Overview"],
+  "/assets":       ["Workspace", "Assets"],
+  "/sites":        ["Workspace", "Sites"],
+  "/certificates": ["Workspace", "Certificates"],
+  "/activity":     ["Workspace", "Activity"],
+  "/api-explorer": ["System", "API Explorer"],
+  "/settings":     ["System", "Settings"],
+};
+
 function getInitials(name: string): string {
   return name
     .trim()
@@ -21,12 +32,9 @@ function getInitials(name: string): string {
     .join("");
 }
 
-interface TopBarProps {
-  breadcrumb?: string[];
-}
-
-export default function TopBar({ breadcrumb = [] }: TopBarProps) {
+export default function TopBar() {
   const { user, logout } = useAuth();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +48,7 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
   }, [open]);
 
   const initials = getInitials(user.name);
+  const breadcrumb = BREADCRUMBS[pathname] ?? ["Workspace"];
 
   return (
     <header className="h-14 flex-shrink-0 flex items-center justify-between px-6 bg-mar-surface border-b border-mar-border">
@@ -96,7 +105,6 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
 
           {open && (
             <div className="absolute right-0 top-10 w-56 bg-mar-surface rounded-xl border border-mar-border shadow-lg z-50 overflow-hidden">
-              {/* User info */}
               <div className="px-4 py-3 border-b border-mar-border">
                 <p className="text-sm font-semibold text-mar-text leading-tight truncate">
                   {user.name}
@@ -107,7 +115,6 @@ export default function TopBar({ breadcrumb = [] }: TopBarProps) {
                 </span>
               </div>
 
-              {/* Actions */}
               <div className="py-1">
                 <button
                   type="button"

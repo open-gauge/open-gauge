@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user
-from ...models.asset import AssetCategory, CalibrationStatus
+from ...models.asset import AssetType
 from ...models.user import User
 from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
@@ -13,24 +13,19 @@ from ...repositories import certificate as cert_repo
 from ...schemas.asset import AssetCreate, AssetListItem, AssetResponse, AssetUpdate
 from ...schemas.calibration import CalibrationResponse
 from ...schemas.certificate import CertificateResponse
-from ...schemas.sensor import SensorDetails
-from ...schemas.instrument import InstrumentDetails
-from ...schemas.data_acquisition import DaqDetails
+from ...schemas.sensor import SensorChannelResponse
+from ...schemas.daq import DaqResponse
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
 
 def _enrich(asset, db: Session) -> AssetResponse:
-    sensor = asset_repo.get_sensor_details(db, asset.id)
-    instrument = asset_repo.get_instrument_details(db, asset.id)
+    channels = asset_repo.get_sensor_channels(db, asset.id)
     daq = asset_repo.get_daq_details(db, asset.id)
     data = AssetResponse.model_validate(asset)
-    if sensor:
-        data.sensor_details = SensorDetails.model_validate(sensor)
-    if instrument:
-        data.instrument_details = InstrumentDetails.model_validate(instrument)
+    data.sensor_channels = [SensorChannelResponse.model_validate(ch) for ch in channels]
     if daq:
-        data.daq_details = DaqDetails.model_validate(daq)
+        data.daq_details = DaqResponse.model_validate(daq)
     return data
 
 
@@ -39,9 +34,8 @@ def list_assets(
     skip: int = 0,
     limit: int = Query(50, le=200),
     is_active: bool | None = True,
-    calibration_status: CalibrationStatus | None = None,
-    category: AssetCategory | None = None,
-    laboratory_id: uuid.UUID | None = None,
+    asset_type: AssetType | None = None,
+    location_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[AssetListItem]:
@@ -50,9 +44,8 @@ def list_assets(
         skip=skip,
         limit=limit,
         is_active=is_active,
-        calibration_status=calibration_status,
-        category=category,
-        laboratory_id=laboratory_id,
+        asset_type=asset_type,
+        location_id=location_id,
     )
 
 

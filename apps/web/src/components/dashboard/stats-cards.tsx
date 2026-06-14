@@ -1,7 +1,7 @@
 import type { DashboardSummary } from "@/types/dashboard";
 import {
-  CheckCircleIcon,
-  ClockIcon,
+  ActivityIcon,
+  ApiIcon,
   DatabaseIcon,
   WarningIcon,
 } from "@/components/icons";
@@ -36,10 +36,10 @@ function StatCard({ label, value, sub, icon, accent = "teal" }: StatCardProps) {
 export default function StatsCards({ data }: { data: DashboardSummary }) {
   return (
     <div className="grid grid-cols-4 gap-5">
-      <StatCard label="Registered assets"   value={data.registered_assets}   sub="+0 this week"               icon={<DatabaseIcon size={18} />}   accent="teal" />
-      <StatCard label="Valid calibrations"   value={data.valid_calibrations}  sub={`${data.valid_coverage_pct}% coverage`} icon={<CheckCircleIcon size={18} />} accent="teal" />
-      <StatCard label="Due within 30 days"  value={data.due_within_30_days}  sub="Requires scheduling"         icon={<ClockIcon size={18} />}       accent="orange" />
-      <StatCard label="Expired"             value={data.expired}             sub="Action required"             icon={<WarningIcon size={18} />}     accent="red" />
+      <StatCard label="Registered assets" value={data.registered_assets} sub="Total active assets"      icon={<DatabaseIcon size={18} />} accent="teal" />
+      <StatCard label="Sensors"           value={data.sensors}           sub="Measurement channels"     icon={<ActivityIcon size={18} />} accent="teal" />
+      <StatCard label="DAQ units"         value={data.daqs}              sub="Data acquisition systems" icon={<ApiIcon size={18} />}      accent="teal" />
+      <StatCard label="Low health"        value={data.low_health_assets} sub="Health score below 70%"   icon={<WarningIcon size={18} />}  accent="red" />
     </div>
   );
 }
