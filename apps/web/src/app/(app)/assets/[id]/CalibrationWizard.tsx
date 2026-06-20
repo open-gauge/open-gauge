@@ -1,10 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer,
-} from "recharts";
 import type { AssetProfile } from "@/types/asset";
 import type {
   AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody,
@@ -1182,12 +1178,122 @@ function Step3({
   uiPassed: boolean | null;
 }) {
   const [rightView, setRightView] = useState<"chart" | "table">("chart");
-  const [xDomain, setXDomain] = useState<["auto" | number, "auto" | number]>(["auto", "auto"]);
-  const [yDomain, setYDomain] = useState<["auto" | number, "auto" | number]>(["auto", "auto"]);
-  const [tooltipPoint, setTooltipPoint] = useState<{ cx: number; cy: number; data: { x: number; y: number; residual: number; idx: number } } | null>(null);
+  const plotDivRef = useRef<HTMLDivElement>(null);
+  const plotlyRef = useRef<typeof import("plotly.js-dist-min").default | null>(null);
 
   const setParam = <K extends keyof AnalyzeParams>(key: K) => (value: AnalyzeParams[K]) =>
     onAnalyzeParamsChange({ ...analyzeParams, [key]: value });
+
+  useEffect(() => {
+    if (!result) return;
+    if (rightView !== "chart") return;
+    const div = plotDivRef.current;
+    if (!div) return;
+    let mounted = true;
+
+    const maxAbs = Math.max(...result.points.map((p) => Math.abs(p.residual_abs ?? 0)), 1e-10);
+    const xs = result.points.map((p) => p.measured_value);
+    const mn = Math.min(...xs), mx = Math.max(...xs);
+
+    const scatter = result.points.map((p) => ({
+      x: p.measured_value,
+      y: p.reference_value,
+      color: residualColor(p.residual_abs ?? 0, maxAbs),
+      residual: p.residual_abs ?? 0,
+      idx: p.point_index,
+    }));
+
+    const curve = Array.from({ length: 81 }, (_, i) => {
+      const x = mn + (i * (mx - mn)) / 80;
+      return { x, y: evalPoly(result.coefficients, x) };
+    });
+
+    import("plotly.js-dist-min").then((mod) => {
+      if (!mounted || !div) return;
+      const Plotly = mod.default;
+      plotlyRef.current = Plotly;
+
+      const traces: Plotly.Data[] = [
+        {
+          x: curve.map((d) => d.x),
+          y: curve.map((d) => d.y),
+          type: "scatter",
+          mode: "lines",
+          line: { color: COLORS.accent, width: 2 },
+          hoverinfo: "skip",
+          showlegend: false,
+        },
+        {
+          x: scatter.map((d) => d.x),
+          y: scatter.map((d) => d.y),
+          type: "scatter",
+          mode: "markers",
+          marker: {
+            color: scatter.map((d) => d.color),
+            size: 9,
+            line: { color: "rgba(255,255,255,0.5)", width: 1.5 },
+          },
+          customdata: scatter.map((d) => [d.idx + 1, d.residual] as [number, number]),
+          hovertemplate:
+            `<b>Point %{customdata[0]}</b><br>` +
+            `Measured: %{x:.4g} ${measuredUnit}<br>` +
+            `Reference: %{y:.4g} ${referenceUnit}<br>` +
+            `Residual: %{customdata[1]:.4g} ${referenceUnit}` +
+            `<extra></extra>`,
+          showlegend: false,
+        },
+      ];
+
+      const layout: Partial<Plotly.Layout> = {
+        margin: { t: 10, r: 16, b: 48, l: 56 },
+        paper_bgcolor: "transparent",
+        plot_bgcolor: "transparent",
+        xaxis: {
+          title: { text: `Measured (${measuredUnit})`, font: { size: 10, color: "#9ca3af" } },
+          tickfont: { size: 10, color: "#9ca3af" },
+          gridcolor: "rgba(156,163,175,0.15)",
+          linecolor: "rgba(156,163,175,0.3)",
+          zerolinecolor: "rgba(156,163,175,0.3)",
+          automargin: true,
+        },
+        yaxis: {
+          title: { text: `Reference (${referenceUnit})`, font: { size: 10, color: "#9ca3af" } },
+          tickfont: { size: 10, color: "#9ca3af" },
+          gridcolor: "rgba(156,163,175,0.15)",
+          linecolor: "rgba(156,163,175,0.3)",
+          zerolinecolor: "rgba(156,163,175,0.3)",
+          automargin: true,
+        },
+        hoverlabel: {
+          bgcolor: "#1f2937",
+          bordercolor: "#374151",
+          font: { size: 11, color: "#f9fafb" },
+        },
+      };
+
+      const config: Partial<Plotly.Config> = {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ["toImage", "sendDataToCloud", "select2d", "lasso2d", "hoverClosestCartesian", "hoverCompareCartesian", "toggleSpikelines"],
+        scrollZoom: true,
+      };
+
+      Plotly.react(div, traces, layout, config);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [result, measuredUnit, referenceUnit, rightView]);
+
+  useEffect(() => {
+    const div = plotDivRef.current;
+    return () => {
+      if (plotlyRef.current && div) {
+        try { plotlyRef.current.purge(div); } catch {}
+      }
+    };
+  }, []);
 
   if (coefficientsOnly) {
     return (
@@ -1199,44 +1305,6 @@ function Step3({
 
   const toleranceUnit = toleranceCriteria === "percent_reading" || toleranceCriteria === "percent_fs"
     ? "%" : referenceUnit;
-
-  function handleZoom(factor: number) {
-    if (!result) return;
-    const xs = result.points.map(p => p.measured_value);
-    const ys = result.points.map(p => p.reference_value);
-    const curXMin = xDomain[0] === "auto" ? Math.min(...xs) : xDomain[0];
-    const curXMax = xDomain[1] === "auto" ? Math.max(...xs) : xDomain[1];
-    const curYMin = yDomain[0] === "auto" ? Math.min(...ys) : yDomain[0];
-    const curYMax = yDomain[1] === "auto" ? Math.max(...ys) : yDomain[1];
-    const xMid = (curXMin + curXMax) / 2;
-    const yMid = (curYMin + curYMax) / 2;
-    setXDomain([xMid - (curXMax - curXMin) / 2 * factor, xMid + (curXMax - curXMin) / 2 * factor]);
-    setYDomain([yMid - (curYMax - curYMin) / 2 * factor, yMid + (curYMax - curYMin) / 2 * factor]);
-  }
-
-  const maxAbsResidual = result
-    ? Math.max(...result.points.map((p) => Math.abs(p.residual_abs ?? 0)), 1e-10)
-    : 1;
-
-  // x = measured (X axis), y = reference (Y axis), colored by residual magnitude
-  const scatterData = result?.points.map((p) => ({
-    x: p.measured_value,
-    y: p.reference_value,
-    residual: p.residual_abs ?? 0,
-    residualPct: p.residual_pct ?? 0,
-    idx: p.point_index,
-    color: residualColor(p.residual_abs ?? 0, maxAbsResidual),
-  })) ?? [];
-
-  const curveData = result ? (() => {
-    const xs = result.points.map(p => p.measured_value);
-    const min = Math.min(...xs);
-    const max = Math.max(...xs);
-    return Array.from({ length: 81 }, (_, i) => ({
-      x: min + i * (max - min) / 80,
-      y: evalPoly(result.coefficients, min + i * (max - min) / 80),
-    }));
-  })() : [];
 
   return (
     <div className="p-5 space-y-4">
@@ -1304,15 +1372,17 @@ function Step3({
         <div className="flex flex-col gap-1">
           <WLabel text="Tolerance threshold" />
           <div className="flex items-center gap-1.5">
-            <input
-              type="number"
-              value={toleranceThreshold}
-              onChange={(e) => onToleranceThresholdChange(e.target.value)}
-              min={0}
-              step="any"
-              className={`${IB} ${IB_OK} py-1.5 w-20`}
-              placeholder="1"
-            />
+            <div className="w-20 flex-shrink-0">
+              <input
+                type="number"
+                value={toleranceThreshold}
+                onChange={(e) => onToleranceThresholdChange(e.target.value)}
+                min={0}
+                step="any"
+                className={`${IB} ${IB_OK} py-1.5`}
+                placeholder="1"
+              />
+            </div>
             <span className="text-xs text-gray-400 whitespace-nowrap">{toleranceUnit}</span>
             {result && !analyzing && uiPassed !== null && (
               <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ${
@@ -1399,20 +1469,10 @@ function Step3({
             </div>
 
             {rightView === "chart" && (
-              <div className="rounded-xl border border-mar-border bg-mar-surface flex-1 relative" style={{ minHeight: 320 }}>
-                {/* Top-right overlay: zoom buttons + gradient legend */}
-                <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5">
-                  {/* Zoom controls */}
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => handleZoom(0.6)} title="Zoom in"
-                      className="w-6 h-6 flex items-center justify-center text-xs font-bold bg-mar-surface border border-mar-border rounded hover:bg-mar-surface-alt text-mar-text transition-colors">+</button>
-                    <button type="button" onClick={() => handleZoom(1 / 0.6)} title="Zoom out"
-                      className="w-6 h-6 flex items-center justify-center text-xs font-bold bg-mar-surface border border-mar-border rounded hover:bg-mar-surface-alt text-mar-text transition-colors">−</button>
-                    <button type="button" onClick={() => { setXDomain(["auto", "auto"]); setYDomain(["auto", "auto"]); }} title="Reset zoom"
-                      className="px-1.5 h-6 flex items-center justify-center text-[10px] bg-mar-surface border border-mar-border rounded hover:bg-mar-surface-alt text-gray-400 transition-colors">↺</button>
-                  </div>
-                  {/* Gradient legend */}
-                  <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5">
+              <div className="rounded-xl border border-mar-border bg-mar-surface flex-1 relative overflow-hidden" style={{ minHeight: 340 }}>
+                {/* Gradient legend overlay */}
+                <div className="absolute bottom-20 right-3 z-20 pointer-events-none">
+                  <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-sm">
                     <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 rounded-sm" style={{ height: 48, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
@@ -1423,75 +1483,7 @@ function Step3({
                     </div>
                   </div>
                 </div>
-
-                {/* Custom tooltip */}
-                {tooltipPoint && (
-                  <div className="absolute z-30 bg-mar-surface border border-mar-border rounded-lg px-3 py-2 text-xs shadow-lg pointer-events-none space-y-0.5"
-                    style={{ left: tooltipPoint.cx + 20, top: tooltipPoint.cy - 10 }}>
-                    <div className="font-semibold text-mar-text mb-1">Point {tooltipPoint.data.idx + 1}</div>
-                    <div className="flex gap-3">
-                      <span className="text-gray-400">Measured</span>
-                      <span className="font-mono text-mar-text">{fmtN(tooltipPoint.data.x)} {measuredUnit}</span>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="text-gray-400">Reference</span>
-                      <span className="font-mono text-mar-text">{fmtN(tooltipPoint.data.y)} {referenceUnit}</span>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="text-gray-400">Residual</span>
-                      <span className="font-mono text-mar-text">{fmtN(tooltipPoint.data.residual)} {referenceUnit}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-3">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <ComposedChart margin={{ top: 8, right: 90, bottom: 24, left: 16 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--mar-border)" />
-                      <XAxis
-                        dataKey="x"
-                        type="number"
-                        domain={xDomain}
-                        tick={{ fontSize: 10, fill: "#9ca3af" }}
-                        label={{ value: `Measured (${measuredUnit})`, position: "insideBottom", offset: -4, fontSize: 10, fill: "#9ca3af" }}
-                      />
-                      <YAxis
-                        dataKey="y"
-                        type="number"
-                        domain={yDomain}
-                        tick={{ fontSize: 10, fill: "#9ca3af" }}
-                        label={{ value: `Reference (${referenceUnit})`, angle: -90, position: "insideLeft", offset: 10, fontSize: 10, fill: "#9ca3af" }}
-                      />
-                      <Line
-                        data={curveData}
-                        dataKey="y"
-                        dot={false}
-                        activeDot={false}
-                        stroke={COLORS.accent}
-                        strokeWidth={2}
-                        type="monotone"
-                        isAnimationActive={false}
-                      />
-                      <Scatter
-                        data={scatterData}
-                        isAnimationActive={false}
-                        shape={({ cx, cy, payload }: { cx?: number; cy?: number; payload?: typeof scatterData[0] }) => (
-                          <circle
-                            cx={cx ?? 0}
-                            cy={cy ?? 0}
-                            r={5}
-                            fill={payload?.color ?? "#888"}
-                            stroke="var(--mar-surface)"
-                            strokeWidth={1.5}
-                            style={{ cursor: "pointer" }}
-                            onMouseEnter={() => payload && setTooltipPoint({ cx: cx ?? 0, cy: cy ?? 0, data: payload })}
-                            onMouseLeave={() => setTooltipPoint(null)}
-                          />
-                        )}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
+                <div ref={plotDivRef} style={{ height: 340, width: "100%" }} />
               </div>
             )}
 
