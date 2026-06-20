@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="relative min-h-screen bg-[#dce8ec] dark:bg-mar-bg">
+    <div className="relative min-h-screen bg-[#dce8ec] dark:bg-mar-bg mar-grid-bg">
       <ParticleBackground />
 
       <div className="relative z-10 flex flex-col min-h-screen">

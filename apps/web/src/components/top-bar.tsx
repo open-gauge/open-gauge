@@ -1,26 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { BellIcon, SearchIcon, SignOutIcon } from "@/components/icons";
+import {
+  AssetRegistryIcon,
+  BellIcon,
+  SearchIcon,
+  SignOutIcon,
+  XIcon,
+} from "@/components/icons";
 import ThemeToggle from "@/components/theme-toggle";
+import { listAssets } from "@/services/asset.service";
+import type { AssetListItem } from "@/types/asset";
 
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "Super Admin",
   admin:      "Admin",
   technician: "Technician",
   viewer:     "Viewer",
-};
-
-const BREADCRUMBS: Record<string, string[]> = {
-  "/dashboard":    ["Workspace", "Overview"],
-  "/assets":       ["Workspace", "Assets"],
-  "/sites":        ["Workspace", "Sites"],
-  "/certificates": ["Workspace", "Certificates"],
-  "/activity":     ["Workspace", "Activity"],
-  "/api-explorer": ["System", "API Explorer"],
-  "/settings":     ["System", "Settings"],
 };
 
 function getInitials(name: string): string {
@@ -34,48 +32,142 @@ function getInitials(name: string): string {
 
 export default function TopBar() {
   const { user, logout } = useAuth();
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
+  // Avatar dropdown
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
+
+  // Search
+  const [query, setQuery] = useState("");
+  const [allAssets, setAllAssets] = useState<AssetListItem[]>([]);
+  const [results, setResults] = useState<AssetListItem[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Close avatar dropdown on outside click
   useEffect(() => {
-    if (!open) return;
+    if (!avatarOpen) return;
     const handler = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!avatarRef.current?.contains(e.target as Node)) setAvatarOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [avatarOpen]);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!searchRef.current?.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [searchOpen]);
+
+  // Lazy-load assets on first focus
+  async function handleFocus() {
+    if (assetsLoaded) return;
+    try {
+      const data = await listAssets({ limit: 200 });
+      setAllAssets(data);
+    } catch {
+      // silent
+    } finally {
+      setAssetsLoaded(true);
+    }
+  }
+
+  // Filter on query or allAssets change
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setSearchOpen(false);
+      return;
+    }
+    const q = query.toLowerCase();
+    const filtered = allAssets
+      .filter(
+        (a) =>
+          a.name.toLowerCase().includes(q) ||
+          a.asset_id.toLowerCase().includes(q) ||
+          (a.serial_number != null && a.serial_number.toLowerCase().includes(q))
+      )
+      .slice(0, 8);
+    setResults(filtered);
+    setSearchOpen(filtered.length > 0);
+  }, [query, allAssets]);
+
+  function handleSelect(asset: AssetListItem) {
+    router.push(`/assets/${asset.id}`);
+    setQuery("");
+    setResults([]);
+    setSearchOpen(false);
+  }
+
+  function clearSearch() {
+    setQuery("");
+    setResults([]);
+    setSearchOpen(false);
+    inputRef.current?.focus();
+  }
 
   const initials = getInitials(user.name);
-  const breadcrumb = BREADCRUMBS[pathname] ?? ["Workspace"];
 
   return (
-    <header className="h-14 flex-shrink-0 flex items-center justify-between px-6 bg-mar-surface border-b border-mar-border">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-xs font-medium text-gray-400 tracking-wide uppercase">
-        {breadcrumb.map((crumb, i) => (
-          <span key={i} className="flex items-center gap-1">
-            {i > 0 && <span className="text-gray-300 dark:text-gray-600">/</span>}
-            <span>{crumb}</span>
-          </span>
-        ))}
-      </nav>
-
-      {/* Search */}
-      <div className="flex-1 max-w-md mx-8">
-        <div className="flex items-center gap-2 w-full px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg text-sm text-gray-400">
-          <SearchIcon size={13} />
-          <span className="flex-1 text-gray-400 text-xs">
-            Search assets, certificates, serial numbers...
-          </span>
-          <kbd className="text-[10px] text-gray-400 border border-mar-border-md rounded px-1 py-0.5 font-mono">
-            ⌘K
-          </kbd>
+    <header className="h-14 flex-shrink-0 flex items-center justify-between px-6 bg-mar-surface border-b border-mar-border gap-4">
+      {/* Search (left) */}
+      <div className="relative flex-1 max-w-sm" ref={searchRef}>
+        <div className="flex items-center gap-2 w-full px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg text-sm">
+          <SearchIcon size={13} className="text-gray-400 flex-shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={handleFocus}
+            placeholder="Search assets..."
+            className="flex-1 bg-transparent text-xs text-mar-text placeholder-gray-400 outline-none min-w-0"
+          />
+          {query ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+            >
+              <XIcon size={12} />
+            </button>
+          ) : (
+            <kbd className="text-[10px] text-gray-400 border border-mar-border-md rounded px-1 py-0.5 font-mono flex-shrink-0">
+              ⌘K
+            </kbd>
+          )}
         </div>
+
+        {/* Results dropdown */}
+        {searchOpen && results.length > 0 && (
+          <div className="absolute top-full mt-1 left-0 right-0 bg-mar-surface rounded-xl border border-mar-border shadow-lg z-50 overflow-hidden">
+            {results.map((asset) => (
+              <button
+                key={asset.id}
+                type="button"
+                onClick={() => handleSelect(asset)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-mar-border transition-colors"
+              >
+                <AssetRegistryIcon size={13} className="text-gray-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-mar-text truncate">{asset.name}</div>
+                  <div className="text-[10px] text-gray-400">{asset.asset_id}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Actions */}
+      {/* Actions (right) */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -85,25 +177,28 @@ export default function TopBar() {
           New Asset
         </button>
 
-        <button type="button" className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+        <button
+          type="button"
+          className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+        >
           <BellIcon />
         </button>
 
         <ThemeToggle />
 
         {/* Avatar + dropdown */}
-        <div className="relative" ref={dropdownRef}>
+        <div className="relative" ref={avatarRef}>
           <button
             type="button"
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setAvatarOpen((v) => !v)}
             className="w-8 h-8 rounded-full bg-mar-accent flex items-center justify-center text-white text-xs font-semibold hover:bg-mar-accent-dark transition-colors focus:outline-none focus:ring-2 focus:ring-mar-accent/40"
             aria-haspopup="true"
-            aria-expanded={open}
+            aria-expanded={avatarOpen}
           >
             {initials}
           </button>
 
-          {open && (
+          {avatarOpen && (
             <div className="absolute right-0 top-10 w-56 bg-mar-surface rounded-xl border border-mar-border shadow-lg z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-mar-border">
                 <p className="text-sm font-semibold text-mar-text leading-tight truncate">
@@ -118,7 +213,7 @@ export default function TopBar() {
               <div className="py-1">
                 <button
                   type="button"
-                  onClick={() => { setOpen(false); logout(); }}
+                  onClick={() => { setAvatarOpen(false); logout(); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-mar-border hover:text-red-500 transition-colors text-left"
                 >
                   <SignOutIcon size={14} />

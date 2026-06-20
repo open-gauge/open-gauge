@@ -399,3 +399,4 @@ export function XIcon({ size = 16, className }: IconProps = {}) {
     </svg>
   );
 }
+

@@ -19,6 +19,9 @@
   --mar-surface-alt:  #f9fafb;
   --mar-border:       #f3f4f6;
   --mar-border-md:    #e5e7eb;
+
+  /* Graph-paper grid */
+  --mar-grid-color:   rgba(47, 129, 155, 0.10);
 }
 
 .dark {
@@ -32,6 +35,9 @@
   --mar-surface-alt:  #080f16;
   --mar-border:       #1a2e3d;
   --mar-border-md:    #1e3a52;
+
+  /* Graph-paper grid */
+  --mar-grid-color:   rgba(61, 154, 184, 0.07);
 }
 
 body {
@@ -89,5 +95,12 @@ body {
   .mar-range::-moz-range-track {
     background: transparent;
     height: 2px;
+  }
+
+  .mar-grid-bg {
+    background-image:
+      linear-gradient(var(--mar-grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--mar-grid-color) 1px, transparent 1px);
+    background-size: 1cm 1cm;
   }
 }
