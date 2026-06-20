@@ -468,18 +468,30 @@ function EditSelectWithOther({
   options: { value: string; label: string }[];
   error?: string; required?: boolean; placeholder?: string;
 }) {
-  const isKnown = value === "" || options.some((o) => o.value === value);
-  const selectVal = isKnown ? value : "__other__";
-  const customVal = isKnown ? "" : value;
+  const [otherMode, setOtherMode] = useState(
+    () => value !== "" && !options.some((o) => o.value === value)
+  );
+
+  // Sync when the controlled value is reset to a known option from outside (e.g. Cancel)
+  useEffect(() => {
+    if (value !== "" && options.some((o) => o.value === value)) {
+      setOtherMode(false);
+    }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col gap-1">
       <ELabel label={label} required={required} />
       <select
-        value={selectVal}
+        value={otherMode ? "__other__" : value}
         onChange={(e) => {
-          if (e.target.value === "__other__") onChange("");
-          else onChange(e.target.value);
+          if (e.target.value === "__other__") {
+            setOtherMode(true);
+            onChange("");
+          } else {
+            setOtherMode(false);
+            onChange(e.target.value);
+          }
         }}
         className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK}`}
       >
@@ -489,10 +501,10 @@ function EditSelectWithOther({
         ))}
         <option value="__other__">Other…</option>
       </select>
-      {selectVal === "__other__" && (
+      {otherMode && (
         <input
           type="text"
-          value={customVal}
+          value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Specify…"
           className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK} mt-1`}
@@ -529,9 +541,7 @@ function PhysicalQuantityCascade({
 
   function handleQuantityChange(q: string) {
     onQuantityChange(q);
-    const def = PHYSICAL_QUANTITIES.find((x) => x.value === q);
-    onUnitChange(def?.units[0]?.value ?? "");
-    onTechChange("", "");
+    // Unit reset and tech reset are handled by ChannelEditor's onQuantityChange as a single state update
   }
 
   function handleFamilyChange(fam: string) {
@@ -647,7 +657,10 @@ function ChannelEditor({
         unit={ch.unit}
         techFamily={ch._techFamily}
         technology={ch.technology}
-        onQuantityChange={(q) => onChange({ ...ch, physical_quantity: q, unit: "", _techFamily: "", technology: "" })}
+        onQuantityChange={(q) => {
+          const def = PHYSICAL_QUANTITIES.find((x) => x.value === q);
+          onChange({ ...ch, physical_quantity: q, unit: def?.units[0]?.value ?? "", _techFamily: "", technology: "" });
+        }}
         onUnitChange={set("unit")}
         onTechChange={(fam, tech) => onChange({ ...ch, _techFamily: fam, technology: tech })}
         errors={errors}
@@ -763,13 +776,14 @@ function CollapsibleSection({
 // ---------------------------------------------------------------------------
 
 function OverviewTab({
-  profile, isEditing, form, onChange, errors,
+  profile, isEditing, form, onChange, errors, locations,
 }: {
   profile: AssetProfile;
   isEditing: boolean;
   form: EditFormState | null;
   onChange: (f: EditFormState) => void;
   errors: Record<string, string>;
+  locations: LocationOption[];
 }) {
   const daq = profile.daq_details;
 
@@ -846,9 +860,13 @@ function OverviewTab({
           {/* Location */}
           <CollapsibleSection title="Location" forceOpen={isEditing}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <EditInput label="Location ID" value={form.location_id} onChange={set("location_id")} placeholder="Paste location UUID or leave blank" />
-              {profile.site_name && <SpecRow label="Current site" value={profile.site_name} />}
-              {profile.location_name && <SpecRow label="Current location" value={profile.location_name} />}
+              <EditSelect
+                label="Location"
+                value={form.location_id}
+                onChange={set("location_id")}
+                options={locations.map((l) => ({ value: l.id, label: l.path }))}
+                placeholder="Select location…"
+              />
             </div>
           </CollapsibleSection>
 
@@ -1424,7 +1442,7 @@ export default function AssetProfilePage() {
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [, setLocations] = useState<LocationOption[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -1684,6 +1702,7 @@ export default function AssetProfilePage() {
               form={editForm}
               onChange={handleFormChange}
               errors={editErrors}
+              locations={locations}
             />
           )}
           {activeTab === "calibration" && (

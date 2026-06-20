@@ -435,3 +435,110 @@ export function LocationLabIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+/** Building — tall rectangle with window grid and door. */
+export function LocationBuildingIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="2.5" y="1.5" width="11" height="13" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5 5h2M9 5h2M5 8h2M9 8h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="6" y="11" width="4" height="3.5" stroke="currentColor" strokeWidth="1.1" />
+    </svg>
+  );
+}
+
+/** Office — briefcase shape. */
+export function LocationOfficeIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="6" width="13" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.5 6V4.5a1.5 1.5 0 011.5-1.5h2a1.5 1.5 0 011.5 1.5V6" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M1.5 9.5h13" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/** Production — gear / cog with center circle. */
+export function LocationProductionIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 1.5V4M8 12v2.5M1.5 8H4M12 8h2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M3.5 3.5l1.7 1.7M10.8 10.8l1.7 1.7M3.5 12.5l1.7-1.7M10.8 5.2l1.7-1.7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Industrial process — two tanks connected by a horizontal pipe. */
+export function LocationIndustrialIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="5" width="4.5" height="8" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="10" y="3" width="4.5" height="8" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 9h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M3.75 5V3M12.25 3V1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Test facility — clipboard with a checkmark. */
+export function LocationTestIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="2.5" y="1.5" width="11" height="13" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 1.5v2.5h4V1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M5.5 9.5l2 2L11 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Field — pine tree (triangle crown + trunk). */
+export function LocationFieldIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M8 1.5L2.5 9.5H6V14h4V9.5h3.5L8 1.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Vehicle — car side profile with two wheels. */
+export function LocationVehicleIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M1 9V7l3-3h8l3 3v2H1Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <circle cx="4.5" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="11.5" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+/** Storage — isometric box / crate outline. */
+export function LocationStorageIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 5.5l6-4 6 4v6l-6 3.5L2 11.5V5.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M8 1.5V8M2 5.5l6 2.5M14 5.5L8 8" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/** External — arrow leaving a box (external-link pattern). */
+export function LocationExternalIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M9 2h5v5M14 2l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M7 4H4a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Other — question mark inside a circle. */
+export function LocationOtherIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 6.5C6 5.4 6.9 4.5 8 4.5s2 .9 2 2c0 .9-.5 1.5-1.5 2-.3.2-.5.5-.5.8V10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="8" cy="12.5" r="0.75" fill="currentColor" />
+    </svg>
+  );
+}
+

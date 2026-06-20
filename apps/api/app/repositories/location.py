@@ -75,8 +75,7 @@ def create(db: Session, created_by: uuid.UUID, **kwargs) -> Location:
 
 def update(db: Session, location: Location, **kwargs) -> Location:
     for key, value in kwargs.items():
-        if value is not None:
-            setattr(location, key, value)
+        setattr(location, key, value)
     db.commit()
     db.refresh(location)
     return location

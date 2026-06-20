@@ -15,11 +15,13 @@ export async function listAssets(params: {
   limit?: number;
   is_active?: boolean;
   location_id?: string;
+  include_descendants?: boolean;
 } = {}): Promise<AssetListItem[]> {
   const qs = new URLSearchParams();
   if (params.limit !== undefined) qs.set("limit", String(params.limit));
   if (params.is_active !== undefined) qs.set("is_active", String(params.is_active));
   if (params.location_id !== undefined) qs.set("location_id", params.location_id);
+  if (params.include_descendants) qs.set("include_descendants", "true");
   return apiFetch<AssetListItem[]>(`/api/v1/assets?${qs}`, {
     headers: tokenHeader(),
   });

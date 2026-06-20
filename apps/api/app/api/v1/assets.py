@@ -57,6 +57,7 @@ def list_assets(
     is_active: bool | None = None,
     asset_type: AssetType | None = None,
     location_id: uuid.UUID | None = None,
+    include_descendants: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[AssetListItem]:
@@ -67,6 +68,7 @@ def list_assets(
         is_active=is_active,
         asset_type=asset_type,
         location_id=location_id,
+        include_descendants=include_descendants,
     )
 
 

@@ -45,6 +45,7 @@ def list_assets(
     is_active: bool | None = None,
     asset_type: AssetType | None = None,
     location_id: uuid.UUID | None = None,
+    include_descendants: bool = False,
 ) -> list[dict]:
     today = date.today()
 
@@ -64,7 +65,25 @@ def list_assets(
     if asset_type:
         q = q.filter(Asset.asset_type == asset_type)
     if location_id:
-        q = q.filter(Asset.location_id == location_id)
+        if include_descendants:
+            all_loc_rows = db.query(Location.id, Location.parent_location_id).all()
+            children_map: dict[str, list[str]] = {}
+            for loc_id, parent_id in all_loc_rows:
+                if parent_id:
+                    children_map.setdefault(str(parent_id), []).append(str(loc_id))
+            subtree_ids: list[uuid.UUID] = []
+            queue: list[str] = [str(location_id)]
+            visited: set[str] = set()
+            while queue:
+                current = queue.pop(0)
+                if current in visited:
+                    continue
+                visited.add(current)
+                subtree_ids.append(uuid.UUID(current))
+                queue.extend(children_map.get(current, []))
+            q = q.filter(Asset.location_id.in_(subtree_ids))
+        else:
+            q = q.filter(Asset.location_id == location_id)
 
     assets = q.order_by(Asset.updated_at.desc()).offset(skip).limit(limit).all()
     if not assets:

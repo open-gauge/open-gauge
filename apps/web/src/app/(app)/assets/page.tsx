@@ -555,20 +555,21 @@ export default function AssetsPage() {
   const [sortCol, setSortCol]     = useState<SortKey | null>(null);
   const [sortDir, setSortDir]     = useState<SortDir>("asc");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [locationFilter, setLocationFilter] = useState<{ id: string; name: string } | null>(null);
+  const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const lid = params.get("location_id");
     const lname = params.get("location_name");
-    if (lid) setLocationFilter({ id: lid, name: lname ?? lid });
+    const inclDes = params.get("include_descendants") === "true";
+    if (lid) setLocationFilter({ id: lid, name: lname ?? lid, includeDescendants: inclDes });
   }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    listAssets({ limit: 200, location_id: locationFilter?.id })
+    listAssets({ limit: 200, location_id: locationFilter?.id, include_descendants: locationFilter?.includeDescendants })
       .then(setAssets)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -794,6 +795,7 @@ export default function AssetsPage() {
         <div className="flex items-center gap-3 rounded-xl bg-mar-accent/5 border border-mar-accent/20 px-4 py-2.5">
           <span className="text-xs text-mar-accent font-medium">
             Filtered by location: <span className="font-semibold">{locationFilter.name}</span>
+            {locationFilter.includeDescendants && <span className="font-normal text-gray-500"> (including sub-locations)</span>}
           </span>
           <button
             type="button"

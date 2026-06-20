@@ -63,7 +63,7 @@ def update_location(
     loc = location_repo.get_by_id(db, location_id)
     if not loc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
-    return location_repo.update(db, loc, **body.model_dump(exclude_none=True))
+    return location_repo.update(db, loc, **body.model_dump(exclude_unset=True))
 
 
 @router.delete("/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
