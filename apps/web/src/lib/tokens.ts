@@ -19,6 +19,7 @@ export const COLORS = {
   actionDark:  "#154050",
   accent:      "#2f819b",
   accentDark:  "#256a81",
+  scatter:     "#ef4444",
 } as const;
 
 // ---------------------------------------------------------------------------

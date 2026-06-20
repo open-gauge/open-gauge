@@ -160,6 +160,7 @@ def list_assets(
                     "measurement_min": float(ch.measurement_min) if ch.measurement_min is not None else None,
                     "measurement_max": float(ch.measurement_max) if ch.measurement_max is not None else None,
                     "unit": ch.unit,
+                    "calibration_role": ch.calibration_role,
                 })
             if channels:
                 first = channels[0]

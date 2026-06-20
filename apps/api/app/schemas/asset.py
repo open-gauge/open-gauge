@@ -16,6 +16,7 @@ class ChannelListItem(BaseModel):
     measurement_min: float | None
     measurement_max: float | None
     unit: str
+    calibration_role: str | None = None
 
 
 class AssetCreate(BaseModel):

@@ -51,6 +51,7 @@ import {
   WarningIcon,
   XIcon,
 } from "@/components/icons";
+import { CalibrationWizard } from "./CalibrationWizard";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1303,6 +1304,9 @@ interface CalibrationTabProps {
   calibrations: CalibrationRecord[];
   coeffsByCalId: Record<string, CalibrationCoefficient[]>;
   certs: CertInfo[];
+  isEditing: boolean;
+  profile: AssetProfile;
+  onCalibrationSaved: () => void;
 }
 
 function CoeffCard({ label, sub, value, unit }: { label: string; sub: string; value: string; unit?: string }) {
@@ -1367,9 +1371,10 @@ function CalibrationResultBadge({ result }: { result: string }) {
   );
 }
 
-function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabProps) {
+function CalibrationTab({ calibrations, coeffsByCalId, certs, isEditing, profile, onCalibrationSaved }: CalibrationTabProps) {
   const total = calibrations.length;
   const [selectedCalId, setSelectedCalId] = useState<string | null>(calibrations[0]?.id ?? null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const selectedCal = calibrations.find((c) => c.id === selectedCalId) ?? calibrations[0] ?? null;
   const selectedIdx = calibrations.findIndex((c) => c.id === selectedCalId);
@@ -1388,6 +1393,15 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
   const hasMultipleChannels = channelKeys.length > 1;
 
   return (
+    <>
+    {wizardOpen && (
+      <CalibrationWizard
+        assetId={profile.id}
+        profile={profile}
+        onClose={() => setWizardOpen(false)}
+        onSaved={() => { setWizardOpen(false); onCalibrationSaved(); }}
+      />
+    )}
     <div className="space-y-5">
       {selectedCal ? (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
@@ -1446,13 +1460,37 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
         </div>
       ) : (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-          <p className="text-sm text-gray-400">No calibrations recorded for this asset.</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-400">No calibrations recorded for this asset.</p>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={() => setWizardOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                <PlusIcon size={12} />
+                Add Calibration
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {calibrations.length > 0 && (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-mar-text mb-1">Calibration history</h3>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-sm font-semibold text-mar-text">Calibration history</h3>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={() => setWizardOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                <PlusIcon size={12} />
+                Add Calibration
+              </button>
+            )}
+          </div>
           <p className="text-xs text-gray-400 mb-4">Select a calibration to view its coefficients.</p>
           <div className="divide-y divide-mar-border">
             {calibrations.map((cal, idx) => {
@@ -1488,6 +1526,7 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs }: CalibrationTabPr
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -1703,6 +1742,21 @@ export default function AssetProfilePage() {
     }
   }
 
+  async function handleCalibrationSaved() {
+    const [calsData, updatedProfile] = await Promise.all([
+      getAssetCalibrations(id),
+      getAssetProfile(id),
+    ]);
+    setCalibrations(calsData);
+    setProfile(updatedProfile);
+    if (calsData.length > 0) {
+      const coeffResults = await Promise.all(calsData.map((cal) => getCalibrationCoefficients(cal.id)));
+      const map: Record<string, CalibrationCoefficient[]> = {};
+      calsData.forEach((cal, i) => { map[cal.id] = coeffResults[i]; });
+      setCoeffsByCalId(map);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-400">
@@ -1913,7 +1967,14 @@ export default function AssetProfilePage() {
             />
           )}
           {activeTab === "calibration" && (
-            <CalibrationTab calibrations={calibrations} coeffsByCalId={coeffsByCalId} certs={certs} />
+            <CalibrationTab
+              calibrations={calibrations}
+              coeffsByCalId={coeffsByCalId}
+              certs={certs}
+              isEditing={isEditing}
+              profile={profile}
+              onCalibrationSaved={handleCalibrationSaved}
+            />
           )}
           {activeTab === "files" && <FilesTab files={files} />}
           {activeTab === "activity" && <ActivityTab logs={auditLogs} />}

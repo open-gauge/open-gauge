@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,3 +37,19 @@ class Calibration(Base):
     calibration_file_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Migration 004 additions
+    sensor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("sensors.id"), nullable=True)
+    calibration_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="external")
+    reference_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True)
+    calibration_method_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("calibration_methods.id"), nullable=True)
+    certificate_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    certificate_expiry_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    calibration_interval: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    temperature_value: Mapped[float | None] = mapped_column(Numeric(10, 4), nullable=True)
+    temperature_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    pressure_value: Mapped[float | None] = mapped_column(Numeric(12, 4), nullable=True)
+    pressure_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    humidity_value: Mapped[float | None] = mapped_column(Numeric(8, 4), nullable=True)
+    humidity_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)

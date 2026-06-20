@@ -1,7 +1,7 @@
 import { apiFetch, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
-import type { CalibrationRecord, CalibrationCoefficient } from "@/types/calibration";
+import type { CalibrationRecord, CalibrationCoefficient, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 
@@ -81,6 +81,46 @@ export async function retireAsset(id: string, reason?: string): Promise<void> {
 
 export async function listTeams(): Promise<{ id: string; name: string }[]> {
   return apiFetch<{ id: string; name: string }[]>(`/api/v1/teams`, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function getCalibrationPoints(calId: string): Promise<CalibrationPoint[]> {
+  return apiFetch<CalibrationPoint[]>(`/api/v1/calibrations/${calId}/points`, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function analyzeCalibration(body: AnalyzeRequest): Promise<AnalyzeResponse> {
+  return apiFetch<AnalyzeResponse>(`/api/v1/calibrations/analyze`, {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function createCalibration(body: CalibrationCreateBody): Promise<CalibrationRecord> {
+  return apiFetch<CalibrationRecord>(`/api/v1/calibrations`, {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getNextCalibrationVersion(assetId: string, sensorId?: string): Promise<number> {
+  const qs = new URLSearchParams({ count: "true" });
+  if (sensorId) qs.set("sensor_id", sensorId);
+  const cals = await apiFetch<CalibrationRecord[]>(`/api/v1/assets/${assetId}/calibrations?${qs}`, {
+    headers: tokenHeader(),
+  });
+  return cals.length + 1;
+}
+
+export async function listCalibrationMethods(physicalQuantity?: string): Promise<{ id: string; name: string; physical_quantity: string }[]> {
+  const qs = new URLSearchParams();
+  if (physicalQuantity) qs.set("physical_quantity", physicalQuantity);
+  const query = qs.toString() ? `?${qs}` : "";
+  return apiFetch(`/api/v1/calibrations/methods${query}`, {
     headers: tokenHeader(),
   });
 }

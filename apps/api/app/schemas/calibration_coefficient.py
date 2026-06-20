@@ -22,6 +22,21 @@ class CalibrationCoefficientCreate(BaseModel):
     uncertainty: float | None = None
     uncertainty_coverage_factor: float | None = None
     notes: str | None = None
+    # Statistics
+    r_squared: float | None = None
+    rmse: float | None = None
+    standard_error: float | None = None
+    max_error: float | None = None
+    full_scale_error_pct: float | None = None
+    non_linearity_pct: float | None = None
+    repeatability: float | None = None
+    hysteresis: float | None = None
+    distribution_type: str | None = None
+    confidence_level: float | None = None
+    combined_uncertainty: float | None = None
+    expanded_uncertainty: float | None = None
+    valid_range_min: float | None = None
+    valid_range_max: float | None = None
 
 
 class CalibrationCoefficientResponse(BaseModel):
@@ -41,5 +56,20 @@ class CalibrationCoefficientResponse(BaseModel):
     uncertainty_coverage_factor: float | None
     notes: str | None
     created_at: datetime
+    # Statistics
+    r_squared: float | None
+    rmse: float | None
+    standard_error: float | None
+    max_error: float | None
+    full_scale_error_pct: float | None
+    non_linearity_pct: float | None
+    repeatability: float | None
+    hysteresis: float | None
+    distribution_type: str | None
+    confidence_level: float | None
+    combined_uncertainty: float | None
+    expanded_uncertainty: float | None
+    valid_range_min: float | None
+    valid_range_max: float | None
 
     model_config = {"from_attributes": True}

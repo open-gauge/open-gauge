@@ -217,6 +217,7 @@ export interface ChannelListItem {
   measurement_min: number | null;
   measurement_max: number | null;
   unit: string;
+  calibration_role: string | null;
 }
 
 export interface AssetListItem {

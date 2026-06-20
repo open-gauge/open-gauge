@@ -5,6 +5,7 @@ from . import (  # noqa: F401
     calibration,
     calibration_coefficient,
     calibration_method,
+    calibration_point,
     certificate,
     daq,
     location,
