@@ -43,5 +43,6 @@ class LocationResponse(BaseModel):
     created_by: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    asset_count: int = 0
 
     model_config = {"from_attributes": True}

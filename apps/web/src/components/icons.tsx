@@ -400,3 +400,38 @@ export function XIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Location hierarchy tree
+// ---------------------------------------------------------------------------
+
+/** Top-level organisation node in the location tree. */
+export function LocationOrgIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5 8h6M8 5v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Site node — building outline. */
+export function LocationSiteIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 14V7l6-5 6 5v7H2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <rect x="6" y="9" width="4" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+/** Laboratory node — flask outline. */
+export function LocationLabIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M5.5 1.5h5M6 1.5v5.5L2.5 13.5h11L10 7V1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="5.5" cy="11" r="0.75" fill="currentColor" />
+      <circle cx="8" cy="12" r="0.75" fill="currentColor" />
+    </svg>
+  );
+}
+

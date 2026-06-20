@@ -555,14 +555,24 @@ export default function AssetsPage() {
   const [sortCol, setSortCol]     = useState<SortKey | null>(null);
   const [sortDir, setSortDir]     = useState<SortDir>("asc");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [locationFilter, setLocationFilter] = useState<{ id: string; name: string } | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    listAssets({ limit: 200 })
+    const params = new URLSearchParams(window.location.search);
+    const lid = params.get("location_id");
+    const lname = params.get("location_name");
+    if (lid) setLocationFilter({ id: lid, name: lname ?? lid });
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    listAssets({ limit: 200, location_id: locationFilter?.id })
       .then(setAssets)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [locationFilter]);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -779,6 +789,21 @@ export default function AssetsPage() {
           </div>
         </div>
       </div>
+
+      {locationFilter && (
+        <div className="flex items-center gap-3 rounded-xl bg-mar-accent/5 border border-mar-accent/20 px-4 py-2.5">
+          <span className="text-xs text-mar-accent font-medium">
+            Filtered by location: <span className="font-semibold">{locationFilter.name}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setLocationFilter(null)}
+            className="ml-auto text-[10px] text-gray-400 hover:text-mar-text transition-colors"
+          >
+            View all ✕
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-4 py-3 text-sm text-red-600 dark:text-red-400">

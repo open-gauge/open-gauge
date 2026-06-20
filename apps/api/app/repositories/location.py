@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..models.asset import Asset
 from ..models.location import Location
 
 
@@ -17,7 +19,7 @@ def list_locations(
     organization_id: uuid.UUID | None = None,
     parent_location_id: uuid.UUID | None = None,
     is_active: bool | None = None,
-) -> list[Location]:
+) -> list[dict]:
     q = db.query(Location)
     if organization_id:
         q = q.filter(Location.organization_id == organization_id)
@@ -25,7 +27,42 @@ def list_locations(
         q = q.filter(Location.parent_location_id == parent_location_id)
     if is_active is not None:
         q = q.filter(Location.is_active == is_active)
-    return q.order_by(Location.name).offset(skip).limit(limit).all()
+    locations = q.order_by(Location.name).offset(skip).limit(limit).all()
+
+    if not locations:
+        return []
+
+    # Count active assets per location in a single query
+    loc_ids = [loc.id for loc in locations]
+    count_rows = (
+        db.query(Asset.location_id, func.count(Asset.id))
+        .filter(Asset.location_id.in_(loc_ids), Asset.is_active.is_(True))
+        .group_by(Asset.location_id)
+        .all()
+    )
+    count_map: dict[str, int] = {str(row[0]): row[1] for row in count_rows}
+
+    result: list[dict] = []
+    for loc in locations:
+        result.append({
+            "id": loc.id,
+            "organization_id": loc.organization_id,
+            "parent_location_id": loc.parent_location_id,
+            "name": loc.name,
+            "description": loc.description,
+            "location_type": loc.location_type,
+            "code": loc.code,
+            "address": loc.address,
+            "latitude": float(loc.latitude) if loc.latitude is not None else None,
+            "longitude": float(loc.longitude) if loc.longitude is not None else None,
+            "is_active": loc.is_active,
+            "archived_at": loc.archived_at,
+            "created_by": loc.created_by,
+            "created_at": loc.created_at,
+            "updated_at": loc.updated_at,
+            "asset_count": count_map.get(str(loc.id), 0),
+        })
+    return result
 
 
 def create(db: Session, created_by: uuid.UUID, **kwargs) -> Location:
