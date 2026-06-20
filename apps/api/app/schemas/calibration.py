@@ -4,8 +4,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ..models.calibration import CalibrationResult
-
 
 # ------------------------------------------------------------------ #
 # Analyze endpoint                                                    #
@@ -61,39 +59,10 @@ class AnalyzeResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
-# Calibration create / response                                       #
+# Calibration data points                                            #
 # ------------------------------------------------------------------ #
 
-class CalibrationCoefficientInline(BaseModel):
-    """Coefficient data embedded in the atomic CalibrationCreate payload."""
-    channel: str | None = None
-    unit_input: str | None = None
-    unit_output: str | None = None
-    # The wizard always submits polynomial coefficients
-    poly_degree: int
-    poly_coefficients: list[float]
-    range_min: float | None = None
-    range_max: float | None = None
-    # Statistics from analysis
-    r_squared: float | None = None
-    rmse: float | None = None
-    standard_error: float | None = None
-    max_error: float | None = None
-    full_scale_error_pct: float | None = None
-    non_linearity_pct: float | None = None
-    repeatability: float | None = None
-    hysteresis: float | None = None
-    distribution_type: str | None = None
-    confidence_level: float | None = None
-    combined_uncertainty: float | None = None
-    expanded_uncertainty: float | None = None
-    valid_range_min: float | None = None
-    valid_range_max: float | None = None
-    notes: str | None = None
-
-
 class CalibrationPointInline(BaseModel):
-    """Raw data point embedded in the atomic CalibrationCreate payload."""
     point_index: int
     reference_value: float
     measured_value: float
@@ -103,76 +72,6 @@ class CalibrationPointInline(BaseModel):
     reference_unit: str
     measured_unit: str
 
-
-class CalibrationCreate(BaseModel):
-    asset_id: uuid.UUID
-    calibration_date: date
-    due_date: date
-    performed_by_name: str = Field(min_length=1, max_length=255)
-    performed_by_user_id: uuid.UUID | None = None
-    external_lab_name: str | None = None
-    external_lab_accreditation: str | None = None
-    result: CalibrationResult
-    notes: str | None = None
-    # Migration 004 fields
-    sensor_id: uuid.UUID | None = None
-    calibration_type: str = "external"
-    reference_asset_id: uuid.UUID | None = None
-    calibration_method_id: uuid.UUID | None = None
-    certificate_number: str | None = None
-    certificate_expiry_date: date | None = None
-    calibration_interval: int | None = None
-    version: int = 1
-    temperature_value: float | None = None
-    temperature_unit: str | None = None
-    pressure_value: float | None = None
-    pressure_unit: str | None = None
-    humidity_value: float | None = None
-    humidity_unit: str | None = None
-    # Embedded coefficient and points (optional — coefficients-only flow skips points)
-    coefficient: CalibrationCoefficientInline | None = None
-    points: list[CalibrationPointInline] = Field(default_factory=list)
-
-
-class CalibrationResponse(BaseModel):
-    id: uuid.UUID
-    asset_id: uuid.UUID
-    calibration_date: date
-    due_date: date
-    performed_by_user_id: uuid.UUID | None
-    performed_by_name: str
-    external_lab_name: str | None
-    external_lab_accreditation: str | None
-    result: CalibrationResult
-    temperature_c: float | None
-    humidity_pct: float | None
-    pressure_hpa: float | None
-    notes: str | None
-    calibration_file_id: uuid.UUID | None
-    created_by: uuid.UUID
-    created_at: datetime
-    # Migration 004
-    sensor_id: uuid.UUID | None
-    calibration_type: str
-    reference_asset_id: uuid.UUID | None
-    calibration_method_id: uuid.UUID | None
-    certificate_number: str | None
-    certificate_expiry_date: date | None
-    calibration_interval: int | None
-    version: int
-    temperature_value: float | None
-    temperature_unit: str | None
-    pressure_value: float | None
-    pressure_unit: str | None
-    humidity_value: float | None
-    humidity_unit: str | None
-
-    model_config = {"from_attributes": True}
-
-
-# ------------------------------------------------------------------ #
-# Calibration points response                                         #
-# ------------------------------------------------------------------ #
 
 class CalibrationPointResponse(BaseModel):
     id: uuid.UUID
@@ -186,5 +85,121 @@ class CalibrationPointResponse(BaseModel):
     reference_unit: str
     measured_unit: str
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ------------------------------------------------------------------ #
+# Calibration create / response (flat)                               #
+# ------------------------------------------------------------------ #
+
+class CalibrationCreate(BaseModel):
+    asset_id: uuid.UUID
+    calibration_date: date
+    due_date: date
+    performed_by_name: str = Field(min_length=1, max_length=255)
+    performed_by_user_id: uuid.UUID | None = None
+    external_lab_name: str | None = None
+    notes: str | None = None
+
+    # Metadata
+    sensor_id: uuid.UUID | None = None
+    calibration_type: str = "external"
+    calibration_version: int = 1
+    calibration_interval: int | None = None
+    tolerance_criteria: str | None = None
+
+    # Traceability
+    internal_reference_asset_id: uuid.UUID | None = None
+    internal_procedure_id: uuid.UUID | None = None
+    external_lab_certificate_number: str | None = None
+    daq_id: uuid.UUID | None = None
+
+    # Environmental conditions (canonical units: °C, %RH, Pa)
+    temperature: float | None = None
+    humidity: float | None = None
+    pressure: float | None = None
+
+    # Polynomial model
+    poly_order: int | None = None
+    poly_coefficients: list[float] | None = None
+    range_min: float | None = None
+    range_max: float | None = None
+
+    # Regression statistics
+    r_squared: float | None = None
+    rmse: float | None = None
+    standard_error: float | None = None
+    max_error: float | None = None
+    full_scale_error: float | None = None
+    non_linearity: float | None = None
+    repeatability: float | None = None
+    hysteresis: float | None = None
+    distribution_type: str | None = None
+    confidence_level: float | None = None
+    coverage_factor: float | None = None
+    combined_uncertainty: float | None = None
+    expanded_uncertainty: float | None = None
+    valid_range_min: float | None = None
+    valid_range_max: float | None = None
+
+    # Embedded data points
+    points: list[CalibrationPointInline] = Field(default_factory=list)
+
+
+class CalibrationResponse(BaseModel):
+    id: uuid.UUID
+    asset_id: uuid.UUID
+    calibration_date: date
+    due_date: date
+    performed_by_user_id: uuid.UUID | None
+    performed_by_name: str
+    external_lab_name: str | None
+    notes: str | None
+    calibration_file_id: uuid.UUID | None
+    created_by: uuid.UUID
+    created_at: datetime
+
+    # Metadata
+    sensor_id: uuid.UUID | None
+    calibration_type: str
+    calibration_version: int
+    calibration_interval: int | None
+    tolerance_criteria: str | None
+
+    # Traceability
+    internal_reference_asset_id: uuid.UUID | None
+    internal_procedure_id: uuid.UUID | None
+    external_lab_certificate_number: str | None
+    daq_id: uuid.UUID | None
+    calibration_data_id: uuid.UUID | None
+
+    # Environmental conditions
+    temperature: float | None
+    humidity: float | None
+    pressure: float | None
+
+    # Polynomial model
+    poly_order: int | None
+    poly_coefficients: Any | None
+    range_min: float | None
+    range_max: float | None
+
+    # Regression statistics
+    r_squared: float | None
+    rmse: float | None
+    standard_error: float | None
+    max_error: float | None
+    full_scale_error: float | None
+    non_linearity: float | None
+    repeatability: float | None
+    hysteresis: float | None
+    distribution_type: str | None
+    confidence_level: float | None
+    coverage_factor: float | None
+    combined_uncertainty: float | None
+    expanded_uncertainty: float | None
+    valid_range_min: float | None
+    valid_range_max: float | None
 
     model_config = {"from_attributes": True}

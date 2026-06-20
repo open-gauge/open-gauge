@@ -8,9 +8,7 @@ from ..models.asset import Asset, AssetType
 from ..models.stored_file import StoredFile
 from ..models.asset_location import AssetLocation
 from ..models.audit_log import AuditLog
-from ..models.calibration import Calibration, CalibrationResult
-from ..models.calibration_coefficient import CalibrationCoefficient, CoefficientType
-from ..models.certificate import Certificate
+from ..models.calibration import Calibration
 from ..models.daq import DAQ
 from ..models.location import Location
 from ..models.organization import Organization
@@ -513,11 +511,7 @@ def seed_database(db: Session) -> None:
         performed_by_name="A. Lindberg",
         performed_by_user_id=admin.id,
         external_lab_name="NMI Netherlands",
-        external_lab_accreditation="RvA L205",
-        result=CalibrationResult.pass_,
-        temperature_c=20.1,
-        humidity_pct=48.5,
-        pressure_hpa=1013.2,
+        temperature=20.1, humidity=48.5, pressure=101320.0,
         created_by=admin.id,
     )
     cal_tt22 = Calibration(
@@ -527,10 +521,7 @@ def seed_database(db: Session) -> None:
         performed_by_name="M. Schmidt",
         performed_by_user_id=tech.id,
         external_lab_name="PTB Germany",
-        external_lab_accreditation="DAkkS D-K-15070-01-00",
-        result=CalibrationResult.pass_,
-        temperature_c=22.3,
-        humidity_pct=51.0,
+        temperature=22.3, humidity=51.0,
         created_by=admin.id,
     )
     cal_rps = Calibration(
@@ -540,11 +531,7 @@ def seed_database(db: Session) -> None:
         performed_by_name="A. Lindberg",
         performed_by_user_id=admin.id,
         external_lab_name="PTB Germany",
-        external_lab_accreditation="DAkkS D-K-15070-01-00",
-        result=CalibrationResult.pass_,
-        temperature_c=20.0,
-        humidity_pct=50.0,
-        pressure_hpa=1013.0,
+        temperature=20.0, humidity=50.0, pressure=101300.0,
         notes="WIKA reference standard annual calibration",
         created_by=admin.id,
     )
@@ -554,9 +541,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2024, 12, 10),
         due_date=date(2025, 12, 10),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        external_lab_name="NMI Netherlands", external_lab_accreditation="RvA L205",
-        result=CalibrationResult.pass_,
-        temperature_c=20.0, humidity_pct=48.0, pressure_hpa=1013.0,
+        external_lab_name="NMI Netherlands",
+        temperature=20.0, humidity=48.0, pressure=101300.0,
         created_by=admin.id,
     )
     # MAR-00422 Coolant Loop TT-12 — annual, expired
@@ -565,8 +551,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 3, 15),
         due_date=date(2026, 3, 15),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
-        result=CalibrationResult.pass_,
-        temperature_c=22.0, humidity_pct=50.0,
+        temperature=22.0, humidity=50.0,
         created_by=admin.id,
     )
     # MAR-00423 Cleanroom RH-Sensor — annual, upcoming Sep 2026
@@ -575,8 +560,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 9, 20),
         due_date=date(2026, 9, 20),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        result=CalibrationResult.pass_,
-        temperature_c=20.5, humidity_pct=45.0,
+        temperature=20.5, humidity=45.0,
         created_by=admin.id,
     )
     # MAR-00424 Process Flow FT-08 — annual, expired Feb 2026
@@ -585,8 +569,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 2, 28),
         due_date=date(2026, 2, 28),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
-        result=CalibrationResult.pass_,
-        temperature_c=19.8, humidity_pct=55.0,
+        temperature=19.8, humidity=55.0,
         created_by=admin.id,
     )
     # MAR-00425 Boiler Output PT-04 — annual, upcoming Jul 2026
@@ -595,8 +578,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 7, 20),
         due_date=date(2026, 7, 20),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        result=CalibrationResult.pass_,
-        temperature_c=21.0, humidity_pct=48.0,
+        temperature=21.0, humidity=48.0,
         created_by=admin.id,
     )
     # MAR-00427 Furnace TT-22 — recalibration after expiry
@@ -605,9 +587,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2026, 6, 15),
         due_date=date(2027, 6, 15),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        external_lab_name="PTB Germany", external_lab_accreditation="DAkkS D-K-15070-01-00",
-        result=CalibrationResult.conditional_pass,
-        temperature_c=23.5, humidity_pct=52.0,
+        external_lab_name="PTB Germany",
+        temperature=23.5, humidity=52.0,
         notes="Recalibrated after expiry. Conditional pass — gain correction applied.",
         created_by=admin.id,
     )
@@ -617,8 +598,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 11, 8),
         due_date=date(2026, 11, 8),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
-        result=CalibrationResult.pass_,
-        temperature_c=20.0, humidity_pct=50.0,
+        temperature=20.0, humidity=50.0,
         created_by=admin.id,
     )
     # MAR-00429 Cooling Water FT-14 — annual, upcoming Feb 2027
@@ -627,8 +607,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2026, 2, 14),
         due_date=date(2027, 2, 14),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        result=CalibrationResult.pass_,
-        temperature_c=20.0, humidity_pct=48.0,
+        temperature=20.0, humidity=48.0,
         created_by=admin.id,
     )
     # MAR-00432 Tank Bottom TT-19 — annual, expired Apr 2026, FAILED (low health)
@@ -637,9 +616,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 4, 12),
         due_date=date(2026, 4, 12),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
-        result=CalibrationResult.fail,
         notes="Out of tolerance at high range. Health flagged. Replacement requested.",
-        temperature_c=21.5, humidity_pct=51.0,
+        temperature=21.5, humidity=51.0,
         created_by=admin.id,
     )
     # MAR-00438 Ambient TT-38 — 6-month schedule, first cycle
@@ -648,9 +626,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 7, 22),
         due_date=date(2026, 1, 22),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        external_lab_name="PTB Germany", external_lab_accreditation="DAkkS D-K-15070-01-00",
-        result=CalibrationResult.pass_,
-        temperature_c=20.0, humidity_pct=50.0, pressure_hpa=1013.0,
+        external_lab_name="PTB Germany",
+        temperature=20.0, humidity=50.0, pressure=101300.0,
         created_by=admin.id,
     )
     # MAR-00438 Ambient TT-38 — 6-month schedule, second cycle (performed on due date)
@@ -659,9 +636,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2026, 1, 22),
         due_date=date(2026, 7, 22),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        external_lab_name="PTB Germany", external_lab_accreditation="DAkkS D-K-15070-01-00",
-        result=CalibrationResult.pass_,
-        temperature_c=20.1, humidity_pct=49.8, pressure_hpa=1013.1,
+        external_lab_name="PTB Germany",
+        temperature=20.1, humidity=49.8, pressure=101310.0,
         created_by=admin.id,
     )
     # MAR-00504 Reference Pressure Standard — historical 2024
@@ -670,9 +646,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2024, 11, 5),
         due_date=date(2025, 11, 5),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        external_lab_name="PTB Germany", external_lab_accreditation="DAkkS D-K-15070-01-00",
-        result=CalibrationResult.pass_,
-        temperature_c=20.0, humidity_pct=50.0, pressure_hpa=1013.0,
+        external_lab_name="PTB Germany",
+        temperature=20.0, humidity=50.0, pressure=101300.0,
         created_by=admin.id,
     )
     # MAR-00505 Reference Thermometer — 6-month, first cycle, expired Mar 2026
@@ -681,9 +656,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 9, 10),
         due_date=date(2026, 3, 10),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        external_lab_name="NMI Netherlands", external_lab_accreditation="RvA L205",
-        result=CalibrationResult.pass_,
-        temperature_c=20.0, humidity_pct=50.0, pressure_hpa=1013.0,
+        external_lab_name="NMI Netherlands",
+        temperature=20.0, humidity=50.0, pressure=101300.0,
         created_by=admin.id,
     )
     # MAR-00505 Reference Thermometer — 6-month, second cycle, upcoming Sep 2026
@@ -692,9 +666,8 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2026, 3, 12),
         due_date=date(2026, 9, 12),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
-        external_lab_name="NMI Netherlands", external_lab_accreditation="RvA L205",
-        result=CalibrationResult.pass_,
-        temperature_c=20.1, humidity_pct=50.2, pressure_hpa=1013.1,
+        external_lab_name="NMI Netherlands",
+        temperature=20.1, humidity=50.2, pressure=101310.0,
         created_by=admin.id,
     )
     # MAR-00506 Field Data Logger FDL-04 — annual, expired Jun 2026
@@ -703,8 +676,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 6, 1),
         due_date=date(2026, 6, 1),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
-        result=CalibrationResult.pass_,
-        temperature_c=21.0, humidity_pct=52.0,
+        temperature=21.0, humidity=52.0,
         created_by=admin.id,
     )
     # MAR-00507 NI USB-6341 — annual, upcoming Dec 2026
@@ -714,8 +686,7 @@ def seed_database(db: Session) -> None:
         due_date=date(2026, 12, 15),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
         external_lab_name="Keysight Technologies",
-        result=CalibrationResult.pass_,
-        temperature_c=20.5, humidity_pct=48.0,
+        temperature=20.5, humidity=48.0,
         notes="Multifunction DAQ annual verification — all channels in spec.",
         created_by=admin.id,
     )
@@ -725,8 +696,7 @@ def seed_database(db: Session) -> None:
         calibration_date=date(2025, 5, 10),
         due_date=date(2026, 5, 10),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
-        result=CalibrationResult.pass_,
-        temperature_c=20.0, humidity_pct=50.0,
+        temperature=20.0, humidity=50.0,
         created_by=admin.id,
     )
 
@@ -740,180 +710,6 @@ def seed_database(db: Session) -> None:
         db.add(cal)
     db.flush()
 
-    # Calibration coefficients
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_pt01.id,
-        channel="Pressure",
-        coefficient_type=CoefficientType.linear,
-        gain=1.00120000,
-        offset_value=0.00500000,
-        unit_input="mA",
-        unit_output="bar",
-        range_min=4.0,
-        range_max=20.0,
-        uncertainty=0.00010000,
-        uncertainty_coverage_factor=2.0,
-        notes="Linear correction applied to 4–20 mA output",
-    ))
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_tt22.id,
-        channel="Temperature",
-        coefficient_type=CoefficientType.linear,
-        gain=0.99980000,
-        offset_value=-0.00200000,
-        unit_input="mA",
-        unit_output="°C",
-        range_min=4.0,
-        range_max=20.0,
-        uncertainty=0.05000000,
-        uncertainty_coverage_factor=2.0,
-        notes="Linear correction for thermocouple output",
-    ))
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_rps.id,
-        channel="Pressure",
-        coefficient_type=CoefficientType.linear,
-        gain=1.00005000,
-        offset_value=0.00001000,
-        unit_input="mA",
-        unit_output="bar",
-        range_min=0.0,
-        range_max=10.0,
-        uncertainty=0.000005,
-        uncertainty_coverage_factor=2.0,
-    ))
-
-    # cal_pt01_prev — MAR-00421 previous annual cycle (2024)
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_pt01_prev.id,
-        channel="Pressure",
-        coefficient_type=CoefficientType.linear,
-        gain=1.00080000,
-        offset_value=0.00300000,
-        unit_input="mA",
-        unit_output="bar",
-        range_min=4.0, range_max=20.0,
-        uncertainty=0.00012000,
-        uncertainty_coverage_factor=2.0,
-        notes="Previous annual cycle — minor drift observed",
-    ))
-    # cal_rh01 — MAR-00423 Cleanroom RH-Sensor (two channels)
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_rh01.id,
-        channel="Humidity",
-        coefficient_type=CoefficientType.linear,
-        gain=1.00150000,
-        offset_value=-0.20000000,
-        unit_input="V",
-        unit_output="%RH",
-        range_min=0.0, range_max=1.0,
-        uncertainty=0.50000000,
-        uncertainty_coverage_factor=2.0,
-        notes="Humidity channel — capacitive sensor linear fit",
-    ))
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_rh01.id,
-        channel="Temperature",
-        coefficient_type=CoefficientType.linear,
-        gain=0.99950000,
-        offset_value=0.05000000,
-        unit_input="V",
-        unit_output="°C",
-        range_min=0.0, range_max=1.0,
-        uncertainty=0.10000000,
-        uncertainty_coverage_factor=2.0,
-        notes="Temperature channel — embedded RTD linear fit",
-    ))
-    # cal_tt22_new — MAR-00427 Furnace TT-22 recalibration (conditional pass)
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_tt22_new.id,
-        channel="Temperature",
-        coefficient_type=CoefficientType.linear,
-        gain=0.99850000,
-        offset_value=0.12000000,
-        unit_input="mA",
-        unit_output="°C",
-        range_min=4.0, range_max=20.0,
-        uncertainty=0.05000000,
-        uncertainty_coverage_factor=2.0,
-        notes="Recalibration after expiry — gain correction applied (conditional pass)",
-    ))
-    # cal_tt38_1 — MAR-00438 Ambient reference thermometer cycle 1
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_tt38_1.id,
-        channel="Temperature",
-        coefficient_type=CoefficientType.linear,
-        gain=1.00002000,
-        offset_value=-0.00300000,
-        unit_input="mA",
-        unit_output="°C",
-        range_min=4.0, range_max=20.0,
-        uncertainty=0.00100000,
-        uncertainty_coverage_factor=2.0,
-    ))
-    # cal_tt38_2 — MAR-00438 Ambient reference thermometer cycle 2
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_tt38_2.id,
-        channel="Temperature",
-        coefficient_type=CoefficientType.linear,
-        gain=1.00001500,
-        offset_value=-0.00250000,
-        unit_input="mA",
-        unit_output="°C",
-        range_min=4.0, range_max=20.0,
-        uncertainty=0.00100000,
-        uncertainty_coverage_factor=2.0,
-    ))
-    # cal_rps_prev — MAR-00504 reference pressure standard historical (2024)
-    db.add(CalibrationCoefficient(
-        calibration_id=cal_rps_prev.id,
-        channel="Pressure",
-        coefficient_type=CoefficientType.linear,
-        gain=1.00003000,
-        offset_value=0.00000800,
-        unit_input="mA",
-        unit_output="bar",
-        range_min=0.0, range_max=10.0,
-        uncertainty=0.000006,
-        uncertainty_coverage_factor=2.0,
-    ))
-
-    # ------------------------------------------------------------------ #
-    # Certificates                                                       #
-    # ------------------------------------------------------------------ #
-    db.add(Certificate(
-        asset_id=asset_map["MAR-00421"].id,
-        calibration_id=cal_pt01.id,
-        certificate_number="CERT-2025-NMI-0421",
-        issued_by="NMI Netherlands",
-        accreditation_body="RvA",
-        accreditation_number="L205",
-        issued_at=date(2025, 12, 10),
-        valid_until=date(2026, 12, 10),
-        created_by=admin.id,
-    ))
-    db.add(Certificate(
-        asset_id=asset_map["MAR-00427"].id,
-        calibration_id=cal_tt22.id,
-        certificate_number="CERT-2025-PTB-0427",
-        issued_by="PTB Germany",
-        accreditation_body="DAkkS",
-        accreditation_number="D-K-15070-01-00",
-        issued_at=date(2025, 5, 30),
-        valid_until=date(2026, 5, 30),
-        created_by=admin.id,
-    ))
-    db.add(Certificate(
-        asset_id=asset_map["MAR-00504"].id,
-        calibration_id=cal_rps.id,
-        certificate_number="CERT-2025-PTB-0504",
-        issued_by="PTB Germany",
-        accreditation_body="DAkkS",
-        accreditation_number="D-K-15070-01-00",
-        issued_at=date(2025, 11, 5),
-        valid_until=date(2026, 11, 5),
-        created_by=admin.id,
-    ))
 
     # ------------------------------------------------------------------ #
     # Stored files (seed — placeholder MinIO paths)                      #
@@ -1010,15 +806,9 @@ def seed_database(db: Session) -> None:
         dict(actor_id=admin.id, actor_email="admin@mar.local", action="calibration.recorded",
              entity_type="asset", entity_id=asset_map["MAR-00421"].id,
              entity_asset_id="MAR-00421", created_at=now - timedelta(days=192)),
-        dict(actor_id=admin.id, actor_email="admin@mar.local", action="certificate.uploaded",
-             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
-             entity_asset_id="MAR-00421", created_at=now - timedelta(days=192, hours=1)),
         dict(actor_id=admin.id, actor_email="admin@mar.local", action="calibration.recorded",
              entity_type="asset", entity_id=asset_map["MAR-00421"].id,
              entity_asset_id="MAR-00421", created_at=now - timedelta(minutes=30)),
-        dict(actor_id=admin.id, actor_email="admin@mar.local", action="certificate.uploaded",
-             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
-             entity_asset_id="MAR-00421", created_at=now - timedelta(minutes=12)),
         dict(actor_id=tech.id, actor_email="tech@mar.local", action="calibration.recorded",
              entity_type="asset", entity_id=asset_map["MAR-00427"].id,
              entity_asset_id="MAR-00427", created_at=now - timedelta(hours=1)),

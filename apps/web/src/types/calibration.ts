@@ -1,5 +1,3 @@
-export type CalibrationResult = "pass" | "fail" | "conditional_pass";
-export type CoefficientType = "linear" | "polynomial";
 export type DistributionType = "normal" | "t" | "chi_squared";
 
 export interface CalibrationRecord {
@@ -10,60 +8,48 @@ export interface CalibrationRecord {
   performed_by_name: string;
   performed_by_user_id: string | null;
   external_lab_name: string | null;
-  external_lab_accreditation: string | null;
-  result: CalibrationResult;
-  temperature_c: number | null;
-  humidity_pct: number | null;
-  pressure_hpa: number | null;
   notes: string | null;
   calibration_file_id: string | null;
   created_by: string;
   created_at: string;
-  // Migration 004
+
+  // Metadata
   sensor_id: string | null;
   calibration_type: string;
-  reference_asset_id: string | null;
-  calibration_method_id: string | null;
-  certificate_number: string | null;
-  certificate_expiry_date: string | null;
+  calibration_version: number;
   calibration_interval: number | null;
-  version: number;
-  temperature_value: number | null;
-  temperature_unit: string | null;
-  pressure_value: number | null;
-  pressure_unit: string | null;
-  humidity_value: number | null;
-  humidity_unit: string | null;
-}
+  tolerance_criteria: string | null;
 
-export interface CalibrationCoefficient {
-  id: string;
-  calibration_id: string;
-  channel: string | null;
-  coefficient_type: CoefficientType;
-  offset_value: number | null;
-  gain: number | null;
-  poly_degree: number | null;
+  // Traceability
+  internal_reference_asset_id: string | null;
+  internal_procedure_id: string | null;
+  external_lab_certificate_number: string | null;
+  daq_id: string | null;
+  calibration_data_id: string | null;
+
+  // Environmental conditions (canonical units: °C, %RH, Pa)
+  temperature: number | null;
+  humidity: number | null;
+  pressure: number | null;
+
+  // Polynomial model
+  poly_order: number | null;
   poly_coefficients: number[] | null;
-  unit_input: string | null;
-  unit_output: string | null;
   range_min: number | null;
   range_max: number | null;
-  uncertainty: number | null;
-  uncertainty_coverage_factor: number | null;
-  notes: string | null;
-  created_at: string;
-  // Migration 004 statistics
+
+  // Regression statistics
   r_squared: number | null;
   rmse: number | null;
   standard_error: number | null;
   max_error: number | null;
-  full_scale_error_pct: number | null;
-  non_linearity_pct: number | null;
+  full_scale_error: number | null;
+  non_linearity: number | null;
   repeatability: number | null;
   hysteresis: number | null;
   distribution_type: string | null;
   confidence_level: number | null;
+  coverage_factor: number | null;
   combined_uncertainty: number | null;
   expanded_uncertainty: number | null;
   valid_range_min: number | null;
@@ -149,12 +135,11 @@ export interface WizardStep1 {
   calibration_interval: string;
   // external only
   external_lab_name: string;
-  certificate_number: string;
-  certificate_expiry_date: string;
+  external_lab_certificate_number: string;
   coefficients_only: boolean;
   // internal only
-  calibration_method_id: string;
-  reference_asset_id: string;
+  internal_procedure_id: string;
+  internal_reference_asset_id: string;
   // environment (optional)
   temperature_value: string;
   temperature_unit: string;
@@ -171,33 +156,8 @@ export interface WizardRawPoint {
 }
 
 // ------------------------------------------------------------------ //
-// API create body (mirrors backend CalibrationCreate schema)         //
+// Inline data point for create body                                  //
 // ------------------------------------------------------------------ //
-
-export interface CalibrationCoefficientInline {
-  channel?: string | null;
-  unit_input?: string | null;
-  unit_output?: string | null;
-  poly_degree: number;
-  poly_coefficients: number[];
-  range_min?: number | null;
-  range_max?: number | null;
-  r_squared?: number | null;
-  rmse?: number | null;
-  standard_error?: number | null;
-  max_error?: number | null;
-  full_scale_error_pct?: number | null;
-  non_linearity_pct?: number | null;
-  repeatability?: number | null;
-  hysteresis?: number | null;
-  distribution_type?: string | null;
-  confidence_level?: number | null;
-  combined_uncertainty?: number | null;
-  expanded_uncertainty?: number | null;
-  valid_range_min?: number | null;
-  valid_range_max?: number | null;
-  notes?: string | null;
-}
 
 export interface CalibrationPointInline {
   point_index: number;
@@ -210,6 +170,10 @@ export interface CalibrationPointInline {
   measured_unit: string;
 }
 
+// ------------------------------------------------------------------ //
+// API create body (mirrors backend CalibrationCreate schema)         //
+// ------------------------------------------------------------------ //
+
 export interface CalibrationCreateBody {
   asset_id: string;
   sensor_id?: string | null;
@@ -218,22 +182,48 @@ export interface CalibrationCreateBody {
   performed_by_name: string;
   performed_by_user_id?: string | null;
   external_lab_name?: string | null;
-  external_lab_accreditation?: string | null;
-  result: CalibrationResult;
   notes?: string | null;
+
+  // Metadata
   calibration_type: string;
-  reference_asset_id?: string | null;
-  calibration_method_id?: string | null;
-  certificate_number?: string | null;
-  certificate_expiry_date?: string | null;
+  calibration_version: number;
   calibration_interval?: number | null;
-  version: number;
-  temperature_value?: number | null;
-  temperature_unit?: string | null;
-  pressure_value?: number | null;
-  pressure_unit?: string | null;
-  humidity_value?: number | null;
-  humidity_unit?: string | null;
-  coefficient?: CalibrationCoefficientInline | null;
+  tolerance_criteria?: string | null;
+
+  // Traceability
+  internal_reference_asset_id?: string | null;
+  internal_procedure_id?: string | null;
+  external_lab_certificate_number?: string | null;
+  daq_id?: string | null;
+
+  // Environmental conditions (canonical units: °C, %RH, Pa)
+  temperature?: number | null;
+  humidity?: number | null;
+  pressure?: number | null;
+
+  // Polynomial model
+  poly_order?: number | null;
+  poly_coefficients?: number[] | null;
+  range_min?: number | null;
+  range_max?: number | null;
+
+  // Regression statistics
+  r_squared?: number | null;
+  rmse?: number | null;
+  standard_error?: number | null;
+  max_error?: number | null;
+  full_scale_error?: number | null;
+  non_linearity?: number | null;
+  repeatability?: number | null;
+  hysteresis?: number | null;
+  distribution_type?: string | null;
+  confidence_level?: number | null;
+  coverage_factor?: number | null;
+  combined_uncertainty?: number | null;
+  expanded_uncertainty?: number | null;
+  valid_range_min?: number | null;
+  valid_range_max?: number | null;
+
+  // Embedded data points
   points?: CalibrationPointInline[];
 }

@@ -8,8 +8,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from ..core.database import Base
 
 
-class CalibrationPoint(Base):
-    __tablename__ = "calibration_points"
+class CalibrationData(Base):
+    __tablename__ = "calibration_data"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     calibration_id: Mapped[uuid.UUID] = mapped_column(
@@ -24,3 +24,7 @@ class CalibrationPoint(Base):
     reference_unit: Mapped[str] = mapped_column(String(50), nullable=False)
     measured_unit: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+# Backward-compat alias
+CalibrationPoint = CalibrationData

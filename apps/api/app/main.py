@@ -12,7 +12,6 @@ from .api.v1 import organizations as org_router
 from .api.v1 import locations as location_router
 from .api.v1 import assets as asset_router
 from .api.v1 import calibrations as cal_router
-from .api.v1 import certificates as cert_router
 from .api.v1 import audit_logs as log_router
 from .api.v1 import users as user_router
 from .api.v1 import teams as team_router
@@ -49,7 +48,6 @@ app.include_router(org_router.router, prefix="/api/v1")
 app.include_router(location_router.router, prefix="/api/v1")
 app.include_router(asset_router.router, prefix="/api/v1")
 app.include_router(cal_router.router, prefix="/api/v1")
-app.include_router(cert_router.router, prefix="/api/v1")
 app.include_router(log_router.router, prefix="/api/v1")
 app.include_router(user_router.router, prefix="/api/v1")
 app.include_router(team_router.router, prefix="/api/v1")

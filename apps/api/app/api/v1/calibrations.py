@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user
 from ...models.user import User
-from ...models.calibration_method import CalibrationMethod
+from ...models.calibration_method import Procedure
 from ...repositories import calibration as cal_repo
 from ...repositories import asset as asset_repo
 from ...schemas.calibration import (
@@ -17,24 +17,23 @@ from ...schemas.calibration import (
     CalibrationPointResponse,
     CalibrationResponse,
 )
-from ...schemas.calibration_coefficient import CalibrationCoefficientCreate, CalibrationCoefficientResponse
 from ...services.calibration_analysis import run_analysis
 
 router = APIRouter(prefix="/calibrations", tags=["Calibrations"])
 
 
-@router.get("/methods")
-def list_calibration_methods(
+@router.get("/procedures")
+def list_procedures(
     physical_quantity: str | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[dict]:
-    q = db.query(CalibrationMethod)
+    q = db.query(Procedure)
     if physical_quantity:
-        q = q.filter(CalibrationMethod.physical_quantity == physical_quantity)
+        q = q.filter(Procedure.physical_quantity == physical_quantity)
     return [
-        {"id": str(m.id), "name": m.name, "physical_quantity": m.physical_quantity}
-        for m in q.order_by(CalibrationMethod.name).all()
+        {"id": str(p.id), "name": p.name, "physical_quantity": p.physical_quantity}
+        for p in q.order_by(Procedure.name).all()
     ]
 
 
@@ -43,7 +42,7 @@ def analyze_calibration(
     body: AnalyzeRequest,
     _: User = Depends(get_current_user),
 ) -> AnalyzeResponse:
-    """Ephemeral analysis endpoint — runs regression and returns statistics without saving."""
+    """Ephemeral analysis — runs regression and returns statistics without saving."""
     try:
         result = run_analysis(
             reference_values=[p.reference for p in body.points],
@@ -113,10 +112,9 @@ def create_calibration(
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
-    # Auto-assign version if not provided
-    if body.version == 1:
+    if body.calibration_version == 1:
         body = body.model_copy(
-            update={"version": cal_repo.get_next_version(db, body.asset_id, body.sensor_id)}
+            update={"calibration_version": cal_repo.get_next_version(db, body.asset_id, body.sensor_id)}
         )
 
     return cal_repo.create_atomic(db, created_by=current_user.id, body=body)
@@ -132,33 +130,6 @@ def get_calibration(
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
     return cal
-
-
-@router.get("/{cal_id}/coefficients", response_model=list[CalibrationCoefficientResponse])
-def list_coefficients(
-    cal_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> list[CalibrationCoefficientResponse]:
-    cal = cal_repo.get_by_id(db, cal_id)
-    if not cal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
-    return cal_repo.list_coefficients(db, cal_id)
-
-
-@router.post("/{cal_id}/coefficients", response_model=CalibrationCoefficientResponse, status_code=status.HTTP_201_CREATED)
-def create_coefficient(
-    cal_id: uuid.UUID,
-    body: CalibrationCoefficientCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> CalibrationCoefficientResponse:
-    cal = cal_repo.get_by_id(db, cal_id)
-    if not cal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
-    data = body.model_dump()
-    data["calibration_id"] = cal_id
-    return cal_repo.create_coefficient(db, **data)
 
 
 @router.get("/{cal_id}/points", response_model=list[CalibrationPointResponse])

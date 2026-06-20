@@ -2,26 +2,26 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   getAssetAuditLogs,
   getAssetCalibrations,
-  getAssetCertificates,
   getAssetFiles,
   getAssetProfile,
-  getCalibrationCoefficients,
+  getCalibrationPoints,
   listLocations,
   listTeams,
   retireAsset,
   updateAsset,
 } from "@/services/asset.service";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
-import type { CalibrationRecord, CalibrationCoefficient } from "@/types/calibration";
+import type { CalibrationPoint, CalibrationRecord } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 import {
   CALIBRATION_STATUS_LABEL,
   CALIBRATION_STATUS_STYLE,
+  COLORS,
   SUBTYPE_LABEL,
 } from "@/lib/tokens";
 import {
@@ -1290,107 +1290,248 @@ function OverviewTab({
 // Calibration tab
 // ---------------------------------------------------------------------------
 
-interface CertInfo {
-  id: string;
-  calibration_id: string | null;
-  certificate_number: string;
-  issued_by: string;
-  issued_at: string;
-  valid_until: string | null;
-  file_id: string | null;
-}
-
 interface CalibrationTabProps {
   calibrations: CalibrationRecord[];
-  coeffsByCalId: Record<string, CalibrationCoefficient[]>;
-  certs: CertInfo[];
   isEditing: boolean;
   profile: AssetProfile;
   onCalibrationSaved: () => void;
 }
 
-function CoeffCard({ label, sub, value, unit }: { label: string; sub: string; value: string; unit?: string }) {
+// Stat row used in the calibration detail panel
+function CalStatRow({ label, value, tip }: { label: string; value: string | null | undefined; tip?: string }) {
+  if (value == null) return null;
   return (
-    <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-4 py-3 min-w-[140px]">
-      <p className="text-xs text-gray-400 mb-1">{label} <span className="font-mono text-gray-500">({sub})</span></p>
-      <p className="text-lg font-mono font-semibold text-mar-text tabular-nums">
-        {value}
-        {unit && <span className="text-xs text-gray-400 ml-1 font-normal">{unit}</span>}
-      </p>
+    <div className="flex items-center justify-between gap-2 py-1.5 border-b border-mar-border last:border-b-0">
+      <span className="flex items-center gap-1 text-xs text-gray-400">
+        {label}
+        {tip && (
+          <span className="relative group/t">
+            <InfoIcon size={10} className="cursor-help" />
+            <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover/t:block w-56 bg-gray-900 text-white text-[10px] rounded px-2 py-1.5 z-50 shadow-lg whitespace-normal">
+              {tip}
+            </span>
+          </span>
+        )}
+      </span>
+      <span className="text-xs font-mono text-mar-text">{value}</span>
     </div>
   );
 }
 
-function CalibrationFormula({ coeff }: { coeff: CalibrationCoefficient }) {
-  let formula = "";
-  if (coeff.coefficient_type === "linear") {
-    const a = fmtNum(coeff.gain);
-    const b = coeff.offset_value ?? 0;
-    const bAbs = fmtNum(Math.abs(b));
-    const bPart = b >= 0 ? `+ ${bAbs}` : `− ${bAbs}`;
-    formula = `f(x) = ${a}·x ${bPart}`;
-  } else if (coeff.poly_coefficients && coeff.poly_coefficients.length > 0) {
-    const terms = [...coeff.poly_coefficients]
-      .map((c, i) => {
-        if (i === 0) return fmtNum(c, 6);
-        if (i === 1) return `${fmtNum(c, 6)}·x`;
-        return `${fmtNum(c, 6)}·x^${i}`;
-      })
-      .reverse()
-      .join(" + ");
-    formula = `f(x) = ${terms}`;
+// Format polynomial equation — coefficients are highest-degree first (numpy convention)
+function formatCalEquation(coefficients: number[], degree: number): string {
+  const SUPERS: Record<number, string> = { 2: "²", 3: "³", 4: "⁴", 5: "⁵" };
+  const parts: string[] = [];
+  for (let exp = 0; exp <= degree; exp++) {
+    const c = coefficients[degree - exp];
+    if (Math.abs(c) < 1e-15) continue;
+    const sign = c < 0 ? (parts.length === 0 ? "−" : " − ") : (parts.length === 0 ? "" : " + ");
+    const absStr = fmtNum(Math.abs(c), 4);
+    if (exp === 0) parts.push(sign + absStr);
+    else if (exp === 1) parts.push(sign + absStr + "·x");
+    else parts.push(sign + absStr + "·x" + (SUPERS[exp] ?? `^${exp}`));
   }
+  return "f(x) = " + (parts.join("") || "0");
+}
 
-  if (!formula) return null;
+function evalCalPoly(coefficients: number[], x: number): number {
+  let y = 0;
+  const deg = coefficients.length - 1;
+  for (let j = 0; j <= deg; j++) y += coefficients[j] * Math.pow(x, deg - j);
+  return y;
+}
 
-  const note =
-    coeff.unit_input || coeff.unit_output
-      ? `Where x is the input in ${coeff.unit_input ?? "—"} and f(x) is the output in ${coeff.unit_output ?? "—"}`
-      : null;
+function calResidualColor(residual: number, maxAbsResidual: number): string {
+  const t = Math.min(Math.abs(residual) / (maxAbsResidual || 1), 1);
+  const hue = Math.round(120 * (1 - t));
+  return `hsl(${hue},80%,42%)`;
+}
+
+// Chart panel — renders Plotly scatter + fit curve from saved CalibrationPoint data
+function CalibrationChart({
+  cal, points, measuredUnit, referenceUnit,
+}: {
+  cal: CalibrationRecord;
+  points: CalibrationPoint[];
+  measuredUnit: string;
+  referenceUnit: string;
+}) {
+  const plotDivRef = useRef<HTMLDivElement>(null);
+  const plotlyRef = useRef<typeof import("plotly.js-dist-min").default | null>(null);
+
+  useEffect(() => {
+    const div = plotDivRef.current;
+    if (!div || points.length === 0 || !cal.poly_coefficients) return;
+    let mounted = true;
+
+    const maxAbs = Math.max(...points.map((p) => Math.abs(p.residual_abs ?? 0)), 1e-10);
+    const xs = points.map((p) => p.measured_value);
+    const mn = Math.min(...xs), mx = Math.max(...xs);
+
+    const scatter = points.map((p) => ({
+      x: p.measured_value,
+      y: p.reference_value,
+      color: calResidualColor(p.residual_abs ?? 0, maxAbs),
+      residual: p.residual_abs ?? 0,
+      idx: p.point_index,
+    }));
+
+    const curve = Array.from({ length: 81 }, (_, i) => {
+      const x = mn + (i * (mx - mn)) / 80;
+      return { x, y: evalCalPoly(cal.poly_coefficients!, x) };
+    });
+
+    import("plotly.js-dist-min").then((mod) => {
+      if (!mounted || !div) return;
+      const Plotly = mod.default;
+      plotlyRef.current = Plotly;
+
+      const traces: Plotly.Data[] = [
+        {
+          x: curve.map((d) => d.x),
+          y: curve.map((d) => d.y),
+          type: "scatter",
+          mode: "lines",
+          line: { color: COLORS.accent, width: 2 },
+          hoverinfo: "skip",
+          showlegend: false,
+        },
+        {
+          x: scatter.map((d) => d.x),
+          y: scatter.map((d) => d.y),
+          type: "scatter",
+          mode: "markers",
+          marker: {
+            color: scatter.map((d) => d.color),
+            size: 9,
+            line: { color: "rgba(255,255,255,0.5)", width: 1.5 },
+          },
+          customdata: scatter.map((d) => [d.idx + 1, d.residual] as [number, number]),
+          hovertemplate:
+            `<b>Point %{customdata[0]}</b><br>` +
+            `Measured: %{x:.4g} ${measuredUnit}<br>` +
+            `Reference: %{y:.4g} ${referenceUnit}<br>` +
+            `Residual: %{customdata[1]:.4g} ${referenceUnit}` +
+            `<extra></extra>`,
+          showlegend: false,
+        },
+      ];
+
+      const layout: Partial<Plotly.Layout> = {
+        margin: { t: 10, r: 16, b: 48, l: 56 },
+        paper_bgcolor: "transparent",
+        plot_bgcolor: "transparent",
+        xaxis: {
+          title: { text: `Measured (${measuredUnit})`, font: { size: 10, color: "#9ca3af" } },
+          tickfont: { size: 10, color: "#9ca3af" },
+          gridcolor: "rgba(156,163,175,0.15)",
+          linecolor: "rgba(156,163,175,0.3)",
+          zerolinecolor: "rgba(156,163,175,0.3)",
+          automargin: true,
+        },
+        yaxis: {
+          title: { text: `Reference (${referenceUnit})`, font: { size: 10, color: "#9ca3af" } },
+          tickfont: { size: 10, color: "#9ca3af" },
+          gridcolor: "rgba(156,163,175,0.15)",
+          linecolor: "rgba(156,163,175,0.3)",
+          zerolinecolor: "rgba(156,163,175,0.3)",
+          automargin: true,
+        },
+        hoverlabel: {
+          bgcolor: "#1f2937",
+          bordercolor: "#374151",
+          font: { size: 11, color: "#f9fafb" },
+        },
+      };
+
+      Plotly.react(div, traces, layout, {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ["toImage", "sendDataToCloud", "select2d", "lasso2d", "hoverClosestCartesian", "hoverCompareCartesian", "toggleSpikelines"],
+        scrollZoom: true,
+      });
+    });
+
+    return () => { mounted = false; };
+  }, [cal.poly_coefficients, points, measuredUnit, referenceUnit]);
+
+  useEffect(() => {
+    const div = plotDivRef.current;
+    return () => {
+      if (plotlyRef.current && div) {
+        try { plotlyRef.current.purge(div); } catch { /* ignore */ }
+      }
+    };
+  }, []);
 
   return (
-    <div className="mt-4 rounded-lg bg-mar-surface-alt border border-mar-border px-4 py-3">
-      <p className="font-mono text-sm text-mar-text">{formula}</p>
-      {note && <p className="text-xs text-gray-400 mt-1.5">{note}</p>}
+    <div className="rounded-xl border border-mar-border bg-mar-surface relative overflow-hidden" style={{ minHeight: 320 }}>
+      <div className="absolute bottom-16 right-3 z-20 pointer-events-none">
+        <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-sm">
+          <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 rounded-sm" style={{ height: 44, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
+            <div className="flex flex-col justify-between h-11 text-[10px] text-gray-400">
+              <span>High</span>
+              <span>Low</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div ref={plotDivRef} style={{ height: 320, width: "100%" }} />
     </div>
   );
 }
 
-function CalibrationResultBadge({ result }: { result: string }) {
-  const map: Record<string, string> = {
-    pass: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    conditional_pass: "bg-amber-50 text-amber-600 border-amber-100",
-    fail: "bg-red-50 text-red-600 border-red-100",
-  };
-  const label: Record<string, string> = { pass: "Pass", conditional_pass: "Cond. Pass", fail: "Fail" };
-  const cls = map[result] ?? "bg-gray-50 text-gray-500 border-gray-100";
-  return (
-    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${cls}`}>
-      {label[result] ?? result}
-    </span>
-  );
-}
+function CalibrationTab({ calibrations, isEditing, profile, onCalibrationSaved }: CalibrationTabProps) {
+  // --- channel logic ---
+  // Collect unique sensor_ids that appear across calibrations, maintaining the order
+  // of profile.sensor_channels so tabs are stable.
+  const channelIdsWithCals = profile.sensor_channels
+    .map((ch) => ch.id)
+    .filter((id) => calibrations.some((c) => c.sensor_id === id));
+  // Fall back: if no calibration has a sensor_id (legacy/null), treat as single group
+  const hasChannelTabs = channelIdsWithCals.length > 1;
+  const firstChannelId = channelIdsWithCals[0] ?? null;
 
-function CalibrationTab({ calibrations, coeffsByCalId, certs, isEditing, profile, onCalibrationSaved }: CalibrationTabProps) {
-  const total = calibrations.length;
-  const [selectedCalId, setSelectedCalId] = useState<string | null>(calibrations[0]?.id ?? null);
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(firstChannelId);
+  const [selectedCalId, setSelectedCalId] = useState<string | null>(null);
+  const [points, setPoints] = useState<CalibrationPoint[]>([]);
+  const [loadingPoints, setLoadingPoints] = useState(false);
+  const [rightView, setRightView] = useState<"chart" | "table">("chart");
   const [wizardOpen, setWizardOpen] = useState(false);
 
-  const selectedCal = calibrations.find((c) => c.id === selectedCalId) ?? calibrations[0] ?? null;
-  const selectedIdx = calibrations.findIndex((c) => c.id === selectedCalId);
-  const selectedCoeffs = selectedCal ? (coeffsByCalId[selectedCal.id] ?? []) : [];
-  const selectedCert = selectedCal ? certs.find((c) => c.calibration_id === selectedCal.id) : undefined;
+  const filteredCals = hasChannelTabs && activeChannelId
+    ? calibrations.filter((c) => c.sensor_id === activeChannelId)
+    : calibrations;
 
-  function versionOf(idx: number) { return total - idx; }
+  const selectedCal = filteredCals.find((c) => c.id === selectedCalId) ?? filteredCals[0] ?? null;
+  const total = filteredCals.length;
 
-  const channelGroups: Record<string, CalibrationCoefficient[]> = {};
-  for (const coeff of selectedCoeffs) {
-    const key = coeff.channel ?? "Main";
-    if (!channelGroups[key]) channelGroups[key] = [];
-    channelGroups[key].push(coeff);
+  // When channel changes, jump to the latest calibration for that channel
+  useEffect(() => {
+    setSelectedCalId(null);
+    setPoints([]);
+  }, [activeChannelId]);
+
+  // Fetch points whenever selected calibration changes
+  useEffect(() => {
+    if (!selectedCal) { setPoints([]); return; }
+    setLoadingPoints(true);
+    getCalibrationPoints(selectedCal.id)
+      .then(setPoints)
+      .catch(() => setPoints([]))
+      .finally(() => setLoadingPoints(false));
+  }, [selectedCal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function versionOf(cal: CalibrationRecord): number {
+    const idx = filteredCals.findIndex((c) => c.id === cal.id);
+    return total - idx;
   }
-  const channelKeys = Object.keys(channelGroups);
-  const hasMultipleChannels = channelKeys.length > 1;
+
+  // Derive display units from loaded points (fall back to empty string)
+  const referenceUnit = points[0]?.reference_unit ?? "";
+  const measuredUnit = points[0]?.measured_unit ?? "";
 
   return (
     <>
@@ -1403,65 +1544,185 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs, isEditing, profile
       />
     )}
     <div className="space-y-5">
-      {selectedCal ? (
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-mar-text">Calibration coefficients</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                <span className="font-mono font-semibold text-mar-text">v{versionOf(selectedIdx >= 0 ? selectedIdx : 0)}</span>
-                {" · "}{fmtDate(selectedCal.calibration_date)}
-                {" · "}<span>by {selectedCal.performed_by_name}</span>
-              </p>
-            </div>
-            {selectedCert && (
-              <button type="button" className="flex items-center gap-1.5 text-xs text-mar-accent border border-mar-border rounded-lg px-3 py-1.5 hover:bg-mar-surface-alt transition-colors flex-shrink-0">
-                <span className="opacity-60">📄</span>
-                {selectedCert.certificate_number}
+
+      {/* Channel tabs — only rendered when >1 channel has calibration data */}
+      {hasChannelTabs && (
+        <div className="flex gap-1 p-1 bg-mar-surface-alt border border-mar-border rounded-xl w-fit">
+          {channelIdsWithCals.map((chId) => {
+            const ch = profile.sensor_channels.find((c) => c.id === chId);
+            const label = ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId;
+            const isActive = activeChannelId === chId;
+            return (
+              <button
+                key={chId}
+                type="button"
+                onClick={() => setActiveChannelId(chId)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  isActive
+                    ? "bg-mar-surface text-mar-text shadow-sm border border-mar-border"
+                    : "text-gray-400 hover:text-mar-text"
+                }`}
+              >
+                {label}
               </button>
-            )}
+            );
+          })}
+        </div>
+      )}
+
+      {selectedCal ? (
+        <div className="bg-mar-surface border border-mar-border rounded-xl p-5 space-y-4">
+          {/* Header row */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-mono font-bold text-mar-accent">v{versionOf(selectedCal)}</span>
+                <span className="text-sm font-semibold text-mar-text">{fmtDate(selectedCal.calibration_date)}</span>
+                <span className="text-xs text-gray-400">by {selectedCal.performed_by_name}{selectedCal.external_lab_name ? ` · ${selectedCal.external_lab_name}` : ""}</span>
+              </div>
+              {selectedCal.external_lab_certificate_number && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  <span className="opacity-60">📄</span>
+                  {" "}{selectedCal.external_lab_certificate_number}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setWizardOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  <PlusIcon size={12} />
+                  Add Calibration
+                </button>
+              )}
+            </div>
           </div>
 
-          {selectedCoeffs.length > 0 ? (
-            <div className="space-y-5">
-              {channelKeys.map((chKey, chIdx) => {
-                const coeffs = channelGroups[chKey];
-                return (
-                  <div key={chKey} className={chIdx > 0 ? "pt-5 border-t border-mar-border" : ""}>
-                    {hasMultipleChannels && (
-                      <p className="text-[11px] font-semibold text-mar-accent uppercase tracking-wide mb-3">{chKey}</p>
-                    )}
-                    {coeffs.map((coeff) => (
-                      <div key={coeff.id}>
-                        {coeff.coefficient_type === "linear" && (
-                          <div className="flex flex-wrap gap-3">
-                            {coeff.gain != null && <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.gain)} />}
-                            {coeff.offset_value != null && <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.offset_value)} />}
-                          </div>
-                        )}
-                        {coeff.coefficient_type === "polynomial" && coeff.poly_coefficients && (
-                          <div className="flex flex-wrap gap-3">
-                            {coeff.poly_coefficients[1] != null && <CoeffCard label="Gain" sub="a" value={fmtNum(coeff.poly_coefficients[1])} />}
-                            {coeff.poly_coefficients[0] != null && <CoeffCard label="Offset" sub="b" value={fmtNum(coeff.poly_coefficients[0])} />}
-                            {coeff.poly_coefficients[2] != null && <CoeffCard label="Quadratic" sub="a₂" value={fmtNum(coeff.poly_coefficients[2])} />}
-                          </div>
-                        )}
-                        <CalibrationFormula coeff={coeff} />
-                        {coeff.notes && <p className="mt-2 text-xs text-gray-400">{coeff.notes}</p>}
-                      </div>
-                    ))}
+          {/* Equation bar */}
+          {selectedCal.poly_coefficients && selectedCal.poly_order != null && (
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-mar-surface-alt border border-mar-border">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex-shrink-0">Equation</span>
+              <span className="text-xs font-mono text-mar-text">
+                {formatCalEquation(selectedCal.poly_coefficients, selectedCal.poly_order)}
+              </span>
+              {(measuredUnit || referenceUnit) && (
+                <span className="text-[10px] text-gray-400 flex-shrink-0 ml-auto">
+                  {measuredUnit} → {referenceUnit}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Stats + chart/table */}
+          {selectedCal.poly_coefficients ? (
+            <div className="flex gap-4 min-h-0">
+              {/* Left: stats panel (40%) */}
+              <div className="w-[38%] flex-shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt space-y-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Calibration</p>
+                <CalStatRow label="Poly degree" value={String(selectedCal.poly_order ?? "—")} />
+                {(selectedCal.valid_range_min != null || selectedCal.range_min != null) && (
+                  <CalStatRow
+                    label="Valid range"
+                    value={`${fmtNum(selectedCal.valid_range_min ?? selectedCal.range_min)} – ${fmtNum(selectedCal.valid_range_max ?? selectedCal.range_max)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
+                  />
+                )}
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Statistics</p>
+                <CalStatRow label="R²" value={fmtNum(selectedCal.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." />
+                <CalStatRow label="RMSE" value={selectedCal.rmse != null ? `${fmtNum(selectedCal.rmse)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root mean square error." />
+                <CalStatRow label="Max error" value={selectedCal.max_error != null ? `${fmtNum(selectedCal.max_error)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Largest absolute residual." />
+                <CalStatRow label="%FS error" value={selectedCal.full_scale_error != null ? `${fmtNum(selectedCal.full_scale_error, 3)}%` : null} tip="Max error as % of full measurement span." />
+                <CalStatRow label="Non-linearity" value={selectedCal.non_linearity != null ? `${fmtNum(selectedCal.non_linearity, 3)}%` : null} tip="Max deviation from ideal line, as %FS." />
+                {selectedCal.repeatability != null && (
+                  <CalStatRow label="Repeatability†" value={`${fmtNum(selectedCal.repeatability)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Std deviation at repeated reference values." />
+                )}
+                {selectedCal.hysteresis != null && (
+                  <CalStatRow label="Hysteresis†" value={`${fmtNum(selectedCal.hysteresis)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Max difference ascending vs. descending." />
+                )}
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Uncertainty</p>
+                <CalStatRow label="Combined" value={selectedCal.combined_uncertainty != null ? `${fmtNum(selectedCal.combined_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Standard deviation of residuals." />
+                <CalStatRow label="Expanded (±)" value={selectedCal.expanded_uncertainty != null ? `${fmtNum(selectedCal.expanded_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip={`k=${selectedCal.coverage_factor ?? "?"} at ${selectedCal.confidence_level ?? "?"}% confidence.`} />
+              </div>
+
+              {/* Right: chart/table toggle (60%) */}
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <div className="flex gap-1 p-1 bg-mar-surface-alt rounded-lg w-fit border border-mar-border">
+                  {(["chart", "table"] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setRightView(v)}
+                      className={`px-4 py-1 rounded text-xs font-medium transition-colors ${
+                        rightView === v ? "bg-mar-surface text-mar-text shadow-sm" : "text-gray-400 hover:text-mar-text"
+                      }`}
+                    >
+                      {v === "chart" ? "Chart" : "Data Table"}
+                    </button>
+                  ))}
+                </div>
+
+                {loadingPoints ? (
+                  <div className="flex items-center justify-center flex-1 text-gray-400 gap-2 text-xs py-10">
+                    <span className="w-4 h-4 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+                    Loading data…
                   </div>
-                );
-              })}
+                ) : points.length === 0 ? (
+                  <div className="flex items-center justify-center flex-1 text-gray-400 text-sm py-10">
+                    No calibration point data stored.
+                  </div>
+                ) : rightView === "chart" ? (
+                  <CalibrationChart
+                    cal={selectedCal}
+                    points={points}
+                    measuredUnit={measuredUnit}
+                    referenceUnit={referenceUnit}
+                  />
+                ) : (
+                  <div className="rounded-xl border border-mar-border overflow-hidden" style={{ maxHeight: 340, overflowY: "auto" }}>
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="border-b border-mar-border bg-mar-surface-alt">
+                          {[
+                            "#",
+                            `Measured${measuredUnit ? ` (${measuredUnit})` : ""}`,
+                            `Reference${referenceUnit ? ` (${referenceUnit})` : ""}`,
+                            `Fitted${referenceUnit ? ` (${referenceUnit})` : ""}`,
+                            `Residual${referenceUnit ? ` (${referenceUnit})` : ""}`,
+                            "Residual (%)",
+                          ].map((h) => (
+                            <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {points.map((pt) => (
+                          <tr key={pt.point_index} className="border-b border-mar-border last:border-b-0 hover:bg-mar-surface-alt/50 transition-colors">
+                            <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
+                            <td className="px-3 py-1.5 font-mono text-mar-text">{fmtNum(pt.measured_value)}</td>
+                            <td className="px-3 py-1.5 font-mono text-mar-text">{fmtNum(pt.reference_value)}</td>
+                            <td className="px-3 py-1.5 font-mono text-mar-text">{fmtNum(pt.calculated_value)}</td>
+                            <td className={`px-3 py-1.5 font-mono ${selectedCal.rmse != null && Math.abs(pt.residual_abs ?? 0) > selectedCal.rmse * 2 ? "text-amber-400 dark:text-amber-300" : "text-mar-text"}`}>
+                              {fmtNum(pt.residual_abs)}
+                            </td>
+                            <td className="px-3 py-1.5 font-mono text-gray-400">{fmtNum(pt.residual_pct, 3)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No coefficients recorded for this calibration.</p>
+            <p className="text-sm text-gray-400">No polynomial model recorded for this calibration.</p>
           )}
         </div>
       ) : (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-400">No calibrations recorded for this asset.</p>
+            <p className="text-sm text-gray-400">No calibrations recorded{hasChannelTabs ? " for this channel" : ""}.</p>
             {isEditing && (
               <button
                 type="button"
@@ -1476,49 +1737,54 @@ function CalibrationTab({ calibrations, coeffsByCalId, certs, isEditing, profile
         </div>
       )}
 
-      {calibrations.length > 0 && (
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-semibold text-mar-text">Calibration history</h3>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={() => setWizardOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-              >
-                <PlusIcon size={12} />
-                Add Calibration
-              </button>
-            )}
+      {/* Calibration history */}
+      {filteredCals.length > 0 && (
+        <div className="bg-mar-surface border border-mar-border rounded-xl">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-mar-border">
+            <p className="text-xs font-semibold text-mar-text">Calibration history</p>
+            <p className="text-xs text-gray-400">{filteredCals.length} record{filteredCals.length !== 1 ? "s" : ""}</p>
           </div>
-          <p className="text-xs text-gray-400 mb-4">Select a calibration to view its coefficients.</p>
           <div className="divide-y divide-mar-border">
-            {calibrations.map((cal, idx) => {
-              const isSelected = cal.id === selectedCalId;
-              const certForCal = certs.find((c) => c.calibration_id === cal.id);
+            {filteredCals.map((cal) => {
+              const isSelected = cal.id === (selectedCal?.id ?? null);
               return (
                 <button
                   key={cal.id}
                   type="button"
                   onClick={() => setSelectedCalId(cal.id)}
-                  className={`w-full flex items-start gap-4 py-3 px-2 -mx-2 text-left rounded-lg transition-colors
+                  className={`w-full flex items-start gap-4 px-5 py-3 text-left transition-colors
                     ${isSelected ? "bg-mar-surface-alt" : "hover:bg-mar-surface-alt/50"}`}
                 >
                   <div className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
                     ${isSelected ? "border-mar-accent text-mar-accent" : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
-                    <span className="text-[10px] font-bold">v{versionOf(idx)}</span>
+                    <span className="text-[10px] font-bold">v{versionOf(cal)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-mar-text">{fmtDate(cal.calibration_date)}</span>
-                      <CalibrationResultBadge result={cal.result} />
-                      {certForCal && <span className="text-[10px] text-gray-400">{certForCal.certificate_number}</span>}
+                      {cal.r_squared != null && (
+                        <span className="text-[10px] font-mono text-gray-400">R²={fmtNum(cal.r_squared, 4)}</span>
+                      )}
+                      {cal.poly_order != null && (
+                        <span className="text-[10px] text-gray-400">deg-{cal.poly_order}</span>
+                      )}
+                      {cal.external_lab_certificate_number && (
+                        <span className="text-[10px] text-gray-400">📄 {cal.external_lab_certificate_number}</span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      by {cal.performed_by_name}{cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
+                      {cal.calibration_type === "external" ? "External" : "Internal"}
+                      {" · "}by {cal.performed_by_name}
+                      {cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
                     </p>
-                    {cal.notes && <p className="text-xs text-gray-500 mt-1 italic">{cal.notes}</p>}
+                    {cal.notes && <p className="text-xs text-gray-500 mt-1 italic truncate">{cal.notes}</p>}
                   </div>
+                  {cal.due_date && (
+                    <div className="flex-shrink-0 text-right hidden sm:block">
+                      <p className="text-[10px] text-gray-400">Due</p>
+                      <p className="text-xs text-mar-text font-mono">{fmtDate(cal.due_date)}</p>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -1627,8 +1893,6 @@ export default function AssetProfilePage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [profile, setProfile] = useState<AssetProfile | null>(null);
   const [calibrations, setCalibrations] = useState<CalibrationRecord[]>([]);
-  const [coeffsByCalId, setCoeffsByCalId] = useState<Record<string, CalibrationCoefficient[]>>({});
-  const [certs, setCerts] = useState<CertInfo[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1651,23 +1915,14 @@ export default function AssetProfilePage() {
     Promise.all([
       getAssetProfile(id),
       getAssetCalibrations(id),
-      getAssetCertificates(id),
       getAssetAuditLogs(id),
       getAssetFiles(id),
     ])
-      .then(async ([profileData, calsData, certsData, logsData, filesData]) => {
+      .then(([profileData, calsData, logsData, filesData]) => {
         setProfile(profileData);
         setCalibrations(calsData);
-        setCerts(certsData as CertInfo[]);
         setAuditLogs(logsData);
         setFiles(filesData);
-
-        if (calsData.length > 0) {
-          const coeffResults = await Promise.all(calsData.map((cal) => getCalibrationCoefficients(cal.id)));
-          const map: Record<string, CalibrationCoefficient[]> = {};
-          calsData.forEach((cal, i) => { map[cal.id] = coeffResults[i]; });
-          setCoeffsByCalId(map);
-        }
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -1749,12 +2004,6 @@ export default function AssetProfilePage() {
     ]);
     setCalibrations(calsData);
     setProfile(updatedProfile);
-    if (calsData.length > 0) {
-      const coeffResults = await Promise.all(calsData.map((cal) => getCalibrationCoefficients(cal.id)));
-      const map: Record<string, CalibrationCoefficient[]> = {};
-      calsData.forEach((cal, i) => { map[cal.id] = coeffResults[i]; });
-      setCoeffsByCalId(map);
-    }
   }
 
   if (loading) {
@@ -1969,8 +2218,6 @@ export default function AssetProfilePage() {
           {activeTab === "calibration" && (
             <CalibrationTab
               calibrations={calibrations}
-              coeffsByCalId={coeffsByCalId}
-              certs={certs}
               isEditing={isEditing}
               profile={profile}
               onCalibrationSaved={handleCalibrationSaved}

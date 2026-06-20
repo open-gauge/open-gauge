@@ -1,7 +1,7 @@
 import { apiFetch, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
-import type { CalibrationRecord, CalibrationCoefficient, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
+import type { CalibrationRecord, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 
@@ -35,18 +35,6 @@ export async function getAssetProfile(id: string): Promise<AssetProfile> {
 
 export async function getAssetCalibrations(id: string): Promise<CalibrationRecord[]> {
   return apiFetch<CalibrationRecord[]>(`/api/v1/assets/${id}/calibrations?limit=50`, {
-    headers: tokenHeader(),
-  });
-}
-
-export async function getCalibrationCoefficients(calId: string): Promise<CalibrationCoefficient[]> {
-  return apiFetch<CalibrationCoefficient[]>(`/api/v1/calibrations/${calId}/coefficients`, {
-    headers: tokenHeader(),
-  });
-}
-
-export async function getAssetCertificates(id: string): Promise<{ id: string; calibration_id: string | null; certificate_number: string; issued_by: string; issued_at: string; valid_until: string | null; file_id: string | null }[]> {
-  return apiFetch(`/api/v1/assets/${id}/certificates`, {
     headers: tokenHeader(),
   });
 }
@@ -116,11 +104,11 @@ export async function getNextCalibrationVersion(assetId: string, sensorId?: stri
   return cals.length + 1;
 }
 
-export async function listCalibrationMethods(physicalQuantity?: string): Promise<{ id: string; name: string; physical_quantity: string }[]> {
+export async function listProcedures(physicalQuantity?: string): Promise<{ id: string; name: string; physical_quantity: string }[]> {
   const qs = new URLSearchParams();
   if (physicalQuantity) qs.set("physical_quantity", physicalQuantity);
   const query = qs.toString() ? `?${qs}` : "";
-  return apiFetch(`/api/v1/calibrations/methods${query}`, {
+  return apiFetch(`/api/v1/calibrations/procedures${query}`, {
     headers: tokenHeader(),
   });
 }
@@ -130,7 +118,6 @@ export async function listLocations(): Promise<LocationOption[]> {
     `/api/v1/locations?limit=500`,
     { headers: tokenHeader() },
   );
-  // Build path labels
   const byId = new Map(raw.map(l => [l.id, l]));
   function getPath(id: string): string {
     const loc = byId.get(id);

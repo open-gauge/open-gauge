@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { AssetProfile } from "@/types/asset";
 import type {
   AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody,
-  CalibrationCoefficientInline, CalibrationPointInline,
+  CalibrationPointInline,
   DistributionType, WizardRawPoint,
 } from "@/types/calibration";
-import { analyzeCalibration, createCalibration, listAssets, listCalibrationMethods } from "@/services/asset.service";
+import { analyzeCalibration, createCalibration, listAssets, listProcedures } from "@/services/asset.service";
 import { toSI } from "@/lib/unit-conversion";
 import { COLORS } from "@/lib/tokens";
 import { getUnitsForQuantity, getOutputUnits } from "@/lib/sensor-options";
@@ -192,10 +192,10 @@ interface Step1State {
   performed_by_other: boolean;
   calibration_interval: string;
   external_lab_name: string;
-  certificate_number: string;
+  external_lab_certificate_number: string;
   coefficients_only: boolean;
-  calibration_method_id: string;
-  reference_asset_id: string;
+  internal_procedure_id: string;
+  internal_reference_asset_id: string;
   temperature_value: string;
   temperature_unit: string;
   pressure_value: string;
@@ -236,10 +236,10 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     performed_by_other: false,
     calibration_interval: "12",
     external_lab_name: "",
-    certificate_number: "",
+    external_lab_certificate_number: "",
     coefficients_only: false,
-    calibration_method_id: "",
-    reference_asset_id: "",
+    internal_procedure_id: "",
+    internal_reference_asset_id: "",
     temperature_value: "",
     temperature_unit: "°C",
     pressure_value: "",
@@ -343,7 +343,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   // Load calibration methods when channel physical quantity changes
   useEffect(() => {
     if (!selectedChannel?.physical_quantity) return;
-    listCalibrationMethods(selectedChannel.physical_quantity)
+    listProcedures(selectedChannel.physical_quantity)
       .then((methods) => setCalibrationMethods(methods.map((m) => ({ id: m.id, name: m.name }))))
       .catch(() => {});
   }, [selectedChannel?.physical_quantity]);
@@ -466,17 +466,30 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       const pressVal = n(step1.pressure_value);
       const humVal = n(step1.humidity_value);
 
-      let coefficient: CalibrationCoefficientInline | null = null;
+      // Convert to canonical units: °C, %RH, Pa
+      const temperatureCelsius: number | null = (() => {
+        if (tempVal == null) return null;
+        const unit = step1.temperature_unit;
+        if (unit === "°F") return Math.round(((tempVal - 32) * 5 / 9) * 100) / 100;
+        if (unit === "K") return Math.round((tempVal - 273.15) * 100) / 100;
+        return tempVal;
+      })();
+      const pressurePa: number | null = (() => {
+        if (pressVal == null) return null;
+        const unit = step1.pressure_unit;
+        if (unit === "hPa" || unit === "mbar") return Math.round(pressVal * 100 * 100) / 100;
+        if (unit === "kPa") return Math.round(pressVal * 1000 * 100) / 100;
+        if (unit === "bar") return Math.round(pressVal * 100000 * 100) / 100;
+        if (unit === "psi") return Math.round(pressVal * 6894.757 * 100) / 100;
+        return pressVal;
+      })();
+
       let points: CalibrationPointInline[] = [];
-      let result: "pass" | "fail" | "conditional_pass" = "conditional_pass";
+      let polyStats: Partial<CalibrationCreateBody> = {};
 
       if (!step1.coefficients_only && analysisResult) {
-        result = analysisResult.passed ? "pass" : "fail";
-        coefficient = {
-          channel: selectedChannel?.channel_id ?? null,
-          unit_input: measuredUnit || null,   // input to calibration fn = measured
-          unit_output: referenceUnit || null, // output = reference (true value)
-          poly_degree: analysisResult.poly_degree,
+        polyStats = {
+          poly_order: analysisResult.poly_degree,
           poly_coefficients: analysisResult.coefficients,
           range_min: toSI(analysisResult.valid_range_min, referenceUnit),
           range_max: toSI(analysisResult.valid_range_max, referenceUnit),
@@ -484,12 +497,13 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
           rmse: analysisResult.rmse,
           standard_error: analysisResult.standard_error,
           max_error: analysisResult.max_error,
-          full_scale_error_pct: analysisResult.full_scale_error_pct,
-          non_linearity_pct: analysisResult.non_linearity_pct,
+          full_scale_error: analysisResult.full_scale_error_pct,
+          non_linearity: analysisResult.non_linearity_pct,
           repeatability: analysisResult.repeatability,
           hysteresis: analysisResult.hysteresis,
           distribution_type: analysisResult.distribution_type,
           confidence_level: analysisResult.confidence_level,
+          coverage_factor: analysisResult.coverage_factor,
           combined_uncertainty: analysisResult.combined_uncertainty,
           expanded_uncertainty: analysisResult.expanded_uncertainty,
           valid_range_min: toSI(analysisResult.valid_range_min, referenceUnit),
@@ -507,13 +521,11 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         }));
       }
 
-      // Compute due_date and certificate_expiry_date from calibration_interval
+      // Compute due_date from calibration_interval
       const calDate = new Date(step1.calibration_date);
       const intervalMonths = parseInt(step1.calibration_interval) || 12;
       const dueDate = new Date(calDate);
       dueDate.setMonth(dueDate.getMonth() + intervalMonths);
-      const certExpiry = new Date(calDate);
-      certExpiry.setMonth(certExpiry.getMonth() + intervalMonths);
 
       const body: CalibrationCreateBody = {
         asset_id: assetId,
@@ -521,23 +533,18 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         calibration_date: step1.calibration_date,
         due_date: dueDate.toISOString().slice(0, 10),
         performed_by_name: step1.performed_by_name,
-        result,
         calibration_type: step1.calibration_type,
+        calibration_version: 1,
         external_lab_name: step1.external_lab_name || null,
-        certificate_number: step1.certificate_number || null,
-        certificate_expiry_date: step1.calibration_type === "external" ? certExpiry.toISOString().slice(0, 10) : null,
-        calibration_method_id: step1.calibration_method_id || null,
-        reference_asset_id: step1.reference_asset_id || null,
+        external_lab_certificate_number: step1.external_lab_certificate_number || null,
+        internal_procedure_id: step1.internal_procedure_id || null,
+        internal_reference_asset_id: step1.internal_reference_asset_id || null,
         calibration_interval: parseInt(step1.calibration_interval) || null,
-        version: 1,
-        temperature_value: tempVal != null ? toSI(tempVal, step1.temperature_unit) : null,
-        temperature_unit: step1.temperature_unit || null,
-        pressure_value: pressVal != null ? toSI(pressVal, step1.pressure_unit) : null,
-        pressure_unit: step1.pressure_unit || null,
-        humidity_value: humVal,
-        humidity_unit: step1.humidity_value.trim() ? step1.humidity_unit : null,
+        temperature: temperatureCelsius,
+        humidity: humVal,
+        pressure: pressurePa,
         notes: step1.notes || null,
-        coefficient,
+        ...polyStats,
         points,
       };
 
@@ -851,7 +858,7 @@ function Step1({
         <div className="space-y-4 pl-4 border-l-2 border-mar-border">
           <div className="grid grid-cols-2 gap-4">
             <WInput label="Calibration provider" value={state.external_lab_name} onChange={set("external_lab_name") as (v: string) => void} />
-            <WInput label="Certificate number" value={state.certificate_number} onChange={set("certificate_number") as (v: string) => void} />
+            <WInput label="Certificate number" value={state.external_lab_certificate_number} onChange={set("external_lab_certificate_number") as (v: string) => void} />
           </div>
           <div className="flex items-center pt-1">
             <WCheckbox
@@ -869,15 +876,15 @@ function Step1({
           <div className="grid grid-cols-2 gap-4">
             <WSelect
               label="Reference asset"
-              value={state.reference_asset_id}
-              onChange={set("reference_asset_id") as (v: string) => void}
+              value={state.internal_reference_asset_id}
+              onChange={set("internal_reference_asset_id") as (v: string) => void}
               options={referenceAssets.map((a) => ({ value: a.id, label: `${a.name} (${a.asset_id})` }))}
               placeholder="Select reference…"
             />
             <WSelect
               label="Calibration method"
-              value={state.calibration_method_id}
-              onChange={set("calibration_method_id") as (v: string) => void}
+              value={state.internal_procedure_id}
+              onChange={set("internal_procedure_id") as (v: string) => void}
               options={calibrationMethods.map((m) => ({ value: m.id, label: m.name }))}
               placeholder="Select method…"
             />
@@ -1498,7 +1505,7 @@ function Step3({
                         `Reference (${referenceUnit})`,
                         `Fitted (${referenceUnit})`,
                         `Residual (${referenceUnit})`,
-                        "Residual (%span)",
+                        "Residual (%)",
                       ].map((h) => (
                         <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
                       ))}

@@ -9,15 +9,13 @@ from ...core.database import get_db
 from ...dependencies.deps import get_current_user
 from ...models.asset import AssetType
 from ...models.user import User
-from ...models.calibration_method import CalibrationMethod
+from ...models.calibration_method import Procedure
 from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
-from ...repositories import certificate as cert_repo
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import stored_file as file_repo
 from ...schemas.asset import AssetCreate, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
 from ...schemas.calibration import CalibrationResponse
-from ...schemas.certificate import CertificateResponse
 from ...schemas.sensor import SensorChannelResponse
 from ...schemas.daq import DaqResponse
 from ...schemas.audit_log import AuditLogResponse
@@ -33,7 +31,7 @@ def _enrich(asset, db: Session) -> AssetResponse:
     method_ids = {ch.calibration_method_id for ch in channels if ch.calibration_method_id}
     method_map: dict[uuid.UUID, str] = {}
     if method_ids:
-        methods = db.query(CalibrationMethod).filter(CalibrationMethod.id.in_(method_ids)).all()
+        methods = db.query(Procedure).filter(Procedure.id.in_(method_ids)).all()
         method_map = {m.id: m.name for m in methods}
 
     daq = asset_repo.get_daq_details(db, asset.id)
@@ -194,19 +192,6 @@ def list_asset_calibrations(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     return cal_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit)
 
-
-@router.get("/{asset_pk}/certificates", response_model=list[CertificateResponse])
-def list_asset_certificates(
-    asset_pk: uuid.UUID,
-    skip: int = 0,
-    limit: int = 50,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> list[CertificateResponse]:
-    asset = asset_repo.get_by_id(db, asset_pk)
-    if not asset:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return cert_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit)
 
 
 @router.get("/{asset_pk}/audit-logs", response_model=list[AuditLogResponse])

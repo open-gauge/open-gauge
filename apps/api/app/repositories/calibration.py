@@ -3,8 +3,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from ..models.calibration import Calibration
-from ..models.calibration_coefficient import CalibrationCoefficient, CoefficientType
-from ..models.calibration_point import CalibrationPoint
+from ..models.calibration_point import CalibrationData
 from ..schemas.calibration import CalibrationCreate
 
 
@@ -28,39 +27,34 @@ def list_calibrations(db: Session, skip: int = 0, limit: int = 50) -> list[Calib
 
 
 def get_next_version(db: Session, asset_id: uuid.UUID, sensor_id: uuid.UUID | None) -> int:
-    """Return the next version number for a (asset_id, sensor_id) pair."""
     q = db.query(Calibration).filter(Calibration.asset_id == asset_id)
     if sensor_id:
         q = q.filter(Calibration.sensor_id == sensor_id)
-    count = q.count()
-    return count + 1
+    return q.count() + 1
 
 
 def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -> Calibration:
     """
-    Atomically create a Calibration, optional CalibrationCoefficient, and
-    all CalibrationPoint rows in a single transaction.
+    Atomically create a Calibration and all CalibrationData rows in one transaction.
+    Sets calibration_data_id to the first data point created (if any).
     """
-    data = body.model_dump(exclude={"coefficient", "points"})
+    data = body.model_dump(exclude={"points"})
     cal = Calibration(created_by=created_by, **data)
     db.add(cal)
-    db.flush()  # get cal.id before creating related rows
+    db.flush()
 
-    if body.coefficient is not None:
-        coeff_data = body.coefficient.model_dump()
-        # Determine coefficient_type from poly_degree
-        deg = coeff_data.get("poly_degree", 1)
-        coeff_data["coefficient_type"] = CoefficientType.linear if deg == 1 else CoefficientType.polynomial
-        coeff_data["calibration_id"] = cal.id
-        # Copy expanded_uncertainty to legacy uncertainty column
-        if coeff_data.get("expanded_uncertainty") is not None:
-            coeff_data["uncertainty"] = coeff_data["expanded_uncertainty"]
-        db.add(CalibrationCoefficient(**coeff_data))
-
+    first_point_id: uuid.UUID | None = None
     for pt in body.points:
         pt_data = pt.model_dump()
         pt_data["calibration_id"] = cal.id
-        db.add(CalibrationPoint(**pt_data))
+        row = CalibrationData(**pt_data)
+        db.add(row)
+        db.flush()
+        if first_point_id is None:
+            first_point_id = row.id
+
+    if first_point_id is not None:
+        cal.calibration_data_id = first_point_id
 
     db.commit()
     db.refresh(cal)
@@ -75,22 +69,10 @@ def create(db: Session, created_by: uuid.UUID, **kwargs) -> Calibration:
     return cal
 
 
-def list_coefficients(db: Session, calibration_id: uuid.UUID) -> list[CalibrationCoefficient]:
-    return db.query(CalibrationCoefficient).filter(CalibrationCoefficient.calibration_id == calibration_id).all()
-
-
-def list_points(db: Session, calibration_id: uuid.UUID) -> list[CalibrationPoint]:
+def list_points(db: Session, calibration_id: uuid.UUID) -> list[CalibrationData]:
     return (
-        db.query(CalibrationPoint)
-        .filter(CalibrationPoint.calibration_id == calibration_id)
-        .order_by(CalibrationPoint.point_index)
+        db.query(CalibrationData)
+        .filter(CalibrationData.calibration_id == calibration_id)
+        .order_by(CalibrationData.point_index)
         .all()
     )
-
-
-def create_coefficient(db: Session, **kwargs) -> CalibrationCoefficient:
-    coeff = CalibrationCoefficient(**kwargs)
-    db.add(coeff)
-    db.commit()
-    db.refresh(coeff)
-    return coeff
