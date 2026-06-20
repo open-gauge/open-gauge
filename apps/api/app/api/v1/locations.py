@@ -67,7 +67,7 @@ def update_location(
 
 
 @router.delete("/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
-def archive_location(
+def delete_location(
     location_id: uuid.UUID,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
@@ -75,4 +75,4 @@ def archive_location(
     loc = location_repo.get_by_id(db, location_id)
     if not loc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
-    location_repo.archive(db, loc)
+    location_repo.delete_location(db, loc)

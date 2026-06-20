@@ -584,7 +584,6 @@ export const CAL_ROLE_OPTIONS = [
 export const OUTPUT_TYPE_OPTIONS = [
   { value: "analog", label: "Analog" },
   { value: "digital", label: "Digital" },
-  { value: "pulse", label: "Pulse" },
   { value: "frequency", label: "Frequency" },
   { value: "resistance", label: "Resistance" },
   { value: "capacitance", label: "Capacitance" },
@@ -601,3 +600,50 @@ export const CRITICALITY_OPTIONS = [
   { value: "critical", label: "Critical" },
   { value: "safety-critical", label: "Safety-Critical" },
 ];
+
+export const ANALOG_OUTPUT_UNITS: UnitOption[] = [
+  { value: "mA", label: "mA" },
+  { value: "A", label: "A" },
+  { value: "V", label: "V" },
+  { value: "mV", label: "mV" },
+  { value: "kV", label: "kV" },
+];
+
+export const FREQUENCY_OUTPUT_UNITS: UnitOption[] = [
+  { value: "Hz", label: "Hz" },
+  { value: "kHz", label: "kHz" },
+  { value: "MHz", label: "MHz" },
+  { value: "GHz", label: "GHz" },
+];
+
+export const RESISTANCE_OUTPUT_UNITS: UnitOption[] = [
+  { value: "Ω", label: "Ω" },
+  { value: "kΩ", label: "kΩ" },
+  { value: "MΩ", label: "MΩ" },
+];
+
+export const CAPACITANCE_OUTPUT_UNITS: UnitOption[] = [
+  { value: "F", label: "F" },
+  { value: "µF", label: "µF" },
+  { value: "nF", label: "nF" },
+  { value: "pF", label: "pF" },
+];
+
+export function getOutputUnits(outputType: string, physicalQuantity: string): UnitOption[] | null {
+  switch (outputType) {
+    case "analog":
+      return ANALOG_OUTPUT_UNITS;
+    case "digital": {
+      const qty = QUANTITY_MAP.get(physicalQuantity);
+      return qty?.units ?? null;
+    }
+    case "frequency":
+      return FREQUENCY_OUTPUT_UNITS;
+    case "resistance":
+      return RESISTANCE_OUTPUT_UNITS;
+    case "capacitance":
+      return CAPACITANCE_OUTPUT_UNITS;
+    default:
+      return null;
+  }
+}

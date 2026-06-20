@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models.asset import Asset
+from ..models.asset_location import AssetLocation
 from ..models.location import Location
 
 
@@ -87,3 +88,10 @@ def archive(db: Session, location: Location) -> Location:
     db.commit()
     db.refresh(location)
     return location
+
+
+def delete_location(db: Session, location: Location) -> None:
+    db.query(Asset).filter(Asset.location_id == location.id).update({"location_id": None})
+    db.query(AssetLocation).filter(AssetLocation.location_id == location.id).delete()
+    db.delete(location)
+    db.commit()

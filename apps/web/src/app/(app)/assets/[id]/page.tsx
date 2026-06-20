@@ -34,7 +34,9 @@ import {
   OUTPUT_TYPE_OPTIONS,
   ACCURACY_TYPE_OPTIONS,
   CRITICALITY_OPTIONS,
+  getOutputUnits,
 } from "@/lib/sensor-options";
+import { toSI, fromSI } from "@/lib/unit-conversion";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -244,9 +246,9 @@ function profileToForm(profile: AssetProfile): EditFormState {
         sensitivity_unit: s(ch.sensitivity_unit),
         response_time_ms: s(ch.response_time_ms),
         bandwidth_hz: s(ch.bandwidth_hz),
-        output_signal_min: s(ch.output_signal_min),
-        output_signal_max: s(ch.output_signal_max),
         output_signal_unit: s(ch.output_signal_unit),
+        output_signal_min: s(fromSI(ch.output_signal_min, ch.output_signal_unit ?? "")),
+        output_signal_max: s(fromSI(ch.output_signal_max, ch.output_signal_unit ?? "")),
         output_type: s(ch.output_type),
         calibration_role: s(ch.calibration_role),
         criticality: s(ch.criticality),
@@ -264,6 +266,11 @@ function numOrNull(v: string): number | null {
   if (v.trim() === "") return null;
   const n = parseFloat(v);
   return isNaN(n) ? null : n;
+}
+
+function numSI(v: string, unit: string): number | null {
+  const n = numOrNull(v);
+  return n != null ? toSI(n, unit) : null;
 }
 
 function formToUpdate(form: EditFormState): AssetUpdateRequest {
@@ -289,9 +296,9 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
     sensitivity_unit: orNull(ch.sensitivity_unit),
     response_time_ms: numOrNull(ch.response_time_ms),
     bandwidth_hz: numOrNull(ch.bandwidth_hz),
-    output_signal_min: numOrNull(ch.output_signal_min),
-    output_signal_max: numOrNull(ch.output_signal_max),
     output_signal_unit: orNull(ch.output_signal_unit),
+    output_signal_min: numSI(ch.output_signal_min, ch.output_signal_unit),
+    output_signal_max: numSI(ch.output_signal_max, ch.output_signal_unit),
     output_type: orNull(ch.output_type),
     calibration_role: orNull(ch.calibration_role),
     criticality: orNull(ch.criticality),
@@ -654,6 +661,28 @@ const CHAN_TIPS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Output unit selector — shows appropriate units based on output type
+// ---------------------------------------------------------------------------
+
+function OutputUnitSelector({
+  outputType, physicalQuantity, value, onChange,
+}: {
+  outputType: string;
+  physicalQuantity: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const units = getOutputUnits(outputType, physicalQuantity);
+  if (!units) {
+    return <EditInput label="Output unit" value={value} onChange={onChange} placeholder="e.g. mA" />;
+  }
+  if (outputType === "digital") {
+    return <EditSelectWithOther label="Output unit" value={value} onChange={onChange} options={units} />;
+  }
+  return <EditSelect label="Output unit" value={value} onChange={onChange} options={units} />;
+}
+
+// ---------------------------------------------------------------------------
 // Channel editor row
 // ---------------------------------------------------------------------------
 
@@ -758,13 +787,16 @@ function ChannelEditor({
         <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" tooltip={CHAN_TIPS.bandwidth_hz} />
       </div>
 
-      {/* Output */}
+      {/* Output — type first, then range */}
+      <EditSelectWithOther label="Output type" value={ch.output_type} onChange={(v) => {
+        const units = getOutputUnits(v, ch.physical_quantity);
+        onChange({ ...ch, output_type: v, output_signal_unit: units?.[0]?.value ?? "" });
+      }} options={OUTPUT_TYPE_OPTIONS} />
       <div className="grid grid-cols-3 gap-3">
         <EditInput label="Output min" value={ch.output_signal_min} onChange={set("output_signal_min")} error={errors[`${p}output_signal_min`]} placeholder="e.g. 4" />
         <EditInput label="Output max" value={ch.output_signal_max} onChange={set("output_signal_max")} error={errors[`${p}output_signal_max`]} placeholder="e.g. 20" />
-        <EditInput label="Output unit" value={ch.output_signal_unit} onChange={set("output_signal_unit")} placeholder="e.g. mA" />
+        <OutputUnitSelector outputType={ch.output_type} physicalQuantity={ch.physical_quantity} value={ch.output_signal_unit} onChange={set("output_signal_unit")} />
       </div>
-      <EditSelectWithOther label="Output type" value={ch.output_type} onChange={set("output_type")} options={OUTPUT_TYPE_OPTIONS} />
 
       {/* Role / Criticality */}
       <div className="grid grid-cols-2 gap-3">

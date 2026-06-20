@@ -22,10 +22,12 @@ import {
   LocationVehicleIcon,
   MapPinIcon,
   PlusIcon,
+  WarningIcon,
   XIcon,
 } from "@/components/icons";
 import {
   createLocation,
+  deleteLocation,
   getMyOrganizationId,
   listAllLocations,
   updateLocation,
@@ -333,6 +335,64 @@ function InfoCard({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
+// Remove location confirmation modal
+// ---------------------------------------------------------------------------
+
+function RemoveLocationModal({
+  locationName,
+  open,
+  removing,
+  onClose,
+  onConfirm,
+}: {
+  locationName: string;
+  open: boolean;
+  removing: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-mar-surface border border-mar-border rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+        <div className="flex items-center gap-3 mb-4">
+          <WarningIcon size={20} className="text-red-500 flex-shrink-0" />
+          <h2 className="text-base font-semibold text-mar-text">Remove location?</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-2">
+          You are about to permanently remove{" "}
+          <span className="font-semibold text-mar-text">{locationName}</span>.
+        </p>
+        <p className="text-sm text-gray-500 mb-5">
+          All assets currently assigned to this location will be unassigned. This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={removing}
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={removing}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
+          >
+            {removing
+              ? <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <WarningIcon size={12} />}
+            {removing ? "Removing…" : "Remove location"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Detail panel
 // ---------------------------------------------------------------------------
 
@@ -340,11 +400,13 @@ function LocationDetail({
   location,
   allLocations,
   onEditSaved,
+  onRemoved,
   inheritedCount = 0,
 }: {
   location: LocationItem;
   allLocations: LocationItem[];
   onEditSaved: (updated: LocationItem[]) => void;
+  onRemoved: (fresh: LocationItem[]) => void;
   inheritedCount?: number;
 }) {
   const [editing, setEditing] = useState(false);
@@ -352,6 +414,8 @@ function LocationDetail({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   // Reset edit state when selected location changes
   useEffect(() => {
@@ -393,6 +457,20 @@ function LocationDetail({
     }
   }
 
+  async function handleRemove() {
+    setRemoving(true);
+    try {
+      await deleteLocation(location.id);
+      const fresh = await listAllLocations();
+      onRemoved(fresh);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Failed to remove location.");
+      setRemoveModalOpen(false);
+    } finally {
+      setRemoving(false);
+    }
+  }
+
   function field<K extends keyof LocationEditForm>(key: K) {
     return (v: string) => setForm((prev) => ({ ...prev, [key]: v }));
   }
@@ -427,6 +505,14 @@ function LocationDetail({
   });
 
   return (
+    <>
+      <RemoveLocationModal
+        locationName={location.name}
+        open={removeModalOpen}
+        removing={removing}
+        onClose={() => setRemoveModalOpen(false)}
+        onConfirm={handleRemove}
+      />
     <div className="space-y-4">
       {/* Header card */}
       <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
@@ -570,6 +656,17 @@ function LocationDetail({
             options={parentOptions}
             placeholder="None (root)"
           />
+          <div className="pt-1 border-t border-mar-border">
+            <button
+              type="button"
+              onClick={() => setRemoveModalOpen(true)}
+              disabled={saving || removing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-600 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              <WarningIcon size={12} />
+              Remove location
+            </button>
+          </div>
         </div>
       )}
 
@@ -612,6 +709,7 @@ function LocationDetail({
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -848,6 +946,11 @@ export default function LocationsPage() {
     setLocations(fresh);
   }
 
+  function handleLocationRemoved(fresh: LocationItem[]) {
+    setLocations(fresh);
+    setSelectedId(null);
+  }
+
   function handleNewLocCreated(fresh: LocationItem[]) {
     setLocations(fresh);
     setNewLocOpen(false);
@@ -921,6 +1024,7 @@ export default function LocationsPage() {
               location={selectedLocation}
               allLocations={locations}
               onEditSaved={handleEditSaved}
+              onRemoved={handleLocationRemoved}
               inheritedCount={inheritedCounts.get(selectedLocation.id) ?? selectedLocation.asset_count}
             />
           ) : (
