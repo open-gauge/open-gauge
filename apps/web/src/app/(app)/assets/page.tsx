@@ -441,19 +441,23 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
   const visibleChannels = expanded && isMulti ? channels : [channels[0]];
 
   if (!expanded || !isMulti) {
-    // Simple single row
+    // Single row — for multi-channel collapsed, show summary instead of first channel details
     const ch = visibleChannels[0];
     return (
       <tr className="border-b border-mar-border hover:bg-mar-surface-alt transition-colors">
         <td className="px-4 py-2.5 whitespace-nowrap">{sharedId}</td>
         <td className="px-4 py-2.5 max-w-[200px]">{sharedName}</td>
         <td className="px-4 py-2.5">
-          <TypeCell subtype={ch.physical_quantity || asset.subtype} technology={ch.technology ?? asset.technology} />
+          {isMulti
+            ? <p className="text-sm text-mar-text leading-snug">{asset.channels.length} channels</p>
+            : <TypeCell subtype={ch.physical_quantity || asset.subtype} technology={ch.technology ?? asset.technology} />}
         </td>
         <td className="px-4 py-2.5 whitespace-nowrap">
-          {asset.asset_type === "sensor"
-            ? <RangeCell min={ch.measurement_min} max={ch.measurement_max} unit={ch.unit || null} />
-            : <span className="text-xs text-gray-400">—</span>}
+          {isMulti
+            ? <span className="text-xs text-gray-400">—</span>
+            : asset.asset_type === "sensor"
+              ? <RangeCell min={ch.measurement_min} max={ch.measurement_max} unit={ch.unit || null} />
+              : <span className="text-xs text-gray-400">—</span>}
         </td>
         <td className="px-4 py-2.5">{sharedMfr}</td>
         <td className="px-4 py-2.5 whitespace-nowrap">{sharedSerial}</td>
@@ -518,8 +522,9 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
 // ---------------------------------------------------------------------------
 
 function AssetCard({ asset }: { asset: AssetListItem }) {
+  const isMulti = asset.asset_type === "sensor" && asset.channels.length > 1;
   const subtypeLabel = asset.subtype ? (SUBTYPE_LABEL[asset.subtype] ?? asset.subtype) : null;
-  const range = formatRange(asset.range_min, asset.range_max, asset.range_unit);
+  const range = isMulti ? null : formatRange(asset.range_min, asset.range_max, asset.range_unit);
   return (
     <a href={`/assets/${asset.id}`} className="block bg-mar-surface border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-sm transition-all cursor-pointer">
       <div className="flex items-start justify-between mb-3">
@@ -529,11 +534,15 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
       <p className="text-sm font-semibold text-mar-text leading-tight mb-1">{asset.name}</p>
       <p className="text-xs text-gray-400 truncate">{asset.manufacturer} · {asset.model}</p>
       <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
-        <span>{subtypeLabel ?? asset.asset_type.toUpperCase()}{asset.technology ? ` · ${asset.technology}` : ""}</span>
+        <span>
+          {isMulti
+            ? `${asset.channels.length} channels`
+            : `${subtypeLabel ?? asset.asset_type.toUpperCase()}${asset.technology ? ` · ${asset.technology}` : ""}`}
+        </span>
         <span>{asset.site_name ?? "—"}</span>
       </div>
       <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
-        <span className="font-mono">{range ?? asset.serial_number ?? "—"}</span>
+        <span className="font-mono">{range ?? (isMulti ? "—" : (asset.serial_number ?? "—"))}</span>
         <span className="font-mono">{formatDate(asset.next_due_at)}</span>
       </div>
     </a>

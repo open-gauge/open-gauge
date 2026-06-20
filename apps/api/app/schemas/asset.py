@@ -63,6 +63,7 @@ class AssetUpdate(BaseModel):
     model: str | None = None
     serial_number: str | None = None
     manufacturer_part_number: str | None = None
+    owner: uuid.UUID | None = None
     location_id: uuid.UUID | None = None
     firmware_version: str | None = None
     power_supply: str | None = None

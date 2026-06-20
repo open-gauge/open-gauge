@@ -11,6 +11,8 @@ import {
   getAssetProfile,
   getCalibrationCoefficients,
   listLocations,
+  listTeams,
+  retireAsset,
   updateAsset,
 } from "@/services/asset.service";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
@@ -39,10 +41,12 @@ import {
   ChevronLeftIcon,
   DownloadIcon,
   EditIcon,
+  InfoIcon,
   MapPinIcon,
   PlusIcon,
   QrCodeIcon,
   TrashIcon,
+  WarningIcon,
   XIcon,
 } from "@/components/icons";
 
@@ -154,6 +158,7 @@ interface EditChannelForm {
 }
 
 interface EditFormState {
+  owner: string;
   name: string;
   description: string;
   manufacturer: string;
@@ -188,6 +193,7 @@ function s(v: string | number | null | undefined): string {
 
 function profileToForm(profile: AssetProfile): EditFormState {
   return {
+    owner: s(profile.owner),
     name: s(profile.name),
     description: s(profile.description),
     manufacturer: s(profile.manufacturer),
@@ -293,6 +299,7 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
   }));
 
   return {
+    owner: orNull(form.owner),
     name: form.name.trim() || undefined,
     description: orNull(form.description),
     manufacturer: form.manufacturer.trim() || undefined,
@@ -326,6 +333,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 function validateForm(form: EditFormState): Record<string, string> {
   const errors: Record<string, string> = {};
 
+  if (!form.owner.trim()) errors.owner = "Owner is required";
   if (!form.name.trim()) errors.name = "Name is required";
   if (!form.manufacturer.trim()) errors.manufacturer = "Manufacturer is required";
   if (!form.model.trim()) errors.model = "Model is required";
@@ -375,14 +383,32 @@ function validateForm(form: EditFormState): Record<string, string> {
 // Edit field components
 // ---------------------------------------------------------------------------
 
-const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder-gray-300";
+const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
 const INPUT_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const INPUT_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
-function ELabel({ label, required }: { label: string; required?: boolean }) {
+function Tooltip({ content, children }: { content: string; children: React.ReactNode }) {
   return (
-    <span className="text-xs text-gray-400">
-      {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+    <span className="relative group/tip">
+      {children}
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tip:block w-64 bg-gray-900 dark:bg-gray-700 text-white text-[11px] rounded-lg px-3 py-2 z-50 shadow-lg leading-relaxed whitespace-normal text-left">
+        {content}
+      </span>
+    </span>
+  );
+}
+
+function ELabel({ label, required, tooltip }: { label: string; required?: boolean; tooltip?: string }) {
+  return (
+    <span className="flex items-center gap-1">
+      <span className="text-xs text-gray-400">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </span>
+      {tooltip && (
+        <Tooltip content={tooltip}>
+          <InfoIcon size={11} className="text-gray-400 cursor-help flex-shrink-0" />
+        </Tooltip>
+      )}
     </span>
   );
 }
@@ -393,14 +419,14 @@ function EError({ msg }: { msg?: string }) {
 }
 
 function EditInput({
-  label, value, onChange, error, required, placeholder, type = "text", readOnly,
+  label, value, onChange, error, required, placeholder, type = "text", readOnly, tooltip,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  error?: string; required?: boolean; placeholder?: string; type?: string; readOnly?: boolean;
+  error?: string; required?: boolean; placeholder?: string; type?: string; readOnly?: boolean; tooltip?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <ELabel label={label} required={required} />
+      <ELabel label={label} required={required} tooltip={tooltip} />
       <input
         type={type}
         value={value}
@@ -415,14 +441,14 @@ function EditInput({
 }
 
 function EditTextArea({
-  label, value, onChange, error, required, placeholder, rows = 3,
+  label, value, onChange, error, required, placeholder, rows = 3, tooltip,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  error?: string; required?: boolean; placeholder?: string; rows?: number;
+  error?: string; required?: boolean; placeholder?: string; rows?: number; tooltip?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <ELabel label={label} required={required} />
+      <ELabel label={label} required={required} tooltip={tooltip} />
       <textarea
         value={value}
         rows={rows}
@@ -436,15 +462,15 @@ function EditTextArea({
 }
 
 function EditSelect({
-  label, value, onChange, options, error, required, placeholder,
+  label, value, onChange, options, error, required, placeholder, tooltip,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  error?: string; required?: boolean; placeholder?: string;
+  error?: string; required?: boolean; placeholder?: string; tooltip?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <ELabel label={label} required={required} />
+      <ELabel label={label} required={required} tooltip={tooltip} />
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -462,11 +488,11 @@ function EditSelect({
 
 // Select with "Other" that shows a text input when a non-listed value is active
 function EditSelectWithOther({
-  label, value, onChange, options, error, required, placeholder,
+  label, value, onChange, options, error, required, placeholder, tooltip,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  error?: string; required?: boolean; placeholder?: string;
+  error?: string; required?: boolean; placeholder?: string; tooltip?: string;
 }) {
   const [otherMode, setOtherMode] = useState(
     () => value !== "" && !options.some((o) => o.value === value)
@@ -481,7 +507,7 @@ function EditSelectWithOther({
 
   return (
     <div className="flex flex-col gap-1">
-      <ELabel label={label} required={required} />
+      <ELabel label={label} required={required} tooltip={tooltip} />
       <select
         value={otherMode ? "__other__" : value}
         onChange={(e) => {
@@ -569,6 +595,7 @@ function PhysicalQuantityCascade({
           options={PHYSICAL_QUANTITIES.map((q) => ({ value: q.value, label: q.label }))}
           error={errors[`${prefix}physical_quantity`]}
           required
+          tooltip={CHAN_TIPS.physical_quantity}
         />
         <EditSelect
           label="Unit"
@@ -608,6 +635,23 @@ function PhysicalQuantityCascade({
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Channel field tooltips
+// ---------------------------------------------------------------------------
+
+const CHAN_TIPS: Record<string, string> = {
+  physical_quantity: "The physical quantity defines the type of measurement (e.g., temperature, pressure) and determines the applicable units and calibration procedures. Choose the one that best matches the sensor's primary measurement.",
+  accuracy_value: "Maximum deviation between the sensor output and the true value. Smaller means more accurate.",
+  resolution: "Smallest change in input the sensor can detect and represent in its output.",
+  measurement_uncertainty: "Quantifies doubt about the measurement result. Expressed as ±value at the stated confidence level.",
+  confidence_level: "Statistical confidence for the uncertainty statement (typically 95%).",
+  coverage_factor: "Multiplier k applied to standard uncertainty to give expanded uncertainty (k=2 ≈ 95%).",
+  drift_rate: "Rate at which the sensor output shifts over time without any change in the measured quantity.",
+  sensitivity: "Change in output per unit change in input (e.g., mV/°C). Higher means more responsive.",
+  response_time_ms: "Time for the sensor output to reach a defined percentage of its final value after a step input change.",
+  bandwidth_hz: "Maximum frequency of input changes the sensor can accurately follow.",
+};
 
 // ---------------------------------------------------------------------------
 // Channel editor row
@@ -675,43 +719,43 @@ function ChannelEditor({
 
       {/* Accuracy */}
       <div className="grid grid-cols-3 gap-3">
-        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" />
+        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" tooltip={CHAN_TIPS.accuracy_value} />
         <EditSelectWithOther label="Accuracy type" value={ch.accuracy_type} onChange={set("accuracy_type")} options={ACCURACY_TYPE_OPTIONS} />
         <EditInput label="Accuracy unit" value={ch.accuracy_unit} onChange={set("accuracy_unit")} placeholder="e.g. °C, %" />
       </div>
 
       {/* Resolution */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" />
+        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" tooltip={CHAN_TIPS.resolution} />
         <EditInput label="Resolution unit" value={ch.resolution_unit} onChange={set("resolution_unit")} placeholder="e.g. °C" />
       </div>
 
       {/* Uncertainty */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" />
+        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" tooltip={CHAN_TIPS.measurement_uncertainty} />
         <EditInput label="Uncertainty unit" value={ch.uncertainty_unit} onChange={set("uncertainty_unit")} placeholder="e.g. °C" />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Confidence level (%)" value={ch.confidence_level} onChange={set("confidence_level")} error={errors[`${p}confidence_level`]} placeholder="e.g. 95" />
-        <EditInput label="Coverage factor (k)" value={ch.coverage_factor} onChange={set("coverage_factor")} error={errors[`${p}coverage_factor`]} placeholder="e.g. 2" />
+        <EditInput label="Confidence level (%)" value={ch.confidence_level} onChange={set("confidence_level")} error={errors[`${p}confidence_level`]} placeholder="e.g. 95" tooltip={CHAN_TIPS.confidence_level} />
+        <EditInput label="Coverage factor (k)" value={ch.coverage_factor} onChange={set("coverage_factor")} error={errors[`${p}coverage_factor`]} placeholder="e.g. 2" tooltip={CHAN_TIPS.coverage_factor} />
       </div>
 
       {/* Drift */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" />
+        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" tooltip={CHAN_TIPS.drift_rate} />
         <EditInput label="Drift unit" value={ch.drift_unit} onChange={set("drift_unit")} placeholder="e.g. °C/year" />
       </div>
 
       {/* Sensitivity */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Sensitivity" value={ch.sensitivity} onChange={set("sensitivity")} error={errors[`${p}sensitivity`]} placeholder="e.g. 10" />
+        <EditInput label="Sensitivity" value={ch.sensitivity} onChange={set("sensitivity")} error={errors[`${p}sensitivity`]} placeholder="e.g. 10" tooltip={CHAN_TIPS.sensitivity} />
         <EditInput label="Sensitivity unit" value={ch.sensitivity_unit} onChange={set("sensitivity_unit")} placeholder="e.g. mV/V" />
       </div>
 
       {/* Dynamic */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" />
-        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" />
+        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" tooltip={CHAN_TIPS.response_time_ms} />
+        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" tooltip={CHAN_TIPS.bandwidth_hz} />
       </div>
 
       {/* Output */}
@@ -772,11 +816,74 @@ function CollapsibleSection({
 }
 
 // ---------------------------------------------------------------------------
+// Helpers for view mode conditional sections
+// ---------------------------------------------------------------------------
+
+function hasAny(...vals: (string | number | boolean | null | undefined)[]): boolean {
+  return vals.some((v) => v !== null && v !== undefined && v !== "");
+}
+
+// ---------------------------------------------------------------------------
+// Retire modal
+// ---------------------------------------------------------------------------
+
+function RetireModal({ assetName, onRetire, onClose }: {
+  assetName: string;
+  onRetire: (reason?: string) => void;
+  onClose: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [retiring, setRetiring] = useState(false);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-md p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <WarningIcon size={20} className="text-red-500 flex-shrink-0" />
+          <h2 className="text-base font-semibold text-mar-text">Retire asset?</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          This will mark <span className="font-semibold text-mar-text">{assetName}</span> as retired.
+          Retired assets remain visible but are not editable. An admin can reactivate them later.
+        </p>
+        <div className="flex flex-col gap-1 mb-5">
+          <span className="text-xs text-gray-400">Reason (optional)</span>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Equipment failure, end of life…"
+            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20 placeholder:text-gray-400 dark:placeholder:text-gray-600"
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={retiring}
+            className="px-3 py-1.5 text-sm border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors text-mar-text disabled:opacity-50">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={retiring}
+            onClick={() => { setRetiring(true); onRetire(reason || undefined); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+          >
+            {retiring
+              ? <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <WarningIcon size={14} />}
+            {retiring ? "Retiring…" : "Retire asset"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Overview tab
 // ---------------------------------------------------------------------------
 
 function OverviewTab({
-  profile, isEditing, form, onChange, errors, locations,
+  profile, isEditing, form, onChange, errors, locations, teams,
 }: {
   profile: AssetProfile;
   isEditing: boolean;
@@ -784,6 +891,7 @@ function OverviewTab({
   onChange: (f: EditFormState) => void;
   errors: Record<string, string>;
   locations: LocationOption[];
+  teams: { id: string; name: string }[];
 }) {
   const daq = profile.daq_details;
 
@@ -851,6 +959,15 @@ function OverviewTab({
               <EditInput label="Model" value={form.model} onChange={set("model")} error={errors.model} required placeholder="e.g. TF53" />
               <EditInput label="Serial number" value={form.serial_number} onChange={set("serial_number")} placeholder="e.g. SN-20240001" />
               <EditInput label="Part number" value={form.manufacturer_part_number} onChange={set("manufacturer_part_number")} placeholder="e.g. 4250041" />
+              <EditSelect
+                label="Owner"
+                value={form.owner}
+                onChange={set("owner")}
+                options={teams.map((t) => ({ value: t.id, label: t.name }))}
+                error={errors.owner}
+                required
+                placeholder="Select team…"
+              />
               <div className="sm:col-span-2">
                 <EditTextArea label="Description" value={form.description} onChange={set("description")} placeholder="Short description of the asset's purpose and context" />
               </div>
@@ -917,18 +1034,8 @@ function OverviewTab({
           {profile.asset_type === "sensor" && (
             <>
               <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-sm font-semibold text-mar-text">Sensor channels</h3>
-                  <button
-                    type="button"
-                    onClick={addChannel}
-                    className="flex items-center gap-1 text-xs text-mar-accent border border-mar-border rounded-lg px-2.5 py-1.5 hover:bg-mar-surface-alt transition-colors"
-                  >
-                    <PlusIcon size={12} />
-                    Add channel
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mb-3">Define measurement channels for this sensor.</p>
+                <h3 className="text-sm font-semibold text-mar-text mb-1">Sensor channels</h3>
+                <p className="text-xs text-gray-400">Define measurement channels for this sensor.</p>
               </div>
               <div className="space-y-3">
                 {form.sensor_channels.map((ch, i) => (
@@ -946,8 +1053,16 @@ function OverviewTab({
                   />
                 ))}
                 {form.sensor_channels.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">No channels. Click &ldquo;Add channel&rdquo; to add one.</p>
+                  <p className="text-sm text-gray-400 text-center py-4">No channels yet.</p>
                 )}
+                <button
+                  type="button"
+                  onClick={addChannel}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs text-mar-accent border border-dashed border-mar-border rounded-xl px-3 py-3 hover:bg-mar-surface-alt transition-colors"
+                >
+                  <PlusIcon size={12} />
+                  Add channel
+                </button>
               </div>
             </>
           )}
@@ -991,61 +1106,73 @@ function OverviewTab({
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Mechanical">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-            <SpecRow label="Dimensions" value={profile.dimensions} />
-            {profile.weight_kg != null && <SpecRow label="Weight" value={`${profile.weight_kg} kg`} />}
-            <SpecRow label="Mounting type" value={profile.mounting_type} />
-            <SpecRow label="Connection type" value={profile.connection_type} />
-            <SpecRow label="IP rating" value={profile.ip_rating} />
-            <SpecRow label="Hazardous area" value={profile.hazardous_area_rating} />
-            {operatingTemp && <SpecRow label="Operating temperature" value={operatingTemp} />}
-            {operatingHumidity && <SpecRow label="Operating humidity" value={operatingHumidity} />}
-          </div>
-        </CollapsibleSection>
-
-        <CollapsibleSection title="Electrical">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-            <SpecRow label="Power supply" value={profile.power_supply} />
-            {profile.power_consumption_w != null && (
-              <SpecRow label="Power consumption" value={`${profile.power_consumption_w} W`} />
-            )}
-            <SpecRow label="Firmware" value={profile.firmware_version} />
-          </div>
-          {profile.pinout_table && profile.pinout_table.length > 0 && (
-            <div className="mt-4">
-              <p className="text-xs text-gray-400 mb-2">Pinout</p>
-              <div className="overflow-x-auto rounded-lg border border-mar-border">
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr className="border-b border-mar-border bg-mar-surface-alt">
-                      <th className="px-3 py-2 font-semibold text-gray-400 w-16">Pin</th>
-                      <th className="px-3 py-2 font-semibold text-gray-400 w-32">Name</th>
-                      <th className="px-3 py-2 font-semibold text-gray-400">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-mar-border">
-                    {profile.pinout_table.map((row) => (
-                      <tr key={row.pin_number}>
-                        <td className="px-3 py-2 font-mono text-mar-text">{row.pin_number}</td>
-                        <td className="px-3 py-2 text-mar-text">{row.name}</td>
-                        <td className="px-3 py-2 text-gray-400">{row.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        {hasAny(profile.dimensions, profile.weight_kg, profile.mounting_type, profile.connection_type, profile.ip_rating, profile.hazardous_area_rating, operatingTemp, operatingHumidity) && (
+          <CollapsibleSection title="Mechanical">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
+              <SpecRow label="Dimensions" value={profile.dimensions} />
+              {profile.weight_kg != null && <SpecRow label="Weight" value={`${profile.weight_kg} kg`} />}
+              <SpecRow label="Mounting type" value={profile.mounting_type} />
+              <SpecRow label="Connection type" value={profile.connection_type} />
+              <SpecRow label="IP rating" value={profile.ip_rating} />
+              <SpecRow label="Hazardous area" value={profile.hazardous_area_rating} />
+              {operatingTemp && <SpecRow label="Operating temperature" value={operatingTemp} />}
+              {operatingHumidity && <SpecRow label="Operating humidity" value={operatingHumidity} />}
             </div>
-          )}
-        </CollapsibleSection>
+          </CollapsibleSection>
+        )}
 
-        <CollapsibleSection title="Commercial">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-            {profile.purchase_date && <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} />}
-            {profile.price_eur != null && <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} />}
-            {profile.warranty_expiry_date && <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} />}
-          </div>
-        </CollapsibleSection>
+        {hasAny(profile.power_supply, profile.power_consumption_w, profile.firmware_version, profile.pinout_table?.length) && (
+          <CollapsibleSection title="Electrical">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
+              <SpecRow label="Power supply" value={profile.power_supply} />
+              {profile.power_consumption_w != null && (
+                <SpecRow label="Power consumption" value={`${profile.power_consumption_w} W`} />
+              )}
+              <SpecRow label="Firmware" value={profile.firmware_version} />
+            </div>
+            {profile.pinout_table && profile.pinout_table.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs text-gray-400 mb-2">Pinout</p>
+                <div className="overflow-x-auto rounded-lg border border-mar-border">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-mar-border bg-mar-surface-alt">
+                        <th className="px-3 py-2 font-semibold text-gray-400 w-16">Pin</th>
+                        <th className="px-3 py-2 font-semibold text-gray-400 w-32">Name</th>
+                        <th className="px-3 py-2 font-semibold text-gray-400">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-mar-border">
+                      {profile.pinout_table.map((row) => (
+                        <tr key={row.pin_number}>
+                          <td className="px-3 py-2 font-mono text-mar-text">{row.pin_number}</td>
+                          <td className="px-3 py-2 text-mar-text">{row.name}</td>
+                          <td className="px-3 py-2 text-gray-400">{row.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CollapsibleSection>
+        )}
+
+        {hasAny(profile.purchase_date, profile.price_eur, profile.warranty_expiry_date) && (
+          <CollapsibleSection title="Commercial">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
+              {profile.purchase_date && <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} />}
+              {profile.price_eur != null && <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} />}
+              {profile.warranty_expiry_date && <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} />}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {profile.notes && (
+          <CollapsibleSection title="Notes">
+            <p className="text-sm text-mar-text mt-3 leading-relaxed whitespace-pre-wrap">{profile.notes}</p>
+          </CollapsibleSection>
+        )}
       </div>
 
       <div className="bg-mar-surface border border-mar-border rounded-xl p-6 h-fit">
@@ -1443,6 +1570,8 @@ export default function AssetProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [retireModalOpen, setRetireModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -1480,8 +1609,23 @@ export default function AssetProfilePage() {
     setSaveError(null);
     setIsEditing(true);
     setActiveTab("overview");
-    // Load locations in background
     listLocations().then(setLocations).catch(() => {});
+    listTeams().then(setTeams).catch(() => {});
+  }
+
+  async function handleRetire(reason?: string) {
+    if (!profile) return;
+    try {
+      await retireAsset(profile.id, reason);
+      const updated = await getAssetProfile(id);
+      setProfile(updated);
+      setRetireModalOpen(false);
+      setIsEditing(false);
+      setEditForm(null);
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : "Failed to retire asset.");
+      setRetireModalOpen(false);
+    }
   }
 
   function handleCancelEdit() {
@@ -1551,6 +1695,23 @@ export default function AssetProfilePage() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
 
+      {retireModalOpen && (
+        <RetireModal
+          assetName={profile.name}
+          onRetire={handleRetire}
+          onClose={() => setRetireModalOpen(false)}
+        />
+      )}
+
+      {!profile.is_active && (
+        <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-5 py-3 flex items-center gap-3">
+          <WarningIcon size={16} className="text-red-500 flex-shrink-0" />
+          <p className="text-sm text-red-700 dark:text-red-400 font-medium">
+            This asset has been retired{profile.retired_reason ? `: ${profile.retired_reason}` : ""} and is read-only.
+          </p>
+        </div>
+      )}
+
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-gray-400">
         <Link href="/assets" className="hover:text-mar-text transition-colors">Assets</Link>
@@ -1601,40 +1762,53 @@ export default function AssetProfilePage() {
                   title="QR code">
                   <QrCodeIcon size={16} />
                 </button>
-                <button
-                  type="button"
-                  onClick={handleStartEdit}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  <EditIcon size={14} />
-                  Edit
-                </button>
+                {profile.is_active && (
+                  <button
+                    type="button"
+                    onClick={handleStartEdit}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    <EditIcon size={14} />
+                    Edit
+                  </button>
+                )}
               </>
             ) : (
-              <>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-mar-border-md text-sm font-medium rounded-lg hover:bg-mar-surface-alt text-mar-text transition-colors disabled:opacity-50"
+                  >
+                    <XIcon size={14} />
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving || hasErrors}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? (
+                      <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <CheckIcon size={14} />
+                    )}
+                    {isSaving ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={handleCancelEdit}
+                  onClick={() => setRetireModalOpen(true)}
                   disabled={isSaving}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-mar-border-md text-sm font-medium rounded-lg hover:bg-mar-surface-alt text-mar-text transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-600 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <XIcon size={14} />
-                  Cancel
+                  <WarningIcon size={13} />
+                  Retire asset
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSaving || hasErrors}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? (
-                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <CheckIcon size={14} />
-                  )}
-                  {isSaving ? "Saving…" : "Save changes"}
-                </button>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -1703,6 +1877,7 @@ export default function AssetProfilePage() {
               onChange={handleFormChange}
               errors={editErrors}
               locations={locations}
+              teams={teams}
             />
           )}
           {activeTab === "calibration" && (

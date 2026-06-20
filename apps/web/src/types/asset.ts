@@ -101,6 +101,7 @@ export interface AssetProfile {
   price_eur: number | null;
   purchase_date: string | null;
   warranty_expiry_date: string | null;
+  owner: string | null;
   is_active: boolean;
   retired_at: string | null;
   retired_reason: string | null;
@@ -203,6 +204,7 @@ export interface AssetUpdateRequest {
   price_eur?: number | null;
   purchase_date?: string | null;
   warranty_expiry_date?: string | null;
+  owner?: string | null;
   notes?: string | null;
   pinout_table?: Array<{ pin_number: number; name: string; description: string }> | null;
   sensor_channels?: SensorChannelUpdateInput[];

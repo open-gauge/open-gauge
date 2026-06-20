@@ -15,6 +15,7 @@ from .api.v1 import calibrations as cal_router
 from .api.v1 import certificates as cert_router
 from .api.v1 import audit_logs as log_router
 from .api.v1 import users as user_router
+from .api.v1 import teams as team_router
 from .core.config import settings
 from .core.database import SessionLocal
 from .seeds.seed import seed_database
@@ -51,6 +52,7 @@ app.include_router(cal_router.router, prefix="/api/v1")
 app.include_router(cert_router.router, prefix="/api/v1")
 app.include_router(log_router.router, prefix="/api/v1")
 app.include_router(user_router.router, prefix="/api/v1")
+app.include_router(team_router.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])

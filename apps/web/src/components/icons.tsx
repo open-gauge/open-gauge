@@ -340,6 +340,16 @@ export function MapPinIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+export function InfoIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 7.5v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="8" cy="5.5" r="0.75" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function ShareIcon({ size = 16, className }: IconProps = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>

@@ -71,6 +71,20 @@ export async function updateAsset(id: string, body: AssetUpdateRequest): Promise
   });
 }
 
+export async function retireAsset(id: string, reason?: string): Promise<void> {
+  const qs = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+  return apiFetch<void>(`/api/v1/assets/${id}${qs}`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+export async function listTeams(): Promise<{ id: string; name: string }[]> {
+  return apiFetch<{ id: string; name: string }[]>(`/api/v1/teams`, {
+    headers: tokenHeader(),
+  });
+}
+
 export async function listLocations(): Promise<LocationOption[]> {
   const raw = await apiFetch<{ id: string; name: string; parent_location_id: string | null }[]>(
     `/api/v1/locations?limit=500`,

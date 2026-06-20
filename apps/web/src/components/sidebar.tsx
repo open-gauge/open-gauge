@@ -12,8 +12,8 @@ import {
   ChevronRightIcon,
   DashboardIcon,
   DocumentIcon,
+  MapPinIcon,
   SettingsIcon,
-  SitesIcon,
 } from "@/components/icons";
 
 interface NavItem {
@@ -25,7 +25,7 @@ interface NavItem {
 const WORKSPACE_NAV: NavItem[] = [
   { href: "/dashboard",    label: "Dashboard",        icon: <DashboardIcon size={15} /> },
   { href: "/assets",       label: "Asset Registry",   icon: <AssetRegistryIcon size={15} /> },
-  { href: "/sites",        label: "Locations",        icon: <SitesIcon size={15} /> },
+  { href: "/sites",        label: "Locations",        icon: <MapPinIcon size={15} /> },
   { href: "/certificates", label: "Certificates",     icon: <DocumentIcon size={15} /> },
   { href: "/activity",     label: "Activity",         icon: <ActivityIcon size={15} /> },
 ];
