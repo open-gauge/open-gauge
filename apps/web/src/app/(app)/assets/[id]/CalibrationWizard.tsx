@@ -8,7 +8,6 @@ import type {
   DistributionType, WizardRawPoint,
 } from "@/types/calibration";
 import { analyzeCalibration, createCalibration, listAssets, listProcedures } from "@/services/asset.service";
-import { toSI } from "@/lib/unit-conversion";
 import { COLORS } from "@/lib/tokens";
 import { getUnitsForQuantity, getOutputUnits } from "@/lib/sensor-options";
 import { useAuth } from "@/lib/auth-context";
@@ -22,6 +21,7 @@ import {
 
 const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
 const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
 function WLabel({ text, required }: { text: string; required?: boolean }) {
   return (
@@ -32,10 +32,10 @@ function WLabel({ text, required }: { text: string; required?: boolean }) {
 }
 
 function WInput({
-  label, value, onChange, type = "text", placeholder, required, readOnly,
+  label, value, onChange, type = "text", placeholder, required, readOnly, error,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  type?: string; placeholder?: string; required?: boolean; readOnly?: boolean;
+  type?: string; placeholder?: string; required?: boolean; readOnly?: boolean; error?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -46,8 +46,9 @@ function WInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         readOnly={readOnly}
-        className={`${IB} ${IB_OK} ${readOnly ? "opacity-60 cursor-not-allowed" : ""}`}
+        className={`${IB} ${error ? IB_ERR : IB_OK} ${readOnly ? "opacity-60 cursor-not-allowed" : ""}`}
       />
+      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
     </div>
   );
 }
@@ -243,7 +244,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     temperature_value: "",
     temperature_unit: "°C",
     pressure_value: "",
-    pressure_unit: "hPa",
+    pressure_unit: "Pa",
     humidity_value: "",
     humidity_unit: "%RH",
     notes: "",
@@ -320,11 +321,18 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       !isNaN(parseFloat(p.reference)) && !isNaN(parseFloat(p.measured))
   );
 
+  function isNumOrEmpty(v: string): boolean {
+    return v.trim() === "" || !isNaN(parseFloat(v.trim()));
+  }
+
   const step1Valid =
     step1.performed_by_name.trim() !== "" &&
     step1.sensor_id !== "" &&
     step1.calibration_interval.trim() !== "" &&
-    !isNaN(parseInt(step1.calibration_interval));
+    !isNaN(parseInt(step1.calibration_interval)) &&
+    isNumOrEmpty(step1.temperature_value) &&
+    isNumOrEmpty(step1.pressure_value) &&
+    isNumOrEmpty(step1.humidity_value);
   const step2Valid = step1.coefficients_only || validPoints.length >= 2;
 
   // Load reference assets on mount
@@ -488,11 +496,15 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       let polyStats: Partial<CalibrationCreateBody> = {};
 
       if (!step1.coefficients_only && analysisResult) {
+        // Store point values and ranges in the display units that were used for regression.
+        // The polynomial coefficients are fitted in display units (f(measured_display) = ref_display),
+        // so all stored values must stay in display units — converting to SI would break
+        // the stored curve vs. stored points consistency shown in the calibration chart.
         polyStats = {
           poly_order: analysisResult.poly_degree,
           poly_coefficients: analysisResult.coefficients,
-          range_min: toSI(analysisResult.valid_range_min, referenceUnit),
-          range_max: toSI(analysisResult.valid_range_max, referenceUnit),
+          range_min: analysisResult.valid_range_min,
+          range_max: analysisResult.valid_range_max,
           r_squared: analysisResult.r_squared,
           rmse: analysisResult.rmse,
           standard_error: analysisResult.standard_error,
@@ -506,14 +518,14 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
           coverage_factor: analysisResult.coverage_factor,
           combined_uncertainty: analysisResult.combined_uncertainty,
           expanded_uncertainty: analysisResult.expanded_uncertainty,
-          valid_range_min: toSI(analysisResult.valid_range_min, referenceUnit),
-          valid_range_max: toSI(analysisResult.valid_range_max, referenceUnit),
+          valid_range_min: analysisResult.valid_range_min,
+          valid_range_max: analysisResult.valid_range_max,
         };
         points = analysisResult.points.map((p) => ({
           point_index: p.point_index,
-          reference_value: toSI(p.reference_value, referenceUnit) ?? p.reference_value,
-          measured_value: toSI(p.measured_value, measuredUnit) ?? p.measured_value,
-          calculated_value: p.calculated_value != null ? toSI(p.calculated_value, referenceUnit) : null,
+          reference_value: p.reference_value,
+          measured_value: p.measured_value,
+          calculated_value: p.calculated_value ?? null,
           residual_abs: p.residual_abs,
           residual_pct: p.residual_pct,
           reference_unit: referenceUnit,
@@ -565,7 +577,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50" />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-5xl max-h-[92vh] bg-mar-surface border border-mar-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
@@ -904,21 +916,38 @@ function Step1({
         </button>
         {state.env_expanded && (
           <div className="px-4 pb-4 pt-2 space-y-4 border-t border-mar-border">
-            <div className="grid grid-cols-3 gap-3">
-              <WInput label="Temperature" type="number" value={state.temperature_value} onChange={set("temperature_value") as (v: string) => void} placeholder="e.g. 23" />
-              <WSelect label="Unit" value={state.temperature_unit} onChange={set("temperature_unit") as (v: string) => void}
-                options={[{ value: "°C", label: "°C" }, { value: "K", label: "K" }, { value: "°F", label: "°F" }]} />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <WInput label="Pressure" type="number" value={state.pressure_value} onChange={set("pressure_value") as (v: string) => void} placeholder="e.g. 1013.25" />
-              <WSelect label="Unit" value={state.pressure_unit} onChange={set("pressure_unit") as (v: string) => void}
-                options={[{ value: "hPa", label: "hPa" }, { value: "Pa", label: "Pa" }, { value: "bar", label: "bar" }, { value: "psi", label: "psi" }]} />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <WInput label="Humidity" type="number" value={state.humidity_value} onChange={set("humidity_value") as (v: string) => void} placeholder="e.g. 45" />
-              <WSelect label="Unit" value={state.humidity_unit} onChange={set("humidity_unit") as (v: string) => void}
-                options={[{ value: "%RH", label: "%RH" }]} />
-            </div>
+            {(() => {
+              const numErr = (v: string) =>
+                v.trim() !== "" && isNaN(parseFloat(v.trim())) ? "Must be a number" : undefined;
+              return (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <WInput label="Temperature" value={state.temperature_value}
+                      onChange={set("temperature_value") as (v: string) => void}
+                      placeholder="e.g. 23" error={numErr(state.temperature_value)} />
+                    <WSelect label="Unit" value={state.temperature_unit}
+                      onChange={set("temperature_unit") as (v: string) => void}
+                      options={[{ value: "°C", label: "°C" }, { value: "K", label: "K" }, { value: "°F", label: "°F" }]} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <WInput label="Pressure" value={state.pressure_value}
+                      onChange={set("pressure_value") as (v: string) => void}
+                      placeholder="e.g. 1013.25" error={numErr(state.pressure_value)} />
+                    <WSelect label="Unit" value={state.pressure_unit}
+                      onChange={set("pressure_unit") as (v: string) => void}
+                      options={[{ value: "hPa", label: "hPa" }, { value: "Pa", label: "Pa" }, { value: "bar", label: "bar" }, { value: "psi", label: "psi" }]} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <WInput label="Humidity" value={state.humidity_value}
+                      onChange={set("humidity_value") as (v: string) => void}
+                      placeholder="e.g. 45" error={numErr(state.humidity_value)} />
+                    <WSelect label="Unit" value={state.humidity_unit}
+                      onChange={set("humidity_unit") as (v: string) => void}
+                      options={[{ value: "%RH", label: "%RH" }]} />
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

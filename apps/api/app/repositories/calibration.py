@@ -15,7 +15,7 @@ def list_by_asset(db: Session, asset_pk: uuid.UUID, skip: int = 0, limit: int = 
     return (
         db.query(Calibration)
         .filter(Calibration.asset_id == asset_pk)
-        .order_by(Calibration.calibration_date.desc())
+        .order_by(Calibration.calibration_date.desc(), Calibration.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()

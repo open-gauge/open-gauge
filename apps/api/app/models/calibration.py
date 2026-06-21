@@ -40,7 +40,7 @@ class Calibration(Base):
     # Environmental conditions (canonical units: °C, %RH, Pa)
     temperature: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     humidity: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
-    pressure: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True)
+    pressure: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     # Polynomial model
     poly_order: Mapped[int | None] = mapped_column(Integer, nullable=True)

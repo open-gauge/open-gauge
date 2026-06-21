@@ -43,10 +43,12 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
+  CopyIcon,
   DownloadIcon,
   EditIcon,
   InfoIcon,
   MapPinIcon,
+  PrinterIcon,
   PlusIcon,
   QrCodeIcon,
   TrashIcon,
@@ -1491,14 +1493,23 @@ function CalibrationChart({
   );
 }
 
+// Coefficient exponent descriptions (ascending: exp 0 = constant, exp 1 = linear, …)
+const COEFF_DESC: Record<number, string> = {
+  0: "Offset (constant)",
+  1: "Gain (slope)",
+  2: "Quadratic correction",
+  3: "Cubic correction",
+  4: "Quartic correction",
+  5: "Quintic correction",
+};
+
+type ResultView = "equation" | "coefficients";
+
 function CalibrationTab({ calibrations, profile, onCalibrationSaved }: CalibrationTabProps) {
   // --- channel logic ---
-  // Collect unique sensor_ids that appear across calibrations, maintaining the order
-  // of profile.sensor_channels so tabs are stable.
   const channelIdsWithCals = profile.sensor_channels
     .map((ch) => ch.id)
     .filter((id) => calibrations.some((c) => c.sensor_id === id));
-  // Fall back: if no calibration has a sensor_id (legacy/null), treat as single group
   const hasChannelTabs = channelIdsWithCals.length > 1;
   const firstChannelId = channelIdsWithCals[0] ?? null;
 
@@ -1507,6 +1518,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
   const [points, setPoints] = useState<CalibrationPoint[]>([]);
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [rightView, setRightView] = useState<"chart" | "table">("chart");
+  const [resultView, setResultView] = useState<ResultView>("equation");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const filteredCals = hasChannelTabs && activeChannelId
@@ -1516,13 +1529,11 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
   const selectedCal = filteredCals.find((c) => c.id === selectedCalId) ?? filteredCals[0] ?? null;
   const total = filteredCals.length;
 
-  // When channel changes, jump to the latest calibration for that channel
   useEffect(() => {
     setSelectedCalId(null);
     setPoints([]);
   }, [activeChannelId]);
 
-  // Fetch points whenever selected calibration changes
   useEffect(() => {
     if (!selectedCal) { setPoints([]); return; }
     setLoadingPoints(true);
@@ -1537,7 +1548,6 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
     return total - idx;
   }
 
-  // Derive display units from loaded points (fall back to empty string)
   const referenceUnit = points[0]?.reference_unit ?? "";
   const measuredUnit = points[0]?.measured_unit ?? "";
 
@@ -1553,35 +1563,58 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
     )}
     <div className="space-y-5">
 
-      {/* Channel tabs — only rendered when >1 channel has calibration data */}
-      {hasChannelTabs && (
-        <div className="flex gap-1 p-1 bg-mar-surface-alt border border-mar-border rounded-xl w-fit">
-          {channelIdsWithCals.map((chId) => {
-            const ch = profile.sensor_channels.find((c) => c.id === chId);
-            const label = ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId;
-            const isActive = activeChannelId === chId;
-            return (
-              <button
-                key={chId}
-                type="button"
-                onClick={() => setActiveChannelId(chId)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  isActive
-                    ? "bg-mar-surface text-mar-text shadow-sm border border-mar-border"
-                    : "text-gray-400 hover:text-mar-text"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
+      {/* Top bar: channel tabs (left) + PDF + Add Calibration (right) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {hasChannelTabs ? (
+          <div className="flex gap-1 p-1 bg-mar-surface-alt border border-mar-border rounded-xl w-fit">
+            {channelIdsWithCals.map((chId) => {
+              const ch = profile.sensor_channels.find((c) => c.id === chId);
+              const label = ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId;
+              const isActive = activeChannelId === chId;
+              return (
+                <button
+                  key={chId}
+                  type="button"
+                  onClick={() => setActiveChannelId(chId)}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    isActive
+                      ? "bg-mar-surface text-mar-text shadow-sm border border-mar-border"
+                      : "text-gray-400 hover:text-mar-text"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        ) : <div />}
+
+        <div className="flex items-center gap-2">
+          {selectedCal && (
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+            >
+              <PrinterIcon size={12} />
+              PDF Report
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setWizardOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            <PlusIcon size={12} />
+            Add Calibration
+          </button>
         </div>
-      )}
+      </div>
 
       {selectedCal ? (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5 space-y-4">
-          {/* Header row */}
-          <div className="flex items-start justify-between gap-4">
+          {/* Header row — version / date / performed by */}
+          <div className="flex items-start gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-mono font-bold text-mar-accent">v{versionOf(selectedCal)}</span>
@@ -1595,30 +1628,90 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setWizardOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-              >
-                <PlusIcon size={12} />
-                Add Calibration
-              </button>
-            </div>
           </div>
 
-          {/* Equation bar */}
+          {/* Result view: Equation / Coefficients */}
           {selectedCal.poly_coefficients && selectedCal.poly_order != null && (
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-mar-surface-alt border border-mar-border">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 flex-shrink-0">Equation</span>
-              <span className="text-xs font-mono text-mar-text">
-                {formatCalEquation(selectedCal.poly_coefficients, selectedCal.poly_order)}
-              </span>
-              {(measuredUnit || referenceUnit) && (
-                <span className="text-[10px] text-gray-400 flex-shrink-0 ml-auto">
-                  {measuredUnit} → {referenceUnit}
-                </span>
-              )}
+            <div className="rounded-lg bg-mar-surface-alt border border-mar-border overflow-hidden">
+              <div className="flex items-center px-3 pt-2 pb-0 border-b border-mar-border gap-0.5">
+                {(["equation", "coefficients"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setResultView(v)}
+                    className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-t-md -mb-px capitalize
+                      ${resultView === v
+                        ? "bg-mar-surface border border-mar-border text-mar-text"
+                        : "text-gray-400 hover:text-mar-text"
+                      }`}
+                  >
+                    {v === "equation" ? "Equation" : "Coefficients"}
+                  </button>
+                ))}
+              </div>
+              <div className="px-4 py-3">
+                {resultView === "equation" && (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <span className="text-xs font-mono text-mar-text">
+                        {formatCalEquation(selectedCal.poly_coefficients, selectedCal.poly_order)}
+                      </span>
+                      {(measuredUnit || referenceUnit) && (
+                        <span className="text-[10px] text-gray-400">
+                          ({measuredUnit} → {referenceUnit})
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = `${formatCalEquation(selectedCal.poly_coefficients!, selectedCal.poly_order!)} (${measuredUnit} → ${referenceUnit})`;
+                        navigator.clipboard.writeText(text).then(() => {
+                          setCopiedKey("equation");
+                          setTimeout(() => setCopiedKey(null), 1500);
+                        });
+                      }}
+                      title="Copy"
+                      className="flex-shrink-0 p-1 text-gray-400 hover:text-mar-text rounded transition-colors"
+                    >
+                      {copiedKey === "equation" ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                    </button>
+                  </div>
+                )}
+                {resultView === "coefficients" && (
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    {selectedCal.poly_coefficients
+                      .map((c, i) => ({ exp: selectedCal.poly_order! - i, val: c }))
+                      .reverse()
+                      .map(({ exp, val }) => {
+                        const ck = `coeff:${exp}`;
+                        return (
+                          <div key={exp} className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
+                                {COEFF_DESC[exp] ?? `Order-${exp} term`}
+                              </p>
+                              <p className="font-mono text-xs text-mar-text">{fmtNum(val, 6)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(fmtNum(val, 6)).then(() => {
+                                  setCopiedKey(ck);
+                                  setTimeout(() => setCopiedKey(null), 1500);
+                                });
+                              }}
+                              title="Copy"
+                              className="flex-shrink-0 mt-3 p-1 text-gray-400 hover:text-mar-text rounded transition-colors"
+                            >
+                              {copiedKey === ck ? <CheckIcon size={11} /> : <CopyIcon size={11} />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1724,20 +1817,51 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
           ) : (
             <p className="text-sm text-gray-400">No polynomial model recorded for this calibration.</p>
           )}
+
+          {/* Conditions & Notes */}
+          {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null || selectedCal.notes) && (
+            <div className="rounded-xl border border-mar-border bg-mar-surface-alt p-4 space-y-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Conditions &amp; Notes</p>
+              {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null) && (
+                <div className="grid grid-cols-3 gap-4">
+                  {selectedCal.temperature != null && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Temperature</p>
+                      <p className="font-mono text-xs text-mar-text">
+                        {fmtNum(selectedCal.temperature, 2)} <span className="text-gray-400">°C</span>
+                      </p>
+                    </div>
+                  )}
+                  {selectedCal.humidity != null && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Humidity</p>
+                      <p className="font-mono text-xs text-mar-text">
+                        {fmtNum(selectedCal.humidity, 2)} <span className="text-gray-400">%RH</span>
+                      </p>
+                    </div>
+                  )}
+                  {selectedCal.pressure != null && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Pressure</p>
+                      <p className="font-mono text-xs text-mar-text">
+                        {fmtNum(selectedCal.pressure, 2)} <span className="text-gray-400">Pa</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {selectedCal.notes && (
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Notes</p>
+                  <p className="text-xs text-mar-text leading-relaxed">{selectedCal.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-400">No calibrations recorded{hasChannelTabs ? " for this channel" : ""}.</p>
-            <button
-              type="button"
-              onClick={() => setWizardOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-            >
-              <PlusIcon size={12} />
-              Add Calibration
-            </button>
-          </div>
+          <p className="text-sm text-gray-400">No calibrations recorded{hasChannelTabs ? " for this channel" : ""}.</p>
         </div>
       )}
 
