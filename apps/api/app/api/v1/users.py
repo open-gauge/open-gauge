@@ -18,12 +18,25 @@ def list_users(
     skip: int = 0,
     limit: int = 50,
     is_active: bool | None = None,
+    q: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[UserResponse]:
     if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-    return user_repo.list_users(db, skip=skip, limit=limit, is_active=is_active)
+    return user_repo.list_users(db, skip=skip, limit=limit, is_active=is_active, q=q)
+
+
+@router.get("/count")
+def count_users(
+    is_active: bool | None = None,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return {"count": user_repo.count_users(db, is_active=is_active, q=q)}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -41,6 +54,9 @@ def update_me(
     if "email" in updates and updates["email"] != current_user.email:
         if user_repo.get_by_email(db, updates["email"]):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already in use")
+    # Allow clearing team by passing empty string
+    if "team" in updates and updates["team"] == "":
+        updates["team"] = None
     return user_repo.update(db, current_user, **updates)
 
 

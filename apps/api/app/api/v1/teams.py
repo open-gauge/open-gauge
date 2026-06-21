@@ -20,6 +20,7 @@ class TeamResponse(BaseModel):
 class TeamCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = None
+    organization_id: uuid.UUID | None = None  # admin can specify an org explicitly
 
 
 class TeamUpdate(BaseModel):
@@ -34,11 +35,14 @@ def _require_admin(user: User) -> None:
 
 @router.get("", response_model=list[TeamResponse])
 def list_teams(
+    org_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[TeamResponse]:
+    # Admin can query any org; regular users see only their own org's teams
+    effective_org_id = org_id if (org_id and (current_user.is_superuser or current_user.role in ("superadmin", "admin"))) else current_user.organization_id
     return db.query(Team).filter(
-        Team.organization_id == current_user.organization_id,
+        Team.organization_id == effective_org_id,
         Team.is_active.is_(True),
     ).order_by(Team.name).all()
 
@@ -50,10 +54,12 @@ def create_team(
     current_user: User = Depends(get_current_user),
 ) -> TeamResponse:
     _require_admin(current_user)
-    if current_user.organization_id is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User has no organization")
+    # Allow admin to create team for a specified org; fall back to user's own org
+    effective_org_id = body.organization_id or current_user.organization_id
+    if effective_org_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization is required")
     team = Team(
-        organization_id=current_user.organization_id,
+        organization_id=effective_org_id,
         name=body.name,
         description=body.description,
         created_by=current_user.id,
@@ -72,11 +78,11 @@ def update_team(
     current_user: User = Depends(get_current_user),
 ) -> TeamResponse:
     _require_admin(current_user)
-    team = db.query(Team).filter(
-        Team.id == team_id,
-        Team.organization_id == current_user.organization_id,
-        Team.is_active.is_(True),
-    ).first()
+    q = db.query(Team).filter(Team.id == team_id, Team.is_active.is_(True))
+    # Non-superadmins can only edit teams within their own org
+    if not (current_user.is_superuser or current_user.role == "superadmin"):
+        q = q.filter(Team.organization_id == current_user.organization_id)
+    team = q.first()
     if not team:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
     if body.name is not None:
@@ -95,11 +101,10 @@ def delete_team(
     current_user: User = Depends(get_current_user),
 ) -> None:
     _require_admin(current_user)
-    team = db.query(Team).filter(
-        Team.id == team_id,
-        Team.organization_id == current_user.organization_id,
-        Team.is_active.is_(True),
-    ).first()
+    q = db.query(Team).filter(Team.id == team_id, Team.is_active.is_(True))
+    if not (current_user.is_superuser or current_user.role == "superadmin"):
+        q = q.filter(Team.organization_id == current_user.organization_id)
+    team = q.first()
     if not team:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
     team.is_active = False

@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from ..models.user import User, UserRole
@@ -13,11 +14,38 @@ def get_by_id(db: Session, user_id: uuid.UUID) -> User | None:
     return db.query(User).filter(User.id == user_id).first()
 
 
-def list_users(db: Session, skip: int = 0, limit: int = 50, is_active: bool | None = None) -> list[User]:
-    q = db.query(User)
+def list_users(
+    db: Session,
+    skip: int = 0,
+    limit: int = 50,
+    is_active: bool | None = None,
+    q: str | None = None,
+) -> list[User]:
+    query = db.query(User)
     if is_active is not None:
-        q = q.filter(User.is_active == is_active)
-    return q.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+        query = query.filter(User.is_active == is_active)
+    if q:
+        pattern = f"%{q.lower()}%"
+        query = query.filter(
+            or_(func.lower(User.name).like(pattern), func.lower(User.email).like(pattern))
+        )
+    return query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def count_users(
+    db: Session,
+    is_active: bool | None = None,
+    q: str | None = None,
+) -> int:
+    query = db.query(func.count(User.id))
+    if is_active is not None:
+        query = query.filter(User.is_active == is_active)
+    if q:
+        pattern = f"%{q.lower()}%"
+        query = query.filter(
+            or_(func.lower(User.name).like(pattern), func.lower(User.email).like(pattern))
+        )
+    return query.scalar() or 0
 
 
 def create(

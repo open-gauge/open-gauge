@@ -26,6 +26,7 @@ class UserUpdate(BaseModel):
 class UserSelfUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     email: str | None = Field(None, min_length=3, max_length=255)
+    team: str | None = None  # empty string clears the team
 
 
 class ChangePasswordRequest(BaseModel):

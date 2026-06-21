@@ -561,6 +561,27 @@ export function LocationOtherIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+export function UsersIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="6" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M1 14c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="12" cy="5.5" r="2" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M15 14c0-2.21-1.34-4.1-3.25-4.88" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function BuildingIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 14V9h4v5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 5.5h1.5M9.5 5.5H11M5 7.5h1.5M9.5 7.5H11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Procedures
 // ---------------------------------------------------------------------------

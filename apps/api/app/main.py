@@ -16,6 +16,7 @@ from .api.v1 import procedures as procedure_router
 from .api.v1 import audit_logs as log_router
 from .api.v1 import users as user_router
 from .api.v1 import teams as team_router
+from .api.v1 import admin as admin_router
 from .core.config import settings
 from .core.database import SessionLocal
 from .seeds.seed import seed_database
@@ -53,6 +54,7 @@ app.include_router(procedure_router.router, prefix="/api/v1")
 app.include_router(log_router.router, prefix="/api/v1")
 app.include_router(user_router.router, prefix="/api/v1")
 app.include_router(team_router.router, prefix="/api/v1")
+app.include_router(admin_router.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Health"])
