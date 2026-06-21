@@ -11,6 +11,13 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost"]
 
+    minio_endpoint: str = "minio:9000"
+    minio_access_key: str = "mar_admin"
+    minio_secret_key: str = "mar_password_secret"
+    minio_bucket: str = "mar-files"
+    minio_secure: bool = False
+    minio_public_url: str = "http://localhost:9000"
+
     class Config:
         env_file = ".env"
 

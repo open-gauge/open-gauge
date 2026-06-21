@@ -1,4 +1,4 @@
-import { apiFetch, authHeader } from "@/lib/api";
+import { apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetCreateBody, AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
 import type { CalibrationRecord, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
@@ -47,6 +47,21 @@ export async function getAssetAuditLogs(id: string): Promise<AuditLogEntry[]> {
 
 export async function getAssetFiles(id: string): Promise<StoredFile[]> {
   return apiFetch<StoredFile[]>(`/api/v1/assets/${id}/files`, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function uploadAssetFile(assetId: string, file: File): Promise<StoredFile> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<StoredFile>(`/api/v1/assets/${assetId}/files`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteAssetFile(assetId: string, fileId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/assets/${assetId}/files/${fileId}`, {
+    method: "DELETE",
     headers: tokenHeader(),
   });
 }

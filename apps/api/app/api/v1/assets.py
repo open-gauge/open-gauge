@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
@@ -20,6 +20,7 @@ from ...schemas.sensor import SensorChannelResponse
 from ...schemas.daq import DaqResponse
 from ...schemas.audit_log import AuditLogResponse
 from ...schemas.stored_file import StoredFileResponse
+from ...services import storage as storage_svc
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
@@ -215,7 +216,6 @@ def list_asset_calibrations(
     return cal_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit)
 
 
-
 @router.get("/{asset_pk}/audit-logs", response_model=list[AuditLogResponse])
 def list_asset_audit_logs(
     asset_pk: uuid.UUID,
@@ -230,6 +230,15 @@ def list_asset_audit_logs(
     return audit_log_repo.list_logs(db, entity_id=asset_pk, skip=skip, limit=limit)
 
 
+def _enrich_files(files: list) -> list[StoredFileResponse]:
+    result = []
+    for f in files:
+        resp = StoredFileResponse.model_validate(f)
+        resp.url = storage_svc.get_presigned_url(f.storage_path, f.bucket)
+        result.append(resp)
+    return result
+
+
 @router.get("/{asset_pk}/files", response_model=list[StoredFileResponse])
 def list_asset_files(
     asset_pk: uuid.UUID,
@@ -239,4 +248,54 @@ def list_asset_files(
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return file_repo.list_by_entity(db, asset_pk)
+    return _enrich_files(file_repo.list_by_entity(db, asset_pk))
+
+
+@router.post("/{asset_pk}/files", response_model=StoredFileResponse, status_code=status.HTTP_201_CREATED)
+async def upload_asset_file(
+    asset_pk: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StoredFileResponse:
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    data = await file.read()
+    checksum = storage_svc.sha256_hex(data)
+    object_path = storage_svc.unique_object_name(f"assets/{asset_pk}", file.filename or "file")
+    content_type = file.content_type or "application/octet-stream"
+
+    bucket, path, size = storage_svc.upload_file(data, content_type, object_path)
+
+    record = file_repo.create(
+        db,
+        original_filename=file.filename or "file",
+        storage_path=path,
+        bucket=bucket,
+        content_type=content_type,
+        size_bytes=size,
+        checksum_sha256=checksum,
+        entity_type="asset",
+        entity_id=asset_pk,
+        uploaded_by=current_user.id,
+    )
+
+    resp = StoredFileResponse.model_validate(record)
+    resp.url = storage_svc.get_presigned_url(record.storage_path, record.bucket)
+    return resp
+
+
+@router.delete("/{asset_pk}/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_asset_file(
+    asset_pk: uuid.UUID,
+    file_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> None:
+    f = file_repo.get_by_id(db, file_id)
+    if not f or f.entity_id != asset_pk:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    storage_svc.delete_file(f.storage_path, f.bucket)
+    file_repo.delete(db, file_id)

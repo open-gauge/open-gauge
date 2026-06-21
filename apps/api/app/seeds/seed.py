@@ -9,6 +9,7 @@ from ..models.stored_file import StoredFile
 from ..models.asset_location import AssetLocation
 from ..models.audit_log import AuditLog
 from ..models.calibration import Calibration
+from ..models.calibration_method import Procedure
 from ..models.daq import DAQ
 from ..models.location import Location
 from ..models.organization import Organization
@@ -17,8 +18,193 @@ from ..models.team import Team
 from ..models.user import User, UserRole
 
 
+def _seed_procedures(db: Session, creator_id: uuid.UUID) -> None:
+    """Insert the four reference calibration procedures. Idempotent guard is on the caller."""
+    procedures = [
+        Procedure(
+            proc_id="PROC-PT-001",
+            physical_quantity="pressure",
+            name="Pressure transmitter — 5-point linearity",
+            description="Five-point ascending and descending calibration of an industrial pressure transmitter against a dead-weight tester or reference gauge.",
+            version="3.2",
+            difficulty="Intermediate",
+            standard_ref="IEC 60770-1",
+            author="A. Lindberg",
+            duration_min=45,
+            tags=["Pressure", "#5-point", "#linearity"],
+            equipment=[
+                {"name": "Dead-weight tester", "model": "Fluke P3100"},
+                {"name": "Reference multimeter", "model": "Fluke 87V"},
+                {"name": "Loop calibrator", "model": "Fluke 705"},
+            ],
+            materials=[
+                {"name": "Hydraulic oil", "quantity": "500 ml"},
+                {"name": "PTFE thread tape", "quantity": "1 roll"},
+            ],
+            environment=[
+                {"parameter": "Ambient temperature", "value": "20 ± 2 °C"},
+                {"parameter": "Supply voltage", "value": "24 VDC ± 0.5"},
+            ],
+            safety_notes=[
+                "Maximum system pressure must not exceed rated range of the DUT.",
+                "Depressurize system fully before disconnecting fittings.",
+            ],
+            steps=[
+                {"title": "Connect DUT", "description": "Flush lines. Secure all fittings. Verify no leaks.", "duration_min": 5},
+                {"title": "Zero check", "description": "Vent to atmosphere. Record zero output. Adjust if outside ±0.03% FS.", "duration_min": 5},
+                {"title": "Ascending points 25–100% span", "description": "Apply 25%, 50%, 75%, and 100% span. Allow 2 min per point. Record output (mA).", "duration_min": 20},
+                {"title": "Descending points 75–0% span", "description": "Step down through 75%, 50%, 25%, 0%. Record output.", "duration_min": 10},
+                {"title": "Compute & sign", "description": "Calculate linearity and hysteresis errors. Sign calibration report.", "duration_min": 5},
+            ],
+            acceptance_criteria=[
+                {"label": "Linearity error", "limit": "≤ 0.10% FS"},
+                {"label": "Hysteresis", "limit": "≤ 0.05% FS"},
+            ],
+            created_by=creator_id,
+        ),
+        Procedure(
+            proc_id="PROC-TT-002",
+            physical_quantity="temperature",
+            name="RTD PT100 — ice point + dry-block",
+            description="Three-point temperature calibration: 0 °C ice bath plus two dry-block points at 100 °C and 200 °C. Validates PT100 conformance to class A.",
+            version="2.1",
+            difficulty="Basic",
+            standard_ref="IEC 60751 · ITS-90",
+            author="M. Schmidt",
+            duration_min=75,
+            tags=["Temperature", "#PT100", "#its-90", "#rtd"],
+            equipment=[
+                {"name": "Reference thermometer", "model": "Fluke 1524 + 5615 probe"},
+                {"name": "Dry-block calibrator", "model": "Fluke 9144, 50–660 °C"},
+                {"name": "Ice point cell", "model": "Crushed ice / DI water"},
+            ],
+            materials=[
+                {"name": "Distilled water", "quantity": "500 ml"},
+                {"name": "Crushed ice", "quantity": "1 L"},
+                {"name": "Thermal paste", "quantity": "1 g"},
+            ],
+            environment=[
+                {"parameter": "Ambient temperature", "value": "20 ± 5 °C"},
+                {"parameter": "Draft-free location", "value": "required"},
+            ],
+            safety_notes=[
+                "Dry-block surfaces exceed 200 °C — use insulated handling tools.",
+                "Allow 20 min cool-down before removing probes.",
+            ],
+            steps=[
+                {"title": "Build the ice point", "description": "Pack crushed ice in a Dewar, add distilled water until slushy. Stir before each reading.", "duration_min": 10},
+                {"title": "Insert reference & DUT", "description": "Submerge both probes to 150 mm depth, separated by 20 mm. Wait 5 min.", "duration_min": 5},
+                {"title": "Record 0 °C", "description": "Capture 5 readings at 10 s intervals. Mean must lie within ±0.05 °C of 0.", "duration_min": 5},
+                {"title": "Dry-block 100 °C", "description": "Set dry-block to 100 °C. After 15 min stabilization, record paired reference and DUT readings.", "duration_min": 20},
+                {"title": "Dry-block 200 °C", "description": "Ramp to 200 °C. Stabilize, then record.", "duration_min": 25},
+                {"title": "Compute & sign", "description": "Compute R(0), α, residuals. Upload certificate.", "duration_min": 10},
+            ],
+            acceptance_criteria=[
+                {"label": "0 °C deviation", "limit": "≤ ±0.15 °C (Class A)"},
+                {"label": "100 °C deviation", "limit": "≤ ±0.35 °C"},
+                {"label": "200 °C deviation", "limit": "≤ ±0.55 °C"},
+            ],
+            created_by=creator_id,
+        ),
+        Procedure(
+            proc_id="PROC-RH-003",
+            physical_quantity="humidity",
+            name="Humidity sensor — saturated salt solution",
+            description="Multi-point calibration of capacitive humidity sensors using three saturated salt solutions to generate reference RH conditions.",
+            version="1.5",
+            difficulty="Basic",
+            standard_ref="ASTM E104",
+            author="A. Lindberg",
+            duration_min=1440,
+            tags=["Humidity", "#rh", "#salt-solution"],
+            equipment=[
+                {"name": "Humidity reference chamber", "model": "Rotronic HC2-C05"},
+                {"name": "Reference hygro-thermometer", "model": "Vaisala HMT310"},
+                {"name": "Sealed containers", "model": "3× 1 L glass"},
+            ],
+            materials=[
+                {"name": "Lithium chloride (LiCl)", "quantity": "200 g"},
+                {"name": "Sodium chloride (NaCl)", "quantity": "200 g"},
+                {"name": "Potassium chloride (KCl)", "quantity": "200 g"},
+                {"name": "Distilled water", "quantity": "50 ml each"},
+            ],
+            environment=[
+                {"parameter": "Ambient temperature", "value": "23 ± 1 °C"},
+                {"parameter": "Temperature stability", "value": "± 0.5 °C/h"},
+            ],
+            safety_notes=[
+                "LiCl is hygroscopic and irritating — wear gloves and lab coat.",
+                "Ensure containers are sealed during equilibration to prevent cross-contamination.",
+            ],
+            steps=[
+                {"title": "Prepare salt solutions", "description": "Prepare saturated solutions of LiCl (~11% RH), NaCl (~75% RH), and KCl (~85% RH). Stir until excess solid remains undissolved.", "duration_min": 30},
+                {"title": "Seal DUT in chambers", "description": "Place DUT and reference probe in first chamber. Seal tightly.", "duration_min": 10},
+                {"title": "Equilibrate (11% RH)", "description": "Allow 12 h minimum for equilibration at LiCl reference. Record readings.", "duration_min": 720},
+                {"title": "Move to 75% RH chamber", "description": "Transfer probes to NaCl chamber. Allow 6 h. Record.", "duration_min": 360},
+                {"title": "Move to 85% RH chamber", "description": "Transfer probes to KCl chamber. Allow 6 h. Record.", "duration_min": 360},
+                {"title": "Compute & sign", "description": "Calculate offset and gain errors. Sign calibration report.", "duration_min": 30},
+            ],
+            acceptance_criteria=[
+                {"label": "Error at 11% RH", "limit": "≤ ±2.0% RH"},
+                {"label": "Error at 75% RH", "limit": "≤ ±1.5% RH"},
+                {"label": "Error at 85% RH", "limit": "≤ ±1.5% RH"},
+            ],
+            created_by=creator_id,
+        ),
+        Procedure(
+            proc_id="PROC-FT-004",
+            physical_quantity="flow",
+            name="Mag-flow meter — zero verification",
+            description="Zero-flow verification for electromagnetic flowmeters installed in closed-loop pipelines. Confirms zero offset is within specification.",
+            version="1.2",
+            difficulty="Advanced",
+            standard_ref="ISO 6817",
+            author="M. Schmidt",
+            duration_min=30,
+            tags=["Flow", "#magflow", "#zero-verification"],
+            equipment=[
+                {"name": "Reference flow transmitter", "model": "Endress+Hauser Proline"},
+                {"name": "Loop calibrator", "model": "Fluke 705"},
+                {"name": "Valve lockout kit", "model": "Brady"},
+            ],
+            materials=[
+                {"name": "Lockout/tagout labels", "quantity": "1 set"},
+            ],
+            environment=[
+                {"parameter": "Flow condition", "value": "zero flow (isolation valves closed)"},
+                {"parameter": "Pipe full", "value": "required (no air pockets)"},
+            ],
+            safety_notes=[
+                "Ensure isolation valves are locked out per site LOTO procedure before entering flow path.",
+                "Confirm process fluid is not hazardous before any connection.",
+                "Pressurized pipes — never break connections without full depressurization.",
+            ],
+            steps=[
+                {"title": "Isolate flow path", "description": "Close upstream and downstream isolation valves. Apply LOTO. Verify zero flow with sight glass or independent reference.", "duration_min": 10},
+                {"title": "Record zero output", "description": "Monitor flow transmitter output for 5 min. Record mean and peak deviation.", "duration_min": 5},
+                {"title": "Evaluate zero offset", "description": "Compare mean zero output to specification. Adjust zero trim if drift > 0.5% FS.", "duration_min": 5},
+                {"title": "Restore flow", "description": "Remove LOTO. Open valves slowly. Confirm return to normal flow reading.", "duration_min": 5},
+                {"title": "Document & sign", "description": "Record zero offset value and any adjustments made. Sign the verification record.", "duration_min": 5},
+            ],
+            acceptance_criteria=[
+                {"label": "Zero offset", "limit": "≤ 0.5% FS"},
+                {"label": "Zero drift (5 min)", "limit": "≤ 0.2% FS"},
+            ],
+            created_by=creator_id,
+        ),
+    ]
+    for proc in procedures:
+        db.add(proc)
+
+
 def seed_database(db: Session) -> None:
     if db.query(Organization).count() > 0:
+        # Org already seeded — procedures may have been added in a later migration cycle
+        if db.query(Procedure).count() == 0:
+            creator = db.query(User).filter(User.is_superuser == True).first()  # noqa: E712
+            if creator:
+                _seed_procedures(db, creator.id)
+                db.commit()
         return
 
     now = datetime.now(timezone.utc)
@@ -833,5 +1019,10 @@ def seed_database(db: Session) -> None:
     ]
     for ae in audit_entries:
         db.add(AuditLog(**ae))
+
+    # ------------------------------------------------------------------ #
+    # Calibration procedures                                              #
+    # ------------------------------------------------------------------ #
+    _seed_procedures(db, admin.id)
 
     db.commit()

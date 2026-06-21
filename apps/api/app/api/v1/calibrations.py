@@ -28,12 +28,12 @@ def list_procedures(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[dict]:
-    q = db.query(Procedure)
+    q = db.query(Procedure).filter(Procedure.is_active == True)  # noqa: E712
     if physical_quantity:
         q = q.filter(Procedure.physical_quantity == physical_quantity)
     return [
         {"id": str(p.id), "name": p.name, "physical_quantity": p.physical_quantity}
-        for p in q.order_by(Procedure.name).all()
+        for p in q.order_by(Procedure.proc_id.nullslast(), Procedure.name).all()
     ]
 
 

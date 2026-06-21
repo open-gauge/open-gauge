@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  deleteAssetFile,
   getAssetAuditLogs,
   getAssetCalibrations,
   getAssetFiles,
@@ -13,6 +14,7 @@ import {
   listTeams,
   retireAsset,
   updateAsset,
+  uploadAssetFile,
 } from "@/services/asset.service";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
 import type { CalibrationPoint, CalibrationRecord } from "@/types/calibration";
@@ -48,6 +50,7 @@ import {
   PlusIcon,
   QrCodeIcon,
   TrashIcon,
+  UploadCloudIcon,
   WarningIcon,
   XIcon,
 } from "@/components/icons";
@@ -1298,7 +1301,6 @@ function OverviewTab({
 
 interface CalibrationTabProps {
   calibrations: CalibrationRecord[];
-  isEditing: boolean;
   profile: AssetProfile;
   onCalibrationSaved: () => void;
 }
@@ -1489,7 +1491,7 @@ function CalibrationChart({
   );
 }
 
-function CalibrationTab({ calibrations, isEditing, profile, onCalibrationSaved }: CalibrationTabProps) {
+function CalibrationTab({ calibrations, profile, onCalibrationSaved }: CalibrationTabProps) {
   // --- channel logic ---
   // Collect unique sensor_ids that appear across calibrations, maintaining the order
   // of profile.sensor_channels so tabs are stable.
@@ -1594,16 +1596,14 @@ function CalibrationTab({ calibrations, isEditing, profile, onCalibrationSaved }
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {isEditing && (
-                <button
-                  type="button"
-                  onClick={() => setWizardOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-                >
-                  <PlusIcon size={12} />
-                  Add Calibration
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setWizardOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                <PlusIcon size={12} />
+                Add Calibration
+              </button>
             </div>
           </div>
 
@@ -1729,16 +1729,14 @@ function CalibrationTab({ calibrations, isEditing, profile, onCalibrationSaved }
         <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-400">No calibrations recorded{hasChannelTabs ? " for this channel" : ""}.</p>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={() => setWizardOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-              >
-                <PlusIcon size={12} />
-                Add Calibration
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setWizardOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+            >
+              <PlusIcon size={12} />
+              Add Calibration
+            </button>
           </div>
         </div>
       )}
@@ -1806,40 +1804,162 @@ function CalibrationTab({ calibrations, isEditing, profile, onCalibrationSaved }
 // Files tab
 // ---------------------------------------------------------------------------
 
-function FilesTab({ files }: { files: StoredFile[] }) {
+function FilesTab({
+  files,
+  isEditing,
+  assetId,
+  onFilesChange,
+}: {
+  files: StoredFile[];
+  isEditing: boolean;
+  assetId: string;
+  onFilesChange: (files: StoredFile[]) => void;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const uploaded = await uploadAssetFile(assetId, file);
+      onFilesChange([...files, uploaded]);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    if (isEditing) setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false);
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    if (!isEditing) return;
+    const file = e.dataTransfer.files[0];
+    if (file) await handleUpload(file);
+  }
+
+  async function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await handleUpload(file);
+    e.target.value = "";
+  }
+
+  async function handleDelete(fileId: string) {
+    try {
+      await deleteAssetFile(assetId, fileId);
+      onFilesChange(files.filter((f) => f.id !== fileId));
+    } catch {
+      // silent — file may already be gone
+    }
+  }
+
+  const typeLabel: Record<string, string> = { pdf: "PDF", csv: "CSV", zip: "Archive", doc: "File" };
+
   return (
     <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
       <h3 className="text-sm font-semibold text-mar-text mb-4">Files &amp; attachments</h3>
+
+      {/* Drop zone — only shown in edit mode */}
+      {isEditing && (
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`mb-4 border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer
+            ${isDragging
+              ? "border-mar-accent bg-mar-accent/5"
+              : "border-mar-border hover:border-mar-accent/50 hover:bg-mar-surface-alt"}`}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <UploadCloudIcon size={24} className={isDragging ? "text-mar-accent" : "text-gray-400"} />
+          <p className="text-sm text-gray-500">
+            {uploading ? "Uploading…" : "Drop a file here or click to browse"}
+          </p>
+          <p className="text-xs text-gray-400">PDF, images supported</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            className="hidden"
+            onChange={handleFileInput}
+          />
+        </div>
+      )}
+
+      {uploadError && (
+        <p className="mb-3 text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">
+          {uploadError}
+        </p>
+      )}
+
       {files.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="mb-3 opacity-40" aria-hidden="true">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-            <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-          </svg>
-          <p className="text-sm">No files attached to this asset.</p>
-          <p className="text-xs mt-1">Upload calibration certificates, datasheets, or photos.</p>
+        <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+          <p className="text-sm">{isEditing ? "No files yet. Upload one above." : "No files attached to this asset."}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {files.map((f) => {
+            const isImage = f.content_type.startsWith("image/");
             const type = fileIcon(f.content_type);
-            const typeLabel: Record<string, string> = { pdf: "PDF", csv: "CSV", zip: "Archive", doc: "File" };
             return (
               <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg border border-mar-border hover:border-mar-border-md hover:bg-mar-surface-alt transition-colors">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold
-                  ${type === "pdf" ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
-                    type === "csv" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
-                    type === "zip" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30" :
-                    "bg-mar-surface-alt text-gray-400"}`}>
-                  {typeLabel[type]}
-                </div>
+                {/* Thumbnail or type badge */}
+                {isImage && f.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={f.url}
+                    alt={f.original_filename}
+                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0 border border-mar-border"
+                  />
+                ) : (
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold
+                    ${type === "pdf" ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
+                      type === "csv" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
+                      type === "zip" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30" :
+                      "bg-mar-surface-alt text-gray-400"}`}>
+                    {typeLabel[type]}
+                  </div>
+                )}
+
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-mar-text truncate">{f.original_filename}</p>
-                  <p className="text-xs text-gray-400">{typeLabel[type]} · {fmtBytes(f.size_bytes)}</p>
+                  <p className="text-xs text-gray-400">{fmtBytes(f.size_bytes)}</p>
                 </div>
-                <button type="button" className="p-1.5 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors flex-shrink-0">
-                  <DownloadIcon size={14} />
-                </button>
+
+                {f.url && (
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors flex-shrink-0"
+                    title="Download"
+                  >
+                    <DownloadIcon size={14} />
+                  </a>
+                )}
+
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(f.id)}
+                    className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    title="Remove file"
+                  >
+                    <TrashIcon size={14} />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -2223,12 +2343,18 @@ export default function AssetProfilePage() {
           {activeTab === "calibration" && (
             <CalibrationTab
               calibrations={calibrations}
-              isEditing={isEditing}
               profile={profile}
               onCalibrationSaved={handleCalibrationSaved}
             />
           )}
-          {activeTab === "files" && <FilesTab files={files} />}
+          {activeTab === "files" && (
+            <FilesTab
+              files={files}
+              isEditing={isEditing}
+              assetId={id}
+              onFilesChange={setFiles}
+            />
+          )}
           {activeTab === "activity" && <ActivityTab logs={auditLogs} />}
         </div>
       </div>

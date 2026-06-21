@@ -28,3 +28,17 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 export function authHeader(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
+
+export async function apiUpload<T>(path: string, form: FormData, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
+    method: "POST",
+    ...options,
+    body: form,
+  });
+  if (!res.ok) {
+    const err: ApiError = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Upload failed");
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}

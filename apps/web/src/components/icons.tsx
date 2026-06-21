@@ -561,3 +561,85 @@ export function LocationOtherIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Procedures
+// ---------------------------------------------------------------------------
+
+/** Clipboard with numbered steps — sidebar nav icon for Procedures. */
+export function ProceduresIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="2.5" y="2" width="11" height="12.5" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 2V4.5M10 2V4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M5 7h6M5 9.5h6M5 12h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Fork / branch — two branches from a single stem. */
+export function ForkIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="8" cy="13" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="3.5" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="12.5" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M3.5 4.5V7c0 1.5 1.5 2 4.5 2s4.5-.5 4.5-2V4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M8 9v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Printer — rectangle body with tray and paper. */
+export function PrinterIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="3.5" y="6" width="9" height="6" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5 6V3h6v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 10h6M5 12.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="11.5" cy="8.5" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Play triangle — run / execute action. */
+export function PlayIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M4 2.5l9 5.5-9 5.5V2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Shield — safety / warning section header. */
+export function ShieldIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M8 1.5 2.5 4v3.667C2.5 10.9 4.922 13.593 8 14.333c3.078-.74 5.5-3.433 5.5-6.666V4L8 1.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// File upload
+// ---------------------------------------------------------------------------
+
+/** Cloud with upward arrow — drag-and-drop upload zone icon. */
+export function UploadCloudIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M10.5 10.5a3 3 0 1 0-5 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M8 3v7M5.5 5.5 8 3l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 13h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Paperclip — attach file to a step. */
+export function PaperclipIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M13 7.5 7 13.5a3.5 3.5 0 0 1-4.95-4.95L8 2.88A2.12 2.12 0 0 1 11 5.88L5.05 11.83a.7.7 0 0 1-.99-.99L9.5 5.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+

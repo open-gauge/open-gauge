@@ -89,6 +89,21 @@ export const SUBTYPE_COLOR: Record<string, string> = {
   other:              "#6b7280",
 };
 
+// ---------------------------------------------------------------------------
+// Procedure difficulty
+// ---------------------------------------------------------------------------
+export const PROCEDURE_DIFFICULTY_STYLE: Record<string, string> = {
+  Basic:        "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+  Intermediate: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+  Advanced:     "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+};
+
+export const PROCEDURE_DIFFICULTY_LABEL: Record<string, string> = {
+  Basic:        "Basic",
+  Intermediate: "Intermediate",
+  Advanced:     "Advanced",
+};
+
 export const SUBTYPE_LABEL: Record<string, string> = {
   // physical quantities
   temperature:        "Temperature",

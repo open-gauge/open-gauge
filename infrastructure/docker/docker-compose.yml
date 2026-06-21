@@ -28,6 +28,11 @@ services:
       DATABASE_URL: postgresql://mar_user:mar_password@db:5432/mar_db
       SECRET_KEY: change-this-secret-key-in-production
       CORS_ORIGINS: '["http://localhost:3000"]'
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: mar_admin
+      MINIO_SECRET_KEY: mar_password_secret
+      MINIO_BUCKET: mar-files
+      MINIO_PUBLIC_URL: http://localhost:9000
     depends_on:
       db:
         condition: service_healthy
