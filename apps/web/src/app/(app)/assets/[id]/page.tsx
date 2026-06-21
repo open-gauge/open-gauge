@@ -1940,7 +1940,6 @@ export default function AssetProfilePage() {
     setEditErrors({});
     setSaveError(null);
     setIsEditing(true);
-    setActiveTab("overview");
     listLocations().then(setLocations).catch(() => {});
     listTeams().then(setTeams).catch(() => {});
   }

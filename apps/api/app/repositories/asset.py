@@ -252,11 +252,38 @@ def update(db: Session, asset: Asset, **kwargs) -> Asset:
         setattr(asset, key, value)  # Allow None to clear optional fields
 
     if sensor_channels_data is not None:
-        # Delete all existing channels and recreate from new list
-        db.query(Sensor).filter(Sensor.asset_id == asset.id).delete(synchronize_session=False)
-        for ch in sensor_channels_data:
-            ch_dict = ch.model_dump() if hasattr(ch, "model_dump") else ch
-            db.add(Sensor(asset_id=asset.id, **ch_dict))
+        # Normalize to plain dicts regardless of whether Pydantic models or dicts were passed
+        ch_dicts = [
+            (ch.model_dump() if hasattr(ch, "model_dump") else dict(ch))
+            for ch in sensor_channels_data
+        ]
+        existing_by_ch_id: dict[str, Sensor] = {
+            s.channel_id: s
+            for s in db.query(Sensor).filter(Sensor.asset_id == asset.id).all()
+        }
+        new_ch_ids = {ch["channel_id"] for ch in ch_dicts}
+
+        for ch_dict in ch_dicts:
+            ch_id = ch_dict["channel_id"]
+            if ch_id in existing_by_ch_id:
+                # Update in-place — preserves the sensor UUID so calibrations.sensor_id FK stays valid
+                existing = existing_by_ch_id[ch_id]
+                for k, v in ch_dict.items():
+                    setattr(existing, k, v)
+                existing.is_active = True
+            else:
+                db.add(Sensor(asset_id=asset.id, **ch_dict))
+
+        for ch_id, removed in existing_by_ch_id.items():
+            if ch_id not in new_ch_ids:
+                has_cals = (
+                    db.query(Calibration).filter(Calibration.sensor_id == removed.id).first()
+                    is not None
+                )
+                if has_cals:
+                    removed.is_active = False  # soft-delete: calibrations still reference this sensor
+                else:
+                    db.delete(removed)
 
     db.commit()
     db.refresh(asset)
