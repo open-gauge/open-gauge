@@ -32,6 +32,14 @@ export async function createProcedure(body: ProcedureCreateBody): Promise<Proced
   });
 }
 
+export async function updateProcedure(id: string, body: Partial<ProcedureCreateBody>): Promise<Procedure> {
+  return apiFetch<Procedure>(`/api/v1/procedures/${id}`, {
+    method: "PUT",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function deleteProcedure(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/procedures/${id}`, {
     method: "DELETE",
