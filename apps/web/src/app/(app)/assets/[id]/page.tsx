@@ -9,6 +9,7 @@ import {
   getAssetCalibrations,
   getAssetFiles,
   getAssetProfile,
+  getCalibrationCertificateUrl,
   getCalibrationPoints,
   listLocations,
   listTeams,
@@ -48,7 +49,6 @@ import {
   EditIcon,
   InfoIcon,
   MapPinIcon,
-  PrinterIcon,
   PlusIcon,
   QrCodeIcon,
   TrashIcon,
@@ -1521,6 +1521,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
   const [resultView, setResultView] = useState<ResultView>("equation");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [certLoading, setCertLoading] = useState(false);
 
   const filteredCals = hasChannelTabs && activeChannelId
     ? calibrations.filter((c) => c.sensor_id === activeChannelId)
@@ -1593,11 +1594,25 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
           {selectedCal && (
             <button
               type="button"
-              onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+              disabled={certLoading}
+              onClick={async () => {
+                setCertLoading(true);
+                try {
+                  const { url, filename } = await getCalibrationCertificateUrl(selectedCal.id);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = filename;
+                  a.click();
+                } catch {
+                  alert("Certificate not available yet. Please try again shortly.");
+                } finally {
+                  setCertLoading(false);
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <PrinterIcon size={12} />
-              PDF Report
+              <DownloadIcon size={12} />
+              {certLoading ? "Generating…" : "Download Certificate"}
             </button>
           )}
           <button

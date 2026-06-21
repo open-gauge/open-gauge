@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     minio_secure: bool = False
     minio_public_url: str = "http://localhost:9000"
 
+    frontend_url: str = "http://localhost:3000"
+
     class Config:
         env_file = ".env"
 

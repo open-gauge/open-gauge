@@ -135,11 +135,34 @@ export async function getNextCalibrationVersion(assetId: string, sensorId?: stri
   return cals.length + 1;
 }
 
+export interface ProcedureDetail {
+  id: string;
+  proc_id: string | null;
+  physical_quantity: string;
+  name: string;
+  version: string;
+  description: string | null;
+  standard_ref: string | null;
+  author: string | null;
+}
+
+export async function getProcedure(id: string): Promise<ProcedureDetail> {
+  return apiFetch<ProcedureDetail>(`/api/v1/procedures/${id}`, {
+    headers: tokenHeader(),
+  });
+}
+
 export async function listProcedures(physicalQuantity?: string): Promise<{ id: string; name: string; physical_quantity: string }[]> {
   const qs = new URLSearchParams();
   if (physicalQuantity) qs.set("physical_quantity", physicalQuantity);
   const query = qs.toString() ? `?${qs}` : "";
   return apiFetch(`/api/v1/calibrations/procedures${query}`, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function getCalibrationCertificateUrl(calId: string): Promise<{ url: string; filename: string }> {
+  return apiFetch<{ url: string; filename: string }>(`/api/v1/calibrations/${calId}/certificate`, {
     headers: tokenHeader(),
   });
 }

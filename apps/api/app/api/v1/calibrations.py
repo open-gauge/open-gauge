@@ -1,26 +1,37 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from ...core.config import settings
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user
-from ...models.user import User
 from ...models.calibration_method import Procedure
-from ...repositories import calibration as cal_repo
+from ...models.user import User
 from ...repositories import asset as asset_repo
+from ...repositories import calibration as cal_repo
+from ...repositories import stored_file as sf_repo
 from ...schemas.calibration import (
+    AnalyzePointOut,
     AnalyzeRequest,
     AnalyzeResponse,
-    AnalyzePointOut,
     CalibrationCreate,
     CalibrationPointResponse,
     CalibrationResponse,
 )
 from ...services.calibration_analysis import run_analysis
+from ...services.storage import delete_file, get_presigned_url, sha256_hex, upload_file
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/calibrations", tags=["Calibrations"])
 
+
+# ---------------------------------------------------------------------------
+# Procedures
+# ---------------------------------------------------------------------------
 
 @router.get("/procedures")
 def list_procedures(
@@ -36,6 +47,10 @@ def list_procedures(
         for p in q.order_by(Procedure.proc_id.nullslast(), Procedure.name).all()
     ]
 
+
+# ---------------------------------------------------------------------------
+# Analysis (ephemeral)
+# ---------------------------------------------------------------------------
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 def analyze_calibration(
@@ -92,6 +107,10 @@ def analyze_calibration(
     )
 
 
+# ---------------------------------------------------------------------------
+# Calibration CRUD
+# ---------------------------------------------------------------------------
+
 @router.get("", response_model=list[CalibrationResponse])
 def list_calibrations(
     skip: int = 0,
@@ -117,7 +136,16 @@ def create_calibration(
             update={"calibration_version": cal_repo.get_next_version(db, body.asset_id, body.sensor_id)}
         )
 
-    return cal_repo.create_atomic(db, created_by=current_user.id, body=body)
+    cal = cal_repo.create_atomic(db, created_by=current_user.id, body=body)
+
+    # Generate and store the certificate (best-effort; never fail the creation)
+    try:
+        _generate_and_store_certificate(db, cal, current_user.id)
+    except Exception:
+        logger.warning("Certificate generation failed for calibration %s", cal.id, exc_info=True)
+
+    db.refresh(cal)
+    return cal
 
 
 @router.get("/{cal_id}", response_model=CalibrationResponse)
@@ -142,3 +170,119 @@ def list_points(
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
     return cal_repo.list_points(db, cal_id)
+
+
+@router.get("/{cal_id}/certificate")
+def get_certificate(
+    cal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> JSONResponse:
+    """Return a 1-hour presigned download URL for the calibration certificate PDF."""
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+
+    if not cal.calibration_file_id:
+        # Certificate hasn't been generated yet — attempt on-demand generation
+        try:
+            _generate_and_store_certificate(db, cal, cal.created_by)
+            db.refresh(cal)
+        except Exception:
+            logger.warning("On-demand certificate generation failed for %s", cal_id, exc_info=True)
+
+    if not cal.calibration_file_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certificate not available for this calibration",
+        )
+
+    file_rec = sf_repo.get_by_id(db, cal.calibration_file_id)
+    if not file_rec:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate file record not found")
+
+    url = get_presigned_url(file_rec.storage_path, file_rec.bucket)
+    if not url:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage unavailable")
+
+    return JSONResponse({"url": url, "filename": file_rec.original_filename})
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _generate_and_store_certificate(db: Session, cal: "object", uploaded_by: uuid.UUID) -> None:  # type: ignore[type-arg]
+    """Generate the certificate PDF and persist it to MinIO + files table.
+
+    Updates cal.calibration_file_id in-place (commits the FK).
+    Replaces any existing certificate file record for this calibration.
+    """
+    from ...models.calibration import Calibration  # local import to avoid circular
+    from ...services.certificate_service import generate_certificate
+
+    assert isinstance(cal, Calibration)
+
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+    if not asset:
+        raise ValueError(f"Asset {cal.asset_id} not found")
+
+    points = cal_repo.list_points(db, cal.id)
+
+    procedure: object = None
+    if cal.internal_procedure_id:
+        procedure = db.query(Procedure).filter(Procedure.id == cal.internal_procedure_id).first()
+
+    reference_asset = None
+    if cal.internal_reference_asset_id:
+        reference_asset = asset_repo.get_by_id(db, cal.internal_reference_asset_id)
+
+    sensor = None
+    if cal.sensor_id:
+        from ...models.sensor import Sensor
+        sensor = db.query(Sensor).filter(Sensor.id == cal.sensor_id).first()
+
+    # Count versions for this asset/sensor to derive the version number
+    version = cal_repo.get_next_version(db, cal.asset_id, cal.sensor_id) - 1
+    if version < 1:
+        version = cal.calibration_version
+
+    pdf_bytes = generate_certificate(
+        asset=asset,
+        calibration=cal,
+        points=points,
+        procedure=procedure,  # type: ignore[arg-type]
+        reference_asset=reference_asset,
+        sensor=sensor,
+        version=version,
+        app_base_url=settings.frontend_url,
+    )
+
+    filename = f"certificate_{asset.asset_id}_v{version}.pdf"
+    object_path = f"certificates/{asset.asset_id}/{cal.id}/{filename}"
+    checksum = sha256_hex(pdf_bytes)
+
+    # Replace existing file if present
+    if cal.calibration_file_id:
+        old_rec = sf_repo.get_by_id(db, cal.calibration_file_id)
+        if old_rec:
+            delete_file(old_rec.storage_path, old_rec.bucket)
+            sf_repo.delete(db, cal.calibration_file_id)
+
+    bucket, path, size = upload_file(pdf_bytes, "application/pdf", object_path)
+
+    file_rec = sf_repo.create(
+        db,
+        original_filename=filename,
+        storage_path=path,
+        bucket=bucket,
+        content_type="application/pdf",
+        size_bytes=size,
+        checksum_sha256=checksum,
+        entity_type="calibration_certificate",
+        entity_id=cal.id,
+        uploaded_by=uploaded_by,
+    )
+
+    cal.calibration_file_id = file_rec.id
+    db.commit()
