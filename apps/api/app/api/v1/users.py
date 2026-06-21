@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...core.security import hash_password
+from ...core.security import hash_password, verify_password
 from ...dependencies.deps import get_current_user
 from ...models.user import User
 from ...repositories import user as user_repo
-from ...schemas.user import UserCreate, UserResponse, UserUpdate
+from ...schemas.user import ChangePasswordRequest, UserCreate, UserResponse, UserSelfUpdate, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -29,6 +29,40 @@ def list_users(
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)) -> UserResponse:
     return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    body: UserSelfUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    updates = body.model_dump(exclude_none=True)
+    if "email" in updates and updates["email"] != current_user.email:
+        if user_repo.get_by_email(db, updates["email"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already in use")
+    return user_repo.update(db, current_user, **updates)
+
+
+@router.post("/me/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_my_password(
+    body: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    if not current_user.hashed_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password login not enabled for this account")
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    user_repo.update(db, current_user, hashed_password=hash_password(body.new_password))
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    user_repo.deactivate(db, current_user)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

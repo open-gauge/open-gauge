@@ -1,7 +1,7 @@
 import uuid
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user
 from ...models.team import Team
@@ -9,11 +9,28 @@ from ...models.user import User
 
 router = APIRouter(prefix="/teams", tags=["Teams"])
 
+
 class TeamResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
     model_config = {"from_attributes": True}
+
+
+class TeamCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+
+
+class TeamUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+
+
+def _require_admin(user: User) -> None:
+    if not (user.is_superuser or user.role in ("superadmin", "admin")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+
 
 @router.get("", response_model=list[TeamResponse])
 def list_teams(
@@ -24,3 +41,66 @@ def list_teams(
         Team.organization_id == current_user.organization_id,
         Team.is_active.is_(True),
     ).order_by(Team.name).all()
+
+
+@router.post("", response_model=TeamResponse, status_code=status.HTTP_201_CREATED)
+def create_team(
+    body: TeamCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TeamResponse:
+    _require_admin(current_user)
+    if current_user.organization_id is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User has no organization")
+    team = Team(
+        organization_id=current_user.organization_id,
+        name=body.name,
+        description=body.description,
+        created_by=current_user.id,
+    )
+    db.add(team)
+    db.commit()
+    db.refresh(team)
+    return team
+
+
+@router.put("/{team_id}", response_model=TeamResponse)
+def update_team(
+    team_id: uuid.UUID,
+    body: TeamUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TeamResponse:
+    _require_admin(current_user)
+    team = db.query(Team).filter(
+        Team.id == team_id,
+        Team.organization_id == current_user.organization_id,
+        Team.is_active.is_(True),
+    ).first()
+    if not team:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
+    if body.name is not None:
+        team.name = body.name
+    if body.description is not None:
+        team.description = body.description
+    db.commit()
+    db.refresh(team)
+    return team
+
+
+@router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_team(
+    team_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    _require_admin(current_user)
+    team = db.query(Team).filter(
+        Team.id == team_id,
+        Team.organization_id == current_user.organization_id,
+        Team.is_active.is_(True),
+    ).first()
+    if not team:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found")
+    team.is_active = False
+    db.commit()

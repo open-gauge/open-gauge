@@ -7,6 +7,7 @@ import {
   AssetRegistryIcon,
   BellIcon,
   SearchIcon,
+  SettingsIcon,
   SignOutIcon,
   XIcon,
 } from "@/components/icons";
@@ -211,6 +212,14 @@ export default function TopBar() {
               </div>
 
               <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => { setAvatarOpen(false); router.push("/settings"); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-mar-border hover:text-mar-text transition-colors text-left"
+                >
+                  <SettingsIcon size={14} />
+                  Settings
+                </button>
                 <button
                   type="button"
                   onClick={() => { setAvatarOpen(false); logout(); }}

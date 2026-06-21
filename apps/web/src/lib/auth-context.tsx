@@ -9,6 +9,7 @@ import type { UserProfile } from "@/types/user";
 interface AuthContextValue {
   user: UserProfile;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -24,26 +25,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  async function fetchUser() {
     const token = getToken();
-    if (!token) {
+    if (!token) { router.replace("/"); return; }
+    try {
+      const u = await apiFetch<UserProfile>("/api/v1/users/me", { headers: authHeader(token) });
+      setUser(u);
+    } catch {
+      clearToken();
       router.replace("/");
-      return;
     }
+  }
 
-    apiFetch<UserProfile>("/api/v1/users/me", { headers: authHeader(token) })
-      .then(setUser)
-      .catch(() => {
-        clearToken();
-        router.replace("/");
-      })
-      .finally(() => setIsLoading(false));
-  }, [router]);
+  useEffect(() => {
+    fetchUser().finally(() => setIsLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const logout = () => {
     clearToken();
     router.replace("/");
   };
+
+  const refreshUser = () => fetchUser();
 
   if (isLoading) {
     return (
@@ -59,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <AuthContext.Provider value={{ user, logout }}>
+    <AuthContext.Provider value={{ user, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

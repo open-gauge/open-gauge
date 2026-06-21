@@ -23,6 +23,16 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class UserSelfUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=255)
+    email: str | None = Field(None, min_length=3, max_length=255)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
