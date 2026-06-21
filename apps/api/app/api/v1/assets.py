@@ -14,7 +14,7 @@ from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import stored_file as file_repo
-from ...schemas.asset import AssetCreate, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
+from ...schemas.asset import AssetCreate, AssetDuplicateRequest, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
 from ...schemas.calibration import CalibrationResponse
 from ...schemas.sensor import SensorChannelResponse
 from ...schemas.daq import DaqResponse
@@ -123,6 +123,12 @@ def update_asset(
 
     update_data = body.model_dump(exclude_unset=True)
 
+    # Reject if asset_id is changing but the new value is already taken by another asset
+    new_asset_id = update_data.get("asset_id")
+    if new_asset_id and new_asset_id != asset.asset_id:
+        if asset_repo.get_by_asset_id(db, new_asset_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Asset ID already exists")
+
     # Snapshot the fields being changed (before state)
     def _serialize(v: object) -> object:
         if isinstance(v, (date, datetime)):
@@ -177,6 +183,22 @@ def retire_asset(
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     asset_repo.retire(db, asset, retired_by=current_user.id, reason=reason)
+
+
+@router.post("/{asset_pk}/duplicate", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
+def duplicate_asset(
+    asset_pk: uuid.UUID,
+    body: AssetDuplicateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AssetResponse:
+    source = asset_repo.get_by_id(db, asset_pk)
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    if asset_repo.get_by_asset_id(db, body.new_asset_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Asset ID already exists")
+    new_asset = asset_repo.duplicate(db, source=source, new_asset_id=body.new_asset_id, created_by=current_user.id)
+    return _enrich(new_asset, db)
 
 
 @router.get("/{asset_pk}/calibrations", response_model=list[CalibrationResponse])

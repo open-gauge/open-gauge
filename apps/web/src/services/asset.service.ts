@@ -1,6 +1,6 @@
 import { apiFetch, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
-import type { AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
+import type { AssetCreateBody, AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
 import type { CalibrationRecord, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
@@ -56,6 +56,22 @@ export async function updateAsset(id: string, body: AssetUpdateRequest): Promise
     method: "PUT",
     headers: { ...tokenHeader(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export async function createAsset(body: AssetCreateBody): Promise<AssetProfile> {
+  return apiFetch<AssetProfile>(`/api/v1/assets`, {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function duplicateAsset(sourceId: string, newAssetId: string): Promise<AssetProfile> {
+  return apiFetch<AssetProfile>(`/api/v1/assets/${sourceId}/duplicate`, {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ new_asset_id: newAssetId }),
   });
 }
 

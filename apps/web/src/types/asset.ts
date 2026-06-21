@@ -180,7 +180,20 @@ export interface SensorChannelUpdateInput {
   calibration_interval?: number | null;
 }
 
+export interface AssetCreateBody {
+  asset_id: string;
+  asset_type: "sensor" | "daq";
+  name: string;
+  manufacturer: string;
+  model: string;
+  serial_number?: string | null;
+  description?: string | null;
+  location_id?: string | null;
+  owner?: string | null;
+}
+
 export interface AssetUpdateRequest {
+  asset_id?: string;
   name?: string;
   description?: string | null;
   manufacturer?: string;

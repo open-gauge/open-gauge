@@ -364,6 +364,122 @@ def get_daq_details(db: Session, asset_pk: uuid.UUID) -> DAQ | None:
     return db.query(DAQ).filter(DAQ.asset_id == asset_pk).first()
 
 
+def duplicate(db: Session, source: Asset, new_asset_id: str, created_by: uuid.UUID) -> Asset:
+    """Create a new asset by copying all metadata and sensor channels from an existing one."""
+    new_asset = Asset(
+        asset_id=new_asset_id,
+        asset_type=source.asset_type,
+        name=source.name,
+        description=source.description,
+        manufacturer=source.manufacturer,
+        model=source.model,
+        serial_number=None,  # serial numbers are unique per physical device
+        manufacturer_part_number=source.manufacturer_part_number,
+        location_id=source.location_id,
+        owner=source.owner,
+        datasheet_url=source.datasheet_url,
+        firmware_version=source.firmware_version,
+        power_supply=source.power_supply,
+        power_consumption_w=source.power_consumption_w,
+        dimensions=source.dimensions,
+        weight_kg=source.weight_kg,
+        mounting_type=source.mounting_type,
+        connection_type=source.connection_type,
+        displays_readings=source.displays_readings,
+        ip_rating=source.ip_rating,
+        hazardous_area_rating=source.hazardous_area_rating,
+        operating_temperature_min=source.operating_temperature_min,
+        operating_temperature_max=source.operating_temperature_max,
+        operating_humidity_min=source.operating_humidity_min,
+        operating_humidity_max=source.operating_humidity_max,
+        health_score=100,
+        price_eur=source.price_eur,
+        purchase_date=source.purchase_date,
+        warranty_expiry_date=source.warranty_expiry_date,
+        notes=source.notes,
+        pinout_table=source.pinout_table,
+        pinout_image_id=source.pinout_image_id,
+        sensor_image_id=source.sensor_image_id,
+        sensor_schematic_id=source.sensor_schematic_id,
+        created_by=created_by,
+    )
+    db.add(new_asset)
+    db.flush()
+
+    for ch in get_sensor_channels(db, source.id):
+        db.add(Sensor(
+            asset_id=new_asset.id,
+            channel_id=ch.channel_id,
+            physical_quantity=ch.physical_quantity,
+            unit=ch.unit,
+            technology=ch.technology,
+            measurement_min=ch.measurement_min,
+            measurement_max=ch.measurement_max,
+            accuracy_value=ch.accuracy_value,
+            accuracy_type=ch.accuracy_type,
+            accuracy_unit=ch.accuracy_unit,
+            resolution=ch.resolution,
+            resolution_unit=ch.resolution_unit,
+            measurement_uncertainty=ch.measurement_uncertainty,
+            uncertainty_unit=ch.uncertainty_unit,
+            confidence_level=ch.confidence_level,
+            coverage_factor=ch.coverage_factor,
+            drift_rate=ch.drift_rate,
+            drift_unit=ch.drift_unit,
+            sensitivity=ch.sensitivity,
+            sensitivity_unit=ch.sensitivity_unit,
+            response_time_ms=ch.response_time_ms,
+            bandwidth_hz=ch.bandwidth_hz,
+            output_signal_min=ch.output_signal_min,
+            output_signal_max=ch.output_signal_max,
+            output_signal_unit=ch.output_signal_unit,
+            output_type=ch.output_type,
+            calibration_role=ch.calibration_role,
+            criticality=ch.criticality,
+            calibration_method_id=ch.calibration_method_id,
+            calibration_interval=ch.calibration_interval,
+        ))
+
+    daq = get_daq_details(db, source.id)
+    if daq:
+        db.add(DAQ(
+            asset_id=new_asset.id,
+            daq_type=daq.daq_type,
+            input_channels=daq.input_channels,
+            output_channels=daq.output_channels,
+            input_signal_types=daq.input_signal_types,
+            output_signal_types=daq.output_signal_types,
+            sampling_rate_hz=daq.sampling_rate_hz,
+            per_channel_sampling_rate_hz=daq.per_channel_sampling_rate_hz,
+            adc_resolution_bits=daq.adc_resolution_bits,
+            adc_type=daq.adc_type,
+            input_voltage_range_min=daq.input_voltage_range_min,
+            input_voltage_range_max=daq.input_voltage_range_max,
+            input_impedance_ohm=daq.input_impedance_ohm,
+            noise_floor_uv_rms=daq.noise_floor_uv_rms,
+            dynamic_range_db=daq.dynamic_range_db,
+            synchronization_supported=daq.synchronization_supported,
+            clock_source=daq.clock_source,
+            time_sync_precision_ns=daq.time_sync_precision_ns,
+            jitter_ns=daq.jitter_ns,
+            communication_protocol=daq.communication_protocol,
+            interface_type=daq.interface_type,
+            trigger_modes=daq.trigger_modes,
+        ))
+
+    if new_asset.location_id:
+        db.add(AssetLocation(
+            asset_id=new_asset.id,
+            location_id=new_asset.location_id,
+            moved_by=created_by,
+            reason=f"Duplicated from {source.asset_id}",
+        ))
+
+    db.commit()
+    db.refresh(new_asset)
+    return new_asset
+
+
 def get_location_history(db: Session, asset_pk: uuid.UUID) -> list[AssetLocation]:
     return (
         db.query(AssetLocation)

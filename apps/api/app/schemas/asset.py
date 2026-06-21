@@ -57,7 +57,12 @@ class AssetCreate(BaseModel):
     daq_details: DaqCreate | None = None
 
 
+class AssetDuplicateRequest(BaseModel):
+    new_asset_id: str = Field(min_length=1, max_length=20, pattern=r"^MAR-\d{5}$")
+
+
 class AssetUpdate(BaseModel):
+    asset_id: str | None = Field(None, min_length=1, max_length=20, pattern=r"^MAR-\d{5}$")
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     manufacturer: str | None = None

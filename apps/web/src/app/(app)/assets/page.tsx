@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { listAssets } from "@/services/asset.service";
-import type { AssetListItem, ChannelListItem } from "@/types/asset";
+import { useRouter } from "next/navigation";
+import { createAsset, duplicateAsset, listAssets } from "@/services/asset.service";
+import type { AssetCreateBody, AssetListItem, ChannelListItem } from "@/types/asset";
 import {
   CALIBRATION_STATUS_LABEL,
   CALIBRATION_STATUS_STYLE,
@@ -12,12 +13,15 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ChevronUpIcon,
+  CopyIcon,
   DownloadIcon,
   FilterIcon,
   GridViewIcon,
   ListViewIcon,
+  PlusIcon,
   QrCodeIcon,
   SearchIcon,
+  XIcon,
 } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
@@ -550,10 +554,364 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
 }
 
 // ---------------------------------------------------------------------------
+// New Asset Modal
+// ---------------------------------------------------------------------------
+
+const ASSET_ID_RE = /^MAR-\d{5}$/;
+
+function suggestNextId(assets: AssetListItem[]): string {
+  let max = 0;
+  for (const a of assets) {
+    const m = a.asset_id.match(/^MAR-(\d{5})$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return `MAR-${String(max + 1).padStart(5, "0")}`;
+}
+
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400";
+const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
+
+interface NewAssetModalProps {
+  existingAssets: AssetListItem[];
+  onClose: () => void;
+  onCreated: (newId: string) => void;
+}
+
+function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProps) {
+  const [mode, setMode] = useState<"choose" | "new" | "copy">("choose");
+
+  // --- "new from scratch" state ---
+  const [form, setForm] = useState({
+    asset_id: suggestNextId(existingAssets),
+    asset_type: "sensor" as "sensor" | "daq",
+    name: "",
+    manufacturer: "",
+    model: "",
+    serial_number: "",
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // --- "copy" state ---
+  const [copySearch, setCopySearch] = useState("");
+  const [selectedSource, setSelectedSource] = useState<AssetListItem | null>(null);
+  const [newCopyId, setNewCopyId] = useState("");
+  const [copyIdError, setCopyIdError] = useState<string | null>(null);
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+
+  const filteredSources = existingAssets.filter((a) => {
+    const q = copySearch.toLowerCase();
+    return (
+      a.asset_id.toLowerCase().includes(q) ||
+      a.name.toLowerCase().includes(q) ||
+      a.manufacturer.toLowerCase().includes(q) ||
+      a.model.toLowerCase().includes(q)
+    );
+  });
+
+  function validateNew() {
+    const errs: Record<string, string> = {};
+    if (!ASSET_ID_RE.test(form.asset_id)) errs.asset_id = "Format: MAR-XXXXX (5 digits)";
+    else if (existingAssets.some((a) => a.asset_id === form.asset_id)) errs.asset_id = "Asset ID already exists";
+    if (!form.name.trim()) errs.name = "Required";
+    if (!form.manufacturer.trim()) errs.manufacturer = "Required";
+    if (!form.model.trim()) errs.model = "Required";
+    return errs;
+  }
+
+  async function handleCreate() {
+    const errs = validateNew();
+    if (Object.keys(errs).length > 0) { setFormErrors(errs); return; }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const body: AssetCreateBody = {
+        asset_id: form.asset_id,
+        asset_type: form.asset_type,
+        name: form.name.trim(),
+        manufacturer: form.manufacturer.trim(),
+        model: form.model.trim(),
+        serial_number: form.serial_number.trim() || null,
+      };
+      const created = await createAsset(body);
+      onCreated(created.id);
+    } catch (e: unknown) {
+      setSaveError(e instanceof Error ? e.message : "Failed to create asset");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function validateCopyId() {
+    if (!ASSET_ID_RE.test(newCopyId)) return "Format: MAR-XXXXX (5 digits)";
+    if (existingAssets.some((a) => a.asset_id === newCopyId)) return "Asset ID already exists";
+    return null;
+  }
+
+  async function handleDuplicate() {
+    if (!selectedSource) return;
+    const err = validateCopyId();
+    if (err) { setCopyIdError(err); return; }
+    setCopyIdError(null);
+    setCopying(true);
+    setCopyError(null);
+    try {
+      const created = await duplicateAsset(selectedSource.id, newCopyId);
+      onCreated(created.id);
+    } catch (e: unknown) {
+      setCopyError(e instanceof Error ? e.message : "Failed to duplicate asset");
+    } finally {
+      setCopying(false);
+    }
+  }
+
+  const set = (k: keyof typeof form) => (v: string) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    setFormErrors((e) => { const n = { ...e }; delete n[k]; return n; });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-mar-surface border border-mar-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-mar-border">
+          <h2 className="text-sm font-semibold text-mar-text">
+            {mode === "choose" ? "Add asset" : mode === "new" ? "New asset" : "Copy from existing"}
+          </h2>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+            <XIcon size={15} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 overflow-y-auto max-h-[70vh]">
+
+          {/* Step 1: choose mode */}
+          {mode === "choose" && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setMode("new")}
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-mar-border hover:border-mar-accent hover:bg-mar-accent/5 transition-colors group text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-mar-action/10 flex items-center justify-center group-hover:bg-mar-action/20 transition-colors">
+                  <PlusIcon size={18} className="text-mar-action" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-mar-text">New asset</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Start from scratch with a blank record.</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("copy");
+                  setNewCopyId(suggestNextId(existingAssets));
+                }}
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-mar-border hover:border-mar-accent hover:bg-mar-accent/5 transition-colors group text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-mar-accent/10 flex items-center justify-center group-hover:bg-mar-accent/20 transition-colors">
+                  <CopyIcon size={18} className="text-mar-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-mar-text">Copy existing</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Duplicate a registered asset&apos;s metadata.</p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* Step 2a: new from scratch */}
+          {mode === "new" && (
+            <div className="space-y-4">
+              {/* Asset ID */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400">Asset ID <span className="text-red-400">*</span></label>
+                <input
+                  value={form.asset_id}
+                  onChange={(e) => set("asset_id")(e.target.value.toUpperCase())}
+                  placeholder="MAR-00001"
+                  className={`${IB} ${formErrors.asset_id ? IB_ERR : IB_OK} font-mono`}
+                />
+                {formErrors.asset_id && <p className="text-xs text-red-500">{formErrors.asset_id}</p>}
+                <p className="text-[10px] text-gray-400">Format: MAR-XXXXX where XXXXX is a 5-digit number.</p>
+              </div>
+
+              {/* Type */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400">Asset type <span className="text-red-400">*</span></label>
+                <div className="flex gap-2">
+                  {(["sensor", "daq"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => set("asset_type")(t)}
+                      className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors capitalize ${
+                        form.asset_type === t
+                          ? "border-mar-accent bg-mar-accent/10 text-mar-accent"
+                          : "border-mar-border-md text-gray-400 hover:bg-mar-surface-alt"
+                      }`}
+                    >
+                      {t === "daq" ? "DAQ" : "Sensor"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Name */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400">Name <span className="text-red-400">*</span></label>
+                <input value={form.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. PT100 Temperature Sensor" className={`${IB} ${formErrors.name ? IB_ERR : IB_OK}`} />
+                {formErrors.name && <p className="text-xs text-red-500">{formErrors.name}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Manufacturer <span className="text-red-400">*</span></label>
+                  <input value={form.manufacturer} onChange={(e) => set("manufacturer")(e.target.value)} placeholder="e.g. WIKA" className={`${IB} ${formErrors.manufacturer ? IB_ERR : IB_OK}`} />
+                  {formErrors.manufacturer && <p className="text-xs text-red-500">{formErrors.manufacturer}</p>}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-400">Model <span className="text-red-400">*</span></label>
+                  <input value={form.model} onChange={(e) => set("model")(e.target.value)} placeholder="e.g. TF53" className={`${IB} ${formErrors.model ? IB_ERR : IB_OK}`} />
+                  {formErrors.model && <p className="text-xs text-red-500">{formErrors.model}</p>}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400">Serial number <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input value={form.serial_number} onChange={(e) => set("serial_number")(e.target.value)} placeholder="e.g. SN-20240001" className={`${IB} ${IB_OK}`} />
+              </div>
+
+              {saveError && <p className="text-xs text-red-500 mt-1">{saveError}</p>}
+            </div>
+          )}
+
+          {/* Step 2b: copy from existing */}
+          {mode === "copy" && (
+            <div className="space-y-4">
+              {!selectedSource ? (
+                <>
+                  <div className="relative">
+                    <SearchIcon size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <input
+                      value={copySearch}
+                      onChange={(e) => setCopySearch(e.target.value)}
+                      placeholder="Search by ID, name, manufacturer…"
+                      className={`${IB} ${IB_OK} pl-8`}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="rounded-xl border border-mar-border overflow-hidden max-h-72 overflow-y-auto">
+                    {filteredSources.length === 0 ? (
+                      <p className="px-4 py-6 text-sm text-gray-400 text-center">No assets found.</p>
+                    ) : (
+                      <div className="divide-y divide-mar-border">
+                        {filteredSources.map((a) => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => setSelectedSource(a)}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-mar-surface-alt transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-mar-text truncate">{a.name}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                <span className="font-mono">{a.asset_id}</span>
+                                {" · "}{a.manufacturer} {a.model}
+                                {a.serial_number && ` · ${a.serial_number}`}
+                              </p>
+                            </div>
+                            <ChevronRightIcon size={13} className="text-gray-400 flex-shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Selected source summary */}
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-mar-surface-alt border border-mar-border">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400">Copying from</p>
+                      <p className="text-sm font-semibold text-mar-text">{selectedSource.name}</p>
+                      <p className="text-xs font-mono text-gray-400 mt-0.5">{selectedSource.asset_id} · {selectedSource.manufacturer} {selectedSource.model}</p>
+                    </div>
+                    <button type="button" onClick={() => setSelectedSource(null)} className="text-xs text-gray-400 hover:text-mar-text transition-colors flex-shrink-0">
+                      Change
+                    </button>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-400">New asset ID <span className="text-red-400">*</span></label>
+                    <input
+                      value={newCopyId}
+                      onChange={(e) => { setNewCopyId(e.target.value.toUpperCase()); setCopyIdError(null); }}
+                      placeholder="MAR-00002"
+                      className={`${IB} ${copyIdError ? IB_ERR : IB_OK} font-mono`}
+                    />
+                    {copyIdError && <p className="text-xs text-red-500">{copyIdError}</p>}
+                    <p className="text-[10px] text-gray-400">
+                      The new asset will copy all specifications and sensor channels. Calibration history is not copied.
+                    </p>
+                  </div>
+
+                  {copyError && <p className="text-xs text-red-500">{copyError}</p>}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {mode !== "choose" && (
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-mar-border">
+            <button
+              type="button"
+              onClick={() => { setMode("choose"); setSaveError(null); setCopyError(null); setFormErrors({}); }}
+              className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+            >
+              Back
+            </button>
+            {mode === "new" ? (
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {saving && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                Create asset
+              </button>
+            ) : selectedSource ? (
+              <button
+                type="button"
+                onClick={handleDuplicate}
+                disabled={copying}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {copying && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                Duplicate asset
+              </button>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function AssetsPage() {
+  const router = useRouter();
   const [assets, setAssets]       = useState<AssetListItem[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
@@ -565,6 +923,7 @@ export default function AssetsPage() {
   const [sortDir, setSortDir]     = useState<SortDir>("asc");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
+  const [newAssetOpen, setNewAssetOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -717,8 +1076,20 @@ export default function AssetsPage() {
     else { setSortCol(col); setSortDir("asc"); }
   }
 
+  function handleAssetCreated(newId: string) {
+    setNewAssetOpen(false);
+    router.push(`/assets/${newId}`);
+  }
+
   return (
     <div className="p-6 space-y-5">
+      {newAssetOpen && (
+        <NewAssetModal
+          existingAssets={assets}
+          onClose={() => setNewAssetOpen(false)}
+          onCreated={handleAssetCreated}
+        />
+      )}
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
@@ -739,8 +1110,9 @@ export default function AssetsPage() {
             Export
           </button>
           <button type="button"
+            onClick={() => setNewAssetOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-            <span className="text-sm leading-none">+</span>
+            <PlusIcon size={13} />
             New asset
           </button>
         </div>
