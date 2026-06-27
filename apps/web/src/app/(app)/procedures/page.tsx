@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -18,9 +19,9 @@ import {
   TrashIcon,
   XIcon,
 } from "@/components/icons";
-import { PROCEDURE_DIFFICULTY_STYLE } from "@/lib/tokens";
 import {
   createProcedure,
+  deleteProcedure,
   deleteProcedureFile,
   listProcedureFiles,
   listProcedures,
@@ -46,7 +47,10 @@ const PHYSICAL_QUANTITIES = [
   "pressure", "temperature", "humidity", "flow", "level",
   "electrical", "force", "vibration", "displacement", "torque",
 ];
-const DIFFICULTIES = ["Basic", "Intermediate", "Advanced"];
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 const INPUT_CLS =
   "w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors placeholder-gray-400";
@@ -76,6 +80,7 @@ function bestUnit(minutes: number | null): DurationUnit {
   if (!minutes || minutes <= 0) return "minutes";
   if (minutes % 1440 === 0) return "days";
   if (minutes % 60 === 0) return "hours";
+  if (minutes < 1) return "seconds";
   return "minutes";
 }
 
@@ -83,11 +88,13 @@ function formatDuration(totalMin: number | null): string | null {
   if (!totalMin || totalMin <= 0) return null;
   const d = Math.floor(totalMin / 1440);
   const h = Math.floor((totalMin % 1440) / 60);
-  const m = Math.round(totalMin % 60);
+  const m = Math.floor(totalMin % 60);
+  const s = Math.round((totalMin % 1) * 60);
   const parts: string[] = [];
   if (d > 0) parts.push(`${d}d`);
   if (h > 0) parts.push(`${h}h`);
   if (m > 0) parts.push(`${m}m`);
+  if (s > 0 && d === 0 && h === 0) parts.push(`${s}s`);
   return parts.length ? parts.join(" ") : null;
 }
 
@@ -97,13 +104,14 @@ function buildUpdateBody(proc: Procedure): Partial<ProcedureCreateBody> {
     0,
   );
   return {
+    proc_id: proc.proc_id ?? undefined,
     name: proc.name,
     description: proc.description || null,
     version: proc.version,
     difficulty: proc.difficulty,
     author: proc.author || null,
     standard_ref: proc.standard_ref || null,
-    duration_min: totalDuration > 0 ? totalDuration : null,
+    duration_min: totalDuration > 0 ? Math.round(totalDuration) : null,
     physical_quantity: proc.physical_quantity,
     tags: proc.tags,
     steps: (proc.steps ?? []).map((s) => ({
@@ -117,16 +125,6 @@ function buildUpdateBody(proc: Procedure): Partial<ProcedureCreateBody> {
     safety_notes: proc.safety_notes,
     acceptance_criteria: proc.acceptance_criteria,
   };
-}
-
-function DifficultyBadge({ difficulty }: { difficulty: string | null }) {
-  if (!difficulty) return null;
-  const cls = PROCEDURE_DIFFICULTY_STYLE[difficulty] ?? "bg-gray-100 text-gray-500 border-gray-200";
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cls}`}>
-      {difficulty}
-    </span>
-  );
 }
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -172,7 +170,6 @@ function ProcedureListItem({ proc, active, onClick }: { proc: Procedure; active:
           <span className={`text-[10px] font-mono font-semibold ${active ? "text-mar-accent" : "text-gray-400"}`}>
             {proc.proc_id ?? "—"}
           </span>
-          <DifficultyBadge difficulty={proc.difficulty} />
         </div>
         <p className="text-xs font-medium leading-snug truncate text-mar-text">{proc.name}</p>
         <div className="flex items-center gap-2 mt-1">
@@ -186,6 +183,56 @@ function ProcedureListItem({ proc, active, onClick }: { proc: Procedure; active:
         </div>
       </div>
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Delete procedure confirmation
+// ---------------------------------------------------------------------------
+
+function DeleteProcedureModal({ procName, onConfirm, onClose }: {
+  procName: string; onConfirm: () => Promise<void>; onClose: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setDeleting(true);
+    setError(null);
+    try {
+      await onConfirm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove procedure");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-sm p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center flex-shrink-0">
+            <TrashIcon size={16} className="text-red-500" />
+          </div>
+          <h2 className="text-sm font-semibold text-mar-text">Remove procedure?</h2>
+        </div>
+        <p className="text-sm text-gray-400 mb-2">
+          <span className="font-medium text-mar-text">{procName}</span> will be deactivated and removed from the procedures list.
+        </p>
+        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+        <div className="flex items-center justify-end gap-2 mt-4">
+          <button type="button" onClick={onClose} disabled={deleting}
+            className="px-3 py-1.5 text-sm border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors text-mar-text disabled:opacity-50">
+            Cancel
+          </button>
+          <button type="button" disabled={deleting} onClick={handleConfirm}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+            {deleting ? <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <TrashIcon size={14} />}
+            {deleting ? "Removing…" : "Remove"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -267,7 +314,7 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
 
   function handleDurChange(val: string) {
     const num = parseFloat(val);
-    const mins = isNaN(num) || val === "" ? null : Math.round(num * UNIT_TO_MIN[durUnit]);
+    const mins = isNaN(num) || val === "" ? null : num * UNIT_TO_MIN[durUnit];
     onChange({ ...step, duration_min: mins });
   }
 
@@ -397,13 +444,15 @@ interface ProcedureDetailProps {
   proc: Procedure;
   initialEditing?: boolean;
   onSaved: (updated: Procedure) => void;
+  onDeleted: (procId: string) => void;
 }
 
-function ProcedureDetail({ proc, initialEditing = false, onSaved }: ProcedureDetailProps) {
+function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: ProcedureDetailProps) {
   const [isEditing, setIsEditing] = useState(initialEditing);
   const [draft, setDraft] = useState<Procedure>(() => deepCopy(proc));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   // Stable keys for step components so reordering doesn't lose internal state
   const nextKeyRef = useRef(0);
@@ -439,6 +488,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved }: ProcedureDet
   }
 
   async function handleSave() {
+    if (!draft.proc_id?.trim()) { setSaveError("Procedure ID is required"); return; }
     if (!draft.name.trim()) { setSaveError("Name is required"); return; }
     setSaving(true);
     setSaveError(null);
@@ -452,6 +502,11 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved }: ProcedureDet
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleDeleteProcedure() {
+    await deleteProcedure(proc.id);
+    onDeleted(proc.id);
   }
 
   // --- Draft helpers ---
@@ -578,13 +633,27 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved }: ProcedureDet
   return (
     <div className="space-y-4">
       {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+      {deleteModalOpen && (
+        <DeleteProcedureModal
+          procName={proc.name}
+          onConfirm={handleDeleteProcedure}
+          onClose={() => setDeleteModalOpen(false)}
+        />
+      )}
 
       {/* ── Header card ── */}
       <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
         {/* Top meta row */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="font-mono font-semibold text-mar-accent">{proc.proc_id ?? "—"}</span>
+            {isEditing ? (
+              <input type="text" value={draft.proc_id ?? ""} maxLength={20}
+                onChange={(e) => setDraftField("proc_id", e.target.value || null)}
+                placeholder="PROC-XX-001"
+                className="w-28 px-1.5 py-0.5 text-xs font-mono font-semibold rounded border border-mar-border-md bg-mar-surface text-mar-accent focus:outline-none focus:ring-1 focus:ring-mar-accent/40" />
+            ) : (
+              <span className="font-mono font-semibold text-mar-accent">{proc.proc_id ?? "—"}</span>
+            )}
             <span>·</span>
             {isEditing ? (
               <input type="text" value={draft.version}
@@ -613,6 +682,10 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved }: ProcedureDet
               </>
             ) : (
               <>
+                <button type="button" onClick={() => setDeleteModalOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-500 hover:text-red-600 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">
+                  <TrashIcon size={12} />Remove
+                </button>
                 <button type="button"
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
                   <PrinterIcon size={12} />Print
@@ -659,10 +732,9 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved }: ProcedureDet
           {isEditing ? (
             <>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Difficulty</p>
-                <select value={draft.difficulty ?? ""} onChange={(e) => setDraftField("difficulty", e.target.value || null)} className={INPUT_CLS}>
-                  <option value="">— none —</option>
-                  {DIFFICULTIES.map((d) => <option key={d} value={d}>{d}</option>)}
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Physical quantity</p>
+                <select value={draft.physical_quantity} onChange={(e) => setDraftField("physical_quantity", e.target.value)} className={INPUT_CLS}>
+                  {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{capitalize(q)}</option>)}
                 </select>
               </div>
               <div>
@@ -678,7 +750,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved }: ProcedureDet
             </>
           ) : (
             <>
-              <MetaCell label="Difficulty" value={draft.difficulty} />
+              <MetaCell label="Physical quantity" value={capitalize(draft.physical_quantity)} />
               <MetaCell label="Standard" value={draft.standard_ref} />
               <MetaCell label="Author" value={draft.author} />
             </>
@@ -1073,7 +1145,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
             <div>
               <label className="block text-xs font-semibold text-mar-text mb-1">Physical quantity *</label>
               <select value={newForm.physical_quantity} onChange={(e) => setNewForm((f) => ({ ...f, physical_quantity: e.target.value }))} className={inputCls(false)}>
-                {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{q.charAt(0).toUpperCase() + q.slice(1)}</option>)}
+                {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{capitalize(q)}</option>)}
               </select>
             </div>
             {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">{error}</p>}
@@ -1155,6 +1227,7 @@ function EmptyDetail() {
 // ---------------------------------------------------------------------------
 
 export default function ProceduresPage() {
+  const router = useRouter();
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -1169,6 +1242,14 @@ export default function ProceduresPage() {
       .then((data) => { setProcedures(data); if (data.length > 0) setSelected(data[0]); })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setShowNewModal(true);
+      router.replace("/procedures");
+    }
+  }, [router]);
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -1197,10 +1278,9 @@ export default function ProceduresPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-mar-text">Calibration procedures</h1>
-          <p className="text-sm text-gray-400 mt-1">Versioned, recipe-style SOPs. Reproducible across labs and operators.</p>
+          <p className="text-sm text-gray-400 mt-1">{count} procedure{count !== 1 ? "s" : ""} registered.</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{count} procedure{count !== 1 ? "s" : ""}</span>
           <button type="button" onClick={() => setShowNewModal(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
             <PlusIcon size={13} />New procedure
@@ -1247,6 +1327,10 @@ export default function ProceduresPage() {
               onSaved={(updated) => {
                 setSelected(updated);
                 setProcedures((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+              }}
+              onDeleted={(id) => {
+                setProcedures((prev) => prev.filter((p) => p.id !== id));
+                setSelected((prev) => (prev?.id === id ? null : prev));
               }}
             />
           ) : (

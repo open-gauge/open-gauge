@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class ProcedureStep(BaseModel):
     title: str
     description: str | None = None
-    duration_min: int | None = None
+    duration_min: float | None = None
 
 
 class ProcedureEquipmentItem(BaseModel):
@@ -50,6 +50,7 @@ class ProcedureCreate(BaseModel):
 
 
 class ProcedureUpdate(BaseModel):
+    proc_id: str | None = Field(None, min_length=1, max_length=20)
     name: str | None = None
     description: str | None = None
     version: str | None = None

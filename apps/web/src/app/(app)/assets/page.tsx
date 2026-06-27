@@ -557,8 +557,6 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
 // New Asset Modal
 // ---------------------------------------------------------------------------
 
-const ASSET_ID_RE = /^MAR-\d{5}$/;
-
 function suggestNextId(assets: AssetListItem[]): string {
   let max = 0;
   for (const a of assets) {
@@ -614,8 +612,8 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
 
   function validateNew() {
     const errs: Record<string, string> = {};
-    if (!ASSET_ID_RE.test(form.asset_id)) errs.asset_id = "Format: MAR-XXXXX (5 digits)";
-    else if (existingAssets.some((a) => a.asset_id === form.asset_id)) errs.asset_id = "Asset ID already exists";
+    if (!form.asset_id.trim()) errs.asset_id = "Required";
+    else if (existingAssets.some((a) => a.asset_id === form.asset_id.trim())) errs.asset_id = "Asset ID already exists";
     if (!form.name.trim()) errs.name = "Required";
     if (!form.manufacturer.trim()) errs.manufacturer = "Required";
     if (!form.model.trim()) errs.model = "Required";
@@ -646,8 +644,8 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
   }
 
   function validateCopyId() {
-    if (!ASSET_ID_RE.test(newCopyId)) return "Format: MAR-XXXXX (5 digits)";
-    if (existingAssets.some((a) => a.asset_id === newCopyId)) return "Asset ID already exists";
+    if (!newCopyId.trim()) return "Required";
+    if (existingAssets.some((a) => a.asset_id === newCopyId.trim())) return "Asset ID already exists";
     return null;
   }
 
@@ -733,12 +731,12 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                 <label className="text-xs text-gray-400">Asset ID <span className="text-red-400">*</span></label>
                 <input
                   value={form.asset_id}
-                  onChange={(e) => set("asset_id")(e.target.value.toUpperCase())}
-                  placeholder="MAR-00001"
+                  onChange={(e) => set("asset_id")(e.target.value)}
+                  placeholder="e.g. MAR-00001"
                   className={`${IB} ${formErrors.asset_id ? IB_ERR : IB_OK} font-mono`}
                 />
                 {formErrors.asset_id && <p className="text-xs text-red-500">{formErrors.asset_id}</p>}
-                <p className="text-[10px] text-gray-400">Format: MAR-XXXXX where XXXXX is a 5-digit number.</p>
+                <p className="text-[10px] text-gray-400">Any unique identifier — letters, numbers and symbols are allowed.</p>
               </div>
 
               {/* Type */}
@@ -851,8 +849,8 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                     <label className="text-xs text-gray-400">New asset ID <span className="text-red-400">*</span></label>
                     <input
                       value={newCopyId}
-                      onChange={(e) => { setNewCopyId(e.target.value.toUpperCase()); setCopyIdError(null); }}
-                      placeholder="MAR-00002"
+                      onChange={(e) => { setNewCopyId(e.target.value); setCopyIdError(null); }}
+                      placeholder="e.g. MAR-00002"
                       className={`${IB} ${copyIdError ? IB_ERR : IB_OK} font-mono`}
                     />
                     {copyIdError && <p className="text-xs text-red-500">{copyIdError}</p>}
@@ -924,7 +922,9 @@ export default function AssetsPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
   const [newAssetOpen, setNewAssetOpen] = useState(false);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const newMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -953,6 +953,17 @@ export default function AssetsPage() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [filterOpen]);
+
+  useEffect(() => {
+    if (!newMenuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
+        setNewMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [newMenuOpen]);
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -1109,12 +1120,29 @@ export default function AssetsPage() {
             <DownloadIcon size={13} />
             Export
           </button>
-          <button type="button"
-            onClick={() => setNewAssetOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-            <PlusIcon size={13} />
-            New asset
-          </button>
+          <div className="relative" ref={newMenuRef}>
+            <button type="button"
+              onClick={() => setNewMenuOpen((o) => !o)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+              <PlusIcon size={13} />
+              New
+              <ChevronDownIcon size={11} />
+            </button>
+            {newMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg z-20 py-1 min-w-[150px]">
+                <button type="button"
+                  onClick={() => { setNewMenuOpen(false); setNewAssetOpen(true); }}
+                  className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors">
+                  New Asset
+                </button>
+                <button type="button"
+                  onClick={() => { setNewMenuOpen(false); router.push("/procedures?new=1"); }}
+                  className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors">
+                  New Procedure
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

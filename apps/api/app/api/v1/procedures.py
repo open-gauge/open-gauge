@@ -88,6 +88,13 @@ def update_procedure(
     if not proc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
     data = body.model_dump(exclude_unset=True)
+
+    new_proc_id = data.get("proc_id")
+    if new_proc_id and new_proc_id != proc.proc_id:
+        existing = db.query(Procedure).filter(Procedure.proc_id == new_proc_id).first()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Procedure ID already exists")
+
     for field in ("equipment", "materials", "environment", "steps", "acceptance_criteria"):
         if field in data and data[field]:
             data[field] = [item.model_dump() if hasattr(item, "model_dump") else item for item in data[field]]

@@ -20,7 +20,7 @@ class ChannelListItem(BaseModel):
 
 
 class AssetCreate(BaseModel):
-    asset_id: str = Field(min_length=1, max_length=20, pattern=r"^MAR-\d{5}$")
+    asset_id: str = Field(min_length=1, max_length=20)
     asset_type: AssetType
     name: str = Field(min_length=1, max_length=255)
     description: str | None = None
@@ -58,11 +58,11 @@ class AssetCreate(BaseModel):
 
 
 class AssetDuplicateRequest(BaseModel):
-    new_asset_id: str = Field(min_length=1, max_length=20, pattern=r"^MAR-\d{5}$")
+    new_asset_id: str = Field(min_length=1, max_length=20)
 
 
 class AssetUpdate(BaseModel):
-    asset_id: str | None = Field(None, min_length=1, max_length=20, pattern=r"^MAR-\d{5}$")
+    asset_id: str | None = Field(None, min_length=1, max_length=20)
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     manufacturer: str | None = None

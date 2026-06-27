@@ -347,12 +347,10 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-const ASSET_ID_PATTERN = /^MAR-\d{5}$/;
-
 function validateForm(form: EditFormState): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!ASSET_ID_PATTERN.test(form.asset_id.trim())) errors.asset_id = "Format: MAR-XXXXX (5 digits)";
+  if (!form.asset_id.trim()) errors.asset_id = "Asset ID is required";
   if (!form.owner.trim()) errors.owner = "Owner is required";
   if (!form.name.trim()) errors.name = "Name is required";
   if (!form.manufacturer.trim()) errors.manufacturer = "Manufacturer is required";
@@ -998,7 +996,7 @@ function OverviewTab({
           <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
             <h3 className="text-sm font-semibold text-mar-text mb-4">General</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <EditInput label="Asset ID" value={form.asset_id} onChange={set("asset_id")} error={errors.asset_id} required placeholder="MAR-00001" />
+              <EditInput label="Asset ID" value={form.asset_id} onChange={set("asset_id")} error={errors.asset_id} required placeholder="e.g. MAR-00001" />
               <EditInput label="Name" value={form.name} onChange={set("name")} error={errors.name} required placeholder="e.g. PT100 Temperature Sensor" />
               <EditInput label="Manufacturer" value={form.manufacturer} onChange={set("manufacturer")} error={errors.manufacturer} required placeholder="e.g. WIKA" />
               <EditInput label="Model" value={form.model} onChange={set("model")} error={errors.model} required placeholder="e.g. TF53" />
