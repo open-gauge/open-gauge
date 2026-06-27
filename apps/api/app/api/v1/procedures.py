@@ -1,12 +1,13 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user
 from ...models.calibration_method import Procedure
 from ...models.user import User
+from ...repositories import audit_log as audit_log_repo
 from ...repositories import stored_file as file_repo
 from ...schemas.procedure import ProcedureCreate, ProcedureResponse, ProcedureUpdate
 from ...schemas.stored_file import StoredFileResponse
@@ -33,6 +34,7 @@ def list_procedures(
 @router.post("", response_model=ProcedureResponse, status_code=status.HTTP_201_CREATED)
 def create_procedure(
     body: ProcedureCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ProcedureResponse:
@@ -48,6 +50,17 @@ def create_procedure(
     db.add(proc)
     db.commit()
     db.refresh(proc)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="procedure.created",
+        entity_type="procedure",
+        entity_id=proc.id,
+        after_state={"name": proc.name, "proc_id": proc.proc_id},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     return proc
 
 
@@ -67,8 +80,9 @@ def get_procedure(
 def update_procedure(
     proc_pk: uuid.UUID,
     body: ProcedureUpdate,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> ProcedureResponse:
     proc = db.query(Procedure).filter(Procedure.id == proc_pk).first()
     if not proc:
@@ -81,20 +95,43 @@ def update_procedure(
         setattr(proc, k, v)
     db.commit()
     db.refresh(proc)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="procedure.updated",
+        entity_type="procedure",
+        entity_id=proc.id,
+        after_state={"name": proc.name, "proc_id": proc.proc_id, "fields_changed": list(data.keys())},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     return proc
 
 
 @router.delete("/{proc_pk}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_procedure(
     proc_pk: uuid.UUID,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     proc = db.query(Procedure).filter(Procedure.id == proc_pk).first()
     if not proc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
     proc.is_active = False
     db.commit()
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="procedure.deactivated",
+        entity_type="procedure",
+        entity_id=proc.id,
+        after_state={"name": proc.name, "proc_id": proc.proc_id},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 # ---------------------------------------------------------------------------

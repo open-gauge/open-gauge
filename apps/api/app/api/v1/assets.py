@@ -75,6 +75,7 @@ def list_assets(
 @router.post("", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
 def create_asset(
     body: AssetCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AssetResponse:
@@ -82,6 +83,18 @@ def create_asset(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Asset ID already exists")
     data = body.model_dump()
     asset = asset_repo.create(db, created_by=current_user.id, **data)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.created",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        after_state={"name": asset.name, "asset_type": asset.asset_type},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     return _enrich(asset, db)
 
 
@@ -177,6 +190,7 @@ def update_asset(
 @router.delete("/{asset_pk}", status_code=status.HTTP_204_NO_CONTENT)
 def retire_asset(
     asset_pk: uuid.UUID,
+    request: Request,
     reason: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -185,12 +199,25 @@ def retire_asset(
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     asset_repo.retire(db, asset, retired_by=current_user.id, reason=reason)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.retired",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        after_state={"reason": reason} if reason else None,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.post("/{asset_pk}/duplicate", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
 def duplicate_asset(
     asset_pk: uuid.UUID,
     body: AssetDuplicateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AssetResponse:
@@ -200,6 +227,18 @@ def duplicate_asset(
     if asset_repo.get_by_asset_id(db, body.new_asset_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Asset ID already exists")
     new_asset = asset_repo.duplicate(db, source=source, new_asset_id=body.new_asset_id, created_by=current_user.id)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.duplicated",
+        entity_type="asset",
+        entity_id=new_asset.id,
+        entity_asset_id=new_asset.asset_id,
+        after_state={"duplicated_from": source.asset_id},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     return _enrich(new_asset, db)
 
 
@@ -255,6 +294,7 @@ def list_asset_files(
 @router.post("/{asset_pk}/files", response_model=StoredFileResponse, status_code=status.HTTP_201_CREATED)
 async def upload_asset_file(
     asset_pk: uuid.UUID,
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -283,6 +323,19 @@ async def upload_asset_file(
         uploaded_by=current_user.id,
     )
 
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.file_uploaded",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        after_state={"filename": record.original_filename},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     resp = StoredFileResponse.model_validate(record)
     resp.url = storage_svc.get_presigned_url(record.storage_path, record.bucket)
     return resp
@@ -292,14 +345,28 @@ async def upload_asset_file(
 def delete_asset_file(
     asset_pk: uuid.UUID,
     file_id: uuid.UUID,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> None:
+    asset = asset_repo.get_by_id(db, asset_pk)
     f = file_repo.get_by_id(db, file_id)
     if not f or f.entity_id != asset_pk:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     storage_svc.delete_file(f.storage_path, f.bucket)
     file_repo.delete(db, file_id)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.file_deleted",
+        entity_type="asset",
+        entity_id=asset_pk,
+        entity_asset_id=asset.asset_id if asset else None,
+        after_state={"filename": f.original_filename},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.get("/{asset_pk}/label")

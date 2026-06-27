@@ -104,6 +104,23 @@ export const PROCEDURE_DIFFICULTY_LABEL: Record<string, string> = {
   Advanced:     "Advanced",
 };
 
+// ---------------------------------------------------------------------------
+// Audit log entity types
+// ---------------------------------------------------------------------------
+export const AUDIT_ENTITY_LABEL: Record<string, string> = {
+  asset:       "Asset",
+  calibration: "Calibration",
+  procedure:   "Procedure",
+  location:    "Location",
+};
+
+export const AUDIT_ENTITY_STYLE: Record<string, string> = {
+  asset:       "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40",
+  calibration: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40",
+  procedure:   "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/40",
+  location:    "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40",
+};
+
 export const SUBTYPE_LABEL: Record<string, string> = {
   // physical quantities
   temperature:        "Temperature",

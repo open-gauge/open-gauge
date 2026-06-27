@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from ...dependencies.deps import get_current_user
 from ...models.calibration_method import Procedure
 from ...models.user import User
 from ...repositories import asset as asset_repo
+from ...repositories import audit_log as audit_log_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import stored_file as sf_repo
 from ...schemas.calibration import (
@@ -124,6 +125,7 @@ def list_calibrations(
 @router.post("", response_model=CalibrationResponse, status_code=status.HTTP_201_CREATED)
 def create_calibration(
     body: CalibrationCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CalibrationResponse:
@@ -145,6 +147,23 @@ def create_calibration(
         logger.warning("Certificate generation failed for calibration %s", cal.id, exc_info=True)
 
     db.refresh(cal)
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="calibration.created",
+        entity_type="calibration",
+        entity_id=cal.id,
+        entity_asset_id=asset.asset_id,
+        after_state={
+            "calibration_version": cal.calibration_version,
+            "calibration_type": cal.calibration_type,
+        },
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return cal
 
 
