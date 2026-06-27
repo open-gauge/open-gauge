@@ -29,6 +29,12 @@ export function authHeader(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
+export async function apiBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+  const res = await fetch(`${getBaseUrl()}${path}`, options);
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res.blob();
+}
+
 export async function apiUpload<T>(path: string, form: FormData, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${getBaseUrl()}${path}`, {
     method: "POST",

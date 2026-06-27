@@ -7,7 +7,6 @@ import CategoryDistributionChart from "@/components/dashboard/category-distribut
 import RecentAssets from "@/components/dashboard/recent-assets";
 import StatsCards from "@/components/dashboard/stats-cards";
 import UpcomingTable from "@/components/dashboard/upcoming-table";
-import { DocumentIcon } from "@/components/icons";
 import {
   getActivity,
   getAssetTypeDistribution,
@@ -41,13 +40,6 @@ export default async function DashboardPage() {
             Real-time status across all sites, labs and instrumentation.
           </p>
         </div>
-        <button
-          type="button"
-          className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <DocumentIcon size={14} />
-          Generate report
-        </button>
       </div>
 
       {/* Stats */}

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   deleteAssetFile,
+  fetchAssetLabelBlob,
   getAssetAuditLogs,
   getAssetCalibrations,
   getAssetFiles,
@@ -2151,6 +2152,200 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "activity", label: "Activity" },
 ];
 
+// ---------------------------------------------------------------------------
+// Calibration ring chart — 2/3 dates + 1/3 ring, full = just calibrated, empty = overdue
+// ---------------------------------------------------------------------------
+function CalibrationRingCard({
+  lastCal,
+  dueAt,
+}: {
+  lastCal: string | null;
+  dueAt: string | null;
+  status: string;
+}) {
+  const { days, progress, ringColor } = useMemo(() => {
+    if (!dueAt) return { days: null, progress: 0, ringColor: "#9ca3af" };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueAt.includes("T") ? dueAt : dueAt + "T00:00:00");
+    due.setHours(0, 0, 0, 0);
+
+    const daysUntil = Math.round((due.getTime() - today.getTime()) / 86400000);
+
+    let prog = 0;
+    if (lastCal) {
+      const last = new Date(lastCal.includes("T") ? lastCal : lastCal + "T00:00:00");
+      last.setHours(0, 0, 0, 0);
+      const totalDays = Math.round((due.getTime() - last.getTime()) / 86400000);
+      if (totalDays > 0) prog = Math.max(0, Math.min(1, daysUntil / totalDays));
+    }
+
+    const color = daysUntil > 30 ? "#22c55e" : daysUntil > 0 ? "#f59e0b" : "#ef4444";
+    return { days: daysUntil, progress: prog, ringColor: color };
+  }, [lastCal, dueAt]);
+
+  const R = 22;
+  const circumference = 2 * Math.PI * R;
+  const dashOffset = circumference * (1 - progress);
+
+  return (
+    <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
+      <div className="flex items-stretch gap-3">
+        {/* Dates — 2/3 width, 4 lines total */}
+        <div className="w-2/3 space-y-1.5">
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Last</p>
+            <p className="text-sm font-semibold font-mono text-mar-text tabular-nums">{fmtDate(lastCal)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Due</p>
+            <p className="text-sm font-semibold font-mono text-mar-text tabular-nums">{fmtDate(dueAt)}</p>
+          </div>
+        </div>
+        {/* Ring — 1/3 width, height matches dates block */}
+        <div className="w-1/3 flex items-center justify-center">
+          <div className="relative h-full aspect-square">
+            <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90" aria-hidden="true">
+              <circle cx={28} cy={28} r={R} fill="none" strokeWidth={4} className="stroke-mar-border" />
+              <circle
+                cx={28} cy={28} r={R}
+                fill="none"
+                strokeWidth={4}
+                stroke={ringColor}
+                strokeDasharray={circumference}
+                strokeDashoffset={dashOffset}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-[10px] font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+                {days !== null ? String(days) : "—"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Label preview card — hover to reveal download; cascading size → format dropdowns
+// ---------------------------------------------------------------------------
+function LabelPreviewCard({ assetId }: { assetId: string }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<"2x2" | "4x2" | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAssetLabelBlob(assetId, "4x2", "png")
+      .then((blob) => { if (!cancelled) setPreviewUrl(URL.createObjectURL(blob)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [assetId]);
+
+  useEffect(() => {
+    if (!sizeOpen) return;
+    function onMouseDown(e: MouseEvent) {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setSizeOpen(false);
+        setSelectedSize(null);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [sizeOpen]);
+
+  async function handleFormatSelect(fmt: "png" | "jpg" | "pdf") {
+    if (!selectedSize) return;
+    const size = selectedSize;
+    setSizeOpen(false);
+    setSelectedSize(null);
+    setDownloading(true);
+    try {
+      const blob = await fetchAssetLabelBlob(assetId, size, fmt);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `label-${assetId}-${size}.${fmt}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div ref={cardRef} className="bg-mar-surface border border-mar-border rounded-xl p-4 relative">
+      {/* Sticker image is itself the button */}
+      <button
+        type="button"
+        disabled={downloading}
+        onClick={() => { setSizeOpen((o) => !o); setSelectedSize(null); }}
+        className="relative h-full group block disabled:opacity-60"
+      >
+        {previewUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt="Asset label — click to download"
+              className="w-full object-contain rounded border border-mar-border transition-opacity group-hover:opacity-40"
+            />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              <DownloadIcon size={22} className="text-mar-text drop-shadow" />
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center w-full h-16 rounded border border-mar-border bg-mar-surface-alt group-hover:bg-mar-border transition-colors">
+            <QrCodeIcon size={20} className="text-gray-300" />
+          </div>
+        )}
+      </button>
+
+      {/* Cascading dropdowns: size first, format appears to its right */}
+      {sizeOpen && (
+        <div className="absolute left-4 right-4 top-full mt-1 z-20 flex gap-2">
+          <div className="flex-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg overflow-hidden">
+            {(["2x2", "4x2"] as const).map((sz) => (
+              <button
+                key={sz}
+                type="button"
+                onClick={() => setSelectedSize(sz === selectedSize ? null : sz)}
+                className={`w-full text-left px-3 py-2 text-xs transition-colors border-b border-mar-border last:border-b-0 ${
+                  selectedSize === sz
+                    ? "bg-mar-surface-alt text-mar-text font-medium"
+                    : "text-mar-text hover:bg-mar-surface-alt"
+                }`}
+              >
+                {sz === "2x2" ? "2×2 in" : "4×2 in"}
+              </button>
+            ))}
+          </div>
+          {selectedSize && (
+            <div className="flex-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg overflow-hidden">
+              {(["png", "jpg", "pdf"] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  onClick={() => handleFormatSelect(fmt)}
+                  className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors border-b border-mar-border last:border-b-0"
+                >
+                  {fmt.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AssetProfilePage() {
   const params = useParams();
   const id = params.id as string;
@@ -2433,14 +2628,12 @@ export default function AssetProfilePage() {
             <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.health_score}%` }} />
           </div>
         </div>
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
-          <p className="text-xs text-gray-400 mb-1">Last calibration</p>
-          <p className="text-xl font-semibold font-mono text-mar-text tabular-nums">{fmtDate(profile.last_calibration_date)}</p>
-        </div>
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
-          <p className="text-xs text-gray-400 mb-1">Next due</p>
-          <p className="text-xl font-semibold font-mono text-mar-text tabular-nums">{fmtDate(profile.next_due_at)}</p>
-        </div>
+        <CalibrationRingCard
+          lastCal={profile.last_calibration_date}
+          dueAt={profile.next_due_at}
+          status={profile.calibration_status}
+        />
+        <LabelPreviewCard assetId={profile.id} />
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <p className="text-xs text-gray-400 mb-1">Calibrations</p>
           <p className="text-2xl font-bold text-mar-text">{profile.calibration_count}</p>

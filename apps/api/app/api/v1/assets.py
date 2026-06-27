@@ -3,6 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
@@ -299,3 +300,56 @@ def delete_asset_file(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     storage_svc.delete_file(f.storage_path, f.bucket)
     file_repo.delete(db, file_id)
+
+
+@router.get("/{asset_pk}/label")
+def get_asset_label(
+    asset_pk: uuid.UUID,
+    size: str = Query("4x2", pattern="^(2x2|4x2)$"),
+    format: str = Query("png", pattern="^(png|jpg|pdf)$"),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Response:
+    """Generate and return an asset label/sticker in the requested size and format."""
+    from ...services.label_service import generate_label
+    from ...models.calibration_method import Procedure
+    from ...models.team import Team
+
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    # Latest calibration
+    cals = cal_repo.list_by_asset(db, asset_pk, skip=0, limit=1)
+    latest_cal = cals[0] if cals else None
+
+    # A few data points (just need units for equation)
+    from ...repositories import calibration as _cal_repo
+    points = _cal_repo.list_points(db, latest_cal.id) if latest_cal else []
+
+    # Owner team name
+    owner_name: str | None = None
+    if asset.owner:
+        team = db.query(Team).filter(Team.id == asset.owner).first()
+        if team:
+            owner_name = team.name
+
+    from ...core.config import settings
+    content, content_type = generate_label(
+        asset=asset,
+        calibration=latest_cal,
+        points=points,
+        owner_name=owner_name,
+        size=size,
+        fmt=format,
+        base_url=settings.frontend_url,
+    )
+
+    ext = "pdf" if format == "pdf" else ("jpg" if format == "jpg" else "png")
+    filename = f"label-{asset.asset_id}-{size}.{ext}"
+
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

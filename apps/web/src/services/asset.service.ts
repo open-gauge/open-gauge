@@ -1,4 +1,4 @@
-import { apiFetch, apiUpload, authHeader } from "@/lib/api";
+import { apiBlob, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetCreateBody, AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
 import type { CalibrationRecord, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
@@ -159,6 +159,17 @@ export async function listProcedures(physicalQuantity?: string): Promise<{ id: s
   return apiFetch(`/api/v1/calibrations/procedures${query}`, {
     headers: tokenHeader(),
   });
+}
+
+export async function fetchAssetLabelBlob(
+  assetId: string,
+  size: "2x2" | "4x2",
+  format: "png" | "jpg" | "pdf",
+): Promise<Blob> {
+  return apiBlob(
+    `/api/v1/assets/${assetId}/label?size=${encodeURIComponent(size)}&format=${format}`,
+    { headers: tokenHeader() },
+  );
 }
 
 export async function getCalibrationCertificateUrl(calId: string): Promise<{ url: string; filename: string }> {
