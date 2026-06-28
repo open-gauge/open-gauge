@@ -453,6 +453,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [tagsInput, setTagsInput] = useState(() => (proc.tags ?? []).join(", "));
 
   // Stable keys for step components so reordering doesn't lose internal state
   const nextKeyRef = useRef(0);
@@ -476,6 +477,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
   function handleStartEdit() {
     setDraft(deepCopy(proc));
     setStepKeys((proc.steps ?? []).map(() => nextKeyRef.current++));
+    setTagsInput((proc.tags ?? []).join(", "));
     setIsEditing(true);
     setSaveError(null);
   }
@@ -483,6 +485,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
   function handleCancel() {
     setDraft(deepCopy(proc));
     setStepKeys((proc.steps ?? []).map(() => nextKeyRef.current++));
+    setTagsInput((proc.tags ?? []).join(", "));
     setIsEditing(false);
     setSaveError(null);
   }
@@ -490,11 +493,15 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
   async function handleSave() {
     if (!draft.proc_id?.trim()) { setSaveError("Procedure ID is required"); return; }
     if (!draft.name.trim()) { setSaveError("Name is required"); return; }
+    // Flush any pending tags still in the text box
+    const pendingTags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    const finalDraft = { ...draft, tags: pendingTags.length > 0 ? pendingTags : null };
     setSaving(true);
     setSaveError(null);
     try {
-      const updated = await updateProcedure(draft.id, buildUpdateBody(draft));
+      const updated = await updateProcedure(finalDraft.id, buildUpdateBody(finalDraft));
       setDraft(updated);
+      setTagsInput((updated.tags ?? []).join(", "));
       setIsEditing(false);
       onSaved(updated);
     } catch (err) {
@@ -670,6 +677,10 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           <div className="flex items-center gap-2">
             {isEditing ? (
               <>
+                <button type="button" onClick={() => setDeleteModalOpen(true)} disabled={saving}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-500 hover:text-red-600 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50">
+                  <TrashIcon size={12} />Remove
+                </button>
                 <button type="button" onClick={handleCancel} disabled={saving}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-50">
                   <XIcon size={12} />Cancel
@@ -682,10 +693,6 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               </>
             ) : (
               <>
-                <button type="button" onClick={() => setDeleteModalOpen(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-500 hover:text-red-600 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">
-                  <TrashIcon size={12} />Remove
-                </button>
                 <button type="button"
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
                   <PrinterIcon size={12} />Print
@@ -763,7 +770,23 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           </p>
         )}
 
-        {hasTags && !isEditing && (
+        {isEditing ? (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Tags</p>
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              onBlur={(e) => {
+                const tags = e.target.value.split(",").map((t) => t.trim()).filter(Boolean);
+                setDraftField("tags", tags.length > 0 ? tags : null);
+              }}
+              placeholder="tag1, tag2, tag3"
+              className={INPUT_CLS}
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Comma-separated</p>
+          </div>
+        ) : hasTags ? (
           <div className="flex flex-wrap gap-1.5">
             {(draft.tags ?? []).map((tag) => (
               <span key={tag} className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-mar-accent/10 text-mar-accent border border-mar-accent/20">
@@ -771,7 +794,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               </span>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* ── Equipment / Materials / Environment ── */}

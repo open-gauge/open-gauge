@@ -20,6 +20,7 @@ def list_locations(
     organization_id: uuid.UUID | None = None,
     parent_location_id: uuid.UUID | None = None,
     is_active: bool | None = None,
+    is_calibration_lab: bool | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[LocationResponse]:
@@ -30,6 +31,7 @@ def list_locations(
         organization_id=organization_id,
         parent_location_id=parent_location_id,
         is_active=is_active,
+        is_calibration_lab=is_calibration_lab,
     )
 
 

@@ -21,6 +21,7 @@ class Location(Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     latitude: Mapped[float | None] = mapped_column(Numeric(10, 8), nullable=True)
     longitude: Mapped[float | None] = mapped_column(Numeric(11, 8), nullable=True)
+    is_calibration_lab: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

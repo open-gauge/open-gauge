@@ -8,6 +8,7 @@ import type {
   DistributionType, WizardRawPoint,
 } from "@/types/calibration";
 import { analyzeCalibration, createCalibration, listAssets, listProcedures } from "@/services/asset.service";
+import { listCalibrationLabs } from "@/services/location.service";
 import { COLORS } from "@/lib/tokens";
 import { getUnitsForQuantity, getOutputUnits } from "@/lib/sensor-options";
 import { useAuth } from "@/lib/auth-context";
@@ -197,6 +198,7 @@ interface Step1State {
   coefficients_only: boolean;
   internal_procedure_id: string;
   internal_reference_asset_id: string;
+  calibration_location_id: string;
   temperature_value: string;
   temperature_unit: string;
   pressure_value: string;
@@ -241,6 +243,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     coefficients_only: false,
     internal_procedure_id: "",
     internal_reference_asset_id: "",
+    calibration_location_id: "",
     temperature_value: "",
     temperature_unit: "°C",
     pressure_value: "",
@@ -251,9 +254,10 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     env_expanded: false,
   });
 
-  // Reference assets and calibration methods (loaded once)
+  // Reference assets, calibration methods, and calibration labs (loaded once)
   const [referenceAssets, setReferenceAssets] = useState<{ id: string; name: string; asset_id: string }[]>([]);
   const [calibrationMethods, setCalibrationMethods] = useState<{ id: string; name: string }[]>([]);
+  const [calibrationLabs, setCalibrationLabs] = useState<{ id: string; name: string }[]>([]);
 
   // Step 2: raw data
   const [inputMode, setInputMode] = useState<"manual" | "csv">("manual");
@@ -335,7 +339,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     isNumOrEmpty(step1.humidity_value);
   const step2Valid = step1.coefficients_only || validPoints.length >= 2;
 
-  // Load reference assets on mount
+  // Load reference assets and calibration labs on mount
   useEffect(() => {
     listAssets({ limit: 200, is_active: true })
       .then((assets) =>
@@ -345,6 +349,10 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             .map((a) => ({ id: a.id, name: a.name, asset_id: a.asset_id }))
         )
       )
+      .catch(() => {});
+
+    listCalibrationLabs()
+      .then((labs) => setCalibrationLabs(labs.map((l) => ({ id: l.id, name: l.name }))))
       .catch(() => {});
   }, []);
 
@@ -551,6 +559,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         external_lab_certificate_number: step1.external_lab_certificate_number || null,
         internal_procedure_id: step1.internal_procedure_id || null,
         internal_reference_asset_id: step1.internal_reference_asset_id || null,
+        calibration_location_id: step1.calibration_location_id || null,
         calibration_interval: parseInt(step1.calibration_interval) || null,
         temperature: temperatureCelsius,
         humidity: humVal,
@@ -609,6 +618,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               currentUserName={user.name}
               referenceAssets={referenceAssets}
               calibrationMethods={calibrationMethods}
+              calibrationLabs={calibrationLabs}
               onReferenceUnitChange={setReferenceUnit}
               onMeasuredUnitChange={setMeasuredUnit}
             />
@@ -755,7 +765,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
 
 function Step1({
   state, onChange, profile, currentUserName, referenceAssets, calibrationMethods,
-  onReferenceUnitChange, onMeasuredUnitChange,
+  calibrationLabs, onReferenceUnitChange, onMeasuredUnitChange,
 }: {
   state: Step1State;
   onChange: (s: Step1State) => void;
@@ -763,6 +773,7 @@ function Step1({
   currentUserName: string;
   referenceAssets: { id: string; name: string; asset_id: string }[];
   calibrationMethods: { id: string; name: string }[];
+  calibrationLabs: { id: string; name: string }[];
   onReferenceUnitChange: (u: string) => void;
   onMeasuredUnitChange: (u: string) => void;
 }) {
@@ -851,7 +862,7 @@ function Step1({
         />
       </div>
 
-      {/* Calibration type */}
+      {/* Calibration type + lab */}
       <div className="grid grid-cols-2 gap-4">
         <WSelect
           label="Calibration type"
@@ -862,6 +873,13 @@ function Step1({
             { value: "internal", label: "Internal" },
           ]}
           required
+        />
+        <WSelect
+          label="Calibration lab"
+          value={state.calibration_location_id}
+          onChange={set("calibration_location_id") as (v: string) => void}
+          options={calibrationLabs.map((l) => ({ value: l.id, label: l.name }))}
+          placeholder={calibrationLabs.length === 0 ? "No calibration labs configured" : "Select lab…"}
         />
       </div>
 

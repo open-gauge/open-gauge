@@ -20,6 +20,7 @@ def list_locations(
     organization_id: uuid.UUID | None = None,
     parent_location_id: uuid.UUID | None = None,
     is_active: bool | None = None,
+    is_calibration_lab: bool | None = None,
 ) -> list[dict]:
     q = db.query(Location)
     if organization_id:
@@ -28,6 +29,8 @@ def list_locations(
         q = q.filter(Location.parent_location_id == parent_location_id)
     if is_active is not None:
         q = q.filter(Location.is_active == is_active)
+    if is_calibration_lab is not None:
+        q = q.filter(Location.is_calibration_lab == is_calibration_lab)
     locations = q.order_by(Location.name).offset(skip).limit(limit).all()
 
     if not locations:
@@ -56,6 +59,7 @@ def list_locations(
             "address": loc.address,
             "latitude": float(loc.latitude) if loc.latitude is not None else None,
             "longitude": float(loc.longitude) if loc.longitude is not None else None,
+            "is_calibration_lab": loc.is_calibration_lab,
             "is_active": loc.is_active,
             "archived_at": loc.archived_at,
             "created_by": loc.created_by,

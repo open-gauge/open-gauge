@@ -14,6 +14,7 @@ class LocationCreate(BaseModel):
     address: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    is_calibration_lab: bool = False
 
 
 class LocationUpdate(BaseModel):
@@ -25,6 +26,7 @@ class LocationUpdate(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     parent_location_id: uuid.UUID | None = None
+    is_calibration_lab: bool | None = None
 
 
 class LocationResponse(BaseModel):
@@ -38,6 +40,7 @@ class LocationResponse(BaseModel):
     address: str | None
     latitude: float | None
     longitude: float | None
+    is_calibration_lab: bool = False
     is_active: bool
     archived_at: datetime | None
     created_by: uuid.UUID

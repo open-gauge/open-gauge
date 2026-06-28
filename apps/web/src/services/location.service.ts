@@ -14,6 +14,12 @@ export async function listAllLocations(): Promise<LocationItem[]> {
   });
 }
 
+export async function listCalibrationLabs(): Promise<LocationItem[]> {
+  return apiFetch<LocationItem[]>("/api/v1/locations?is_calibration_lab=true&is_active=true&limit=500", {
+    headers: tokenHeader(),
+  });
+}
+
 export async function getLocation(id: string): Promise<LocationItem> {
   return apiFetch<LocationItem>(`/api/v1/locations/${id}`, {
     headers: tokenHeader(),
@@ -29,6 +35,7 @@ export interface LocationUpdateBody {
   latitude?: number | null;
   longitude?: number | null;
   parent_location_id?: string | null;
+  is_calibration_lab?: boolean;
 }
 
 export async function updateLocation(id: string, body: LocationUpdateBody): Promise<LocationItem> {
@@ -49,6 +56,7 @@ export interface LocationCreateBody {
   latitude?: number | null;
   longitude?: number | null;
   parent_location_id?: string | null;
+  is_calibration_lab?: boolean;
 }
 
 export async function createLocation(body: LocationCreateBody): Promise<LocationItem> {

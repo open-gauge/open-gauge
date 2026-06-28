@@ -922,9 +922,7 @@ export default function AssetsPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
   const [newAssetOpen, setNewAssetOpen] = useState(false);
-  const [newMenuOpen, setNewMenuOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
-  const newMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -933,6 +931,14 @@ export default function AssetsPage() {
     const inclDes = params.get("include_descendants") === "true";
     if (lid) setLocationFilter({ id: lid, name: lname ?? lid, includeDescendants: inclDes });
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      setNewAssetOpen(true);
+      router.replace("/assets");
+    }
+  }, [router]);
 
   useEffect(() => {
     setLoading(true);
@@ -953,17 +959,6 @@ export default function AssetsPage() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [filterOpen]);
-
-  useEffect(() => {
-    if (!newMenuOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
-        setNewMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [newMenuOpen]);
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -1120,29 +1115,12 @@ export default function AssetsPage() {
             <DownloadIcon size={13} />
             Export
           </button>
-          <div className="relative" ref={newMenuRef}>
-            <button type="button"
-              onClick={() => setNewMenuOpen((o) => !o)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-              <PlusIcon size={13} />
-              New
-              <ChevronDownIcon size={11} />
-            </button>
-            {newMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg z-20 py-1 min-w-[150px]">
-                <button type="button"
-                  onClick={() => { setNewMenuOpen(false); setNewAssetOpen(true); }}
-                  className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors">
-                  New Asset
-                </button>
-                <button type="button"
-                  onClick={() => { setNewMenuOpen(false); router.push("/procedures?new=1"); }}
-                  className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors">
-                  New Procedure
-                </button>
-              </div>
-            )}
-          </div>
+          <button type="button"
+            onClick={() => setNewAssetOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+            <PlusIcon size={13} />
+            New asset
+          </button>
         </div>
       </div>
 

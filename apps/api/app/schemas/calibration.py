@@ -114,6 +114,7 @@ class CalibrationCreate(BaseModel):
     internal_procedure_id: uuid.UUID | None = None
     external_lab_certificate_number: str | None = None
     daq_id: uuid.UUID | None = None
+    calibration_location_id: uuid.UUID | None = None
 
     # Environmental conditions (canonical units: °C, %RH, Pa)
     temperature: float | None = None
@@ -173,6 +174,7 @@ class CalibrationResponse(BaseModel):
     external_lab_certificate_number: str | None
     daq_id: uuid.UUID | None
     calibration_data_id: uuid.UUID | None
+    calibration_location_id: uuid.UUID | None = None
 
     # Environmental conditions
     temperature: float | None

@@ -36,6 +36,7 @@ class Calibration(Base):
     external_lab_certificate_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     daq_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("daq.id"), nullable=True)
     calibration_data_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("calibration_data.id"), nullable=True)
+    calibration_location_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True)
 
     # Environmental conditions (canonical units: °C, %RH, Pa)
     temperature: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)

@@ -6,6 +6,8 @@ import { useAuth } from "@/lib/auth-context";
 import {
   AssetRegistryIcon,
   BellIcon,
+  ChevronDownIcon,
+  PlusIcon,
   SearchIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -40,6 +42,10 @@ export default function TopBar() {
   const [avatarOpen, setAvatarOpen] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
 
+  // + New dropdown
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement>(null);
+
   // Search
   const [query, setQuery] = useState("");
   const [allAssets, setAllAssets] = useState<AssetListItem[]>([]);
@@ -58,6 +64,16 @@ export default function TopBar() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [avatarOpen]);
+
+  // Close + New dropdown on outside click
+  useEffect(() => {
+    if (!newMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!newMenuRef.current?.contains(e.target as Node)) setNewMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [newMenuOpen]);
 
   // Close search dropdown on outside click
   useEffect(() => {
@@ -171,13 +187,35 @@ export default function TopBar() {
 
       {/* Actions (right) */}
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-        >
-          <span className="text-base leading-none">+</span>
-          New Asset
-        </button>
+        <div className="relative" ref={newMenuRef}>
+          <button
+            type="button"
+            onClick={() => setNewMenuOpen((o) => !o)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            <PlusIcon size={13} />
+            New
+            <ChevronDownIcon size={11} />
+          </button>
+          {newMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg z-50 py-1 min-w-[150px]">
+              <button
+                type="button"
+                onClick={() => { setNewMenuOpen(false); router.push("/assets?new=1"); }}
+                className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors"
+              >
+                New Asset
+              </button>
+              <button
+                type="button"
+                onClick={() => { setNewMenuOpen(false); router.push("/procedures?new=1"); }}
+                className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors"
+              >
+                New Procedure
+              </button>
+            </div>
+          )}
+        </div>
 
         <button
           type="button"

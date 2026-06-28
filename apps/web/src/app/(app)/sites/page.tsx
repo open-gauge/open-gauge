@@ -143,6 +143,7 @@ interface LocationEditForm {
   latitude: string;
   longitude: string;
   parent_location_id: string;
+  is_calibration_lab: boolean;
 }
 
 function locationToForm(loc: LocationItem): LocationEditForm {
@@ -155,6 +156,7 @@ function locationToForm(loc: LocationItem): LocationEditForm {
     latitude: loc.latitude != null ? String(loc.latitude) : "",
     longitude: loc.longitude != null ? String(loc.longitude) : "",
     parent_location_id: loc.parent_location_id ?? "",
+    is_calibration_lab: loc.is_calibration_lab,
   };
 }
 
@@ -173,6 +175,7 @@ function formToUpdateBody(form: LocationEditForm): LocationUpdateBody {
     latitude: parseNum(form.latitude),
     longitude: parseNum(form.longitude),
     parent_location_id: form.parent_location_id || null,
+    is_calibration_lab: form.is_calibration_lab,
   };
 }
 
@@ -250,6 +253,22 @@ function FSelect({ label, value, onChange, options, required, placeholder }: {
   );
 }
 
+function FCheckbox({ label, checked, onChange }: {
+  label: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 rounded border-mar-border-md accent-mar-accent"
+      />
+      <span className="text-sm text-mar-text">{label}</span>
+    </label>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Tree node component
 // ---------------------------------------------------------------------------
@@ -294,6 +313,14 @@ function TreeItem({
           <TypeIcon type={node.location_type} size={13} />
         </span>
         <span className="flex-1 truncate text-xs">{node.name}</span>
+        {node.is_calibration_lab && (
+          <span
+            title="This is a location where sensors are calibrated"
+            className="flex-shrink-0 px-1 py-px rounded text-[9px] font-bold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+          >
+            LAB
+          </span>
+        )}
         {displayCount > 0 && (
           <span className={`text-[10px] tabular-nums flex-shrink-0 ${isSelected ? "text-mar-accent/80" : "text-gray-400"}`}>
             {displayCount}
@@ -498,6 +525,10 @@ function LocationDetail({
   const infoCards: { label: string; value: React.ReactNode }[] = [];
   if (location.location_type) infoCards.push({ label: "Type", value: location.location_type });
   if (location.code)          infoCards.push({ label: "Code", value: <span className="font-mono text-xs">{location.code}</span> });
+  if (location.is_calibration_lab) infoCards.push({
+    label: "Calibration Lab",
+    value: <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40">Yes</span>,
+  });
   if (location.address)       infoCards.push({ label: "Address", value: location.address });
   if (hasMap) infoCards.push({
     label: "GPS Coordinates",
@@ -583,6 +614,16 @@ function LocationDetail({
             {/* Center: name + description */}
             <div className="flex-1 text-center min-w-0">
               <h2 className="text-xl font-bold text-mar-text leading-tight">{location.name}</h2>
+              {location.is_calibration_lab && (
+                <div className="flex justify-center mt-1">
+                  <span className="relative group/lab inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40 cursor-default">
+                    Calibration Lab
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/lab:block w-56 bg-gray-900 dark:bg-gray-700 text-white text-[10px] rounded-lg px-3 py-2 z-50 shadow-lg whitespace-normal text-left leading-relaxed">
+                      This is a location where sensors are calibrated.
+                    </span>
+                  </span>
+                </div>
+              )}
               {location.description && (
                 <p className="mt-1 text-sm text-gray-500 leading-relaxed">{location.description}</p>
               )}
@@ -656,6 +697,11 @@ function LocationDetail({
             options={parentOptions}
             placeholder="None (root)"
           />
+          <FCheckbox
+            label="Calibration laboratory"
+            checked={form.is_calibration_lab}
+            onChange={(v) => setForm((prev) => ({ ...prev, is_calibration_lab: v }))}
+          />
           <div className="pt-1 border-t border-mar-border">
             <button
               type="button"
@@ -726,12 +772,13 @@ interface NewLocForm {
   latitude: string;
   longitude: string;
   parent_location_id: string;
+  is_calibration_lab: boolean;
 }
 
 const EMPTY_NEW_FORM: NewLocForm = {
   name: "", location_type: "", description: "",
   code: "", address: "", latitude: "", longitude: "",
-  parent_location_id: "",
+  parent_location_id: "", is_calibration_lab: false,
 };
 
 function NewLocationForm({
@@ -783,6 +830,7 @@ function NewLocationForm({
         latitude: parseNum(form.latitude),
         longitude: parseNum(form.longitude),
         parent_location_id: form.parent_location_id || null,
+        is_calibration_lab: form.is_calibration_lab,
       });
       const fresh = await listAllLocations();
       onCreated(fresh);
@@ -869,6 +917,11 @@ function NewLocationForm({
             placeholder="e.g. -74.00600"
           />
         </div>
+        <FCheckbox
+          label="Calibration laboratory"
+          checked={form.is_calibration_lab}
+          onChange={(v) => setForm((prev) => ({ ...prev, is_calibration_lab: v }))}
+        />
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 

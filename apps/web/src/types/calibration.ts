@@ -26,6 +26,7 @@ export interface CalibrationRecord {
   external_lab_certificate_number: string | null;
   daq_id: string | null;
   calibration_data_id: string | null;
+  calibration_location_id: string | null;
 
   // Environmental conditions (canonical units: °C, %RH, Pa)
   temperature: number | null;
@@ -195,6 +196,7 @@ export interface CalibrationCreateBody {
   internal_procedure_id?: string | null;
   external_lab_certificate_number?: string | null;
   daq_id?: string | null;
+  calibration_location_id?: string | null;
 
   // Environmental conditions (canonical units: °C, %RH, Pa)
   temperature?: number | null;

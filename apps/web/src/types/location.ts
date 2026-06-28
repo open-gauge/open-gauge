@@ -9,6 +9,7 @@ export interface LocationItem {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  is_calibration_lab: boolean;
   is_active: boolean;
   asset_count: number;
 }
