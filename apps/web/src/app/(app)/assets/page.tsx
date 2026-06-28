@@ -921,6 +921,7 @@ export default function AssetsPage() {
   const [sortDir, setSortDir]     = useState<SortDir>("asc");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
+  const [quickFilter, setQuickFilter] = useState<{ label: string; type: "asset_type" | "health_max"; value: string } | null>(null);
   const [newAssetOpen, setNewAssetOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -930,6 +931,11 @@ export default function AssetsPage() {
     const lname = params.get("location_name");
     const inclDes = params.get("include_descendants") === "true";
     if (lid) setLocationFilter({ id: lid, name: lname ?? lid, includeDescendants: inclDes });
+    const at = params.get("asset_type");
+    if (at === "sensor") setQuickFilter({ type: "asset_type", value: "sensor", label: "Sensors only" });
+    if (at === "daq")    setQuickFilter({ type: "asset_type", value: "daq",    label: "DAQ units only" });
+    const hm = params.get("health_max");
+    if (hm) setQuickFilter({ type: "health_max", value: hm, label: `Health score ≤ ${hm}%` });
   }, []);
 
   useEffect(() => {
@@ -1012,6 +1018,12 @@ export default function AssetsPage() {
     const q = search.toLowerCase();
 
     let list = assets.filter((a) => {
+      // Quick filter (from URL param: ?asset_type or ?health_max)
+      if (quickFilter) {
+        if (quickFilter.type === "asset_type" && a.asset_type !== quickFilter.value) return false;
+        if (quickFilter.type === "health_max"  && a.health_score > Number(quickFilter.value)) return false;
+      }
+
       // Search
       if (q && !(
         a.asset_id.toLowerCase().includes(q) ||
@@ -1075,7 +1087,7 @@ export default function AssetsPage() {
     }
 
     return list;
-  }, [assets, search, filters, sortCol, sortDir]);
+  }, [assets, search, filters, sortCol, sortDir, quickFilter]);
 
   function handleSort(col: SortKey) {
     if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -1187,6 +1199,21 @@ export default function AssetsPage() {
           <button
             type="button"
             onClick={() => setLocationFilter(null)}
+            className="ml-auto text-[10px] text-gray-400 hover:text-mar-text transition-colors"
+          >
+            View all ✕
+          </button>
+        </div>
+      )}
+
+      {quickFilter && (
+        <div className="flex items-center gap-3 rounded-xl bg-mar-accent/5 border border-mar-accent/20 px-4 py-2.5">
+          <span className="text-xs text-mar-accent font-medium">
+            Showing: <span className="font-semibold">{quickFilter.label}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setQuickFilter(null)}
             className="ml-auto text-[10px] text-gray-400 hover:text-mar-text transition-colors"
           >
             View all ✕

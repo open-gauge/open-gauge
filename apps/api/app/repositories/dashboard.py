@@ -15,6 +15,8 @@ _MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 
 def get_summary(db: Session) -> dict:
+    from datetime import date, timedelta
+
     total = db.query(func.count(Asset.id)).filter(Asset.is_active.is_(True)).scalar() or 0
     sensors = db.query(func.count(Asset.id)).filter(
         Asset.is_active.is_(True), Asset.asset_type == AssetType.sensor,
@@ -26,11 +28,37 @@ def get_summary(db: Session) -> dict:
         Asset.is_active.is_(True), Asset.health_score < 70,
     ).scalar() or 0
 
+    # Calibration status distribution
+    today = date.today()
+    due_soon_limit = today + timedelta(days=30)
+    active_ids = {r[0] for r in db.query(Asset.id).filter(Asset.is_active.is_(True)).all()}
+    latest_dues = dict(
+        db.query(Calibration.asset_id, func.max(Calibration.due_date))
+        .filter(Calibration.asset_id.in_(active_ids))
+        .group_by(Calibration.asset_id)
+        .all()
+    )
+    counts: dict[str, int] = {"valid": 0, "due_soon": 0, "expired": 0, "not_calibrated": 0}
+    for aid in active_ids:
+        if aid not in latest_dues:
+            counts["not_calibrated"] += 1
+        else:
+            dd = latest_dues[aid]
+            if dd < today:
+                counts["expired"] += 1
+            elif dd <= due_soon_limit:
+                counts["due_soon"] += 1
+            else:
+                counts["valid"] += 1
+
     return {
         "registered_assets": total,
         "sensors": sensors,
         "daqs": daqs,
         "low_health_assets": low_health,
+        "calibration_status_distribution": [
+            {"status": k, "count": v} for k, v in counts.items()
+        ],
     }
 
 
@@ -67,8 +95,26 @@ def get_asset_type_distribution(db: Session) -> dict:
     }
 
 
-def get_activity(db: Session, limit: int = 10) -> list[AuditLog]:
-    return db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).all()
+def get_activity(db: Session, limit: int = 10) -> list[dict]:
+    from ..models.user import User
+
+    rows = (
+        db.query(AuditLog, User.name)
+        .outerjoin(User, AuditLog.actor_id == User.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "actor_email": log.actor_email,
+            "actor_name": name,
+            "action": log.action,
+            "entity_asset_id": log.entity_asset_id,
+            "created_at": log.created_at,
+        }
+        for log, name in rows
+    ]
 
 
 def get_recent_assets(db: Session, limit: int = 10) -> list[Asset]:
@@ -94,6 +140,7 @@ def get_calibration_events(db: Session, months_past: int = 3, months_ahead: int 
     )
     return [
         {
+            "id": str(asset.id),
             "asset_id": asset.asset_id,
             "name": asset.name,
             "due_date": cal.due_date.isoformat(),

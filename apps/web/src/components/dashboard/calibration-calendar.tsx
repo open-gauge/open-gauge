@@ -156,36 +156,37 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-mar-text">Calibration activity</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Performed calibrations and due dates across all assets</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => changeYear(year - 1)}
-            disabled={loading}
-            className="p-1.5 rounded-lg hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
-            aria-label="Previous year"
-          >
-            <ChevronLeftIcon size={14} />
-          </button>
-          <span className="text-sm font-semibold text-mar-text w-10 text-center tabular-nums">{year}</span>
-          <button
-            onClick={() => changeYear(year + 1)}
-            disabled={loading}
-            className="p-1.5 rounded-lg hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
-            aria-label="Next year"
-          >
-            <ChevronRightIcon size={14} />
-          </button>
-        </div>
+    /* w-fit: panel shrinks to the natural calendar width — no wasted space */
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 w-fit flex flex-col">
+      {/* Title row */}
+      <div className="mb-3 flex-shrink-0">
+        <h3 className="text-sm font-semibold text-mar-text">Calibration activity</h3>
+        <p className="text-xs text-gray-400 mt-0.5">Performed calibrations and due dates across all assets</p>
+      </div>
+
+      {/* Year navigator — right-aligned, sits directly above the grid */}
+      <div className="flex justify-end items-center gap-1 mb-1.5 flex-shrink-0">
+        <button
+          onClick={() => changeYear(year - 1)}
+          disabled={loading}
+          className="p-1 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
+          aria-label="Previous year"
+        >
+          <ChevronLeftIcon size={13} />
+        </button>
+        <span className="text-xs font-semibold text-mar-text w-9 text-center tabular-nums">{year}</span>
+        <button
+          onClick={() => changeYear(year + 1)}
+          disabled={loading}
+          className="p-1 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
+          aria-label="Next year"
+        >
+          <ChevronRightIcon size={13} />
+        </button>
       </div>
 
       {/* Calendar grid */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto flex-shrink-0">
         <div className="flex gap-2 items-start" style={{ minWidth: "fit-content" }}>
           {/* Day-of-week labels */}
           <div className="flex flex-col" style={{ paddingTop: 20 }}>

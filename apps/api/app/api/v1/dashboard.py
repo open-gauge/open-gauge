@@ -10,6 +10,7 @@ from ...schemas.dashboard import (
     AssetTypeDistribution,
     CalendarEvent,
     CalibrationEvent,
+    CalibrationStatusCount,
     DashboardSummary,
     DistributionItem,
     RecentAsset,
@@ -20,7 +21,16 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/summary", response_model=DashboardSummary)
 def get_summary(db: Session = Depends(get_db)) -> DashboardSummary:
-    return DashboardSummary(**dash_repo.get_summary(db))
+    data = dash_repo.get_summary(db)
+    return DashboardSummary(
+        registered_assets=data["registered_assets"],
+        sensors=data["sensors"],
+        daqs=data["daqs"],
+        low_health_assets=data["low_health_assets"],
+        calibration_status_distribution=[
+            CalibrationStatusCount(**item) for item in data["calibration_status_distribution"]
+        ],
+    )
 
 
 @router.get("/distribution", response_model=list[DistributionItem])
@@ -54,21 +64,14 @@ def get_calibration_events(db: Session = Depends(get_db)) -> list[CalibrationEve
 
 @router.get("/activity", response_model=list[ActivityItem])
 def get_activity(db: Session = Depends(get_db)) -> list[ActivityItem]:
-    return [
-        ActivityItem(
-            actor_email=log.actor_email,
-            action=log.action,
-            entity_asset_id=log.entity_asset_id,
-            created_at=log.created_at,
-        )
-        for log in dash_repo.get_activity(db)
-    ]
+    return [ActivityItem(**item) for item in dash_repo.get_activity(db)]
 
 
 @router.get("/recent-assets", response_model=list[RecentAsset])
 def get_recent_assets(db: Session = Depends(get_db)) -> list[RecentAsset]:
     return [
         RecentAsset(
+            id=str(a.id),
             asset_id=a.asset_id,
             name=a.name,
             manufacturer=a.manufacturer,

@@ -3,14 +3,21 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class CalibrationStatusCount(BaseModel):
+    status: str   # "valid" | "due_soon" | "expired" | "not_calibrated"
+    count: int
+
+
 class DashboardSummary(BaseModel):
     registered_assets: int
     sensors: int
     daqs: int
     low_health_assets: int
+    calibration_status_distribution: list[CalibrationStatusCount] = []
 
 
 class CalibrationEvent(BaseModel):
+    id: str        # asset UUID
     asset_id: str
     name: str
     due_date: str  # YYYY-MM-DD
@@ -35,12 +42,14 @@ class AssetTypeDistribution(BaseModel):
 
 class ActivityItem(BaseModel):
     actor_email: str
+    actor_name: str | None = None
     action: str
     entity_asset_id: str | None
     created_at: datetime
 
 
 class RecentAsset(BaseModel):
+    id: str
     asset_id: str
     name: str
     manufacturer: str

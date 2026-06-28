@@ -1,11 +1,18 @@
+export interface CalibrationStatusCount {
+  status: "valid" | "due_soon" | "expired" | "not_calibrated";
+  count: number;
+}
+
 export interface DashboardSummary {
   registered_assets: number;
   sensors: number;
   daqs: number;
   low_health_assets: number;
+  calibration_status_distribution: CalibrationStatusCount[];
 }
 
 export interface CalibrationEvent {
+  id: string;       // asset UUID
   asset_id: string;
   name: string;
   due_date: string; // YYYY-MM-DD
@@ -30,12 +37,14 @@ export interface AssetTypeDistribution {
 
 export interface ActivityItem {
   actor_email: string;
+  actor_name: string | null;
   action: string;
   entity_asset_id: string | null;
   created_at: string;
 }
 
 export interface RecentAsset {
+  id: string;
   asset_id: string;
   name: string;
   manufacturer: string;

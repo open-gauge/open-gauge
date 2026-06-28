@@ -1,14 +1,15 @@
+import Link from "next/link";
 import type { CalibrationEvent } from "@/types/dashboard";
 import { ExternalLinkIcon } from "@/components/icons";
 
 function formatDaysUntil(dateStr: string, todayStr: string): { label: string; cls: string } {
   const todayMs = new Date(todayStr + "T00:00:00").getTime();
   const dueMs   = new Date(dateStr  + "T00:00:00").getTime();
-  const diff = Math.round((dueMs - todayMs) / 86_400_000);
-  if (diff < 0)  return { label: `${Math.abs(diff)}d overdue`, cls: "text-red-500" };
-  if (diff === 0) return { label: "Due today",                 cls: "text-red-400" };
-  if (diff <= 30) return { label: `In ${diff} days`,           cls: "text-amber-500" };
-  return               { label: `In ${diff} days`,             cls: "text-gray-400" };
+  const diff    = Math.round((dueMs - todayMs) / 86_400_000);
+  if (diff < 0)   return { label: `${Math.abs(diff)}d overdue`, cls: "text-red-500" };
+  if (diff === 0) return { label: "Due today",                  cls: "text-red-400" };
+  if (diff <= 30) return { label: `In ${diff} days`,            cls: "text-amber-500" };
+  return               { label: `In ${diff} days`,              cls: "text-gray-400" };
 }
 
 function toTodayStr(): string {
@@ -18,25 +19,27 @@ function toTodayStr(): string {
 
 export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
   const todayStr = toTodayStr();
+  // Most overdue / closest due first
   const sorted = [...data].sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
-      <div className="flex items-start justify-between mb-4">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 h-full flex flex-col">
+      <div className="flex items-start justify-between mb-4 flex-shrink-0">
         <div>
           <h3 className="text-sm font-semibold text-mar-text">Upcoming calibrations</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Scheduled due dates across all assets</p>
+          <p className="text-xs text-gray-400 mt-0.5">Closest due dates first — click to open asset</p>
         </div>
         <a
           href="/assets"
-          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors"
+          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors flex-shrink-0"
         >
-          View assets
+          View all
           <ExternalLinkIcon />
         </a>
       </div>
 
-      <div className="space-y-0">
+      {/* Scrollable list fills remaining panel height */}
+      <div className="overflow-y-auto flex-1 min-h-0">
         {sorted.length === 0 ? (
           <p className="text-center text-xs text-gray-400 py-6">No calibrations scheduled</p>
         ) : (
@@ -44,9 +47,10 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
             const { label, cls } = formatDaysUntil(event.due_date, todayStr);
             const dueDate = new Date(event.due_date + "T00:00:00");
             return (
-              <div
+              <Link
                 key={i}
-                className="flex items-center gap-4 py-3 border-b border-mar-border last:border-0"
+                href={`/assets/${event.id}`}
+                className="flex items-center gap-4 py-3 border-b border-mar-border last:border-0 hover:bg-mar-surface-alt rounded-lg px-2 -mx-2 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -58,15 +62,11 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
                 </div>
                 <div className="flex-shrink-0 text-right">
                   <p className="text-xs text-gray-500">
-                    {dueDate.toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {dueDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                   </p>
                   <p className={`text-[11px] font-medium ${cls}`}>{label}</p>
                 </div>
-              </div>
+              </Link>
             );
           })
         )}
