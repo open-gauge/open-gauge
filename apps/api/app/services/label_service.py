@@ -3,7 +3,7 @@ Asset label / sticker generator.
 
 Sizes:
   "2x2"  — 50.8 × 50.8 mm  (2 × 2 in)   QR code + asset ID
-  "4x2"  — 101.6 × 50.8 mm (4 × 2 in)   QR + ID + name + owner + due date + equation
+  "4x2"  — 101.6 × 50.8 mm (4 × 2 in)   QR + ID + sensor name + coefficient table + dates
 
 Formats:
   "png"  — Pillow raster, 300 DPI
@@ -25,16 +25,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DPI = 300
-INCH = DPI                # 300 px per inch at 300 DPI
+INCH = DPI  # 300 px per inch at 300 DPI
 
 # Colours (Pillow uses RGBA tuples)
-WHITE    = (255, 255, 255, 255)
-BG       = (255, 255, 255, 255)
-DARK     = (27, 79, 100, 255)    # #1b4f64
-MID      = (47, 129, 155, 255)   # #2f819b
-TEXT     = (21, 35, 48, 255)     # #152330
-GRAY     = (107, 114, 128, 255)  # #6b7280
-BORDER   = (229, 231, 235, 255)  # #e5e7eb
+WHITE       = (255, 255, 255, 255)
+BG          = (255, 255, 255, 255)
+DARK        = (27, 79, 100, 255)     # #1b4f64
+TEXT        = (21, 35, 48, 255)      # #152330
+GRAY        = (107, 114, 128, 255)   # #6b7280
+BORDER      = (200, 215, 220, 255)   # light separator
+TBL_LABEL   = (245, 248, 250, 255)   # table label-cell background
 
 
 # ---------------------------------------------------------------------------
@@ -45,32 +45,32 @@ def generate_label(
     calibration: "Calibration | None",
     points: "list[CalibrationData]",
     owner_name: str | None,
-    size: str,   # "2x2" | "4x2"
-    fmt: str,    # "png" | "jpg" | "pdf"
+    size: str,    # "2x2" | "4x2"
+    fmt: str,     # "png" | "jpg" | "pdf"
     base_url: str,
 ) -> tuple[bytes, str]:
     """Return (content_bytes, content_type)."""
     url = f"{base_url.rstrip('/')}/assets/{asset.id}"
     qr_bytes = _make_qr(url)
 
-    eq_lines, eq_units = _equation_parts(calibration, points) if calibration else ([], "")
-    due = str(calibration.due_date) if calibration and calibration.due_date else None
-    name = asset.name or ""
     asset_id = asset.asset_id or ""
+    name = asset.name or ""
+    coeff_rows = _coeff_table(calibration, points) if calibration else []
+    cal_date = str(calibration.calibration_date) if calibration and calibration.calibration_date else None
+    due_date = str(calibration.due_date) if calibration and calibration.due_date else None
 
     if fmt == "pdf":
-        data = _pdf(qr_bytes, asset_id, name, owner_name, due, eq_lines, eq_units, size)
+        data = _pdf(qr_bytes, asset_id, name, coeff_rows, cal_date, due_date, size)
         return data, "application/pdf"
-    else:
-        img = _raster(qr_bytes, asset_id, name, owner_name, due, eq_lines, eq_units, size)
-        buf = io.BytesIO()
-        pil_fmt = "JPEG" if fmt == "jpg" else "PNG"
-        mode = "RGB" if pil_fmt == "JPEG" else "RGBA"
-        if pil_fmt == "JPEG" and img.mode == "RGBA":
-            img = img.convert("RGB")
-        img.save(buf, format=pil_fmt, dpi=(DPI, DPI))
-        content_type = "image/jpeg" if fmt == "jpg" else "image/png"
-        return buf.getvalue(), content_type
+
+    img = _raster(qr_bytes, asset_id, name, coeff_rows, cal_date, due_date, size)
+    buf = io.BytesIO()
+    pil_fmt = "JPEG" if fmt == "jpg" else "PNG"
+    if pil_fmt == "JPEG" and img.mode == "RGBA":
+        img = img.convert("RGB")
+    img.save(buf, format=pil_fmt, dpi=(DPI, DPI))
+    content_type = "image/jpeg" if fmt == "jpg" else "image/png"
+    return buf.getvalue(), content_type
 
 
 # ---------------------------------------------------------------------------
@@ -89,53 +89,43 @@ def _make_qr(url: str) -> bytes:
 
 
 # ---------------------------------------------------------------------------
-# Equation helpers
+# Coefficient table helper
 # ---------------------------------------------------------------------------
-def _equation_parts(cal: "Calibration", points: "list[CalibrationData]") -> tuple[list[str], str]:
-    """Return (poly_lines, units_str) for sticker rendering."""
+def _coeff_table(cal: "Calibration", points: "list[CalibrationData]") -> list[tuple[str, str]]:
+    """Return [(row_label, formatted_value), …] for each polynomial coefficient."""
     coeffs = cal.poly_coefficients
     if not coeffs:
-        return [], ""
+        return []
 
     degree = len(coeffs) - 1
     m_unit = points[0].measured_unit if points else ""
     r_unit = points[0].reference_unit if points else ""
 
-    def fmt_abs(v: float) -> str:
-        return f"{abs(v):.4g}"
+    def label_for(exp: int) -> str:
+        if exp == 0:
+            return f"Offset ({r_unit})" if r_unit else "Offset"
+        if exp == 1:
+            return f"Scale ({m_unit}/{r_unit})" if (m_unit and r_unit) else "Scale"
+        letters = "ABCDE"
+        return f"Curve ({letters[exp - 2]})" if exp - 2 < len(letters) else f"Curve (deg {exp})"
 
-    terms: list[tuple[bool, str]] = []
-    for i, c in enumerate(coeffs):
-        power = degree - i
-        if abs(c) < 1e-15:
-            continue
-        t = fmt_abs(c)
-        if power == 1:
-            t += "x"
-        elif power == 2:
-            t += "x²"
-        elif power > 2:
-            t += f"x^{power}"
-        terms.append((c < 0, t))
+    def fmt_val(v: float) -> str:
+        av = abs(v)
+        if av == 0:
+            return "0"
+        if av < 1e-3 or av >= 1e5:
+            return f"{v:.4g}"
+        return f"{v:.5g}"
 
-    if not terms:
-        return ["y = 0"], ""
-
-    lines: list[str] = []
-    for j, (neg, t) in enumerate(terms):
-        if j == 0:
-            prefix = "y = −" if neg else "y = "
-            lines.append(f"{prefix}{t}")
-        else:
-            sign = "−" if neg else "+"
-            lines.append(f"  {sign} {t}")
-
-    units_str = f"[{m_unit} → {r_unit}]" if (m_unit or r_unit) else ""
-    return lines, units_str
+    rows: list[tuple[str, str]] = []
+    for exp in range(min(degree + 1, 5)):   # max 5 rows to keep table compact
+        c = coeffs[degree - exp]            # coeffs are highest-degree-first (numpy convention)
+        rows.append((label_for(exp), fmt_val(c)))
+    return rows
 
 
 # ---------------------------------------------------------------------------
-# Pillow raster (PNG / JPG)
+# Font loader (Pillow)
 # ---------------------------------------------------------------------------
 def _load_font(size: int, bold: bool = False):
     from PIL import ImageFont
@@ -153,14 +143,16 @@ def _load_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
+# ---------------------------------------------------------------------------
+# Pillow raster (PNG / JPG)
+# ---------------------------------------------------------------------------
 def _raster(
     qr_bytes: bytes,
     asset_id: str,
     name: str,
-    owner: str | None,
-    due: str | None,
-    eq_lines: list[str],
-    eq_units: str,
+    coeff_rows: list[tuple[str, str]],
+    cal_date: str | None,
+    due_date: str | None,
     size: str,
 ) -> "Image":  # type: ignore[name-defined]
     from PIL import Image, ImageDraw
@@ -171,16 +163,12 @@ def _raster(
     canvas = Image.new("RGBA", (W, H), BG)
     draw = ImageDraw.Draw(canvas)
 
-    # Border
-    draw.rectangle([0, 0, W - 1, H - 1], outline=DARK[:3], width=4)
-
-    # Load QR image
     qr_img = Image.open(io.BytesIO(qr_bytes)).convert("RGBA")
 
     if size == "2x2":
         _draw_2x2(canvas, draw, qr_img, asset_id)
     else:
-        _draw_4x2(canvas, draw, qr_img, asset_id, name, owner, due, eq_lines, eq_units)
+        _draw_4x2(canvas, draw, qr_img, asset_id, name, coeff_rows, cal_date, due_date)
 
     return canvas
 
@@ -188,64 +176,129 @@ def _raster(
 def _draw_2x2(canvas, draw, qr_img, asset_id: str) -> None:
     from PIL import Image
 
-    W, H = canvas.size
-    pad = 40
-    qr_size = W - 2 * pad
+    W, H = canvas.size  # 600 × 600
+
+    # Outer border
+    draw.rectangle([4, 4, W - 5, H - 5], outline=BORDER[:3], width=2)
+
+    # QR — large, leaving ~120 px at bottom for text
+    pad = 30
+    qr_size = W - 2 * pad        # 540 px
+    max_qr = H - 128             # 472 px — leave room for text
+    qr_size = min(qr_size, max_qr)
+    qr_x = (W - qr_size) // 2
+    qr_y = pad
     qr_resized = qr_img.resize((qr_size, qr_size), Image.LANCZOS)
-    canvas.paste(qr_resized, (pad, pad), qr_resized)
+    canvas.paste(qr_resized, (qr_x, qr_y), qr_resized)
 
-    id_font = _load_font(42, bold=True)
-    draw.text((W // 2, H - 44), asset_id, font=id_font, fill=DARK[:3], anchor="mm")
+    sep_y = qr_y + qr_size + 14
+    draw.line([(pad, sep_y), (W - pad, sep_y)], fill=BORDER[:3], width=2)
+
+    # "SENSOR ID" label — small caps, DARK colour
+    lbl_font = _load_font(22, bold=False)
+    draw.text((W // 2, sep_y + 14), "SENSOR ID", font=lbl_font, fill=DARK[:3], anchor="mt")
+
+    # Asset ID — bold, dark text
+    id_font = _load_font(38, bold=True)
+    draw.text((W // 2, sep_y + 44), asset_id, font=id_font, fill=TEXT[:3], anchor="mt")
 
 
-def _draw_4x2(canvas, draw, qr_img, asset_id: str, name: str, owner: str | None, due: str | None, eq_lines: list[str], eq_units: str) -> None:
+def _draw_4x2(
+    canvas, draw, qr_img,
+    asset_id: str, name: str,
+    coeff_rows: list[tuple[str, str]],
+    cal_date: str | None, due_date: str | None,
+) -> None:
     from PIL import Image
 
-    W, H = canvas.size
-    col_split = int(W * 0.38)   # ~456 px — left column width
+    W, H = canvas.size  # 1200 × 600
 
-    # QR code — centred vertically in left column (no text below it)
-    pad = 30
-    qr_size = col_split - 2 * pad
+    # Outer border
+    draw.rectangle([4, 4, W - 5, H - 5], outline=BORDER[:3], width=2)
+
+    # ── Left column: QR + ID ──────────────────────────────────────────
+    LEFT_W = 370
+    pad = 26
+
+    qr_size = 298
+    qr_x = (LEFT_W - qr_size) // 2
+    qr_y = 28
     qr_resized = qr_img.resize((qr_size, qr_size), Image.LANCZOS)
-    qr_y = (H - qr_size) // 2
-    canvas.paste(qr_resized, (pad, qr_y), qr_resized)
+    canvas.paste(qr_resized, (qr_x, qr_y), qr_resized)
 
-    # Vertical divider
-    draw.line([(col_split + 10, 30), (col_split + 10, H - 30)], fill=BORDER[:3], width=2)
+    sep_y = qr_y + qr_size + 14   # ≈ 340
+    draw.line([(pad, sep_y), (LEFT_W - pad, sep_y)], fill=BORDER[:3], width=2)
 
-    # Right column — top aligns with top of QR
-    rx = col_split + 36
-    ry = qr_y
+    lbl_font = _load_font(18, bold=False)
+    draw.text((LEFT_W // 2, sep_y + 12), "SENSOR ID", font=lbl_font, fill=DARK[:3], anchor="mt")
 
-    # Asset ID (large)
-    id_font = _load_font(48, bold=True)
-    draw.text((rx, ry), asset_id, font=id_font, fill=DARK[:3])
-    ry += 58
+    id_font = _load_font(34, bold=True)
+    draw.text((LEFT_W // 2, sep_y + 38), asset_id, font=id_font, fill=TEXT[:3], anchor="mt")
 
-    # Asset name
-    name_font = _load_font(30, bold=False)
-    draw.text((rx, ry), name[:40] + ("…" if len(name) > 40 else ""), font=name_font, fill=TEXT[:3])
-    ry += 40
+    # ── Vertical divider ─────────────────────────────────────────────
+    div_x = LEFT_W + 8
+    draw.line([(div_x, pad), (div_x, H - pad)], fill=BORDER[:3], width=2)
 
-    # Owner + due date
-    meta_font = _load_font(24, bold=False)
-    if owner:
-        draw.text((rx, ry), f"Owner: {owner}", font=meta_font, fill=GRAY[:3])
-        ry += 32
-    if due:
-        draw.text((rx, ry), f"Due: {due}", font=meta_font, fill=GRAY[:3])
-        ry += 32
+    # ── Right column ─────────────────────────────────────────────────
+    rx = div_x + 22          # right column x
+    rw = W - rx - pad        # right column usable width ≈ 796 px
+    ry = 26
 
-    # Calibration equation — one term per line, then units conversion
-    if eq_lines:
-        ry += 6
-        eq_font = _load_font(20, bold=False)
-        for line in eq_lines:
-            draw.text((rx, ry), line, font=eq_font, fill=TEXT[:3])
-            ry += 26
-        if eq_units:
-            draw.text((rx, ry), eq_units, font=eq_font, fill=GRAY[:3])
+    section_font = _load_font(18, bold=False)   # section labels (DARK)
+    name_font    = _load_font(28, bold=False)   # sensor name value
+    eq_font      = _load_font(20, bold=False)   # table text
+    date_lbl_fnt = _load_font(16, bold=False)   # date labels
+    date_val_fnt = _load_font(24, bold=False)   # date values
+
+    # "SENSOR NAME"
+    draw.text((rx, ry), "SENSOR NAME", font=section_font, fill=DARK[:3])
+    ry += 24
+    trunc = name[:48] + ("…" if len(name) > 48 else "")
+    draw.text((rx, ry), trunc, font=name_font, fill=TEXT[:3])
+    ry += 36
+
+    # Horizontal divider
+    draw.line([(rx, ry), (rx + rw, ry)], fill=BORDER[:3], width=1)
+    ry += 12
+
+    # "CALIBRATION COEFFICIENTS"
+    draw.text((rx, ry), "CALIBRATION COEFFICIENTS", font=section_font, fill=DARK[:3])
+    ry += 22
+
+    # Coefficient table
+    if coeff_rows:
+        row_h   = 38
+        col1_w  = int(rw * 0.56)
+        col2_w  = rw - col1_w
+
+        for i, (lbl, val) in enumerate(coeff_rows[:4]):
+            ty = ry + i * row_h
+            # Label cell (light bg)
+            draw.rectangle([rx, ty, rx + col1_w, ty + row_h],
+                           fill=TBL_LABEL[:3], outline=BORDER[:3])
+            draw.text((rx + 8, ty + row_h // 2), lbl, font=eq_font, fill=TEXT[:3], anchor="lm")
+            # Value cell (white)
+            draw.rectangle([rx + col1_w, ty, rx + rw, ty + row_h],
+                           fill=WHITE[:3], outline=BORDER[:3])
+            draw.text((rx + col1_w + 8, ty + row_h // 2), val, font=eq_font, fill=TEXT[:3], anchor="lm")
+
+        ry += min(len(coeff_rows), 4) * row_h + 10
+
+    # Horizontal divider
+    draw.line([(rx, ry), (rx + rw, ry)], fill=BORDER[:3], width=1)
+    ry += 12
+
+    # Dates — two columns separated by a thin vertical line
+    half = rw // 2
+    mid_x = rx + half
+
+    draw.text((rx, ry), "CALIBRATED ON", font=date_lbl_fnt, fill=DARK[:3])
+    draw.text((rx, ry + 22), cal_date or "—", font=date_val_fnt, fill=TEXT[:3])
+
+    draw.line([(mid_x, ry), (mid_x, ry + 54)], fill=BORDER[:3], width=2)
+
+    draw.text((mid_x + 14, ry), "CALIBRATION DUE", font=date_lbl_fnt, fill=DARK[:3])
+    draw.text((mid_x + 14, ry + 22), due_date or "—", font=date_val_fnt, fill=TEXT[:3])
 
 
 # ---------------------------------------------------------------------------
@@ -255,10 +308,9 @@ def _pdf(
     qr_bytes: bytes,
     asset_id: str,
     name: str,
-    owner: str | None,
-    due: str | None,
-    eq_lines: list[str],
-    eq_units: str,
+    coeff_rows: list[tuple[str, str]],
+    cal_date: str | None,
+    due_date: str | None,
     size: str,
 ) -> bytes:
     from reportlab.lib.colors import HexColor
@@ -274,76 +326,146 @@ def _pdf(
 
     qr_reader = ImageReader(io.BytesIO(qr_bytes))
 
-    c_dark = HexColor("#1b4f64")
-    c_text = HexColor("#152330")
-    c_gray = HexColor("#6b7280")
-    c_border = HexColor("#e5e7eb")
+    c_dark   = HexColor("#1b4f64")
+    c_text   = HexColor("#152330")
+    c_border = HexColor("#c8d7dc")
+    c_tbl_bg = HexColor("#f7f9fa")
 
-    # Border
-    c.setStrokeColor(c_dark)
-    c.setLineWidth(1.5)
-    c.rect(0.04 * inch, 0.04 * inch, W - 0.08 * inch, H - 0.08 * inch)
+    # Outer border
+    c.setStrokeColor(c_border)
+    c.setLineWidth(0.5)
+    c.rect(0.03 * inch, 0.03 * inch, W - 0.06 * inch, H - 0.06 * inch)
 
     if size == "2x2":
-        qr_sz = 1.6 * inch
-        qr_x = (W - qr_sz) / 2
-        qr_y = H - qr_sz - 0.14 * inch
+        # QR code — centred, leaving bottom 0.42" for text
+        qr_sz = H - 0.52 * inch
+        qr_x  = (W - qr_sz) / 2
+        qr_y  = H - qr_sz - 0.06 * inch
         c.drawImage(qr_reader, qr_x, qr_y, qr_sz, qr_sz, preserveAspectRatio=True)
 
-        c.setFont("Helvetica-Bold", 11)
+        # Separator
+        sep_y = qr_y - 0.055 * inch
+        c.setStrokeColor(c_border)
+        c.setLineWidth(0.5)
+        c.line(0.12 * inch, sep_y, W - 0.12 * inch, sep_y)
+
+        # "SENSOR ID" label
+        c.setFont("Helvetica", 6)
         c.setFillColor(c_dark)
-        c.drawCentredString(W / 2, 0.1 * inch, asset_id)
+        c.drawCentredString(W / 2, sep_y - 0.12 * inch, "SENSOR ID")
+
+        # Asset ID
+        c.setFont("Helvetica-Bold", 11)
+        c.setFillColor(c_text)
+        c.drawCentredString(W / 2, sep_y - 0.26 * inch, asset_id)
 
     else:  # 4x2
-        col_split = W * 0.38
-        qr_sz = col_split - 0.2 * inch
-        qr_x = 0.1 * inch
-        qr_y = (H - qr_sz) / 2
+        LEFT_W = W * 0.305   # ~1.22 inch
+        pad    = 0.08 * inch
+
+        # QR
+        qr_sz = LEFT_W - 2 * pad
+        qr_x  = pad
+        qr_y  = H - qr_sz - pad
         c.drawImage(qr_reader, qr_x, qr_y, qr_sz, qr_sz, preserveAspectRatio=True)
+
+        # Separator under QR
+        sep_y = qr_y - 0.04 * inch
+        c.setStrokeColor(c_border)
+        c.setLineWidth(0.5)
+        c.line(pad, sep_y, LEFT_W - pad, sep_y)
+
+        # "SENSOR ID"
+        c.setFont("Helvetica", 5.5)
+        c.setFillColor(c_dark)
+        c.drawCentredString(LEFT_W / 2, sep_y - 0.10 * inch, "SENSOR ID")
+
+        # Asset ID
+        c.setFont("Helvetica-Bold", 9)
+        c.setFillColor(c_text)
+        c.drawCentredString(LEFT_W / 2, sep_y - 0.21 * inch, asset_id)
+
+        # Vertical divider
+        div_x = LEFT_W + 0.05 * inch
+        c.setStrokeColor(c_border)
+        c.setLineWidth(0.5)
+        c.line(div_x, pad, div_x, H - pad)
+
+        # ── Right column ──────────────────────────────────────────────
+        tx = div_x + 0.10 * inch
+        ty = H - 0.10 * inch
+        rw = W - tx - 0.06 * inch
+
+        # "SENSOR NAME"
+        c.setFont("Helvetica", 5.5)
+        c.setFillColor(c_dark)
+        c.drawString(tx, ty, "SENSOR NAME")
+        ty -= 0.13 * inch
+
+        c.setFont("Helvetica-Bold", 9)
+        c.setFillColor(c_text)
+        trunc = (name[:50] + "…") if len(name) > 50 else name
+        c.drawString(tx, ty, trunc)
+        ty -= 0.10 * inch
 
         # Divider
         c.setStrokeColor(c_border)
         c.setLineWidth(0.5)
-        div_x = col_split + 0.06 * inch
-        c.line(div_x, 0.12 * inch, div_x, H - 0.12 * inch)
+        c.line(tx, ty, tx + rw, ty)
+        ty -= 0.09 * inch
 
-        # Right side — top baseline aligns with top of QR
-        tx = div_x + 0.15 * inch
-        ty = qr_y + qr_sz - 0.14 * inch  # first baseline just inside QR top
-
-        # Asset ID
-        c.setFont("Helvetica-Bold", 14)
+        # "CALIBRATION COEFFICIENTS"
+        c.setFont("Helvetica", 5.5)
         c.setFillColor(c_dark)
-        c.drawString(tx, ty, asset_id)
-        ty -= 0.20 * inch
+        c.drawString(tx, ty, "CALIBRATION COEFFICIENTS")
+        ty -= 0.08 * inch
 
-        # Name
-        c.setFont("Helvetica-Bold", 10)
+        # Coefficient table via manual drawing
+        if coeff_rows:
+            row_h   = 0.115 * inch
+            col1_w  = rw * 0.57
+            col2_w  = rw - col1_w
+            from reportlab.lib.colors import HexColor as HC
+            for lbl, val in coeff_rows[:4]:
+                # label cell
+                c.setFillColor(HC("#f7f9fa"))
+                c.setStrokeColor(HC("#c8d7dc"))
+                c.setLineWidth(0.4)
+                c.rect(tx, ty - row_h, col1_w, row_h, fill=1, stroke=1)
+                c.setFont("Helvetica", 5.5)
+                c.setFillColor(c_text)
+                c.drawString(tx + 0.04 * inch, ty - row_h + 0.03 * inch, lbl)
+                # value cell
+                c.setFillColor(HC("#ffffff"))
+                c.rect(tx + col1_w, ty - row_h, col2_w, row_h, fill=1, stroke=1)
+                c.setFont("Courier", 5.5)
+                c.drawString(tx + col1_w + 0.04 * inch, ty - row_h + 0.03 * inch, val)
+                ty -= row_h
+
+        ty -= 0.06 * inch
+
+        # Divider
+        c.setStrokeColor(c_border)
+        c.setLineWidth(0.5)
+        c.line(tx, ty, tx + rw, ty)
+        ty -= 0.08 * inch
+
+        # Dates
+        half_rw = rw / 2
+        c.setFont("Helvetica", 5)
+        c.setFillColor(c_dark)
+        c.drawString(tx, ty, "CALIBRATED ON")
+        c.drawString(tx + half_rw + 0.06 * inch, ty, "CALIBRATION DUE")
+
+        c.setFont("Helvetica-Bold", 7.5)
         c.setFillColor(c_text)
-        c.drawString(tx, ty, (name[:42] + "…") if len(name) > 42 else name)
-        ty -= 0.16 * inch
+        c.drawString(tx, ty - 0.11 * inch, cal_date or "—")
+        c.drawString(tx + half_rw + 0.06 * inch, ty - 0.11 * inch, due_date or "—")
 
-        # Owner + due
-        c.setFont("Helvetica", 8.5)
-        c.setFillColor(c_gray)
-        if owner:
-            c.drawString(tx, ty, f"Owner: {owner}")
-            ty -= 0.14 * inch
-        if due:
-            c.drawString(tx, ty, f"Due: {due}")
-            ty -= 0.14 * inch
-
-        # Calibration equation — one term per line
-        if eq_lines:
-            ty -= 0.04 * inch
-            c.setFont("Courier", 7)
-            c.setFillColor(c_text)
-            for line in eq_lines:
-                c.drawString(tx, ty, line)
-                ty -= 0.115 * inch
-            if eq_units:
-                c.setFillColor(c_gray)
-                c.drawString(tx, ty, eq_units)
+        # Date vertical divider
+        c.setStrokeColor(c_border)
+        c.setLineWidth(0.5)
+        c.line(tx + half_rw, ty + 0.06 * inch, tx + half_rw, ty - 0.13 * inch)
 
     c.save()
     return buf.getvalue()

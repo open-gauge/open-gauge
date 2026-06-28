@@ -2229,117 +2229,103 @@ function CalibrationRingCard({
 }
 
 // ---------------------------------------------------------------------------
-// Label preview card — hover to reveal download; cascading size → format dropdowns
+// Sticker modal — shows 2×2 and 4×2 label previews with download buttons
 // ---------------------------------------------------------------------------
-function LabelPreviewCard({ assetId }: { assetId: string }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [sizeOpen, setSizeOpen] = useState(false);
-  const [selectedSize, setSelectedSize] = useState<"2x2" | "4x2" | null>(null);
-  const [downloading, setDownloading] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTag: string; onClose: () => void }) {
+  const [preview2, setPreview2] = useState<string | null>(null);
+  const [preview4, setPreview4] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetchAssetLabelBlob(assetId, "4x2", "png")
-      .then((blob) => { if (!cancelled) setPreviewUrl(URL.createObjectURL(blob)); })
-      .catch(() => {});
+    Promise.all([
+      fetchAssetLabelBlob(assetId, "2x2", "png"),
+      fetchAssetLabelBlob(assetId, "4x2", "png"),
+    ])
+      .then(([b2, b4]) => {
+        if (cancelled) return;
+        setPreview2(URL.createObjectURL(b2));
+        setPreview4(URL.createObjectURL(b4));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [assetId]);
 
-  useEffect(() => {
-    if (!sizeOpen) return;
-    function onMouseDown(e: MouseEvent) {
-      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
-        setSizeOpen(false);
-        setSelectedSize(null);
-      }
-    }
-    document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
-  }, [sizeOpen]);
-
-  async function handleFormatSelect(fmt: "png" | "jpg" | "pdf") {
-    if (!selectedSize) return;
-    const size = selectedSize;
-    setSizeOpen(false);
-    setSelectedSize(null);
-    setDownloading(true);
+  async function download(size: "2x2" | "4x2", fmt: "png" | "jpg" | "pdf") {
+    const key = `${size}-${fmt}`;
+    setDownloading(key);
     try {
       const blob = await fetchAssetLabelBlob(assetId, size, fmt);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `label-${assetId}-${size}.${fmt}`;
+      a.download = `sticker-${assetTag}-${size}.${fmt}`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch { /* ignore */ } finally {
-      setDownloading(false);
-    }
+    } catch { /* ignore */ } finally { setDownloading(null); }
   }
 
-  return (
-    <div ref={cardRef} className="bg-mar-surface border border-mar-border rounded-xl p-4 relative">
-      {/* Sticker image is itself the button */}
-      <button
-        type="button"
-        disabled={downloading}
-        onClick={() => { setSizeOpen((o) => !o); setSelectedSize(null); }}
-        className="relative h-full group block disabled:opacity-60"
-      >
-        {previewUrl ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="Asset label — click to download"
-              className="w-full object-contain rounded border border-mar-border transition-opacity group-hover:opacity-40"
-            />
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <DownloadIcon size={22} className="text-mar-text drop-shadow" />
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center w-full h-16 rounded border border-mar-border bg-mar-surface-alt group-hover:bg-mar-border transition-colors">
-            <QrCodeIcon size={20} className="text-gray-300" />
-          </div>
-        )}
-      </button>
-
-      {/* Cascading dropdowns: size first, format appears to its right */}
-      {sizeOpen && (
-        <div className="absolute left-4 right-4 top-full mt-1 z-20 flex gap-2">
-          <div className="flex-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg overflow-hidden">
-            {(["2x2", "4x2"] as const).map((sz) => (
-              <button
-                key={sz}
-                type="button"
-                onClick={() => setSelectedSize(sz === selectedSize ? null : sz)}
-                className={`w-full text-left px-3 py-2 text-xs transition-colors border-b border-mar-border last:border-b-0 ${
-                  selectedSize === sz
-                    ? "bg-mar-surface-alt text-mar-text font-medium"
-                    : "text-mar-text hover:bg-mar-surface-alt"
-                }`}
-              >
-                {sz === "2x2" ? "2×2 in" : "4×2 in"}
-              </button>
-            ))}
-          </div>
-          {selectedSize && (
-            <div className="flex-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg overflow-hidden">
-              {(["png", "jpg", "pdf"] as const).map((fmt) => (
+  function StickerRow({
+    size, label, preview, aspect,
+  }: { size: "2x2" | "4x2"; label: string; preview: string | null; aspect: string }) {
+    return (
+      <div className="flex items-center gap-4">
+        <div className={`flex-shrink-0 bg-mar-surface-alt rounded-lg border border-mar-border overflow-hidden flex items-center justify-center ${aspect}`}>
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt={`${label} sticker`} className="w-full h-full object-contain" />
+          ) : loading ? (
+            <span className="w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+          ) : (
+            <QrCodeIcon size={24} className="text-gray-300" />
+          )}
+        </div>
+        <div className="flex-1">
+          <p className="text-xs text-gray-400 mb-2">{label}</p>
+          <div className="flex gap-2 flex-wrap">
+            {(["pdf", "jpg", "png"] as const).map((fmt) => {
+              const key = `${size}-${fmt}`;
+              return (
                 <button
                   key={fmt}
                   type="button"
-                  onClick={() => handleFormatSelect(fmt)}
-                  className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors border-b border-mar-border last:border-b-0"
+                  disabled={downloading === key}
+                  onClick={() => download(size, fmt)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-40"
                 >
-                  {fmt.toUpperCase()}
+                  <DownloadIcon size={11} />
+                  {downloading === key ? "…" : fmt.toUpperCase()}
                 </button>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={backdropRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
+    >
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-xl mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-mar-border">
+          <h2 className="text-sm font-semibold text-mar-text">Asset Sticker — {assetTag}</h2>
+          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+            <XIcon size={15} />
+          </button>
+        </div>
+        <div className="p-5 space-y-5">
+          <StickerRow size="2x2" label="2×2 inches" preview={preview2} aspect="w-28 h-28" />
+          <div className="border-t border-mar-border" />
+          <StickerRow size="4x2" label="4×2 inches" preview={preview4} aspect="w-56 h-28" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -2365,6 +2351,7 @@ export default function AssetProfilePage() {
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [retireModalOpen, setRetireModalOpen] = useState(false);
+  const [stickerOpen, setStickerOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -2495,6 +2482,14 @@ export default function AssetProfilePage() {
         />
       )}
 
+      {stickerOpen && (
+        <StickerModal
+          assetId={profile.id}
+          assetTag={profile.asset_id}
+          onClose={() => setStickerOpen(false)}
+        />
+      )}
+
       {!profile.is_active && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-5 py-3 flex items-center gap-3">
           <WarningIcon size={16} className="text-red-500 flex-shrink-0" />
@@ -2550,9 +2545,10 @@ export default function AssetProfilePage() {
             {!isEditing ? (
               <>
                 <button type="button"
-                  className="p-2 rounded-lg border border-mar-border hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors"
-                  title="QR code">
-                  <QrCodeIcon size={16} />
+                  onClick={() => setStickerOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-mar-border rounded-lg hover:bg-mar-surface-alt text-gray-500 hover:text-mar-text text-sm font-medium transition-colors">
+                  <QrCodeIcon size={15} />
+                  Sticker
                 </button>
                 {profile.is_active && (
                   <button
@@ -2618,7 +2614,7 @@ export default function AssetProfilePage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <p className="text-xs text-gray-400 mb-1">Health score</p>
           <p className="text-2xl font-bold text-mar-text">{profile.health_score}%</p>
@@ -2631,7 +2627,6 @@ export default function AssetProfilePage() {
           dueAt={profile.next_due_at}
           status={profile.calibration_status}
         />
-        <LabelPreviewCard assetId={profile.id} />
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
           <p className="text-xs text-gray-400 mb-1">Calibrations</p>
           <p className="text-2xl font-bold text-mar-text">{profile.calibration_count}</p>
