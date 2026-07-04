@@ -61,6 +61,7 @@ import { CalibrationWizard } from "./CalibrationWizard";
 import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
 import { Gauge } from "@/components/charts/gauge";
+import { UserMention } from "@/components/user-mention";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -2148,7 +2149,13 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
             return (
               <div key={log.id} className="grid grid-cols-[7rem_10rem_1fr] items-start gap-4 py-2.5 text-xs">
                 <span className="font-mono text-gray-400">{dateStr} {timeStr}</span>
-                <span className="text-gray-500 truncate">{log.actor_email}</span>
+                <UserMention
+                  actorId={log.actor_id}
+                  actorEmail={log.actor_email}
+                  actorName={log.actor_name}
+                  actorRole={log.actor_role}
+                  className="text-xs truncate"
+                />
                 <span className="font-medium text-mar-text">{actionLabel(log.action)}</span>
               </div>
             );

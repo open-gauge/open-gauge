@@ -58,6 +58,10 @@ export async function countAdminUsers(q?: string): Promise<number> {
   return res.count;
 }
 
+export async function getUserById(id: string): Promise<UserProfile> {
+  return apiFetch<UserProfile>(`/api/v1/users/${id}`, { headers: tokenHeader() });
+}
+
 export async function updateAdminUser(
   userId: string,
   body: { role?: string; organization_id?: string | null; is_active?: boolean },

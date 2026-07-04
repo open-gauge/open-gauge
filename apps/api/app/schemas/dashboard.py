@@ -43,8 +43,10 @@ class AssetTypeDistribution(BaseModel):
 
 
 class ActivityItem(BaseModel):
+    actor_id: str | None = None
     actor_email: str
     actor_name: str | None = None
+    actor_role: str | None = None
     action: str
     entity_asset_id: str | None
     created_at: datetime

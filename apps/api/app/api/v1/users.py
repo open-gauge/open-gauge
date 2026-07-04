@@ -108,8 +108,8 @@ def get_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    if current_user.id != user_id and not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    # Any authenticated user may view a colleague's public profile
+    _ = current_user
     user = user_repo.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

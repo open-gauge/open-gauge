@@ -9,6 +9,8 @@ class AuditLogResponse(BaseModel):
     id: uuid.UUID
     actor_id: uuid.UUID | None
     actor_email: str
+    actor_name: str | None = None
+    actor_role: str | None = None
     action: str
     entity_type: str
     entity_id: uuid.UUID | None

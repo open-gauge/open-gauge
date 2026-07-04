@@ -38,8 +38,10 @@ export interface AssetTypeDistribution {
 }
 
 export interface ActivityItem {
+  actor_id: string | null;
   actor_email: string;
   actor_name: string | null;
+  actor_role: string | null;
   action: string;
   entity_asset_id: string | null;
   created_at: string;

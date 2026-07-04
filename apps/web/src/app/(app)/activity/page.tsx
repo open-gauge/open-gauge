@@ -12,6 +12,7 @@ import {
   ProceduresIcon,
   SearchIcon,
 } from "@/components/icons";
+import { UserMention } from "@/components/user-mention";
 
 const LIMIT = 50;
 
@@ -189,7 +190,13 @@ export default function ActivityPage() {
                         <span className="font-mono text-xs text-gray-500">{dateStr} {timeStr}</span>
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
-                        <span className="text-xs text-gray-500">{log.actor_email}</span>
+                        <UserMention
+                          actorId={log.actor_id}
+                          actorEmail={log.actor_email}
+                          actorName={log.actor_name}
+                          actorRole={log.actor_role}
+                          className="text-xs"
+                        />
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         <EntityBadge entityType={log.entity_type} />

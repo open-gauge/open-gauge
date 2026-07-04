@@ -114,7 +114,7 @@ def get_activity(db: Session, limit: int = 10) -> list[dict]:
     from ..models.user import User
 
     rows = (
-        db.query(AuditLog, User.name)
+        db.query(AuditLog, User.name, User.role, User.id)
         .outerjoin(User, AuditLog.actor_id == User.id)
         .order_by(AuditLog.created_at.desc())
         .limit(limit)
@@ -122,13 +122,15 @@ def get_activity(db: Session, limit: int = 10) -> list[dict]:
     )
     return [
         {
+            "actor_id": str(user_id) if user_id else None,
             "actor_email": log.actor_email,
             "actor_name": name,
+            "actor_role": role.value if role else None,
             "action": log.action,
             "entity_asset_id": log.entity_asset_id,
             "created_at": log.created_at,
         }
-        for log, name in rows
+        for log, name, role, user_id in rows
     ]
 
 
