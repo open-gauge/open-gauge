@@ -30,6 +30,10 @@ def get_summary(db: Session = Depends(get_db)) -> DashboardSummary:
         calibration_status_distribution=[
             CalibrationStatusCount(**item) for item in data["calibration_status_distribution"]
         ],
+        procedures=data["procedures"],
+        procedure_distribution=[
+            DistributionItem(**item) for item in data["procedure_distribution"]
+        ],
     )
 
 

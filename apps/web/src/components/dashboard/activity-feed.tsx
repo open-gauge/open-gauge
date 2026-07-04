@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+
 import type { ActivityItem } from "@/types/dashboard";
+import { ExternalLinkIcon } from "@/components/icons";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -35,9 +38,18 @@ function displayName(item: ActivityItem): string {
 export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
   return (
     <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 h-full flex flex-col">
-      <div className="mb-3 flex-shrink-0">
-        <h3 className="text-sm font-semibold text-mar-text">Activity</h3>
-        <p className="text-xs text-gray-400 mt-0.5">Recent audit events</p>
+      <div className="flex items-start justify-between mb-4 flex-shrink-0">
+        <div>
+          <h3 className="text-sm font-semibold text-mar-text">Activity</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Recent audit events</p>
+        </div>
+        <Link
+          href="/activity"
+          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors flex-shrink-0"
+        >
+          View all
+          <ExternalLinkIcon />
+        </Link>
       </div>
 
       {/* Scrollable list */}

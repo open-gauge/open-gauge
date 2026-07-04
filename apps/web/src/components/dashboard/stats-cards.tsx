@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { PieChart } from "@/components/charts/pie-chart";
 import { PieSlice } from "@/components/charts/pie-slice";
+import { PieCenter } from "@/components/charts/pie-center";
 import type { PieData } from "@/components/charts/pie-context";
 import type { AssetTypeDistribution, DashboardSummary } from "@/types/dashboard";
 import { SUBTYPE_COLOR, SUBTYPE_LABEL } from "@/lib/tokens";
@@ -12,7 +12,7 @@ import {
   ApiIcon,
   DatabaseIcon,
   FilterIcon,
-  WarningIcon,
+  ProceduresIcon,
 } from "@/components/icons";
 
 // ── Calibration-status colours ───────────────────────────────────────────────
@@ -33,38 +33,26 @@ const CAL_LABEL: Record<string, string> = {
 interface Slice { name: string; value: number; color: string; }
 
 function MiniDonut({ slices }: { slices: Slice[] }) {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const total = slices.reduce((s, d) => s + d.value, 0);
 
   const data: PieData[] = total === 0
     ? [{ label: "—", value: 1, color: "#e5e7eb" }]
     : slices.map((s) => ({ label: s.name, value: s.value, color: s.color }));
 
-  const hovered = hoveredIdx !== null ? slices[hoveredIdx] : null;
-
   return (
-    <div className="flex flex-col items-center flex-shrink-0">
+    <div className="flex-shrink-0">
       <PieChart
         data={data}
         size={88}
         innerRadius={26}
         hoverOffset={0}
         padAngle={total === 0 ? 0 : 0.04}
-        onHoverChange={total === 0 ? undefined : setHoveredIdx}
       >
         {data.map((_, i) => (
           <PieSlice key={i} index={i} hoverEffect="none" showGlow={false} />
         ))}
+        {total > 0 && <PieCenter defaultLabel="Total" />}
       </PieChart>
-      {/* Fixed-height hover label — no layout shift */}
-      <div className="h-4 flex items-center justify-center">
-        {hovered && (
-          <p className="text-[10px] text-center leading-none">
-            <span className="font-bold text-mar-text">{hovered.value}</span>
-            <span className="text-gray-400 ml-1">{hovered.name}</span>
-          </p>
-        )}
-      </div>
     </div>
   );
 }
@@ -152,6 +140,12 @@ export default function StatsCards({
     color: SUBTYPE_COLOR[d.type] ?? "#6b7280",
   }));
 
+  const procedureSlices: Slice[] = (data.procedure_distribution ?? []).map((d) => ({
+    name:  SUBTYPE_LABEL[d.type] ?? d.type,
+    value: d.count,
+    color: SUBTYPE_COLOR[d.type] ?? "#6b7280",
+  }));
+
   return (
     <div className="grid grid-cols-4 gap-5">
       <StatCard
@@ -175,10 +169,10 @@ export default function StatsCards({
         filterHref="/assets?asset_type=daq"
       />
       <StatCard
-        label="Low health" value={data.low_health_assets}
-        sub="Health score below 70 %"
-        icon={<WarningIcon size={18} />} iconCls="text-red-500"
-        filterHref="/assets?health_max=70"
+        label="Procedures" value={data.procedures ?? 0}
+        sub="By physical quantity"
+        icon={<ProceduresIcon size={18} />} iconCls="text-mar-accent"
+        slices={procedureSlices}
       />
     </div>
   );

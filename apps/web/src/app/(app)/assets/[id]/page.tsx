@@ -2235,6 +2235,7 @@ function CalibrationRingCard({
               height={72}
               useGradient
               activeGradient={[gradStart, gradEnd] as [string, string]}
+              inactiveFill="var(--border)"
               totalNotches={20}
               spacing={15}
             />

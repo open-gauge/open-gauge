@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from ..models.asset import Asset, AssetType
 from ..models.audit_log import AuditLog
 from ..models.calibration import Calibration
+from ..models.calibration_method import Procedure
 from ..models.daq import DAQ
 from ..models.sensor import Sensor
 
@@ -51,6 +52,16 @@ def get_summary(db: Session) -> dict:
             else:
                 counts["valid"] += 1
 
+    # Procedures
+    total_procedures = db.query(func.count(Procedure.id)).filter(Procedure.is_active.is_(True)).scalar() or 0
+    proc_rows = (
+        db.query(Procedure.physical_quantity, func.count(Procedure.id))
+        .filter(Procedure.is_active.is_(True))
+        .group_by(Procedure.physical_quantity)
+        .order_by(func.count(Procedure.id).desc())
+        .all()
+    )
+
     return {
         "registered_assets": total,
         "sensors": sensors,
@@ -58,6 +69,10 @@ def get_summary(db: Session) -> dict:
         "low_health_assets": low_health,
         "calibration_status_distribution": [
             {"status": k, "count": v} for k, v in counts.items()
+        ],
+        "procedures": total_procedures,
+        "procedure_distribution": [
+            {"type": row[0], "count": row[1]} for row in proc_rows
         ],
     }
 

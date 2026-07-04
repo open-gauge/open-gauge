@@ -8,12 +8,19 @@ class CalibrationStatusCount(BaseModel):
     count: int
 
 
+class DistributionItem(BaseModel):
+    type: str
+    count: int
+
+
 class DashboardSummary(BaseModel):
     registered_assets: int
     sensors: int
     daqs: int
     low_health_assets: int
     calibration_status_distribution: list[CalibrationStatusCount] = []
+    procedures: int = 0
+    procedure_distribution: list[DistributionItem] = []
 
 
 class CalibrationEvent(BaseModel):
@@ -28,11 +35,6 @@ class CalendarEvent(BaseModel):
     name: str
     date: str        # YYYY-MM-DD
     event_type: str  # "performed" | "due"
-
-
-class DistributionItem(BaseModel):
-    type: str
-    count: int
 
 
 class AssetTypeDistribution(BaseModel):

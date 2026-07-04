@@ -9,6 +9,8 @@ export interface DashboardSummary {
   daqs: number;
   low_health_assets: number;
   calibration_status_distribution: CalibrationStatusCount[];
+  procedures: number;
+  procedure_distribution: DistributionItem[];
 }
 
 export interface CalibrationEvent {
