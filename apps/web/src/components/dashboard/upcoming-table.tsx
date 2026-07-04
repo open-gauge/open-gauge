@@ -39,7 +39,7 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
       </div>
 
       {/* Scrollable list fills remaining panel height */}
-      <div className="overflow-y-auto flex-1 min-h-0">
+      <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0">
         {sorted.length === 0 ? (
           <p className="text-center text-xs text-gray-400 py-6">No calibrations scheduled</p>
         ) : (

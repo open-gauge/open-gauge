@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   AssetRegistryIcon,
-  BellIcon,
   ChevronDownIcon,
   PlusIcon,
   SearchIcon,
@@ -216,13 +215,6 @@ export default function TopBar() {
             </div>
           )}
         </div>
-
-        <button
-          type="button"
-          className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-        >
-          <BellIcon />
-        </button>
 
         <ThemeToggle />
 

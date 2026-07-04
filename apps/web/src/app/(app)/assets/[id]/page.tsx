@@ -58,6 +58,8 @@ import {
   XIcon,
 } from "@/components/icons";
 import { CalibrationWizard } from "./CalibrationWizard";
+import { getLocation } from "@/services/location.service";
+import type { LocationItem } from "@/types/location";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1521,6 +1523,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
+  const [calLocation, setCalLocation] = useState<LocationItem | null>(null);
 
   const filteredCals = hasChannelTabs && activeChannelId
     ? calibrations.filter((c) => c.sensor_id === activeChannelId)
@@ -1542,6 +1545,12 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
       .catch(() => setPoints([]))
       .finally(() => setLoadingPoints(false));
   }, [selectedCal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const locId = selectedCal?.calibration_location_id;
+    if (!locId) { setCalLocation(null); return; }
+    getLocation(locId).then(setCalLocation).catch(() => setCalLocation(null));
+  }, [selectedCal?.calibration_location_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function versionOf(cal: CalibrationRecord): number {
     const idx = filteredCals.findIndex((c) => c.id === cal.id);
@@ -1833,9 +1842,21 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
           )}
 
           {/* Conditions & Notes */}
-          {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null || selectedCal.notes) && (
+          {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null || selectedCal.notes || calLocation) && (
             <div className="rounded-xl border border-mar-border bg-mar-surface-alt p-4 space-y-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Conditions &amp; Notes</p>
+              {calLocation && (
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Calibration Lab</p>
+                  <Link
+                    href="/sites"
+                    className="text-xs text-mar-accent hover:underline inline-flex items-center gap-1"
+                  >
+                    <MapPinIcon size={11} />
+                    {calLocation.name}
+                  </Link>
+                </div>
+              )}
               {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null) && (
                 <div className="grid grid-cols-3 gap-4">
                   {selectedCal.temperature != null && (
@@ -2190,8 +2211,8 @@ function CalibrationRingCard({
   return (
     <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
       <div className="flex items-stretch gap-3">
-        {/* Dates — 2/3 width, 4 lines total */}
-        <div className="w-2/3 space-y-1.5">
+        {/* Dates — 2/3 width, 4 lines total, centred */}
+        <div className="w-2/3 space-y-1.5 flex flex-col items-center text-center">
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Last</p>
             <p className="text-sm font-semibold font-mono text-mar-text tabular-nums">{fmtDate(lastCal)}</p>
@@ -2217,7 +2238,7 @@ function CalibrationRingCard({
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-[10px] font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+              <span className="text-xs font-bold tabular-nums leading-none" style={{ color: ringColor }}>
                 {days !== null ? String(days) : "—"}
               </span>
             </div>
@@ -2615,10 +2636,10 @@ export default function AssetProfilePage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+        <div className="bg-mar-surface border border-mar-border rounded-xl p-5 flex flex-col items-center text-center">
           <p className="text-xs text-gray-400 mb-1">Health score</p>
           <p className="text-2xl font-bold text-mar-text">{profile.health_score}%</p>
-          <div className="mt-2 h-1.5 rounded-full bg-mar-border overflow-hidden">
+          <div className="mt-2 h-1.5 rounded-full bg-mar-border overflow-hidden w-full">
             <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.health_score}%` }} />
           </div>
         </div>
@@ -2627,7 +2648,7 @@ export default function AssetProfilePage() {
           dueAt={profile.next_due_at}
           status={profile.calibration_status}
         />
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+        <div className="bg-mar-surface border border-mar-border rounded-xl p-5 flex flex-col items-center text-center">
           <p className="text-xs text-gray-400 mb-1">Calibrations</p>
           <p className="text-2xl font-bold text-mar-text">{profile.calibration_count}</p>
           <p className="text-xs text-gray-400 mt-1">all-time</p>
