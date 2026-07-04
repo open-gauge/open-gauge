@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Cell, Pie, PieChart } from "recharts";
+import { PieChart } from "@/components/charts/pie-chart";
+import { PieSlice } from "@/components/charts/pie-slice";
+import type { PieData } from "@/components/charts/pie-context";
 import type { AssetTypeDistribution, DashboardSummary } from "@/types/dashboard";
 import { SUBTYPE_COLOR, SUBTYPE_LABEL } from "@/lib/tokens";
 import {
@@ -31,32 +33,28 @@ const CAL_LABEL: Record<string, string> = {
 interface Slice { name: string; value: number; color: string; }
 
 function MiniDonut({ slices }: { slices: Slice[] }) {
-  const [hovered, setHovered] = useState<Slice | null>(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const total = slices.reduce((s, d) => s + d.value, 0);
-  const data  = total === 0 ? [{ name: "—", value: 1, color: "#e5e7eb" }] : slices;
+
+  const data: PieData[] = total === 0
+    ? [{ label: "—", value: 1, color: "#e5e7eb" }]
+    : slices.map((s) => ({ label: s.name, value: s.value, color: s.color }));
+
+  const hovered = hoveredIdx !== null ? slices[hoveredIdx] : null;
 
   return (
     <div className="flex flex-col items-center flex-shrink-0">
-      {/* 20 % smaller than original (110 → 88, radii 30/46 → 24/37) */}
-      <PieChart width={88} height={88}>
-        <Pie
-          data={data}
-          cx={44} cy={44}
-          innerRadius={24} outerRadius={37}
-          paddingAngle={total === 0 ? 0 : 2}
-          dataKey="value"
-          startAngle={90} endAngle={-270}
-          strokeWidth={0}
-          onMouseLeave={() => setHovered(null)}
-        >
-          {data.map((entry, i) => (
-            <Cell
-              key={i}
-              fill={entry.color}
-              onMouseEnter={() => total > 0 && setHovered(entry)}
-            />
-          ))}
-        </Pie>
+      <PieChart
+        data={data}
+        size={88}
+        innerRadius={26}
+        hoverOffset={0}
+        padAngle={total === 0 ? 0 : 0.04}
+        onHoverChange={total === 0 ? undefined : setHoveredIdx}
+      >
+        {data.map((_, i) => (
+          <PieSlice key={i} index={i} hoverEffect="none" showGlow={false} />
+        ))}
       </PieChart>
       {/* Fixed-height hover label — no layout shift */}
       <div className="h-4 flex items-center justify-center">

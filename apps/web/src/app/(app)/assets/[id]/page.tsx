@@ -60,6 +60,7 @@ import {
 import { CalibrationWizard } from "./CalibrationWizard";
 import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
+import { Gauge } from "@/components/charts/gauge";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1849,7 +1850,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Calibration Lab</p>
                   <Link
-                    href="/sites"
+                    href={`/sites?id=${calLocation.id}`}
                     className="text-xs text-mar-accent hover:underline inline-flex items-center gap-1"
                   >
                     <MapPinIcon size={11} />
@@ -2172,7 +2173,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Calibration ring chart — 2/3 dates + 1/3 ring, full = just calibrated, empty = overdue
+// Calibration gauge — 2/3 dates + 1/3 bklit Gauge, gradient per remaining days
 // ---------------------------------------------------------------------------
 function CalibrationRingCard({
   lastCal,
@@ -2182,8 +2183,8 @@ function CalibrationRingCard({
   dueAt: string | null;
   status: string;
 }) {
-  const { days, progress, ringColor } = useMemo(() => {
-    if (!dueAt) return { days: null, progress: 0, ringColor: "#9ca3af" };
+  const { days, gaugeValue, gradStart, gradEnd } = useMemo(() => {
+    if (!dueAt) return { days: null, gaugeValue: 0, gradStart: "#9ca3af", gradEnd: "#6b7280" };
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2200,18 +2201,21 @@ function CalibrationRingCard({
       if (totalDays > 0) prog = Math.max(0, Math.min(1, daysUntil / totalDays));
     }
 
-    const color = daysUntil > 30 ? "#22c55e" : daysUntil > 0 ? "#f59e0b" : "#ef4444";
-    return { days: daysUntil, progress: prog, ringColor: color };
+    // Gradient colors based on remaining days thresholds
+    const [gs, ge] =
+      daysUntil > 90 ? ["#22c55e", "#16a34a"] :
+      daysUntil > 30 ? ["#f59e0b", "#d97706"] :
+                       ["#ef4444", "#dc2626"];
+
+    return { days: daysUntil, gaugeValue: Math.max(0, Math.min(100, prog * 100)), gradStart: gs, gradEnd: ge };
   }, [lastCal, dueAt]);
 
-  const R = 22;
-  const circumference = 2 * Math.PI * R;
-  const dashOffset = circumference * (1 - progress);
+  const textColor = gradStart;
 
   return (
     <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
       <div className="flex items-stretch gap-3">
-        {/* Dates — 2/3 width, 4 lines total, centred */}
+        {/* Dates — 2/3 width, centred */}
         <div className="w-2/3 space-y-1.5 flex flex-col items-center text-center">
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Last</p>
@@ -2222,25 +2226,23 @@ function CalibrationRingCard({
             <p className="text-sm font-semibold font-mono text-mar-text tabular-nums">{fmtDate(dueAt)}</p>
           </div>
         </div>
-        {/* Ring — 1/3 width, height matches dates block */}
+        {/* Gauge — 1/3 width, bklit dual-arc gradient */}
         <div className="w-1/3 flex items-center justify-center">
-          <div className="relative h-full aspect-square">
-            <svg viewBox="0 0 56 56" className="w-full h-full -rotate-90" aria-hidden="true">
-              <circle cx={28} cy={28} r={R} fill="none" strokeWidth={4} className="stroke-mar-border" />
-              <circle
-                cx={28} cy={28} r={R}
-                fill="none"
-                strokeWidth={4}
-                stroke={ringColor}
-                strokeDasharray={circumference}
-                strokeDashoffset={dashOffset}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+          <div className="relative">
+            <Gauge
+              value={gaugeValue}
+              width={72}
+              height={72}
+              useGradient
+              activeGradient={[gradStart, gradEnd] as [string, string]}
+              totalNotches={20}
+              spacing={15}
+            />
+            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingTop: "6px" }}>
+              <span className="text-xs font-bold tabular-nums leading-none" style={{ color: textColor }}>
                 {days !== null ? String(days) : "—"}
               </span>
+              <span className="text-[9px] text-gray-400 mt-0.5 leading-none">days</span>
             </div>
           </div>
         </div>

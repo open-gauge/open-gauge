@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   CheckIcon,
@@ -954,10 +955,13 @@ function NewLocationForm({
 // ---------------------------------------------------------------------------
 
 export default function LocationsPage() {
+  const searchParams = useSearchParams();
+  const initialId = searchParams.get("id");
+
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [expanded, setExpanded]   = useState<Set<string>>(new Set());
   const [newLocOpen, setNewLocOpen] = useState(false);
 
@@ -965,17 +969,26 @@ export default function LocationsPage() {
     listAllLocations()
       .then((data) => {
         setLocations(data);
+        const byId = new Map(data.map((l) => [l.id, l]));
         const tree = buildTree(data);
         const ids = new Set<string>();
         for (const root of tree) {
           ids.add(root.id);
           for (const site of root.children) ids.add(site.id);
         }
+        // If deep-linking to a specific location, expand all its ancestors
+        if (initialId) {
+          let cur = byId.get(initialId);
+          while (cur?.parent_location_id) {
+            ids.add(cur.parent_location_id);
+            cur = byId.get(cur.parent_location_id);
+          }
+        }
         setExpanded(ids);
       })
       .catch(() => setError("Failed to load locations."))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tree = useMemo(() => buildTree(locations), [locations]);
 

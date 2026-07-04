@@ -22,6 +22,13 @@
 
   /* Graph-paper grid */
   --mar-grid-color:   rgba(47, 129, 155, 0.10);
+
+  /* bklit chart tokens */
+  --border:           #e5e7eb;
+  --chart-background: transparent;
+  --chart-foreground: #152330;
+  --chart-foreground-muted: #6b7280;
+  --chart-label:      #374151;
 }
 
 .dark {
@@ -38,6 +45,13 @@
 
   /* Graph-paper grid */
   --mar-grid-color:   rgba(61, 154, 184, 0.07);
+
+  /* bklit chart tokens */
+  --border:           #1e3a52;
+  --chart-background: transparent;
+  --chart-foreground: #d0e8f0;
+  --chart-foreground-muted: #9ca3af;
+  --chart-label:      #d1d5db;
 }
 
 body {

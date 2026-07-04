@@ -39,7 +39,7 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
       </div>
 
       {/* Scrollable list fills remaining panel height */}
-      <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0">
+      <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 pr-1">
         {sorted.length === 0 ? (
           <p className="text-center text-xs text-gray-400 py-6">No calibrations scheduled</p>
         ) : (
@@ -60,7 +60,7 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
                     </span>
                   </div>
                 </div>
-                <div className="flex-shrink-0 text-right">
+                <div className="flex-shrink-0 text-right pr-2">
                   <p className="text-xs text-gray-500">
                     {dueDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                   </p>
