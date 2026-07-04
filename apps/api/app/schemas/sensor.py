@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class SensorChannelCreate(BaseModel):
+    sensor_id: uuid.UUID | None = None  # stable identifier for updates; ignored on create
     channel_id: str = Field(min_length=1, max_length=255)
     physical_quantity: str = Field(min_length=1, max_length=255)
     unit: str = Field(min_length=1, max_length=50)

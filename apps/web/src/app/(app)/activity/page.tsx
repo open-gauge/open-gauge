@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { listAuditLogs } from "@/services/audit_log.service";
 import type { AuditLogEntry } from "@/types/audit_log";
 import { AUDIT_ENTITY_LABEL, AUDIT_ENTITY_STYLE } from "@/lib/tokens";
@@ -61,6 +62,9 @@ function EntityBadge({ entityType }: { entityType: string }) {
 }
 
 export default function ActivityPage() {
+  const searchParams = useSearchParams();
+  const actorIdParam = searchParams.get("actor_id") ?? undefined;
+
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -72,19 +76,19 @@ export default function ActivityPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    listAuditLogs({ skip: 0, limit: LIMIT, entity_type: entityType || undefined })
+    listAuditLogs({ skip: 0, limit: LIMIT, entity_type: entityType || undefined, actor_id: actorIdParam })
       .then((data) => {
         setLogs(data);
         setHasMore(data.length === LIMIT);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [entityType]);
+  }, [entityType, actorIdParam]);
 
   async function handleLoadMore() {
     setLoadingMore(true);
     try {
-      const next = await listAuditLogs({ skip: logs.length, limit: LIMIT, entity_type: entityType || undefined });
+      const next = await listAuditLogs({ skip: logs.length, limit: LIMIT, entity_type: entityType || undefined, actor_id: actorIdParam });
       setLogs((prev) => [...prev, ...next]);
       setHasMore(next.length === LIMIT);
     } catch (e) {
@@ -99,6 +103,7 @@ export default function ActivityPage() {
     if (!q) return logs;
     return logs.filter((log) =>
       log.actor_email.toLowerCase().includes(q) ||
+      (log.actor_name?.toLowerCase().includes(q) ?? false) ||
       log.action.toLowerCase().includes(q) ||
       (log.entity_asset_id?.toLowerCase().includes(q) ?? false) ||
       log.entity_type.toLowerCase().includes(q)
@@ -116,6 +121,14 @@ export default function ActivityPage() {
           </p>
         </div>
       </div>
+
+      {actorIdParam && (
+        <div className="rounded-lg bg-mar-surface border border-mar-accent/30 px-4 py-2 flex items-center gap-2 text-xs text-mar-text">
+          <span className="text-mar-accent font-semibold">Filtered by user</span>
+          <span className="text-gray-400">Showing activity for a specific user.</span>
+          <a href="/activity" className="ml-auto text-mar-accent hover:underline">Clear filter</a>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
@@ -213,7 +226,7 @@ export default function ActivityPage() {
               )}
             </tbody>
           </table>
-          {hasMore && !search && (
+          {hasMore && (
             <div className="flex items-center justify-center py-4 border-t border-mar-border">
               <button
                 type="button"

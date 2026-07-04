@@ -257,33 +257,41 @@ def update(db: Session, asset: Asset, **kwargs) -> Asset:
             (ch.model_dump() if hasattr(ch, "model_dump") else dict(ch))
             for ch in sensor_channels_data
         ]
-        existing_by_ch_id: dict[str, Sensor] = {
-            s.channel_id: s
-            for s in db.query(Sensor).filter(Sensor.asset_id == asset.id).all()
-        }
-        new_ch_ids = {ch["channel_id"] for ch in ch_dicts}
+        existing_sensors = db.query(Sensor).filter(Sensor.asset_id == asset.id).all()
+        existing_by_uuid: dict[str, Sensor] = {str(s.id): s for s in existing_sensors}
+        existing_by_ch_id: dict[str, Sensor] = {s.channel_id: s for s in existing_sensors}
+        updated_sensor_uuids: set[str] = set()
 
         for ch_dict in ch_dicts:
-            ch_id = ch_dict["channel_id"]
-            if ch_id in existing_by_ch_id:
+            # Strip sensor_id from the fields written to the ORM model
+            incoming_sensor_id = str(ch_dict.pop("sensor_id", None) or "")
+            fields = {k: v for k, v in ch_dict.items()}
+
+            # Prefer UUID match (survives channel_id renames) then fall back to channel_id match
+            existing = (
+                existing_by_uuid.get(incoming_sensor_id)
+                or existing_by_ch_id.get(ch_dict["channel_id"])
+            )
+            if existing:
                 # Update in-place — preserves the sensor UUID so calibrations.sensor_id FK stays valid
-                existing = existing_by_ch_id[ch_id]
-                for k, v in ch_dict.items():
+                for k, v in fields.items():
                     setattr(existing, k, v)
                 existing.is_active = True
+                updated_sensor_uuids.add(str(existing.id))
             else:
-                db.add(Sensor(asset_id=asset.id, **ch_dict))
+                new_sensor = Sensor(asset_id=asset.id, **fields)
+                db.add(new_sensor)
 
-        for ch_id, removed in existing_by_ch_id.items():
-            if ch_id not in new_ch_ids:
+        for sensor in existing_sensors:
+            if str(sensor.id) not in updated_sensor_uuids:
                 has_cals = (
-                    db.query(Calibration).filter(Calibration.sensor_id == removed.id).first()
+                    db.query(Calibration).filter(Calibration.sensor_id == sensor.id).first()
                     is not None
                 )
                 if has_cals:
-                    removed.is_active = False  # soft-delete: calibrations still reference this sensor
+                    sensor.is_active = False  # soft-delete: calibrations still reference this sensor
                 else:
-                    db.delete(removed)
+                    db.delete(sensor)
 
     db.commit()
     db.refresh(asset)

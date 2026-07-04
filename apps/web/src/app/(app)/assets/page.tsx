@@ -490,9 +490,6 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
           )}
           <td className={PER_CH_TD}>
             <TypeCell subtype={ch.physical_quantity} technology={ch.technology} />
-            {isMulti && (
-              <span className="text-[9px] text-gray-400 font-mono leading-none">{ch.channel_id}</span>
-            )}
           </td>
           <td className={`${PER_CH_TD} whitespace-nowrap`}>
             <RangeCell min={ch.measurement_min} max={ch.measurement_max} unit={ch.unit || null} />

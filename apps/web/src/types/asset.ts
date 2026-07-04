@@ -150,6 +150,7 @@ export interface LocationOption {
 // Asset update request (PUT /assets/{id})
 // ---------------------------------------------------------------------------
 export interface SensorChannelUpdateInput {
+  sensor_id?: string | null;
   channel_id: string;
   physical_quantity: string;
   unit: string;

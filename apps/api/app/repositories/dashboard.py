@@ -110,12 +110,14 @@ def get_asset_type_distribution(db: Session) -> dict:
     }
 
 
-def get_activity(db: Session, limit: int = 10) -> list[dict]:
+def get_activity(db: Session, days: int = 30, limit: int = 500) -> list[dict]:
     from ..models.user import User
 
+    since = datetime.now(timezone.utc) - timedelta(days=days)
     rows = (
         db.query(AuditLog, User.name, User.role, User.id)
         .outerjoin(User, AuditLog.actor_id == User.id)
+        .filter(AuditLog.created_at >= since)
         .order_by(AuditLog.created_at.desc())
         .limit(limit)
         .all()

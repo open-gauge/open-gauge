@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   deleteAssetFile,
@@ -139,6 +139,7 @@ function SpecRow({ label, value, accent }: { label: string; value: string | null
 
 interface EditChannelForm {
   _key: string;
+  sensor_id: string | null;
   channel_id: string;
   physical_quantity: string;
   unit: string;
@@ -237,6 +238,7 @@ function profileToForm(profile: AssetProfile): EditFormState {
       const { family } = parseTechnology(ch.physical_quantity, ch.technology ?? "");
       return {
         _key: `existing-${i}`,
+        sensor_id: ch.id,
         channel_id: s(ch.channel_id),
         physical_quantity: s(ch.physical_quantity),
         unit: s(ch.unit),
@@ -288,6 +290,7 @@ function numSI(v: string, unit: string): number | null {
 
 function formToUpdate(form: EditFormState): AssetUpdateRequest {
   const channels: SensorChannelUpdateInput[] = form.sensor_channels.map((ch) => ({
+    sensor_id: ch.sensor_id ?? null,
     channel_id: ch.channel_id.trim(),
     physical_quantity: ch.physical_quantity,
     unit: ch.unit,
@@ -971,6 +974,7 @@ function OverviewTab({
         ...form.sensor_channels,
         {
           _key: newKey,
+          sensor_id: null,
           channel_id: "",
           physical_quantity: firstQ.value,
           unit: firstQ.units[0]?.value ?? "",
@@ -2364,6 +2368,7 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
 export default function AssetProfilePage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [profile, setProfile] = useState<AssetProfile | null>(null);
@@ -2530,18 +2535,15 @@ export default function AssetProfilePage() {
         </div>
       )}
 
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-gray-400">
-        <Link href="/assets" className="hover:text-mar-text transition-colors">Assets</Link>
-        {profile.site_name && (
-          <>
-            <ChevronLeftIcon size={10} className="rotate-180 opacity-50" />
-            <span>{profile.site_name}</span>
-          </>
-        )}
-        <ChevronLeftIcon size={10} className="rotate-180 opacity-50" />
-        <span className="font-mono text-mar-text">{profile.asset_id}</span>
-      </nav>
+      {/* Back button */}
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-mar-text transition-colors"
+      >
+        <ChevronLeftIcon size={13} />
+        Back
+      </button>
 
       {/* Header card */}
       <div className="bg-mar-surface border border-mar-border rounded-xl p-6">

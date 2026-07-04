@@ -10,8 +10,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 // ---------------------------------------------------------------------------
 
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-// GitHub-style: only label Mon, Wed, Fri rows (indices 0, 2, 4)
-const DAY_LABELS = ["Mo", "", "We", "", "Fr", "", ""];
+const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 // ---------------------------------------------------------------------------
 // Helpers
