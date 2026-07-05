@@ -210,6 +210,7 @@ def create(db: Session, created_by: uuid.UUID, **kwargs) -> Asset:
     if sensor_channels:
         for ch in sensor_channels:
             ch_dict = ch.model_dump() if hasattr(ch, "model_dump") else ch
+            ch_dict.pop("sensor_id", None)  # client-supplied identifier is only meaningful on update
             db.add(Sensor(asset_id=asset.id, **ch_dict))
 
     if daq_data:

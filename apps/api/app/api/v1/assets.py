@@ -17,6 +17,8 @@ from ...repositories import audit_log as audit_log_repo
 from ...repositories import stored_file as file_repo
 from ...schemas.asset import AssetCreate, AssetDuplicateRequest, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
 from ...schemas.calibration import CalibrationResponse
+from ...health import service as health_service
+from ...health.models import AssetHealthResponse, CurveComparisonResponse
 from ...schemas.sensor import SensorChannelResponse
 from ...schemas.daq import DaqResponse
 from ...schemas.audit_log import AuditLogResponse
@@ -109,6 +111,7 @@ def get_asset_profile(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     base = _enrich(asset, db)
     extras = asset_repo.get_profile_extras(db, asset_pk)
+    extras["calibration_health_score"] = health_service.get_asset_calibration_health_score(db, asset_pk)
     return AssetProfileResponse(**base.model_dump(), **extras)
 
 
@@ -254,6 +257,40 @@ def list_asset_calibrations(
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     return cal_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit)
+
+
+@router.get("/{asset_pk}/health", response_model=AssetHealthResponse)
+def get_asset_health(
+    asset_pk: uuid.UUID,
+    sensor_id: uuid.UUID | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> AssetHealthResponse:
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    return health_service.get_asset_health(db, asset_pk, sensor_id)
+
+
+@router.get("/{asset_pk}/health/curve-comparison", response_model=CurveComparisonResponse)
+def get_asset_health_curve_comparison(
+    asset_pk: uuid.UUID,
+    reference_calibration_id: uuid.UUID,
+    current_calibration_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> CurveComparisonResponse:
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    try:
+        return health_service.get_curve_comparison(
+            db, asset_pk, reference_calibration_id, current_calibration_id
+        )
+    except health_service.CalibrationNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
 
 @router.get("/{asset_pk}/audit-logs", response_model=list[AuditLogResponse])

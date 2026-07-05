@@ -129,6 +129,7 @@ export interface AssetProfile {
   subtype: string | null;
   technology: string | null;
   owner_name: string | null;
+  calibration_health_score: number | null;
 }
 
 export type CalibrationStatus =

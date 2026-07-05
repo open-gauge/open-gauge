@@ -175,6 +175,26 @@ export function WarningIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+/** Upward trend line — used for degrading/increasing drift indicators. */
+export function TrendingUpIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M1.5 12 6 6.5l3 3 5.5-6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.5 3h4v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Downward trend line — used for improving/decreasing drift indicators. */
+export function TrendingDownIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M1.5 4 6 9.5l3-3 5.5 6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.5 13h4V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Utility / misc
 // ---------------------------------------------------------------------------

@@ -64,6 +64,8 @@ import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
 import { Gauge } from "@/components/charts/gauge";
 import { UserMention } from "@/components/user-mention";
+import { Tooltip } from "@/components/tooltip";
+import { HealthTab } from "./HealthTab";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -413,17 +415,6 @@ function validateForm(form: EditFormState): Record<string, string> {
 const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
 const INPUT_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const INPUT_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
-
-function Tooltip({ content, children }: { content: string; children: React.ReactNode }) {
-  return (
-    <span className="relative group/tip">
-      {children}
-      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tip:block w-64 bg-gray-900 dark:bg-gray-700 text-white text-[11px] rounded-lg px-3 py-2 z-50 shadow-lg leading-relaxed whitespace-normal text-left">
-        {content}
-      </span>
-    </span>
-  );
-}
 
 function ELabel({ label, required, tooltip }: { label: string; required?: boolean; tooltip?: string }) {
   return (
@@ -2265,10 +2256,11 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
 // Page
 // ---------------------------------------------------------------------------
 
-type Tab = "overview" | "calibration" | "files" | "activity";
+type Tab = "overview" | "health" | "calibration" | "files" | "activity";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
+  { key: "health", label: "Health" },
   { key: "calibration", label: "Calibration" },
   { key: "files", label: "Files" },
   { key: "activity", label: "Activity" },
@@ -2751,10 +2743,17 @@ export default function AssetProfilePage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-mar-surface border border-mar-border rounded-xl p-5 flex flex-col items-center text-center">
-          <p className="text-xs text-gray-400 mb-1">Health score</p>
-          <p className="text-2xl font-bold text-mar-text">{profile.health_score}%</p>
+          <p className="text-xs text-gray-400 mb-1 flex items-center justify-center gap-1">
+            Health score
+            <Tooltip content={profile.calibration_health_score != null
+              ? "Worst-performing channel's calibration Health Score — a weighted composite of drift, RMSE, uncertainty, hysteresis, linearity, and trend. See the Health tab for the full breakdown."
+              : "Default score. Becomes calibration-based once a channel has at least two calibrations — see the Health tab."}>
+              <InfoIcon size={11} className="text-gray-400 cursor-help" />
+            </Tooltip>
+          </p>
+          <p className="text-2xl font-bold text-mar-text">{Math.round(profile.calibration_health_score ?? profile.health_score)}%</p>
           <div className="mt-2 h-1.5 rounded-full bg-mar-border overflow-hidden w-full">
-            <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.health_score}%` }} />
+            <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.calibration_health_score ?? profile.health_score}%` }} />
           </div>
         </div>
         <CalibrationRingCard
@@ -2799,6 +2798,9 @@ export default function AssetProfilePage() {
               locations={locations}
               teams={teams}
             />
+          )}
+          {activeTab === "health" && (
+            <HealthTab assetId={id} profile={profile} />
           )}
           {activeTab === "calibration" && (
             <CalibrationTab

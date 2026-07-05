@@ -131,3 +131,28 @@ export const SUBTYPE_LABEL: Record<string, string> = {
   reference_standard: "Ref. Std.",
   other:              "Other",
 };
+
+// ---------------------------------------------------------------------------
+// Health tab — score label, stability, and per-metric chart colours
+// ---------------------------------------------------------------------------
+export const HEALTH_LABEL_STYLE: Record<string, string> = {
+  Excellent: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40",
+  Good:      "bg-cyan-50 text-cyan-600 border-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-900/40",
+  Fair:      "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40",
+  Poor:      "bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/40",
+};
+
+export const STABILITY_STYLE: Record<string, string> = {
+  Stable:   "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40",
+  Drifting: "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40",
+  Unstable: "bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/40",
+};
+
+// Series colours for the Calibration Stability multi-line chart.
+export const HEALTH_METRIC_COLOR: Record<string, string> = {
+  rmse:                 "#3b82f6",
+  max_error:            "#ef4444",
+  expanded_uncertainty: "#f59e0b",
+  hysteresis:           "#8b5cf6",
+  r_squared:            "#22c55e",
+};

@@ -157,6 +157,7 @@ class AssetProfileResponse(AssetResponse):
     subtype: str | None = None
     technology: str | None = None
     owner_name: str | None = None
+    calibration_health_score: float | None = None
 
 
 class AssetListItem(BaseModel):
