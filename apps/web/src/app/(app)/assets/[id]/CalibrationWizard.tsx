@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import type { AssetProfile } from "@/types/asset";
 import type {
   AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody,
-  CalibrationPointInline,
+  CalibrationPointInline, DecisionRule,
   DistributionType, WizardRawPoint,
 } from "@/types/calibration";
-import { analyzeCalibration, createCalibration, listAssets, listProcedures } from "@/services/asset.service";
+import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listProcedures } from "@/services/asset.service";
 import { listCalibrationLabs } from "@/services/location.service";
-import { COLORS } from "@/lib/tokens";
+import { COLORS, DECISION_RULE_LABEL, UNCERTAINTY_SOURCE_LABEL } from "@/lib/tokens";
+import { roundToSigFigs } from "@/lib/uncertainty-format";
 import { getUnitsForQuantity, getOutputUnits } from "@/lib/sensor-options";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -287,6 +288,24 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
+  // Opt-in: fold the sensor's nominal manufacturer accuracy spec into the
+  // uncertainty budget as a Type B contribution (off by default — it risks
+  // double-counting against the Type A fit-residual term, GUM §4).
+  const [includeSensorNominalUncertainty, setIncludeSensorNominalUncertainty] = useState(false);
+  // ISO/IEC 17025 §7.1.3/§7.8.6 decision rule — how measurement uncertainty is
+  // factored into the pass/fail conformity statement. This is the value that
+  // gets stored and printed on the certificate (unlike the ad-hoc tolerance
+  // preview below, which is just for exploring "what if" thresholds).
+  const [decisionRule, setDecisionRule] = useState<DecisionRule>("simple_acceptance");
+  // Type B: uncertainty of the reference standard used for this calibration.
+  // For an internal reference asset, auto-fetched from its own most recent
+  // calibration; otherwise (external labs, or an internal asset with no prior
+  // calibration on record) the technician can enter it manually from the
+  // reference standard's own certificate.
+  const [referenceStandardAuto, setReferenceStandardAuto] = useState<{ expandedUncertainty: number; coverageFactor: number } | null>(null);
+  const [referenceStandardAutoLoading, setReferenceStandardAutoLoading] = useState(false);
+  const [referenceStandardManualUncertainty, setReferenceStandardManualUncertainty] = useState<string>("");
+  const [referenceStandardManualCoverageFactor, setReferenceStandardManualCoverageFactor] = useState<string>("2");
 
   // Tolerance criteria (lifted from Step3 so the confirm modal can use uiPassed)
   const [toleranceCriteria, setToleranceCriteria] = useState<ToleranceCriteria>("percent_fs");
@@ -364,6 +383,46 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       .catch(() => {});
   }, [selectedChannel?.physical_quantity]);
 
+  // Auto-fetch the reference standard's own uncertainty from its most recent
+  // calibration, so it can be folded into this calibration's Type B budget
+  // (GUM Annex A.2.1(c): traceability requires each link's own uncertainty).
+  useEffect(() => {
+    const refId = step1.internal_reference_asset_id;
+    if (step1.calibration_type !== "internal" || !refId) {
+      setReferenceStandardAuto(null);
+      return;
+    }
+    let cancelled = false;
+    setReferenceStandardAutoLoading(true);
+    getAssetCalibrations(refId)
+      .then((cals) => {
+        if (cancelled) return;
+        const latest = cals[0];
+        if (latest?.expanded_uncertainty != null) {
+          setReferenceStandardAuto({
+            expandedUncertainty: latest.expanded_uncertainty,
+            coverageFactor: latest.coverage_factor ?? 2.0,
+          });
+        } else {
+          setReferenceStandardAuto(null);
+        }
+      })
+      .catch(() => { if (!cancelled) setReferenceStandardAuto(null); })
+      .finally(() => { if (!cancelled) setReferenceStandardAutoLoading(false); });
+    return () => { cancelled = true; };
+  }, [step1.internal_reference_asset_id, step1.calibration_type]);
+
+  const referenceStandardManualUncertaintyNum = (() => {
+    const v = parseFloat(referenceStandardManualUncertainty);
+    return referenceStandardManualUncertainty.trim() !== "" && !isNaN(v) ? v : null;
+  })();
+  const referenceStandardUncertainty = referenceStandardAuto
+    ? referenceStandardAuto.expandedUncertainty
+    : referenceStandardManualUncertaintyNum;
+  const referenceStandardCoverageFactor = referenceStandardAuto
+    ? referenceStandardAuto.coverageFactor
+    : (parseFloat(referenceStandardManualCoverageFactor) || 2.0);
+
   // ---------------------------------------------------------------------------
   // Analysis debounce (Step 3) — stable, no blinking
   // ---------------------------------------------------------------------------
@@ -384,7 +443,10 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     );
     if (vp.length < 2) return;
 
-    const key = JSON.stringify({ vp, referenceUnit, measuredUnit, analyzeParams });
+    const key = JSON.stringify({
+      vp, referenceUnit, measuredUnit, analyzeParams, includeSensorNominalUncertainty, decisionRule,
+      referenceStandardUncertainty, referenceStandardCoverageFactor,
+    });
     if (key === lastAnalysisKeyRef.current) return;
     lastAnalysisKeyRef.current = key;
 
@@ -404,6 +466,18 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         coverage_factor: analyzeParams.coverage_factor,
         channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
         channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
+        decision_rule: decisionRule,
+        // Type B: instrument resolution is always folded in when known (no
+        // double-counting risk — it's a distinct physical effect from fit scatter).
+        resolution: selectedChannel?.resolution ?? null,
+        // Type B: sensor's nominal manufacturer accuracy spec, opt-in only.
+        sensor_nominal_uncertainty: selectedChannel?.measurement_uncertainty ?? null,
+        sensor_nominal_coverage_factor: selectedChannel?.coverage_factor ?? 2.0,
+        include_sensor_nominal_uncertainty: includeSensorNominalUncertainty,
+        // Type B: uncertainty of the reference standard used for this calibration
+        // (auto-fetched from its own last calibration, or entered manually).
+        reference_standard_uncertainty: referenceStandardUncertainty,
+        reference_standard_coverage_factor: referenceStandardCoverageFactor,
       };
       setAnalyzing(true);
       setAnalyzeError(null);
@@ -418,7 +492,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     }, 400);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [step, rawPoints, referenceUnit, measuredUnit, analyzeParams, step1.coefficients_only, selectedChannel]);
+  }, [step, rawPoints, referenceUnit, measuredUnit, analyzeParams, step1.coefficients_only, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor]);
 
   // ---------------------------------------------------------------------------
   // CSV parsing
@@ -528,6 +602,11 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
           expanded_uncertainty: analysisResult.expanded_uncertainty,
           valid_range_min: analysisResult.valid_range_min,
           valid_range_max: analysisResult.valid_range_max,
+          uncertainty_budget: analysisResult.uncertainty_budget,
+          effective_degrees_of_freedom: analysisResult.effective_degrees_of_freedom,
+          poly_coefficients_covariance: analysisResult.poly_coefficients_covariance,
+          decision_rule: analysisResult.conformity_statement.decision_rule,
+          conformity_statement: analysisResult.conformity_statement,
         };
         points = analysisResult.points.map((p) => ({
           point_index: p.point_index,
@@ -658,6 +737,18 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               toleranceThreshold={toleranceThreshold}
               onToleranceThresholdChange={setToleranceThreshold}
               uiPassed={uiPassed}
+              includeSensorNominalUncertainty={includeSensorNominalUncertainty}
+              onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
+              sensorNominalUncertaintyAvailable={selectedChannel?.measurement_uncertainty != null}
+              decisionRule={decisionRule}
+              onDecisionRuleChange={setDecisionRule}
+              referenceStandardAuto={referenceStandardAuto}
+              referenceStandardAutoLoading={referenceStandardAutoLoading}
+              referenceAssetName={referenceAssets.find((a) => a.id === step1.internal_reference_asset_id)?.name ?? null}
+              referenceStandardManualUncertainty={referenceStandardManualUncertainty}
+              onReferenceStandardManualUncertaintyChange={setReferenceStandardManualUncertainty}
+              referenceStandardManualCoverageFactor={referenceStandardManualCoverageFactor}
+              onReferenceStandardManualCoverageFactorChange={setReferenceStandardManualCoverageFactor}
             />
           )}
         </div>
@@ -1213,6 +1304,11 @@ function Step3({
   analyzeParams, onAnalyzeParamsChange, result, analyzing, analyzeError,
   referenceUnit, measuredUnit, hoveredPointIdx, onHoverPoint, coefficientsOnly,
   toleranceCriteria, onToleranceCriteriaChange, toleranceThreshold, onToleranceThresholdChange, uiPassed,
+  includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange, sensorNominalUncertaintyAvailable,
+  decisionRule, onDecisionRuleChange,
+  referenceStandardAuto, referenceStandardAutoLoading, referenceAssetName,
+  referenceStandardManualUncertainty, onReferenceStandardManualUncertaintyChange,
+  referenceStandardManualCoverageFactor, onReferenceStandardManualCoverageFactorChange,
 }: {
   state: Step1State;
   analyzeParams: AnalyzeParams;
@@ -1230,6 +1326,18 @@ function Step3({
   toleranceThreshold: string;
   onToleranceThresholdChange: (v: string) => void;
   uiPassed: boolean | null;
+  includeSensorNominalUncertainty: boolean;
+  onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
+  sensorNominalUncertaintyAvailable: boolean;
+  decisionRule: DecisionRule;
+  onDecisionRuleChange: (v: DecisionRule) => void;
+  referenceStandardAuto: { expandedUncertainty: number; coverageFactor: number } | null;
+  referenceStandardAutoLoading: boolean;
+  referenceAssetName: string | null;
+  referenceStandardManualUncertainty: string;
+  onReferenceStandardManualUncertaintyChange: (v: string) => void;
+  referenceStandardManualCoverageFactor: string;
+  onReferenceStandardManualCoverageFactorChange: (v: string) => void;
 }) {
   const [rightView, setRightView] = useState<"chart" | "table">("chart");
   const plotDivRef = useRef<HTMLDivElement>(null);
@@ -1407,11 +1515,82 @@ function Step3({
             className={`${IB} ${IB_OK} py-1.5`}
           />
         </div>
+        <div className="flex flex-col gap-1 min-w-[170px]">
+          <WLabel text="Decision rule" />
+          <select
+            value={decisionRule}
+            onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            <option value="simple_acceptance">Simple acceptance</option>
+            <option value="guard_band_w_uncertainty">Guard band (tolerance − U)</option>
+            <option value="shared_risk">Shared risk (tolerance + U)</option>
+          </select>
+        </div>
+        {sensorNominalUncertaintyAvailable && (
+          <div className="flex flex-col gap-1 justify-end pb-1.5">
+            <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeSensorNominalUncertainty}
+                onChange={(e) => onIncludeSensorNominalUncertaintyChange(e.target.checked)}
+                className="rounded border-mar-border-md"
+              />
+              Incl. sensor nominal accuracy
+            </label>
+          </div>
+        )}
+        {/* Reference standard uncertainty (Type B) — auto-fetched from the
+            selected reference asset's last calibration when available;
+            otherwise a manual fallback for external reference standards. */}
+        {referenceStandardAutoLoading ? (
+          <div className="flex flex-col gap-1 justify-end pb-1.5">
+            <span className="text-xs text-gray-400 flex items-center gap-1.5">
+              <span className="w-3 h-3 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+              Loading reference standard…
+            </span>
+          </div>
+        ) : referenceStandardAuto ? (
+          <div className="flex flex-col gap-1 justify-end pb-1.5">
+            <span className="text-xs text-gray-400">
+              Ref. standard U: <span className="font-mono text-mar-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
+              {referenceAssetName && <span className="text-gray-400"> (last calibration of {referenceAssetName})</span>}
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1 w-36">
+              <WLabel text="Ref. standard U (manual)" />
+              <input
+                type="number"
+                value={referenceStandardManualUncertainty}
+                onChange={(e) => onReferenceStandardManualUncertaintyChange(e.target.value)}
+                min={0} step="any"
+                placeholder="from cert"
+                className={`${IB} ${IB_OK} py-1.5`}
+              />
+            </div>
+            {referenceStandardManualUncertainty.trim() !== "" && (
+              <div className="flex flex-col gap-1 w-20">
+                <WLabel text="Ref. std. k" />
+                <input
+                  type="number"
+                  value={referenceStandardManualCoverageFactor}
+                  onChange={(e) => onReferenceStandardManualCoverageFactorChange(e.target.value)}
+                  min={1} max={5} step={0.1}
+                  className={`${IB} ${IB_OK} py-1.5`}
+                />
+              </div>
+            )}
+          </>
+        )}
         {/* Divider */}
         <div className="w-px bg-mar-border-md self-stretch hidden sm:block" />
-        {/* Tolerance criteria */}
+        {/* Tolerance criteria — ad-hoc "what if" preview only; the stored/
+            certified conformity statement uses the channel's own accuracy
+            spec and the Decision rule selected above. */}
         <div className="flex flex-col gap-1 min-w-[160px]">
-          <WLabel text="Tolerance criteria" />
+          <WLabel text="Tolerance criteria (preview)" />
           <select
             value={toleranceCriteria}
             onChange={(e) => onToleranceCriteriaChange(e.target.value as ToleranceCriteria)}
@@ -1424,7 +1603,7 @@ function Step3({
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <WLabel text="Tolerance threshold" />
+          <WLabel text="Tolerance threshold (preview)" />
           <div className="flex items-center gap-1.5">
             <div className="w-20 flex-shrink-0">
               <input
@@ -1499,9 +1678,52 @@ function Step3({
             {result.hysteresis != null && (
               <StatRow label="Hysteresis†" value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip="Max difference between ascending and descending sweeps." />
             )}
-            <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Uncertainty</p>
-            <StatRow label="Combined" value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`} tip="Standard deviation of residuals." />
-            <StatRow label="Expanded (±)" value={`${fmtN(result.expanded_uncertainty)} ${referenceUnit}`} tip={`k=${result.coverage_factor} at ${result.confidence_level}% confidence.`} />
+            <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Uncertainty budget</p>
+            {result.uncertainty_budget.map((c) => (
+              <StatRow
+                key={c.source}
+                label={UNCERTAINTY_SOURCE_LABEL[c.source] ?? c.source}
+                value={`${fmtN(c.standard_uncertainty)} ${referenceUnit}`}
+                tip={`${c.description} (${c.distribution} distribution, divisor=${fmtN(c.divisor, 3)}).`}
+              />
+            ))}
+            <StatRow
+              label="Combined (RSS)"
+              value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`}
+              tip="Root-sum-square of the budget rows above (GUM Eq. 10)."
+            />
+            <StatRow
+              label="Expanded (±)"
+              value={`${fmtN(roundToSigFigs(result.expanded_uncertainty, 2))} ${referenceUnit}`}
+              tip={
+                (result.effective_degrees_of_freedom != null
+                  ? `k=${fmtN(result.coverage_factor, 3)} at ${result.confidence_level}% confidence, ν_eff=${fmtN(result.effective_degrees_of_freedom, 1)} (Welch-Satterthwaite).`
+                  : `k=${fmtN(result.coverage_factor, 3)} at ${result.confidence_level}% confidence.`)
+                + " Rounded to 2 significant figures (GUM §7.2.6)."
+              }
+            />
+            {result.conformity_statement.specification && (
+              <>
+                <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Conformity</p>
+                <div className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-xs text-gray-400">Statement</span>
+                  <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
+                    result.passed
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
+                      : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
+                  }`}>
+                    {result.passed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
+                    {result.passed ? "CONFORMS" : "DOES NOT CONFORM"}
+                  </span>
+                </div>
+                <StatRow label="Specification" value={result.conformity_statement.specification} />
+                <StatRow
+                  label="Decision rule"
+                  value={DECISION_RULE_LABEL[result.conformity_statement.decision_rule] ?? result.conformity_statement.decision_rule}
+                  tip="How measurement uncertainty is factored into this conformity statement, per ISO/IEC 17025 §7.1.3 and §7.8.6. Stored and printed on the certificate."
+                />
+              </>
+            )}
           </div>
 
           {/* Right: chart / table toggle (60%) */}

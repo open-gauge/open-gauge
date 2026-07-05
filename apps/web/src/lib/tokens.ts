@@ -156,3 +156,18 @@ export const HEALTH_METRIC_COLOR: Record<string, string> = {
   hysteresis:           "#8b5cf6",
   r_squared:            "#22c55e",
 };
+
+// Human-readable labels for uncertainty budget contribution sources (GUM Annex H.1 rows).
+export const UNCERTAINTY_SOURCE_LABEL: Record<string, string> = {
+  fit_residuals:           "Fit residuals (Type A)",
+  reference_standard:      "Reference standard (Type B)",
+  resolution:               "Resolution (Type B)",
+  sensor_nominal_accuracy: "Sensor nominal accuracy (Type B)",
+};
+
+// Human-readable labels for ISO/IEC 17025 §7.1.3/§7.8.6 decision rules.
+export const DECISION_RULE_LABEL: Record<string, string> = {
+  simple_acceptance:         "Simple acceptance (tolerance only)",
+  guard_band_w_uncertainty:  "Guard band (tolerance − U)",
+  shared_risk:               "Shared risk (tolerance + U)",
+};

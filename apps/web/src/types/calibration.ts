@@ -1,5 +1,15 @@
 export type DistributionType = "normal" | "t" | "chi_squared";
 
+export type DecisionRule = "simple_acceptance" | "guard_band_w_uncertainty" | "shared_risk";
+
+export interface ConformityStatement {
+  decision_rule: string;
+  specification: string | null;
+  expanded_uncertainty_applied: number | null;
+  passed: boolean;
+  reason: string | null;
+}
+
 export interface CalibrationRecord {
   id: string;
   asset_id: string;
@@ -55,6 +65,17 @@ export interface CalibrationRecord {
   expanded_uncertainty: number | null;
   valid_range_min: number | null;
   valid_range_max: number | null;
+
+  // Uncertainty budget (GUM Annex H.1-style itemized contributions)
+  uncertainty_budget: UncertaintyContribution[] | null;
+  effective_degrees_of_freedom: number | null;
+
+  // Fitted coefficient covariance matrix (GUM Annex H.3 / GUM-6 §8.1.6)
+  poly_coefficients_covariance: number[][] | null;
+
+  // Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
+  decision_rule: string | null;
+  conformity_statement: ConformityStatement | null;
 }
 
 export interface CalibrationPoint {
@@ -91,6 +112,15 @@ export interface AnalyzeRequest {
   coverage_factor: number;
   channel_accuracy_value: number | null;
   channel_accuracy_type: string | null;
+  decision_rule?: DecisionRule;
+
+  // Type B uncertainty contributions (GUM §4.3) — all optional.
+  reference_standard_uncertainty?: number | null;
+  reference_standard_coverage_factor?: number;
+  resolution?: number | null;
+  sensor_nominal_uncertainty?: number | null;
+  sensor_nominal_coverage_factor?: number;
+  include_sensor_nominal_uncertainty?: boolean;
 }
 
 export interface AnalyzePointOut {
@@ -100,6 +130,16 @@ export interface AnalyzePointOut {
   calculated_value: number | null;
   residual_abs: number | null;
   residual_pct: number | null;
+}
+
+export interface UncertaintyContribution {
+  source: string;
+  description: string;
+  value: number;
+  distribution: string;
+  divisor: number;
+  standard_uncertainty: number;
+  degrees_of_freedom: number | null;
 }
 
 export interface AnalyzeResponse {
@@ -121,6 +161,10 @@ export interface AnalyzeResponse {
   valid_range_min: number;
   valid_range_max: number;
   passed: boolean;
+  conformity_statement: ConformityStatement;
+  uncertainty_budget: UncertaintyContribution[];
+  effective_degrees_of_freedom: number | null;
+  poly_coefficients_covariance: number[][] | null;
   points: AnalyzePointOut[];
 }
 
@@ -225,6 +269,17 @@ export interface CalibrationCreateBody {
   expanded_uncertainty?: number | null;
   valid_range_min?: number | null;
   valid_range_max?: number | null;
+
+  // Uncertainty budget (GUM Annex H.1-style itemized contributions)
+  uncertainty_budget?: UncertaintyContribution[] | null;
+  effective_degrees_of_freedom?: number | null;
+
+  // Fitted coefficient covariance matrix (GUM Annex H.3 / GUM-6 §8.1.6)
+  poly_coefficients_covariance?: number[][] | null;
+
+  // Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
+  decision_rule?: string | null;
+  conformity_statement?: ConformityStatement | null;
 
   // Embedded data points
   points?: CalibrationPointInline[];

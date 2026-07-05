@@ -28,9 +28,11 @@ import {
   CALIBRATION_STATUS_LABEL,
   CALIBRATION_STATUS_STYLE,
   COLORS,
+  DECISION_RULE_LABEL,
   HEALTH_LABEL_STYLE,
   STABILITY_STYLE,
   SUBTYPE_LABEL,
+  UNCERTAINTY_SOURCE_LABEL,
 } from "@/lib/tokens";
 import { getAssetHealth } from "@/services/health.service";
 import type { HealthOverview } from "@/types/health";
@@ -47,6 +49,7 @@ import {
   getOutputUnits,
 } from "@/lib/sensor-options";
 import { toSI, fromSI } from "@/lib/unit-conversion";
+import { roundToSigFigs } from "@/lib/uncertainty-format";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -1837,9 +1840,47 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 {selectedCal.hysteresis != null && (
                   <CalStatRow label="Hysteresis†" value={`${fmtNum(selectedCal.hysteresis)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Max difference ascending vs. descending." />
                 )}
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Uncertainty</p>
-                <CalStatRow label="Combined" value={selectedCal.combined_uncertainty != null ? `${fmtNum(selectedCal.combined_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Standard deviation of residuals." />
-                <CalStatRow label="Expanded (±)" value={selectedCal.expanded_uncertainty != null ? `${fmtNum(selectedCal.expanded_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip={`k=${selectedCal.coverage_factor ?? "?"} at ${selectedCal.confidence_level ?? "?"}% confidence.`} />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Uncertainty budget</p>
+                {selectedCal.uncertainty_budget?.map((c) => (
+                  <CalStatRow
+                    key={c.source}
+                    label={UNCERTAINTY_SOURCE_LABEL[c.source] ?? c.source}
+                    value={`${fmtNum(c.standard_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
+                    tip={`${c.description} (${c.distribution} distribution, divisor=${fmtNum(c.divisor, 3)}).`}
+                  />
+                ))}
+                <CalStatRow label="Combined (RSS)" value={selectedCal.combined_uncertainty != null ? `${fmtNum(selectedCal.combined_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root-sum-square of the budget rows above (GUM Eq. 10)." />
+                <CalStatRow
+                  label="Expanded (±)"
+                  value={selectedCal.expanded_uncertainty != null ? `${fmtNum(roundToSigFigs(selectedCal.expanded_uncertainty, 2))}${referenceUnit ? ` ${referenceUnit}` : ""}` : null}
+                  tip={
+                    (selectedCal.effective_degrees_of_freedom != null
+                      ? `k=${selectedCal.coverage_factor ?? "?"} at ${selectedCal.confidence_level ?? "?"}% confidence, ν_eff=${fmtNum(selectedCal.effective_degrees_of_freedom, 1)} (Welch-Satterthwaite).`
+                      : `k=${selectedCal.coverage_factor ?? "?"} at ${selectedCal.confidence_level ?? "?"}% confidence.`)
+                    + " Rounded to 2 significant figures (GUM §7.2.6)."
+                  }
+                />
+                {selectedCal.conformity_statement?.specification && (
+                  <>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Conformity</p>
+                    <div className="flex items-center justify-between gap-2 py-1">
+                      <span className="text-xs text-gray-400">Statement</span>
+                      <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
+                        selectedCal.conformity_statement.passed
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
+                          : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
+                      }`}>
+                        {selectedCal.conformity_statement.passed ? "CONFORMS" : "DOES NOT CONFORM"}
+                      </span>
+                    </div>
+                    <CalStatRow label="Specification" value={selectedCal.conformity_statement.specification} />
+                    <CalStatRow
+                      label="Decision rule"
+                      value={DECISION_RULE_LABEL[selectedCal.conformity_statement.decision_rule] ?? selectedCal.conformity_statement.decision_rule}
+                      tip="How measurement uncertainty is factored into this conformity statement, per ISO/IEC 17025 §7.1.3 and §7.8.6."
+                    />
+                  </>
+                )}
               </div>
 
               {/* Right: chart/table toggle (60%) */}

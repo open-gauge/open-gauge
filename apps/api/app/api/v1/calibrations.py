@@ -71,6 +71,13 @@ def analyze_calibration(
             coverage_factor=body.coverage_factor,
             channel_accuracy_value=body.channel_accuracy_value,
             channel_accuracy_type=body.channel_accuracy_type,
+            reference_standard_uncertainty=body.reference_standard_uncertainty,
+            reference_standard_coverage_factor=body.reference_standard_coverage_factor,
+            resolution=body.resolution,
+            sensor_nominal_uncertainty=body.sensor_nominal_uncertainty,
+            sensor_nominal_coverage_factor=body.sensor_nominal_coverage_factor,
+            include_sensor_nominal_uncertainty=body.include_sensor_nominal_uncertainty,
+            decision_rule=body.decision_rule,  # type: ignore[arg-type]
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
@@ -94,6 +101,10 @@ def analyze_calibration(
         valid_range_min=result.valid_range_min,
         valid_range_max=result.valid_range_max,
         passed=result.passed,
+        conformity_statement=result.conformity_statement,
+        uncertainty_budget=result.uncertainty_budget,
+        effective_degrees_of_freedom=result.effective_degrees_of_freedom,
+        poly_coefficients_covariance=result.poly_coefficients_covariance,
         points=[
             AnalyzePointOut(
                 point_index=p.point_index,

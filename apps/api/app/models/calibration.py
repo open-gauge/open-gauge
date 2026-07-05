@@ -65,3 +65,18 @@ class Calibration(Base):
     expanded_uncertainty: Mapped[float | None] = mapped_column(Numeric(18, 8), nullable=True)
     valid_range_min: Mapped[float | None] = mapped_column(Numeric(18, 8), nullable=True)
     valid_range_max: Mapped[float | None] = mapped_column(Numeric(18, 8), nullable=True)
+
+    # Uncertainty budget: itemized Type A / Type B contributions (GUM Annex H.1 format),
+    # e.g. [{"source": "fit_residuals", "standard_uncertainty": ..., "degrees_of_freedom": ...}, ...]
+    uncertainty_budget: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    effective_degrees_of_freedom: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)
+
+    # Fitted coefficient covariance matrix (N x N, N = poly_order + 1). Needed to correctly
+    # propagate uncertainty when using two or more fitted coefficients together
+    # (GUM Annex H.3, GUM-6 §8.1.6) — ignoring it understates the result's uncertainty.
+    poly_coefficients_covariance: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    # Decision rule applied to the pass/fail conformity statement, and the statement itself
+    # (ISO/IEC 17025 §7.1.3, §7.8.6 — the rule must be documented, not just implied).
+    decision_rule: Mapped[str] = mapped_column(String(30), nullable=False, server_default="simple_acceptance")
+    conformity_statement: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

@@ -25,6 +25,16 @@ class AnalyzeRequest(BaseModel):
     coverage_factor: float = 2.0
     channel_accuracy_value: float | None = None
     channel_accuracy_type: str | None = None
+    decision_rule: str = "simple_acceptance"
+
+    # Type B uncertainty contributions (GUM §4.3) — all optional; each is
+    # combined into the uncertainty budget only if supplied.
+    reference_standard_uncertainty: float | None = None
+    reference_standard_coverage_factor: float = 2.0
+    resolution: float | None = None
+    sensor_nominal_uncertainty: float | None = None
+    sensor_nominal_coverage_factor: float = 2.0
+    include_sensor_nominal_uncertainty: bool = False
 
 
 class AnalyzePointOut(BaseModel):
@@ -34,6 +44,16 @@ class AnalyzePointOut(BaseModel):
     calculated_value: float | None
     residual_abs: float | None
     residual_pct: float | None
+
+
+class UncertaintyContributionOut(BaseModel):
+    source: str
+    description: str
+    value: float
+    distribution: str
+    divisor: float
+    standard_uncertainty: float
+    degrees_of_freedom: float | None
 
 
 class AnalyzeResponse(BaseModel):
@@ -55,6 +75,10 @@ class AnalyzeResponse(BaseModel):
     valid_range_min: float
     valid_range_max: float
     passed: bool
+    conformity_statement: dict
+    uncertainty_budget: list[UncertaintyContributionOut]
+    effective_degrees_of_freedom: float | None
+    poly_coefficients_covariance: list[list[float]] | None
     points: list[AnalyzePointOut]
 
 
@@ -144,6 +168,17 @@ class CalibrationCreate(BaseModel):
     valid_range_min: float | None = None
     valid_range_max: float | None = None
 
+    # Uncertainty budget (GUM Annex H.1-style itemized contributions)
+    uncertainty_budget: list[dict] | None = None
+    effective_degrees_of_freedom: float | None = None
+
+    # Fitted coefficient covariance matrix (GUM Annex H.3 / GUM-6 §8.1.6)
+    poly_coefficients_covariance: list[list[float]] | None = None
+
+    # Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
+    decision_rule: str | None = None
+    conformity_statement: dict | None = None
+
     # Embedded data points
     points: list[CalibrationPointInline] = Field(default_factory=list)
 
@@ -203,5 +238,16 @@ class CalibrationResponse(BaseModel):
     expanded_uncertainty: float | None
     valid_range_min: float | None
     valid_range_max: float | None
+
+    # Uncertainty budget (GUM Annex H.1-style itemized contributions)
+    uncertainty_budget: Any | None = None
+    effective_degrees_of_freedom: float | None = None
+
+    # Fitted coefficient covariance matrix (GUM Annex H.3 / GUM-6 §8.1.6)
+    poly_coefficients_covariance: Any | None = None
+
+    # Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
+    decision_rule: str | None = None
+    conformity_statement: Any | None = None
 
     model_config = {"from_attributes": True}

@@ -1,15 +1,14 @@
 """
-Tests for calibration records and coefficients.
+Tests for calibration records.
 
-Covers: create calibration, list calibrations for asset, list coefficients,
-calibration date ordering (most recent first), analyze endpoint (ephemeral),
-atomic create with embedded coefficient + points, GET /{id}/points,
+Covers: create calibration, list calibrations for asset, calibration date
+ordering (most recent first), analyze endpoint (ephemeral), atomic create
+with embedded polynomial/regression fields + points, GET /{id}/points,
 authentication guards, version auto-increment.
 """
 import uuid
 
 import pytest
-from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from tests.conftest import make_asset_id
@@ -43,7 +42,6 @@ def calibration(client: TestClient, auth_headers: dict, asset: dict) -> dict:
         "calibration_date": "2024-03-15",
         "due_date": "2025-03-15",
         "performed_by_name": "Lab Tech A",
-        "result": "pass",
         "notes": "Annual calibration",
     }
     r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
@@ -56,7 +54,7 @@ def calibration(client: TestClient, auth_headers: dict, asset: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 class TestCreateCalibration:
-    def test_create_pass_calibration(
+    def test_create_calibration(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
         payload = {
@@ -64,15 +62,15 @@ class TestCreateCalibration:
             "calibration_date": "2024-06-01",
             "due_date": "2025-06-01",
             "performed_by_name": "Technician B",
-            "result": "pass",
         }
         r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
         assert r.status_code == 201
         body = r.json()
-        assert body["result"] == "pass"
         assert body["asset_id"] == asset["id"]
+        assert body["performed_by_name"] == "Technician B"
+        assert body["calibration_type"] == "external"
 
-    def test_create_fail_calibration(
+    def test_create_calibration_with_notes(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
         payload = {
@@ -80,12 +78,11 @@ class TestCreateCalibration:
             "calibration_date": "2024-07-01",
             "due_date": "2025-07-01",
             "performed_by_name": "Technician C",
-            "result": "fail",
             "notes": "Out of tolerance",
         }
         r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
         assert r.status_code == 201
-        assert r.json()["result"] == "fail"
+        assert r.json()["notes"] == "Out of tolerance"
 
     def test_calibration_for_nonexistent_asset_fails(
         self, client: TestClient, auth_headers: dict
@@ -95,7 +92,6 @@ class TestCreateCalibration:
             "calibration_date": "2024-01-01",
             "due_date": "2025-01-01",
             "performed_by_name": "Ghost",
-            "result": "pass",
         }
         r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
         assert r.status_code == 404
@@ -128,7 +124,6 @@ class TestListCalibrations:
                     "calibration_date": date_str,
                     "due_date": "2025-01-01",
                     "performed_by_name": "Auto",
-                    "result": "pass",
                 },
                 headers=auth_headers,
             )
@@ -138,72 +133,6 @@ class TestListCalibrations:
         cals = r.json()
         dates = [c["calibration_date"] for c in cals]
         assert dates == sorted(dates, reverse=True)
-
-
-# ---------------------------------------------------------------------------
-# Coefficients
-# ---------------------------------------------------------------------------
-
-class TestCalibrationCoefficients:
-    def test_create_linear_coefficient(
-        self,
-        client: TestClient,
-        auth_headers: dict,
-        calibration: dict,
-    ) -> None:
-        payload = {
-            "calibration_id": calibration["id"],
-            "coefficient_type": "linear",
-            "channel": "CH1",
-            "gain": 1.0023,
-            "offset_value": -0.15,
-            "unit_input": "mV",
-            "unit_output": "°C",
-        }
-        r = client.post(
-            f"/api/v1/calibrations/{calibration['id']}/coefficients",
-            json=payload,
-            headers=auth_headers,
-        )
-        assert r.status_code == 201
-        body = r.json()
-        assert abs(body["gain"] - 1.0023) < 1e-6
-        assert abs(body["offset_value"] - (-0.15)) < 1e-6
-
-    def test_list_coefficients_for_calibration(
-        self,
-        client: TestClient,
-        auth_headers: dict,
-        calibration: dict,
-    ) -> None:
-        # Create two coefficients
-        for channel in ("CH1", "CH2"):
-            client.post(
-                f"/api/v1/calibrations/{calibration['id']}/coefficients",
-                json={
-                    "calibration_id": calibration["id"],
-                    "coefficient_type": "linear",
-                    "channel": channel,
-                    "gain": 1.0,
-                    "offset_value": 0.0,
-                },
-                headers=auth_headers,
-            )
-        r = client.get(
-            f"/api/v1/calibrations/{calibration['id']}/coefficients",
-            headers=auth_headers,
-        )
-        assert r.status_code == 200
-        assert len(r.json()) >= 2
-
-    def test_coefficients_for_nonexistent_calibration(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
-        r = client.get(
-            f"/api/v1/calibrations/{uuid.uuid4()}/coefficients",
-            headers=auth_headers,
-        )
-        assert r.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +208,7 @@ class TestAnalyzeEndpoint:
 
     def test_requires_authentication(self, client: TestClient) -> None:
         r = client.post("/api/v1/calibrations/analyze", json=_ANALYZE_PAYLOAD)
-        assert r.status_code == 401
+        assert r.status_code == 403  # HTTPBearer returns 403 when missing
 
     def test_analyze_does_not_persist_anything(
         self, client: TestClient, auth_headers: dict, asset: dict
@@ -293,7 +222,7 @@ class TestAnalyzeEndpoint:
 
 
 # ---------------------------------------------------------------------------
-# POST /calibrations — atomic create with coefficient + points
+# POST /calibrations — atomic create with embedded polynomial fit + points
 # ---------------------------------------------------------------------------
 
 def _atomic_payload(asset_id: str, sensor_id: str | None = None) -> dict:
@@ -302,59 +231,50 @@ def _atomic_payload(asset_id: str, sensor_id: str | None = None) -> dict:
         "calibration_date": "2025-01-15",
         "due_date": "2026-01-15",
         "performed_by_name": "Lab Auto",
-        "result": "pass",
         "calibration_type": "external",
         "external_lab_name": "ACME Calibration",
-        "certificate_number": "CERT-2025-001",
+        "external_lab_certificate_number": "CERT-2025-001",
         "calibration_interval": 12,
-        "version": 1,
+        "calibration_version": 1,
         **({"sensor_id": sensor_id} if sensor_id else {}),
-        "temperature_value": 296.15,
-        "temperature_unit": "K",
-        "pressure_value": 101325.0,
-        "pressure_unit": "Pa",
-        "humidity_value": 48.0,
-        "humidity_unit": "%RH",
-        "coefficient": {
-            "channel": "CH1",
-            "unit_input": "°C",
-            "unit_output": "°C",
-            "poly_degree": 1,
-            "poly_coefficients": [1.0015, 0.023],
-            "range_min": 273.15,
-            "range_max": 373.15,
-            "r_squared": 0.99998,
-            "rmse": 0.012,
-            "max_error": 0.025,
-            "expanded_uncertainty": 0.05,
-        },
+        "temperature": 23.0,
+        "humidity": 48.0,
+        "pressure": 101325.0,
+        "poly_order": 1,
+        "poly_coefficients": [1.0015, 0.023],
+        "range_min": 0.0,
+        "range_max": 100.0,
+        "r_squared": 0.99998,
+        "rmse": 0.012,
+        "max_error": 0.025,
+        "expanded_uncertainty": 0.05,
         "points": [
             {
                 "point_index": 0,
-                "reference_value": 273.15,
-                "measured_value": 273.17,
-                "calculated_value": 273.18,
+                "reference_value": 0.0,
+                "measured_value": 0.02,
+                "calculated_value": 0.02,
                 "residual_abs": -0.01,
                 "residual_pct": -0.04,
-                "reference_unit": "K",
-                "measured_unit": "K",
+                "reference_unit": "°C",
+                "measured_unit": "°C",
             },
             {
                 "point_index": 1,
-                "reference_value": 323.15,
-                "measured_value": 323.19,
-                "calculated_value": 323.20,
+                "reference_value": 50.0,
+                "measured_value": 50.04,
+                "calculated_value": 50.03,
                 "residual_abs": -0.01,
                 "residual_pct": -0.02,
-                "reference_unit": "K",
-                "measured_unit": "K",
+                "reference_unit": "°C",
+                "measured_unit": "°C",
             },
         ],
     }
 
 
 class TestAtomicCalibrationCreate:
-    def test_creates_calibration_with_coefficient_and_points(
+    def test_creates_calibration_with_regression_fields_and_points(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
         r = client.post(
@@ -365,7 +285,7 @@ class TestAtomicCalibrationCreate:
         assert r.status_code == 201
         body = r.json()
         assert body["asset_id"] == asset["id"]
-        assert body["certificate_number"] == "CERT-2025-001"
+        assert body["external_lab_certificate_number"] == "CERT-2025-001"
         assert body["calibration_type"] == "external"
 
     def test_environmental_values_stored(
@@ -377,12 +297,11 @@ class TestAtomicCalibrationCreate:
             headers=auth_headers,
         )
         body = r.json()
-        assert abs(body["temperature_value"] - 296.15) < 0.01
-        assert body["temperature_unit"] == "K"
-        assert abs(body["pressure_value"] - 101325.0) < 1.0
-        assert abs(body["humidity_value"] - 48.0) < 0.01
+        assert abs(body["temperature"] - 23.0) < 0.01
+        assert abs(body["pressure"] - 101325.0) < 1.0
+        assert abs(body["humidity"] - 48.0) < 0.01
 
-    def test_coefficient_created_and_retrievable(
+    def test_polynomial_and_regression_fields_retrievable(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
         cal = client.post(
@@ -390,11 +309,9 @@ class TestAtomicCalibrationCreate:
             json=_atomic_payload(asset["id"]),
             headers=auth_headers,
         ).json()
-        r = client.get(f"/api/v1/calibrations/{cal['id']}/coefficients", headers=auth_headers)
-        assert r.status_code == 200
-        coeffs = r.json()
-        assert len(coeffs) == 1
-        assert abs(coeffs[0]["r_squared"] - 0.99998) < 1e-4
+        assert cal["poly_order"] == 1
+        assert cal["poly_coefficients"] == [1.0015, 0.023]
+        assert abs(cal["r_squared"] - 0.99998) < 1e-4
 
     def test_points_created_and_retrievable(
         self, client: TestClient, auth_headers: dict, asset: dict
@@ -423,7 +340,7 @@ class TestAtomicCalibrationCreate:
         indices = [p["point_index"] for p in pts]
         assert indices == sorted(indices)
 
-    def test_create_without_coefficient_succeeds(
+    def test_create_without_regression_fields_succeeds(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
         payload = {
@@ -431,9 +348,8 @@ class TestAtomicCalibrationCreate:
             "calibration_date": "2025-02-01",
             "due_date": "2026-02-01",
             "performed_by_name": "Minimal Lab",
-            "result": "pass",
             "calibration_type": "external",
-            "version": 1,
+            "calibration_version": 1,
         }
         r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
         assert r.status_code == 201
@@ -441,12 +357,12 @@ class TestAtomicCalibrationCreate:
     def test_version_auto_increments_for_same_asset(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
-        # Version=1 provided for first, the second call should increment
+        # calibration_version=1 provided for first; the second call should increment
         payload1 = _atomic_payload(asset["id"])
         payload2 = _atomic_payload(asset["id"])
         cal1 = client.post("/api/v1/calibrations", json=payload1, headers=auth_headers).json()
         cal2 = client.post("/api/v1/calibrations", json=payload2, headers=auth_headers).json()
-        assert cal2["version"] > cal1["version"]
+        assert cal2["calibration_version"] > cal1["calibration_version"]
 
     def test_nonexistent_asset_returns_404(
         self, client: TestClient, auth_headers: dict
@@ -457,7 +373,7 @@ class TestAtomicCalibrationCreate:
 
     def test_requires_authentication(self, client: TestClient, asset: dict) -> None:
         r = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]))
-        assert r.status_code == 401
+        assert r.status_code == 403  # HTTPBearer returns 403 when missing
 
 
 # ---------------------------------------------------------------------------
@@ -512,4 +428,4 @@ class TestGetCalibrationPoints:
         self, client: TestClient, calibration: dict
     ) -> None:
         r = client.get(f"/api/v1/calibrations/{calibration['id']}/points")
-        assert r.status_code == 401
+        assert r.status_code == 403  # HTTPBearer returns 403 when missing

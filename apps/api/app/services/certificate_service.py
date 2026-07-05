@@ -30,6 +30,8 @@ from reportlab.platypus import (
     Flowable,
 )
 
+from ..utils.uncertainty_format import format_expanded_uncertainty_statement, round_to_sig_figs
+
 if TYPE_CHECKING:
     from ..models.asset import Asset
     from ..models.calibration import Calibration
@@ -38,6 +40,14 @@ if TYPE_CHECKING:
     from ..models.sensor import Sensor
 
 logger = logging.getLogger(__name__)
+
+# Human-readable labels for decision rules (ISO/IEC 17025 §7.8.6.2 requires the
+# rule applied to a conformity statement to be named on the certificate).
+_DECISION_RULE_LABEL = {
+    "simple_acceptance": "Simple acceptance (tolerance only, per ISO/IEC Guide 98-4)",
+    "guard_band_w_uncertainty": "Guard-banded acceptance (acceptance zone reduced by expanded uncertainty)",
+    "shared_risk": "Shared-risk acceptance (acceptance zone expanded by expanded uncertainty)",
+}
 
 # ---------------------------------------------------------------------------
 # Brand colours
@@ -364,7 +374,7 @@ def generate_certificate(
     story += _build_header(asset, calibration, version, qr_img_obj)
     story += _build_asset_info(asset, sensor)
     story += _build_traceability(calibration, procedure, reference_asset)
-    story += _build_results(calibration)
+    story += _build_results(calibration, points)
     story += _build_dataset(calibration, points, sensor)
 
     # -- Render ------------------------------------------------------------
@@ -581,8 +591,9 @@ def _build_traceability(
     return story
 
 
-def _build_results(cal: "Calibration") -> list:
+def _build_results(cal: "Calibration", points: "list[CalibrationData] | None" = None) -> list:
     story: list = _section_header("3. CALIBRATION RESULTS")
+    reference_unit = points[0].reference_unit if points else ""
 
     # Polynomial coefficients
     coeffs = cal.poly_coefficients
@@ -623,9 +634,15 @@ def _build_results(cal: "Calibration") -> list:
     if cal.repeatability is not None:
         stat_rows.append(["Repeatability", _fmt(cal.repeatability, 6), "Hysteresis", _fmt(cal.hysteresis, 6)])
     if cal.expanded_uncertainty is not None:
+        # GUM §7.2.6: quote uncertainty to at most 2 significant figures.
+        u_rounded = round_to_sig_figs(cal.expanded_uncertainty, 2)
+        uc_rounded = round_to_sig_figs(cal.combined_uncertainty, 2) if cal.combined_uncertainty is not None else None
         k_str = f"k={_fmt(cal.coverage_factor, 3)}" if cal.coverage_factor else ""
         cl_str = f"{_fmt(cal.confidence_level, 4)}%" if cal.confidence_level else ""
-        stat_rows.append(["Expanded Uncertainty (U)", f"{_fmt(cal.expanded_uncertainty, 6)} [{k_str} {cl_str}]", "Combined Uncertainty (u_c)", _fmt(cal.combined_uncertainty, 6)])
+        stat_rows.append([
+            "Expanded Uncertainty (U)", f"{u_rounded:g} [{k_str} {cl_str}]",
+            "Combined Uncertainty (u_c)", f"{uc_rounded:g}" if uc_rounded is not None else "—",
+        ])
 
     if stat_rows:
         story.append(KeepTogether([
@@ -634,6 +651,72 @@ def _build_results(cal: "Calibration") -> list:
                 [["Metric", "Value", "Metric", "Value"]] + stat_rows,
                 [42 * mm, 48 * mm, 42 * mm, CW - 132 * mm],
             ),
+        ]))
+
+    # Uncertainty budget (GUM Annex H.1-style itemized contributions)
+    budget = cal.uncertainty_budget
+    if budget:
+        budget_rows = [
+            [
+                str(row.get("source", "")),
+                str(row.get("distribution", "")),
+                # GUM §7.2.6: each u(x_i) quoted to at most 2 significant figures.
+                f"{round_to_sig_figs(row['standard_uncertainty'], 2):g}" if row.get("standard_uncertainty") is not None else "—",
+                _fmt(row.get("degrees_of_freedom"), 1),
+            ]
+            for row in budget
+        ]
+        story.append(Spacer(1, 3 * mm))
+        story.append(KeepTogether([
+            _p("Uncertainty Budget", _S_SECTION),
+            _table(
+                [["Source", "Distribution", "Standard Uncertainty (u)", "dof"]] + budget_rows,
+                [55 * mm, 32 * mm, 45 * mm, CW - 132 * mm],
+            ),
+        ]))
+        if cal.effective_degrees_of_freedom is not None:
+            story.append(Spacer(1, 2 * mm))
+            story.append(_p(
+                f"Combined via root-sum-square (GUM Eq. 10); effective degrees of freedom "
+                f"ν_eff = {_fmt(cal.effective_degrees_of_freedom, 1)} (Welch-Satterthwaite).",
+                _S_BODY,
+            ))
+
+    # Full-sentence expanded-uncertainty statement (GUM §7.2.4 reporting format,
+    # adapted for a calibration function rather than a single measurement result).
+    statement_text = format_expanded_uncertainty_statement(
+        combined_uncertainty=cal.combined_uncertainty,
+        expanded_uncertainty=cal.expanded_uncertainty,
+        coverage_factor=cal.coverage_factor,
+        confidence_level=cal.confidence_level,
+        unit=reference_unit,
+        effective_degrees_of_freedom=cal.effective_degrees_of_freedom,
+        range_min=cal.valid_range_min if cal.valid_range_min is not None else cal.range_min,
+        range_max=cal.valid_range_max if cal.valid_range_max is not None else cal.range_max,
+    )
+    if statement_text:
+        story.append(Spacer(1, 2 * mm))
+        story.append(_p(statement_text, _S_BODY))
+
+    # Statement of conformity (ISO/IEC 17025 §7.8.4.1(e), §7.8.6.2 — the decision
+    # rule applied and which specification it was assessed against must be named).
+    statement = cal.conformity_statement
+    if statement and statement.get("specification"):
+        story.append(Spacer(1, 3 * mm))
+        rule_label = _DECISION_RULE_LABEL.get(statement.get("decision_rule", ""), statement.get("decision_rule", ""))
+        result_label = "CONFORMS" if statement.get("passed") else "DOES NOT CONFORM"
+        lines = [
+            f"Statement of Conformity: {result_label} to specification {statement['specification']}.",
+            f"Decision rule applied: {rule_label}.",
+        ]
+        if statement.get("expanded_uncertainty_applied") is not None:
+            lines.append(
+                f"Expanded uncertainty U = {_fmt(statement['expanded_uncertainty_applied'], 4)} "
+                f"was applied to the acceptance zone per the decision rule above."
+            )
+        story.append(KeepTogether([
+            _p("Statement of Conformity", _S_SECTION),
+            *[_p(line, _S_BODY) for line in lines],
         ]))
 
     if cal.range_min is not None or cal.valid_range_min is not None:

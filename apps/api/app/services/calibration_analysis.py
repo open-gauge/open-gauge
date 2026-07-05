@@ -4,11 +4,20 @@ Polynomial regression and statistical analysis for calibration data.
 Fits a polynomial correction model to (reference, measured) point pairs and
 computes full metrological statistics: R², RMSE, uncertainty, hysteresis,
 repeatability, pass/fail.
+
+Uncertainty is evaluated per JCGM 100:2008 (GUM): the fit-residual scatter is
+a Type A contribution, and the reference standard's uncertainty / the
+sensor's resolution / its nominal accuracy spec are Type B contributions
+(see ``references/References.md`` §2-§6). All contributions are combined via
+the law of propagation of uncertainty (RSS) and expanded using a coverage
+factor derived, where possible, from the Welch-Satterthwaite effective
+degrees of freedom rather than the fit's own degrees of freedom alone.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import math
+from dataclasses import asdict, dataclass, field
 from typing import Literal
 
 import numpy as np
@@ -23,6 +32,19 @@ class AnalysisPoint:
     calculated_value: float | None = None
     residual_abs: float | None = None
     residual_pct: float | None = None
+
+
+@dataclass
+class UncertaintyContribution:
+    """One row of a GUM Annex H.1-style uncertainty budget table."""
+
+    source: str
+    description: str
+    value: float
+    distribution: str
+    divisor: float
+    standard_uncertainty: float
+    degrees_of_freedom: float | None  # None = treated as exactly known (infinite dof)
 
 
 @dataclass
@@ -45,7 +67,57 @@ class AnalysisResult:
     valid_range_min: float
     valid_range_max: float
     passed: bool
+    conformity_statement: dict = field(default_factory=dict)
+    uncertainty_budget: list[dict] = field(default_factory=list)
+    effective_degrees_of_freedom: float | None = None
+    poly_coefficients_covariance: list[list[float]] | None = None
     points: list[AnalysisPoint] = field(default_factory=list)
+
+
+def _fit_with_covariance(
+    x: np.ndarray, y: np.ndarray, degree: int
+) -> tuple[np.ndarray, np.ndarray | None]:
+    """
+    Fit y = f(x) as a degree-N polynomial and return (coefficients, covariance).
+
+    Covariance is None when there are not enough points to estimate it
+    (n <= degree + 1, i.e. zero residual degrees of freedom) — same condition
+    under which the Type A row's degrees_of_freedom is None elsewhere in this
+    module. Ignoring the coefficient covariance when using multiple fitted
+    coefficients together understates uncertainty (GUM Annex H.3, GUM-6 §8.1.6).
+    """
+    if len(x) > degree + 1:
+        coeffs, cov = np.polyfit(x, y, degree, cov=True)
+        return coeffs, cov
+    return np.polyfit(x, y, degree), None
+
+
+def predict_with_uncertainty(
+    coefficients: list[float],
+    covariance: list[list[float]] | None,
+    x: float,
+) -> tuple[float, float | None]:
+    """
+    Evaluate a fitted polynomial at x and propagate the coefficient covariance
+    to the predicted value's standard uncertainty (GUM Eq. H.15, generalized
+    from the two-parameter slope/intercept case to degree-N polynomials).
+
+    coefficients is in np.polyfit convention (highest degree first). Returns
+    (predicted_value, standard_uncertainty); standard_uncertainty is None if
+    no covariance matrix is available (e.g. the fit had zero residual dof).
+    """
+    coeffs = np.asarray(coefficients, dtype=float)
+    y = float(np.polyval(coeffs, x))
+
+    if covariance is None:
+        return y, None
+
+    cov = np.asarray(covariance, dtype=float)
+    degree = len(coeffs) - 1
+    # Sensitivity of y to each coefficient: g_i = dy/dc_i = x^(degree - i)
+    g = np.array([x ** (degree - i) for i in range(len(coeffs))])
+    variance = float(g @ cov @ g)
+    return y, math.sqrt(variance) if variance > 0 else 0.0
 
 
 def _aic(n: int, rss: float, k: int) -> float:
@@ -124,35 +196,209 @@ def _detect_repeatability(ref: np.ndarray, meas: np.ndarray) -> float | None:
     return max_std
 
 
-def _uncertainty(
+def _type_b_from_expanded(expanded_value: float, coverage_factor: float) -> float:
+    """GUM §4.3.3: a cert/spec states uncertainty as U at coverage factor k -> u = U/k."""
+    if coverage_factor <= 0:
+        return abs(expanded_value)
+    return abs(expanded_value) / coverage_factor
+
+
+def _type_b_rectangular(half_width: float) -> float:
+    """GUM §4.3.7: only bounds ±a known, no further info -> u = a/sqrt(3)."""
+    return abs(half_width) / math.sqrt(3)
+
+
+def _build_uncertainty_budget(
     residuals: np.ndarray,
+    n: int,
+    k: int,
+    reference_standard_uncertainty: float | None,
+    reference_standard_coverage_factor: float,
+    resolution: float | None,
+    sensor_nominal_uncertainty: float | None,
+    sensor_nominal_coverage_factor: float,
+    include_sensor_nominal_uncertainty: bool,
+) -> list[UncertaintyContribution]:
+    """
+    Build a GUM-style uncertainty budget: one Type A row (fit residual scatter)
+    plus whichever Type B rows the caller was able to supply. Contributions are
+    combined via RSS in `_combine_budget`, so every entry here must already be
+    expressed as a standard uncertainty in the measurand's own units.
+    """
+    std_res = float(np.std(residuals, ddof=1)) if n > 1 else 0.0
+    dof_a = float(n - k) if n > k else None
+
+    budget = [
+        UncertaintyContribution(
+            source="fit_residuals",
+            description="Type A: standard deviation of calibration-fit residuals",
+            value=std_res,
+            distribution="normal",
+            divisor=1.0,
+            standard_uncertainty=std_res,
+            degrees_of_freedom=dof_a,
+        )
+    ]
+
+    if reference_standard_uncertainty is not None and reference_standard_uncertainty > 0:
+        u = _type_b_from_expanded(reference_standard_uncertainty, reference_standard_coverage_factor)
+        budget.append(UncertaintyContribution(
+            source="reference_standard",
+            description="Type B: uncertainty of the reference standard used for this calibration",
+            value=reference_standard_uncertainty,
+            distribution="normal",
+            divisor=reference_standard_coverage_factor,
+            standard_uncertainty=u,
+            degrees_of_freedom=None,
+        ))
+
+    if resolution is not None and resolution > 0:
+        u = _type_b_rectangular(resolution / 2.0)
+        budget.append(UncertaintyContribution(
+            source="resolution",
+            description="Type B: instrument/sensor digital resolution (rectangular distribution)",
+            value=resolution,
+            distribution="rectangular",
+            divisor=math.sqrt(12.0),
+            standard_uncertainty=u,
+            degrees_of_freedom=None,
+        ))
+
+    if (
+        include_sensor_nominal_uncertainty
+        and sensor_nominal_uncertainty is not None
+        and sensor_nominal_uncertainty > 0
+    ):
+        u = _type_b_from_expanded(sensor_nominal_uncertainty, sensor_nominal_coverage_factor)
+        budget.append(UncertaintyContribution(
+            source="sensor_nominal_accuracy",
+            description="Type B: sensor manufacturer nominal accuracy/uncertainty specification",
+            value=sensor_nominal_uncertainty,
+            distribution="normal",
+            divisor=sensor_nominal_coverage_factor,
+            standard_uncertainty=u,
+            degrees_of_freedom=None,
+        ))
+
+    return budget
+
+
+def _combine_budget(budget: list[UncertaintyContribution]) -> tuple[float, float | None]:
+    """
+    RSS-combine an uncertainty budget (GUM Eq. 10, uncorrelated inputs) and
+    compute the effective degrees of freedom via the Welch-Satterthwaite
+    formula (GUM Eq. G.2b). Contributions with degrees_of_freedom=None are
+    treated as exactly known (they drop out of the Welch-Satterthwaite sum).
+    Returns (combined_uncertainty, effective_degrees_of_freedom).
+    """
+    combined_u = math.sqrt(sum(c.standard_uncertainty ** 2 for c in budget))
+
+    if combined_u <= 0:
+        return combined_u, None
+
+    denom = sum(
+        (c.standard_uncertainty ** 4) / c.degrees_of_freedom
+        for c in budget
+        if c.degrees_of_freedom is not None and c.degrees_of_freedom > 0
+    )
+    if denom <= 0:
+        return combined_u, None
+
+    return combined_u, combined_u ** 4 / denom
+
+
+def _expand(
+    combined_u: float,
+    dof_eff: float | None,
     distribution_type: str,
     confidence_level: float,
     coverage_factor: float,
-    n: int,
-    k: int,
-) -> tuple[float, float]:
-    """Return (combined_uncertainty, expanded_uncertainty)."""
-    std_res = float(np.std(residuals, ddof=1))
-
+) -> float:
+    """
+    Expanded uncertainty U = k * u_c (GUM Eq. 18). For "t"/"chi_squared", k is
+    derived from dof_eff (GUM §6.3, Annex G); falls back to the normal-
+    distribution factor when dof_eff is unavailable/infinite (GUM Table G.1),
+    which is the correct limit as degrees of freedom -> infinity.
+    """
     if distribution_type == "t":
-        dof = n - k
-        if dof > 0:
-            t_factor = float(stats.t.ppf(0.5 + confidence_level / 200.0, df=dof))
-            expanded = std_res * t_factor
+        if dof_eff is not None and dof_eff > 0:
+            factor = float(stats.t.ppf(0.5 + confidence_level / 200.0, df=dof_eff))
         else:
-            expanded = std_res * coverage_factor
+            factor = float(stats.norm.ppf(0.5 + confidence_level / 200.0))
+        return combined_u * factor
     elif distribution_type == "chi_squared":
-        dof = n - k
-        if dof > 0:
-            chi2_factor = float(np.sqrt(stats.chi2.ppf(confidence_level / 100.0, df=dof) / dof))
-            expanded = std_res * chi2_factor
+        if dof_eff is not None and dof_eff > 0:
+            factor = float(np.sqrt(stats.chi2.ppf(confidence_level / 100.0, df=dof_eff) / dof_eff))
         else:
-            expanded = std_res * coverage_factor
+            factor = 1.0
+        return combined_u * factor
     else:  # normal
-        expanded = std_res * coverage_factor
+        return combined_u * coverage_factor
 
-    return std_res, expanded
+
+DecisionRule = Literal["simple_acceptance", "guard_band_w_uncertainty", "shared_risk"]
+
+
+def _apply_decision_rule(
+    residuals: np.ndarray,
+    ref: np.ndarray,
+    max_error: float,
+    span: float,
+    channel_accuracy_value: float | None,
+    channel_accuracy_type: str | None,
+    decision_rule: DecisionRule,
+    expanded_uncertainty: float,
+) -> tuple[bool, dict]:
+    """
+    Apply an ISO/IEC 17025 §7.1.3 / §7.8.6-compliant decision rule and return
+    (passed, conformity_statement). See References.md §9.4 (ISO/IEC 17025
+    requires the decision rule applied to a conformity statement to be
+    documented, not just an unstated tolerance comparison).
+
+    - simple_acceptance: accept iff the reading is within tolerance, ignoring
+      measurement uncertainty (ISO/IEC Guide 98-4's "simple acceptance";
+      matches MAR's original tolerance-only behavior).
+    - guard_band_w_uncertainty: shrink the acceptance zone inward by the
+      expanded uncertainty U (accept iff error + U <= tolerance), reducing
+      the risk of a false accept.
+    - shared_risk: expand the acceptance zone outward by U (accept iff
+      error - U <= tolerance), reducing the risk of a false reject at the
+      cost of some false-accept risk near the boundary.
+    """
+    if channel_accuracy_value is None or channel_accuracy_value <= 0:
+        return True, {
+            "decision_rule": decision_rule,
+            "specification": None,
+            "expanded_uncertainty_applied": None,
+            "passed": True,
+            "reason": "No accuracy specification provided; conformity not evaluated.",
+        }
+
+    guard = 0.0
+    if decision_rule == "guard_band_w_uncertainty":
+        guard = expanded_uncertainty
+    elif decision_rule == "shared_risk":
+        guard = -expanded_uncertainty
+
+    if channel_accuracy_type == "percent_of_reading":
+        tolerances = channel_accuracy_value / 100.0 * np.abs(ref)
+        passed = bool(np.all(np.abs(residuals) + guard <= tolerances))
+        spec_desc = f"±{channel_accuracy_value}% of reading"
+    elif channel_accuracy_type == "percent_of_full_scale":
+        tolerance = channel_accuracy_value / 100.0 * span
+        passed = bool(max_error + guard <= tolerance)
+        spec_desc = f"±{channel_accuracy_value}% of full scale"
+    else:  # absolute
+        passed = bool(max_error + guard <= channel_accuracy_value)
+        spec_desc = f"±{channel_accuracy_value} (absolute)"
+
+    return passed, {
+        "decision_rule": decision_rule,
+        "specification": spec_desc,
+        "expanded_uncertainty_applied": expanded_uncertainty if decision_rule != "simple_acceptance" else None,
+        "passed": passed,
+        "reason": None,
+    }
 
 
 def run_analysis(
@@ -166,12 +412,35 @@ def run_analysis(
     coverage_factor: float = 2.0,
     channel_accuracy_value: float | None = None,
     channel_accuracy_type: str | None = None,
+    reference_standard_uncertainty: float | None = None,
+    reference_standard_coverage_factor: float = 2.0,
+    resolution: float | None = None,
+    sensor_nominal_uncertainty: float | None = None,
+    sensor_nominal_coverage_factor: float = 2.0,
+    include_sensor_nominal_uncertainty: bool = False,
+    decision_rule: DecisionRule = "simple_acceptance",
 ) -> AnalysisResult:
     """
     Fit a polynomial model to calibration data and compute full statistics.
 
     reference_values / measured_values must be in SI units.
     poly_degree=None triggers automatic degree selection via AIC.
+
+    Uncertainty contributions beyond the fit-residual scatter (Type A) are
+    optional Type B inputs, each expressed in the measurand's own units:
+      - reference_standard_uncertainty: expanded uncertainty (U) stated on the
+        reference standard's own calibration certificate, with
+        reference_standard_coverage_factor as its stated k.
+      - resolution: the instrument's digital resolution (rectangular
+        distribution per GUM §4.3.7).
+      - sensor_nominal_uncertainty: the sensor's manufacturer-stated
+        accuracy/uncertainty; only combined in when
+        include_sensor_nominal_uncertainty=True, since it risks double-
+        counting against the fit-residual (Type A) term otherwise.
+
+    decision_rule selects how measurement uncertainty is factored into the
+    pass/fail conformity statement, per ISO/IEC 17025 §7.1.3/§7.8.6 (see
+    `_apply_decision_rule`).
     """
     if len(reference_values) < 2:
         raise ValueError("Need at least 2 data points for regression")
@@ -188,7 +457,7 @@ def run_analysis(
         degree = max(1, min(poly_degree, 5))
 
     # Calibration function: reference = f(measured) — maps instrument reading to true value
-    coeffs = np.polyfit(meas, ref, degree)
+    coeffs, coeffs_cov = _fit_with_covariance(meas, ref, degree)
     fitted = np.polyval(coeffs, meas)
 
     residuals = ref - fitted
@@ -216,23 +485,24 @@ def run_analysis(
     hysteresis = _detect_hysteresis(ref, meas)
     repeatability = _detect_repeatability(ref, meas)
 
-    # Uncertainty
-    combined_u, expanded_u = _uncertainty(
-        residuals, distribution_type, confidence_level, coverage_factor, n, k
+    # Uncertainty budget: Type A (fit residuals) + whichever Type B contributions
+    # were supplied, combined via RSS with a Welch-Satterthwaite effective dof.
+    budget = _build_uncertainty_budget(
+        residuals, n, k,
+        reference_standard_uncertainty, reference_standard_coverage_factor,
+        resolution,
+        sensor_nominal_uncertainty, sensor_nominal_coverage_factor, include_sensor_nominal_uncertainty,
     )
+    combined_u, dof_eff = _combine_budget(budget)
+    expanded_u = _expand(combined_u, dof_eff, distribution_type, confidence_level, coverage_factor)
 
-    # Pass/fail against channel accuracy spec
-    passed = True
-    if channel_accuracy_value is not None and channel_accuracy_value > 0:
-        if channel_accuracy_type == "percent_of_reading":
-            # max tolerable error at any point = accuracy_pct * |reference|
-            tolerances = channel_accuracy_value / 100.0 * np.abs(ref)
-            passed = bool(np.all(np.abs(residuals) <= tolerances))
-        elif channel_accuracy_type == "percent_of_full_scale":
-            tolerance = channel_accuracy_value / 100.0 * span
-            passed = bool(max_error <= tolerance)
-        else:  # absolute
-            passed = bool(max_error <= channel_accuracy_value)
+    # Pass/fail against channel accuracy spec, per a documented decision rule
+    # (ISO/IEC 17025 §7.1.3/§7.8.6 — see _apply_decision_rule).
+    passed, conformity_statement = _apply_decision_rule(
+        residuals, ref, max_error, span,
+        channel_accuracy_value, channel_accuracy_type,
+        decision_rule, expanded_u,
+    )
 
     # Build point list
     points: list[AnalysisPoint] = []
@@ -266,5 +536,9 @@ def run_analysis(
         valid_range_min=float(np.min(ref)),
         valid_range_max=float(np.max(ref)),
         passed=passed,
+        conformity_statement=conformity_statement,
+        uncertainty_budget=[asdict(c) for c in budget],
+        effective_degrees_of_freedom=dof_eff,
+        poly_coefficients_covariance=coeffs_cov.tolist() if coeffs_cov is not None else None,
         points=points,
     )
