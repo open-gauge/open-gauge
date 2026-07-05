@@ -11,7 +11,7 @@ import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets
 import { listCalibrationLabs } from "@/services/location.service";
 import { COLORS, DECISION_RULE_LABEL, UNCERTAINTY_SOURCE_LABEL } from "@/lib/tokens";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
-import { getUnitsForQuantity, getOutputUnits } from "@/lib/sensor-options";
+import { getUnitsForQuantity, getOutputUnits, resolveSpecValue } from "@/lib/sensor-options";
 import { useAuth } from "@/lib/auth-context";
 import {
   CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, WarningIcon, XIcon,
@@ -214,7 +214,6 @@ interface AnalyzeParams {
   poly_degree: number | null;
   distribution_type: DistributionType;
   confidence_level: number;
-  coverage_factor: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +281,6 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     poly_degree: null,
     distribution_type: "normal",
     confidence_level: 95.0,
-    coverage_factor: 2.0,
   });
   const [analysisResult, setAnalysisResult] = useState<AnalyzeResponse | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -307,26 +305,6 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   const [referenceStandardManualUncertainty, setReferenceStandardManualUncertainty] = useState<string>("");
   const [referenceStandardManualCoverageFactor, setReferenceStandardManualCoverageFactor] = useState<string>("2");
 
-  // Tolerance criteria (lifted from Step3 so the confirm modal can use uiPassed)
-  const [toleranceCriteria, setToleranceCriteria] = useState<ToleranceCriteria>("percent_fs");
-  const [toleranceThreshold, setToleranceThreshold] = useState<string>("1");
-
-  const uiPassed = (() => {
-    if (!analysisResult || !toleranceThreshold.trim()) return null;
-    const t = parseFloat(toleranceThreshold);
-    if (isNaN(t) || t <= 0) return null;
-    switch (toleranceCriteria) {
-      case "absolute": return analysisResult.max_error <= t;
-      case "percent_reading": return analysisResult.points.every((p) =>
-        Math.abs(p.reference_value) > 0
-          ? Math.abs(p.residual_abs ?? 0) / Math.abs(p.reference_value) * 100 <= t
-          : true
-      );
-      case "percent_fs": return analysisResult.full_scale_error_pct <= t;
-      case "with_uncertainty": return analysisResult.max_error + analysisResult.expanded_uncertainty <= t;
-    }
-  })();
-
   // Confirmation dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -338,6 +316,12 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
 
   const selectedChannel = profile.sensor_channels.find((c) => c.id === step1.sensor_id)
     ?? profile.sensor_channels[0];
+
+  // The real, server-computed, decision-rule-aware conformity result (as
+  // opposed to an ad-hoc client-side preview) — null when nothing has been
+  // analyzed yet, or when the channel has no accuracy spec to check against.
+  const conformityStatement = analysisResult?.conformity_statement ?? null;
+  const hasConformityCheck = conformityStatement?.specification != null;
 
   const validPoints = rawPoints.filter(
     (p) => p.reference.trim() !== "" && p.measured.trim() !== "" &&
@@ -463,16 +447,24 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         poly_degree: analyzeParams.poly_degree,
         distribution_type: analyzeParams.distribution_type,
         confidence_level: analyzeParams.confidence_level,
-        coverage_factor: analyzeParams.coverage_factor,
         channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
         channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
         decision_rule: decisionRule,
         // Type B: instrument resolution is always folded in when known (no
         // double-counting risk — it's a distinct physical effect from fit scatter).
-        resolution: selectedChannel?.resolution ?? null,
+        // Converted from %FS to an absolute value if that's how it was entered.
+        resolution: resolveSpecValue(
+          selectedChannel?.resolution ?? null, selectedChannel?.resolution_unit ?? null,
+          selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+        ),
         // Type B: sensor's nominal manufacturer accuracy spec, opt-in only.
-        sensor_nominal_uncertainty: selectedChannel?.measurement_uncertainty ?? null,
-        sensor_nominal_coverage_factor: selectedChannel?.coverage_factor ?? 2.0,
+        sensor_nominal_uncertainty: resolveSpecValue(
+          selectedChannel?.measurement_uncertainty ?? null, selectedChannel?.uncertainty_unit ?? null,
+          selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+        ),
+        // The channel no longer carries its own coverage factor (removed from
+        // channel editing) — a nominal manufacturer spec's k is conventionally 2.
+        sensor_nominal_coverage_factor: 2.0,
         include_sensor_nominal_uncertainty: includeSensorNominalUncertainty,
         // Type B: uncertainty of the reference standard used for this calibration
         // (auto-fetched from its own last calibration, or entered manually).
@@ -732,11 +724,6 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               hoveredPointIdx={hoveredPointIdx}
               onHoverPoint={setHoveredPointIdx}
               coefficientsOnly={step1.coefficients_only}
-              toleranceCriteria={toleranceCriteria}
-              onToleranceCriteriaChange={setToleranceCriteria}
-              toleranceThreshold={toleranceThreshold}
-              onToleranceThresholdChange={setToleranceThreshold}
-              uiPassed={uiPassed}
               includeSensorNominalUncertainty={includeSensorNominalUncertainty}
               onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
               sensorNominalUncertaintyAvailable={selectedChannel?.measurement_uncertainty != null}
@@ -800,19 +787,19 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         <div className="absolute inset-0 z-20 flex items-center justify-center">
           <div className="bg-mar-surface border border-mar-border rounded-xl shadow-2xl p-6 w-96 mx-auto">
             <h3 className="text-sm font-semibold text-mar-text mb-3">Save calibration record?</h3>
-            {uiPassed === true && (
+            {hasConformityCheck && conformityStatement!.passed && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 mb-3">
                 <CheckIcon size={13} className="text-emerald-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                  Calibration meets the tolerance criteria. You can safely save this record.
+                  Conforms to {conformityStatement!.specification} under the {DECISION_RULE_LABEL[conformityStatement!.decision_rule] ?? conformityStatement!.decision_rule} rule. You can safely save this record.
                 </p>
               </div>
             )}
-            {uiPassed === false && (
+            {hasConformityCheck && !conformityStatement!.passed && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 mb-3">
                 <WarningIcon size={13} className="text-amber-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  This calibration does not meet the tolerance criteria. Do you want to save it anyway?
+                  This calibration does not conform to {conformityStatement!.specification} under the {DECISION_RULE_LABEL[conformityStatement!.decision_rule] ?? conformityStatement!.decision_rule} rule. Do you want to save it anyway?
                 </p>
               </div>
             )}
@@ -834,13 +821,13 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
                 onClick={handleSave}
                 disabled={saving}
                 className={`px-3 py-1.5 text-sm rounded-lg text-white flex items-center gap-1.5 transition-colors disabled:opacity-50 ${
-                  uiPassed === false
+                  hasConformityCheck && !conformityStatement!.passed
                     ? "bg-amber-600 hover:bg-amber-700"
                     : "bg-emerald-600 hover:bg-emerald-700"
                 }`}
               >
                 {saving && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                {uiPassed === false ? "Save anyway" : "Save"}
+                {hasConformityCheck && !conformityStatement!.passed ? "Save anyway" : "Save"}
               </button>
             </div>
           </div>
@@ -1285,8 +1272,6 @@ function Step2({
 // Step 3 — Analysis & Results
 // ---------------------------------------------------------------------------
 
-type ToleranceCriteria = "absolute" | "percent_reading" | "percent_fs" | "with_uncertainty";
-
 function evalPoly(coefficients: number[], x: number): number {
   let y = 0;
   const deg = coefficients.length - 1;
@@ -1303,7 +1288,6 @@ function residualColor(residual: number, maxAbsResidual: number): string {
 function Step3({
   analyzeParams, onAnalyzeParamsChange, result, analyzing, analyzeError,
   referenceUnit, measuredUnit, hoveredPointIdx, onHoverPoint, coefficientsOnly,
-  toleranceCriteria, onToleranceCriteriaChange, toleranceThreshold, onToleranceThresholdChange, uiPassed,
   includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange, sensorNominalUncertaintyAvailable,
   decisionRule, onDecisionRuleChange,
   referenceStandardAuto, referenceStandardAutoLoading, referenceAssetName,
@@ -1321,11 +1305,6 @@ function Step3({
   hoveredPointIdx: number | null;
   onHoverPoint: (i: number | null) => void;
   coefficientsOnly: boolean;
-  toleranceCriteria: ToleranceCriteria;
-  onToleranceCriteriaChange: (v: ToleranceCriteria) => void;
-  toleranceThreshold: string;
-  onToleranceThresholdChange: (v: string) => void;
-  uiPassed: boolean | null;
   includeSensorNominalUncertainty: boolean;
   onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
   sensorNominalUncertaintyAvailable: boolean;
@@ -1465,9 +1444,6 @@ function Step3({
     );
   }
 
-  const toleranceUnit = toleranceCriteria === "percent_reading" || toleranceCriteria === "percent_fs"
-    ? "%" : referenceUnit;
-
   return (
     <div className="p-5 space-y-4">
       {/* Controls row */}
@@ -1502,16 +1478,6 @@ function Step3({
             value={analyzeParams.confidence_level}
             onChange={(e) => setParam("confidence_level")(parseFloat(e.target.value) || 95)}
             min={50} max={99.99} step={0.5}
-            className={`${IB} ${IB_OK} py-1.5`}
-          />
-        </div>
-        <div className="flex flex-col gap-1 w-20">
-          <WLabel text="Coverage k" />
-          <input
-            type="number"
-            value={analyzeParams.coverage_factor}
-            onChange={(e) => setParam("coverage_factor")(parseFloat(e.target.value) || 2)}
-            min={1} max={5} step={0.1}
             className={`${IB} ${IB_OK} py-1.5`}
           />
         </div>
@@ -1584,51 +1550,6 @@ function Step3({
             )}
           </>
         )}
-        {/* Divider */}
-        <div className="w-px bg-mar-border-md self-stretch hidden sm:block" />
-        {/* Tolerance criteria — ad-hoc "what if" preview only; the stored/
-            certified conformity statement uses the channel's own accuracy
-            spec and the Decision rule selected above. */}
-        <div className="flex flex-col gap-1 min-w-[160px]">
-          <WLabel text="Tolerance criteria (preview)" />
-          <select
-            value={toleranceCriteria}
-            onChange={(e) => onToleranceCriteriaChange(e.target.value as ToleranceCriteria)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="percent_fs">% Full Scale</option>
-            <option value="absolute">Absolute error</option>
-            <option value="percent_reading">% of Reading</option>
-            <option value="with_uncertainty">Incl. uncertainty</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <WLabel text="Tolerance threshold (preview)" />
-          <div className="flex items-center gap-1.5">
-            <div className="w-20 flex-shrink-0">
-              <input
-                type="number"
-                value={toleranceThreshold}
-                onChange={(e) => onToleranceThresholdChange(e.target.value)}
-                min={0}
-                step="any"
-                className={`${IB} ${IB_OK} py-1.5`}
-                placeholder="1"
-              />
-            </div>
-            <span className="text-xs text-gray-400 whitespace-nowrap">{toleranceUnit}</span>
-            {result && !analyzing && uiPassed !== null && (
-              <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ${
-                uiPassed
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
-                  : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
-              }`}>
-                {uiPassed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
-                {uiPassed ? "PASS" : "FAIL"}
-              </div>
-            )}
-          </div>
-        </div>
         {analyzing && (
           <div className="ml-auto flex items-end">
             <div className="flex items-center gap-2 text-xs text-gray-400">

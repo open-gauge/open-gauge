@@ -42,11 +42,11 @@ import {
   MOUNTING_TYPE_OPTIONS,
   IP_RATING_OPTIONS,
   HAZARDOUS_AREA_OPTIONS,
-  CAL_ROLE_OPTIONS,
   OUTPUT_TYPE_OPTIONS,
-  ACCURACY_TYPE_OPTIONS,
-  CRITICALITY_OPTIONS,
   getOutputUnits,
+  getTypesForQuantity,
+  getSpecUnitOptions,
+  PERCENT_FS_UNIT,
 } from "@/lib/sensor-options";
 import { toSI, fromSI } from "@/lib/unit-conversion";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
@@ -152,33 +152,28 @@ interface EditChannelForm {
   sensor_id: string | null;
   channel_id: string;
   physical_quantity: string;
+  measurement_type: string;
   unit: string;
   _techFamily: string;
   technology: string;
   measurement_min: string;
   measurement_max: string;
   accuracy_value: string;
-  accuracy_type: string;
+  accuracy_type: string;  // derived from accuracy_unit; not directly editable
   accuracy_unit: string;
   resolution: string;
   resolution_unit: string;
   measurement_uncertainty: string;
   uncertainty_unit: string;
-  confidence_level: string;
-  coverage_factor: string;
   drift_rate: string;
   drift_unit: string;
-  sensitivity: string;
-  sensitivity_unit: string;
   response_time_ms: string;
   bandwidth_hz: string;
   output_signal_min: string;
   output_signal_max: string;
   output_signal_unit: string;
   output_type: string;
-  calibration_role: string;
-  criticality: string;
-  calibration_interval: string;
+  calibration_role: boolean;  // checkbox: true = "reference" standard
 }
 
 interface EditFormState {
@@ -251,6 +246,7 @@ function profileToForm(profile: AssetProfile): EditFormState {
         sensor_id: ch.id,
         channel_id: s(ch.channel_id),
         physical_quantity: s(ch.physical_quantity),
+        measurement_type: s(ch.measurement_type),
         unit: s(ch.unit),
         _techFamily: family,
         technology: s(ch.technology),
@@ -263,21 +259,15 @@ function profileToForm(profile: AssetProfile): EditFormState {
         resolution_unit: s(ch.resolution_unit),
         measurement_uncertainty: s(ch.measurement_uncertainty),
         uncertainty_unit: s(ch.uncertainty_unit),
-        confidence_level: s(ch.confidence_level),
-        coverage_factor: s(ch.coverage_factor),
         drift_rate: s(ch.drift_rate),
         drift_unit: s(ch.drift_unit),
-        sensitivity: s(ch.sensitivity),
-        sensitivity_unit: s(ch.sensitivity_unit),
         response_time_ms: s(ch.response_time_ms),
         bandwidth_hz: s(ch.bandwidth_hz),
         output_signal_unit: s(ch.output_signal_unit),
         output_signal_min: s(fromSI(ch.output_signal_min, ch.output_signal_unit ?? "")),
         output_signal_max: s(fromSI(ch.output_signal_max, ch.output_signal_unit ?? "")),
         output_type: s(ch.output_type),
-        calibration_role: s(ch.calibration_role),
-        criticality: s(ch.criticality),
-        calibration_interval: s(ch.calibration_interval),
+        calibration_role: ch.calibration_role === "reference",
       };
     }),
   };
@@ -303,6 +293,7 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
     sensor_id: ch.sensor_id ?? null,
     channel_id: ch.channel_id.trim(),
     physical_quantity: ch.physical_quantity,
+    measurement_type: orNull(ch.measurement_type),
     unit: ch.unit,
     technology: orNull(ch.technology),
     measurement_min: numOrNull(ch.measurement_min),
@@ -314,21 +305,15 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
     resolution_unit: orNull(ch.resolution_unit),
     measurement_uncertainty: numOrNull(ch.measurement_uncertainty),
     uncertainty_unit: orNull(ch.uncertainty_unit),
-    confidence_level: numOrNull(ch.confidence_level),
-    coverage_factor: numOrNull(ch.coverage_factor),
     drift_rate: numOrNull(ch.drift_rate),
     drift_unit: orNull(ch.drift_unit),
-    sensitivity: numOrNull(ch.sensitivity),
-    sensitivity_unit: orNull(ch.sensitivity_unit),
     response_time_ms: numOrNull(ch.response_time_ms),
     bandwidth_hz: numOrNull(ch.bandwidth_hz),
     output_signal_unit: orNull(ch.output_signal_unit),
     output_signal_min: numSI(ch.output_signal_min, ch.output_signal_unit),
     output_signal_max: numSI(ch.output_signal_max, ch.output_signal_unit),
     output_type: orNull(ch.output_type),
-    calibration_role: orNull(ch.calibration_role),
-    criticality: orNull(ch.criticality),
-    calibration_interval: numOrNull(ch.calibration_interval),
+    calibration_role: ch.calibration_role ? "reference" : null,
   }));
 
   return {
@@ -401,9 +386,9 @@ function validateForm(form: EditFormState): Record<string, string> {
 
     const chNums = [
       "measurement_min", "measurement_max", "accuracy_value", "resolution",
-      "drift_rate", "sensitivity", "response_time_ms", "bandwidth_hz",
-      "output_signal_min", "output_signal_max", "calibration_interval",
-      "measurement_uncertainty", "confidence_level", "coverage_factor",
+      "drift_rate", "response_time_ms", "bandwidth_hz",
+      "output_signal_min", "output_signal_max",
+      "measurement_uncertainty",
     ];
     for (const f of chNums) {
       const v = ch[f as keyof EditChannelForm] as string;
@@ -570,29 +555,24 @@ function EditSelectWithOther({
 // ---------------------------------------------------------------------------
 
 function PhysicalQuantityCascade({
-  physicalQuantity, unit, techFamily, technology,
-  onQuantityChange, onUnitChange, onTechChange,
+  physicalQuantity, measurementType, techFamily, technology,
+  onQuantityChange, onMeasurementTypeChange, onTechChange,
   errors, prefix,
 }: {
   physicalQuantity: string;
-  unit: string;
+  measurementType: string;
   techFamily: string;
   technology: string;
   onQuantityChange: (q: string) => void;
-  onUnitChange: (u: string) => void;
+  onMeasurementTypeChange: (t: string) => void;
   onTechChange: (family: string, tech: string) => void;
   errors: Record<string, string>;
   prefix: string;
 }) {
   const quantityDef = PHYSICAL_QUANTITIES.find((q) => q.value === physicalQuantity);
-  const units = quantityDef?.units ?? [];
   const techs = quantityDef?.technologies ?? [];
   const selectedFamily = techs.find((t) => t.value === techFamily);
-
-  function handleQuantityChange(q: string) {
-    onQuantityChange(q);
-    // Unit reset and tech reset are handled by ChannelEditor's onQuantityChange as a single state update
-  }
+  const typeOptions = getTypesForQuantity(physicalQuantity);
 
   function handleFamilyChange(fam: string) {
     if (fam === "" || fam === "__other__") {
@@ -608,6 +588,7 @@ function PhysicalQuantityCascade({
   }
 
   const techSubtypeVal = selectedFamily?.subtypes ? technology : "";
+  const showSecondRow = typeOptions.length > 0 || (selectedFamily?.subtypes && techFamily !== "__other__") || techFamily === "__other__";
 
   return (
     <div className="space-y-3">
@@ -615,29 +596,32 @@ function PhysicalQuantityCascade({
         <EditSelect
           label="Physical quantity"
           value={physicalQuantity}
-          onChange={handleQuantityChange}
+          onChange={onQuantityChange}
           options={PHYSICAL_QUANTITIES.map((q) => ({ value: q.value, label: q.label }))}
           error={errors[`${prefix}physical_quantity`]}
           required
           tooltip={CHAN_TIPS.physical_quantity}
         />
-        <EditSelect
-          label="Unit"
-          value={unit}
-          onChange={onUnitChange}
-          options={units.map((u) => ({ value: u.value, label: u.label }))}
-          error={errors[`${prefix}unit`]}
-          required
-        />
-      </div>
-      {quantityDef && (
-        <div className="grid grid-cols-2 gap-3">
+        {quantityDef && (
           <EditSelectWithOther
             label="Technology"
             value={techFamily}
             onChange={handleFamilyChange}
             options={techs.map((t) => ({ value: t.value, label: t.label }))}
           />
+        )}
+      </div>
+      {showSecondRow && (
+        <div className="grid grid-cols-2 gap-3">
+          {typeOptions.length > 0 ? (
+            <EditSelect
+              label="Measurement type"
+              value={measurementType}
+              onChange={onMeasurementTypeChange}
+              options={typeOptions}
+              tooltip={CHAN_TIPS.measurement_type}
+            />
+          ) : <div />}
           {selectedFamily?.subtypes && techFamily !== "__other__" && (
             <EditSelect
               label="Type / variant"
@@ -666,15 +650,14 @@ function PhysicalQuantityCascade({
 
 const CHAN_TIPS: Record<string, string> = {
   physical_quantity: "The physical quantity defines the type of measurement (e.g., temperature, pressure) and determines the applicable units and calibration procedures. Choose the one that best matches the sensor's primary measurement.",
-  accuracy_value: "Maximum deviation between the sensor output and the true value. Smaller means more accurate.",
+  measurement_type: "Measurement mode for physical quantities that need one — e.g. a pressure sensor reading absolute pressure vs. gauge (relative to atmosphere).",
+  accuracy_value: "Maximum deviation between the sensor output and the true value. Smaller means more accurate. Choose \"% FS\" as the unit to express this as a percentage of the measurable range instead of an absolute value.",
   resolution: "Smallest change in input the sensor can detect and represent in its output.",
-  measurement_uncertainty: "Quantifies doubt about the measurement result. Expressed as ±value at the stated confidence level.",
-  confidence_level: "Statistical confidence for the uncertainty statement (typically 95%).",
-  coverage_factor: "Multiplier k applied to standard uncertainty to give expanded uncertainty (k=2 ≈ 95%).",
+  measurement_uncertainty: "Quantifies doubt about the measurement result. Expressed as ±value; folded into a calibration's uncertainty budget as an optional Type B contribution.",
   drift_rate: "Rate at which the sensor output shifts over time without any change in the measured quantity.",
-  sensitivity: "Change in output per unit change in input (e.g., mV/°C). Higher means more responsive.",
   response_time_ms: "Time for the sensor output to reach a defined percentage of its final value after a step input change.",
   bandwidth_hz: "Maximum frequency of input changes the sensor can accurately follow.",
+  calibration_role: "Marks this channel as a reference standard, so it can be selected as the traceability reference when calibrating other assets.",
 };
 
 // ---------------------------------------------------------------------------
@@ -716,6 +699,15 @@ function ChannelEditor({
   const set = (field: keyof EditChannelForm) => (v: string) =>
     onChange({ ...ch, [field]: v });
 
+  // Accuracy/resolution/uncertainty share the same "unit dropdown, %FS first
+  // when a range is set" pattern instead of a separate type field.
+  const specUnitOptions = getSpecUnitOptions(ch.physical_quantity, ch.measurement_min, ch.measurement_max);
+  const setAccuracyUnit = (v: string) => onChange({
+    ...ch,
+    accuracy_unit: v,
+    accuracy_type: v === "" ? "" : v === PERCENT_FS_UNIT ? "percent_of_full_scale" : "absolute",
+  });
+
   return (
     <div className="border border-mar-border-md rounded-xl p-4 space-y-4 bg-mar-surface-alt">
       <div className="flex items-center justify-between">
@@ -744,67 +736,27 @@ function ChannelEditor({
 
       <PhysicalQuantityCascade
         physicalQuantity={ch.physical_quantity}
-        unit={ch.unit}
+        measurementType={ch.measurement_type}
         techFamily={ch._techFamily}
         technology={ch.technology}
         onQuantityChange={(q) => {
           const def = PHYSICAL_QUANTITIES.find((x) => x.value === q);
-          onChange({ ...ch, physical_quantity: q, unit: def?.units[0]?.value ?? "", _techFamily: "", technology: "" });
+          onChange({ ...ch, physical_quantity: q, unit: def?.units[0]?.value ?? "", measurement_type: "", _techFamily: "", technology: "" });
         }}
-        onUnitChange={set("unit")}
+        onMeasurementTypeChange={set("measurement_type")}
         onTechChange={(fam, tech) => onChange({ ...ch, _techFamily: fam, technology: tech })}
         errors={errors}
         prefix={p}
       />
 
-      {/* Range */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Range + unit */}
+      <div className="grid grid-cols-3 gap-3">
         <EditInput label="Range min" value={ch.measurement_min} onChange={set("measurement_min")} error={errors[`${p}measurement_min`]} placeholder="e.g. -200" />
         <EditInput label="Range max" value={ch.measurement_max} onChange={set("measurement_max")} error={errors[`${p}measurement_max`]} placeholder="e.g. 850" />
+        <EditSelect label="Unit" value={ch.unit} onChange={set("unit")} options={getSpecUnitOptions(ch.physical_quantity, null, null)} error={errors[`${p}unit`]} required />
       </div>
 
-      {/* Accuracy */}
-      <div className="grid grid-cols-3 gap-3">
-        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" tooltip={CHAN_TIPS.accuracy_value} />
-        <EditSelectWithOther label="Accuracy type" value={ch.accuracy_type} onChange={set("accuracy_type")} options={ACCURACY_TYPE_OPTIONS} />
-        <EditInput label="Accuracy unit" value={ch.accuracy_unit} onChange={set("accuracy_unit")} placeholder="e.g. °C, %" />
-      </div>
-
-      {/* Resolution */}
-      <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" tooltip={CHAN_TIPS.resolution} />
-        <EditInput label="Resolution unit" value={ch.resolution_unit} onChange={set("resolution_unit")} placeholder="e.g. °C" />
-      </div>
-
-      {/* Uncertainty */}
-      <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" tooltip={CHAN_TIPS.measurement_uncertainty} />
-        <EditInput label="Uncertainty unit" value={ch.uncertainty_unit} onChange={set("uncertainty_unit")} placeholder="e.g. °C" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Confidence level (%)" value={ch.confidence_level} onChange={set("confidence_level")} error={errors[`${p}confidence_level`]} placeholder="e.g. 95" tooltip={CHAN_TIPS.confidence_level} />
-        <EditInput label="Coverage factor (k)" value={ch.coverage_factor} onChange={set("coverage_factor")} error={errors[`${p}coverage_factor`]} placeholder="e.g. 2" tooltip={CHAN_TIPS.coverage_factor} />
-      </div>
-
-      {/* Drift */}
-      <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" tooltip={CHAN_TIPS.drift_rate} />
-        <EditInput label="Drift unit" value={ch.drift_unit} onChange={set("drift_unit")} placeholder="e.g. °C/year" />
-      </div>
-
-      {/* Sensitivity */}
-      <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Sensitivity" value={ch.sensitivity} onChange={set("sensitivity")} error={errors[`${p}sensitivity`]} placeholder="e.g. 10" tooltip={CHAN_TIPS.sensitivity} />
-        <EditInput label="Sensitivity unit" value={ch.sensitivity_unit} onChange={set("sensitivity_unit")} placeholder="e.g. mV/V" />
-      </div>
-
-      {/* Dynamic */}
-      <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" tooltip={CHAN_TIPS.response_time_ms} />
-        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" tooltip={CHAN_TIPS.bandwidth_hz} />
-      </div>
-
-      {/* Output — type first, then range */}
+      {/* Output — type first, then range under it in the same column format */}
       <EditSelectWithOther label="Output type" value={ch.output_type} onChange={(v) => {
         const units = getOutputUnits(v, ch.physical_quantity);
         onChange({ ...ch, output_type: v, output_signal_unit: units?.[0]?.value ?? "" });
@@ -815,14 +767,49 @@ function ChannelEditor({
         <OutputUnitSelector outputType={ch.output_type} physicalQuantity={ch.physical_quantity} value={ch.output_signal_unit} onChange={set("output_signal_unit")} />
       </div>
 
-      {/* Role / Criticality */}
+      {/* Accuracy */}
       <div className="grid grid-cols-2 gap-3">
-        <EditSelectWithOther label="Calibration role" value={ch.calibration_role} onChange={set("calibration_role")} options={CAL_ROLE_OPTIONS} />
-        <EditSelectWithOther label="Criticality" value={ch.criticality} onChange={set("criticality")} options={CRITICALITY_OPTIONS} />
+        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" tooltip={CHAN_TIPS.accuracy_value} />
+        <EditSelect label="Accuracy unit" value={ch.accuracy_unit} onChange={setAccuracyUnit} options={specUnitOptions} />
       </div>
 
-      {/* Calibration interval */}
-      <EditInput label="Calibration interval (days)" value={ch.calibration_interval} onChange={set("calibration_interval")} error={errors[`${p}calibration_interval`]} placeholder="e.g. 365" />
+      {/* Resolution */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" tooltip={CHAN_TIPS.resolution} />
+        <EditSelect label="Resolution unit" value={ch.resolution_unit} onChange={set("resolution_unit")} options={specUnitOptions} />
+      </div>
+
+      {/* Uncertainty */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" tooltip={CHAN_TIPS.measurement_uncertainty} />
+        <EditSelect label="Uncertainty unit" value={ch.uncertainty_unit} onChange={set("uncertainty_unit")} options={specUnitOptions} />
+      </div>
+
+      {/* Drift */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" tooltip={CHAN_TIPS.drift_rate} />
+        <EditInput label="Drift unit" value={ch.drift_unit} onChange={set("drift_unit")} placeholder="e.g. °C/year" />
+      </div>
+
+      {/* Dynamic */}
+      <div className="grid grid-cols-2 gap-3">
+        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" tooltip={CHAN_TIPS.response_time_ms} />
+        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" tooltip={CHAN_TIPS.bandwidth_hz} />
+      </div>
+
+      {/* Calibration role */}
+      <label className="flex items-center gap-2 text-sm text-mar-text cursor-pointer">
+        <input
+          type="checkbox"
+          checked={ch.calibration_role}
+          onChange={(e) => onChange({ ...ch, calibration_role: e.target.checked })}
+          className="rounded border-mar-border-md"
+        />
+        Reference standard
+        <Tooltip content={CHAN_TIPS.calibration_role}>
+          <InfoIcon size={11} className="text-gray-400 cursor-help flex-shrink-0" />
+        </Tooltip>
+      </label>
     </div>
   );
 }
@@ -976,6 +963,7 @@ function OverviewTab({
           sensor_id: null,
           channel_id: "",
           physical_quantity: firstQ.value,
+          measurement_type: "",
           unit: firstQ.units[0]?.value ?? "",
           _techFamily: "",
           technology: "",
@@ -983,13 +971,10 @@ function OverviewTab({
           accuracy_value: "", accuracy_type: "", accuracy_unit: "",
           resolution: "", resolution_unit: "",
           measurement_uncertainty: "", uncertainty_unit: "",
-          confidence_level: "", coverage_factor: "",
           drift_rate: "", drift_unit: "",
-          sensitivity: "", sensitivity_unit: "",
           response_time_ms: "", bandwidth_hz: "",
           output_signal_min: "", output_signal_max: "", output_signal_unit: "",
-          output_type: "", calibration_role: "", criticality: "",
-          calibration_interval: "",
+          output_type: "", calibration_role: false,
         },
       ]);
     }
@@ -1239,27 +1224,34 @@ function OverviewTab({
                       {ch.channel_id}
                     </p>
                     <SpecRow label="Physical quantity" value={SUBTYPE_LABEL[ch.physical_quantity] ?? ch.physical_quantity} />
+                    <SpecRow
+                      label="Measurement type"
+                      value={getTypesForQuantity(ch.physical_quantity).find((t) => t.value === ch.measurement_type)?.label ?? ch.measurement_type}
+                    />
                     <SpecRow label="Technology" value={ch.technology} />
                     {(ch.measurement_min != null || ch.measurement_max != null) && (
                       <SpecRow label="Range" value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} />
                     )}
                     {ch.accuracy_value != null && (
-                      <SpecRow label="Accuracy" value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}${ch.accuracy_type ? " (" + ch.accuracy_type + ")" : ""}`} />
+                      <SpecRow label="Accuracy" value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}`} />
                     )}
                     {ch.resolution != null && (
                       <SpecRow label="Resolution" value={`${ch.resolution}${ch.resolution_unit ? " " + ch.resolution_unit : ""}`} />
                     )}
+                    {ch.measurement_uncertainty != null && (
+                      <SpecRow label="Uncertainty" value={`±${ch.measurement_uncertainty}${ch.uncertainty_unit ? " " + ch.uncertainty_unit : ""}`} />
+                    )}
                     {ch.drift_rate != null && (
                       <SpecRow label="Drift rate" value={`${ch.drift_rate}${ch.drift_unit ? " " + ch.drift_unit : ""}`} />
                     )}
-                    {ch.sensitivity != null && (
-                      <SpecRow label="Sensitivity" value={`${ch.sensitivity}${ch.sensitivity_unit ? " " + ch.sensitivity_unit : ""}`} />
-                    )}
                     {ch.response_time_ms != null && <SpecRow label="Response time" value={`${ch.response_time_ms} ms`} />}
                     {ch.bandwidth_hz != null && <SpecRow label="Bandwidth" value={`${ch.bandwidth_hz.toLocaleString()} Hz`} />}
-                    {ch.calibration_interval != null && <SpecRow label="Cal. interval" value={`${ch.calibration_interval} days`} />}
+                    <SpecRow label="Output type" value={ch.output_type} />
+                    {(ch.output_signal_min != null || ch.output_signal_max != null) && (
+                      <SpecRow label="Output range" value={`${ch.output_signal_min ?? "—"} – ${ch.output_signal_max ?? "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`} />
+                    )}
                     <SpecRow label="Cal. method" value={ch.calibration_method_name} />
-                    <SpecRow label="Cal. role" value={ch.calibration_role} />
+                    <SpecRow label="Cal. role" value={ch.calibration_role === "reference" ? "Reference standard" : null} />
                   </div>
                 ))}
               </div>

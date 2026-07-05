@@ -249,11 +249,21 @@ class TestDecisionRules:
 # ---------------------------------------------------------------------------
 
 class TestUncertainty:
-    def test_normal_distribution_uses_coverage_factor(self) -> None:
-        result = run_analysis(**PERFECT_LINEAR, distribution_type="normal", coverage_factor=2.0)
-        assert result.coverage_factor == 2.0
+    def test_normal_distribution_derives_coverage_factor_from_confidence_level(self) -> None:
+        # No coverage_factor input anymore — k is always derived from confidence_level.
+        # 95% confidence under a normal distribution -> k = norm.ppf(0.975) ≈ 1.95996.
+        result = run_analysis(**PERFECT_LINEAR, distribution_type="normal", confidence_level=95.0)
+        assert result.coverage_factor == pytest.approx(1.95996, abs=1e-4)
         assert result.distribution_type == "normal"
         assert result.expanded_uncertainty >= result.combined_uncertainty
+
+    def test_normal_distribution_coverage_factor_tracks_confidence_level(self) -> None:
+        result_90 = run_analysis(**PERFECT_LINEAR, distribution_type="normal", confidence_level=90.0)
+        result_99 = run_analysis(**PERFECT_LINEAR, distribution_type="normal", confidence_level=99.0)
+        # Higher confidence -> larger coverage factor (wider interval).
+        assert result_90.coverage_factor < result_99.coverage_factor
+        assert result_90.coverage_factor == pytest.approx(1.6449, abs=1e-3)
+        assert result_99.coverage_factor == pytest.approx(2.5758, abs=1e-3)
 
     def test_t_distribution_returns_non_negative_uncertainty(self) -> None:
         result = run_analysis(**PERFECT_LINEAR, distribution_type="t", confidence_level=95.0)

@@ -447,6 +447,7 @@ def duplicate(db: Session, source: Asset, new_asset_id: str, created_by: uuid.UU
             asset_id=new_asset.id,
             channel_id=ch.channel_id,
             physical_quantity=ch.physical_quantity,
+            measurement_type=ch.measurement_type,
             unit=ch.unit,
             technology=ch.technology,
             measurement_min=ch.measurement_min,

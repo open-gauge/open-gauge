@@ -22,7 +22,6 @@ class AnalyzeRequest(BaseModel):
     poly_degree: int | None = None
     distribution_type: str = "normal"
     confidence_level: float = 95.0
-    coverage_factor: float = 2.0
     channel_accuracy_value: float | None = None
     channel_accuracy_type: str | None = None
     decision_rule: str = "simple_acceptance"

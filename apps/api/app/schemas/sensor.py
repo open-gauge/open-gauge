@@ -8,6 +8,7 @@ class SensorChannelCreate(BaseModel):
     sensor_id: uuid.UUID | None = None  # stable identifier for updates; ignored on create
     channel_id: str = Field(min_length=1, max_length=255)
     physical_quantity: str = Field(min_length=1, max_length=255)
+    measurement_type: str | None = None
     unit: str = Field(min_length=1, max_length=50)
     technology: str | None = None
     measurement_min: float | None = None

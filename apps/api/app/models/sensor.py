@@ -15,6 +15,11 @@ class Sensor(Base):
     asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=False, index=True)
     channel_id: Mapped[str] = mapped_column(String(255), nullable=False)
     physical_quantity: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Measurement mode for physical quantities that need one, e.g. pressure's
+    # absolute vs. gauge (relative) distinction. Only meaningful for certain
+    # physical_quantity values — see apps/web/src/lib/sensor-options.ts
+    # PHYSICAL_QUANTITY_TYPES for which ones and their options.
+    measurement_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     unit: Mapped[str] = mapped_column(String(50), nullable=False)
     technology: Mapped[str | None] = mapped_column(String(255), nullable=True)
     measurement_min: Mapped[float | None] = mapped_column(Numeric(18, 8), nullable=True)

@@ -39,9 +39,9 @@ Add one sensor channel:
 |---|---|
 | Channel ID | CH1 |
 | Physical quantity | Temperature |
+| Range min / max | 0 / 100 |
 | Unit | °C |
-| Calibration role | **reference** |
-| Measurement min / max | 0 / 100 |
+| Calibration role | **checked** (reference standard) |
 
 Leave accuracy/resolution/uncertainty fields blank on this asset — they're not used in this
 example (only its *calibration record's* `expanded_uncertainty` matters, computed in step 1.1).
@@ -60,28 +60,32 @@ Add one sensor channel:
 |---|---|
 | Channel ID | CH1 |
 | Physical quantity | Temperature |
+| Range min / max | 0 / 100 |
 | Unit | °C |
-| Calibration role | working |
-| Measurement min / max | 0 / 100 |
 | Accuracy value | 0.5 |
-| Accuracy type | Absolute |
-| Accuracy unit | **°C** (must match the reference/measured unit used below) |
+| Accuracy unit | **°C** (a real unit means "absolute"; enter the range first if you'd rather pick "% FS" instead — must match the reference/measured unit used below either way) |
 | Resolution | 0.1 |
 | Resolution unit | °C |
 | Measurement uncertainty | 0.3 |
 | Uncertainty unit | °C |
-| Confidence level | 95 |
-| Coverage factor | 2 |
+| Calibration role | (unchecked / not a reference standard) |
 
 Leave "Output signal unit" blank on both channels so the measured-value unit defaults to °C
 (same as the reference unit) — this avoids any unit-conversion complexity for this example.
+Note there's no "Accuracy type" field to set separately — MAR derives it from whichever unit
+you pick in the Accuracy/Resolution/Uncertainty unit dropdowns (a real unit like °C means
+"absolute"; picking "% FS" from that same dropdown means "percent of full scale" — that
+option only appears once Range min/max are filled in). There's also no "Confidence level" or
+"Coverage factor" field on the channel anymore — those were channel-level metadata that
+nothing actually used; the confidence level that matters is chosen per-calibration in the
+wizard (step 1.1 below).
 
 ### 1.1 Calibrate the reference standard first
 
 On Asset A, start a calibration:
 
 - Calibration type: **internal** (or external — doesn't matter here, no reference asset needed for this one)
-- Distribution: Normal, Confidence 95%, Coverage factor 2
+- Distribution: Normal, Confidence 95%
 - No accuracy spec needed (skip channel accuracy — it's not set on this channel)
 
 Data points (reference = a higher-tier standard's value; measured = this reference thermometer's reading):
@@ -118,7 +122,10 @@ Residuals (`reference − calculated`):
 | fit_residuals (Type A) | normal | 0.012994 | 1 |
 
 - **Combined uncertainty** u_c = √(0.012994²) = **0.012994 °C**
-- **Expanded uncertainty** U = k·u_c = 2 × 0.012994 = **0.025987 °C** ≈ **0.026 °C** (2 sig figs)
+- **Coverage factor** k is now always *derived* from the confidence level (GUM §6.3.3's
+  "simple case"), not entered separately — for a normal distribution at 95% confidence,
+  k = norm.ppf(0.975) ≈ **1.96**.
+- **Expanded uncertainty** U = k·u_c = 1.96 × 0.012994 = **0.025467 °C** ≈ **0.025 °C** (2 sig figs)
 
 **Expected results in the wizard (Step 3):**
 
@@ -128,9 +135,9 @@ Residuals (`reference − calculated`):
 | RMSE | 0.010609 |
 | Max error | 0.015004 |
 | Combined uncertainty | 0.012994 (shown rounded: **0.013**) |
-| Expanded uncertainty (±) | 0.025987 (shown rounded: **0.026**) |
+| Expanded uncertainty (±) | 0.025467 (shown rounded: **0.025**) |
 
-Save this calibration. **Write down the Expanded uncertainty (0.026 °C) — Asset B's
+Save this calibration. **Write down the Expanded uncertainty (0.025 °C) — Asset B's
 calibration will fetch this automatically in the next step.**
 
 ### 1.2 Calibrate the working sensor against the reference standard
@@ -139,10 +146,10 @@ On Asset B, start a calibration:
 
 - Calibration type: **internal**
 - Reference asset: **Reference PT100 Standard** (Asset A) — as soon as you pick it, the
-  wizard should show "Ref. standard U: 0.026 °C (last calibration of Reference PT100 Standard)"
+  wizard should show "Ref. standard U: 0.025 °C (last calibration of Reference PT100 Standard)"
   in the Step 3 controls row. If it instead shows a manual-entry field, the fetch didn't find
   a calibration on Asset A — go back and confirm step 1.1 was saved.
-- Distribution: Normal, Confidence 95%, Coverage factor 2
+- Distribution: Normal, Confidence 95%
 - Decision rule: **Guard band (tolerance − U)**
 - Check **"Incl. sensor nominal accuracy"** (this folds in the channel's 0.3 °C manufacturer spec)
 
@@ -150,12 +157,12 @@ Data points:
 
 | # | Reference (°C) | Measured (°C) |
 |---|---|---|
-| 1 | 0.00 | 0.05 |
+| 1 | 0.00  |  0.05  |
 | 2 | 20.00 | 20.08 |
 | 3 | 40.00 | 39.95 |
 | 4 | 60.00 | 60.12 |
 | 5 | 80.00 | 79.90 |
-| 6 | 100.00 | 100.07 |
+| 6 | 100.00| 100.07 |
 
 **The math:**
 
@@ -178,25 +185,25 @@ Fit: `a = 1.00038`, `b = -0.04739`.
 | Source | How it's derived | u |
 |---|---|---|
 | fit_residuals (Type A) | std dev of the 6 residuals above, dof=4 | 0.083509 |
-| reference_standard (Type B) | 0.025987 (Asset A's U) ÷ k=2 | 0.012994 |
+| reference_standard (Type B) | 0.025467 (Asset A's U) ÷ k=2 | 0.012734 |
 | resolution (Type B) | 0.1 ÷ √12 (rectangular) | 0.028868 |
 | sensor_nominal_accuracy (Type B) | 0.3 ÷ k=2 | 0.150000 |
 
-- **Combined**: u_c = √(0.083509² + 0.012994² + 0.028868² + 0.150000²) = **0.174573 °C**
+- **Combined**: u_c = √(0.083509² + 0.012734² + 0.028868² + 0.150000²) = **0.174554 °C**
 - **Effective degrees of freedom** (Welch-Satterthwaite — only `fit_residuals` has finite dof,
   the three Type B rows are treated as exactly known and drop out of the sum):
   ```
-  ν_eff = u_c⁴ / (u_A⁴ / dof_A) = 0.174573⁴ / (0.083509⁴ / 4) ≈ 76.4
+  ν_eff = u_c⁴ / (u_A⁴ / dof_A) = 0.174554⁴ / (0.083509⁴ / 4) ≈ 76.4
   ```
-- **Expanded** (normal distribution, k=2 flat — ν_eff isn't used to derive k when
-  distribution is "normal", only for "t"/"chi_squared"): U = 2 × 0.174573 = **0.349147 °C**
-  ≈ **0.35 °C** (2 sig figs)
+- **Expanded** (normal distribution — coverage factor is derived from confidence_level, not
+  entered; ν_eff isn't used for the "normal" case, only for "t"/"chi_squared"):
+  k = norm.ppf(0.975) ≈ 1.96, U = 1.96 × 0.174554 = **0.342120 °C** ≈ **0.34 °C** (2 sig figs)
 
 **Decision rule (guard band, spec = ±0.5 °C absolute):**
 
 ```
-guard = U = 0.349147
-max_error + guard = 0.116956 + 0.349147 = 0.466103 ≤ 0.5  →  CONFORMS
+guard = U = 0.342120
+max_error + guard = 0.116956 + 0.342120 = 0.459076 ≤ 0.5  →  CONFORMS
 ```
 
 **Expected results:**
@@ -204,7 +211,7 @@ max_error + guard = 0.116956 + 0.349147 = 0.466103 ≤ 0.5  →  CONFORMS
 | Field | Value |
 |---|---|
 | Combined uncertainty | shown rounded: **0.17** |
-| Expanded uncertainty (±) | shown rounded: **0.35** |
+| Expanded uncertainty (±) | shown rounded: **0.34** |
 | ν_eff (in the Expanded tooltip) | ≈76.4 |
 | Statement | **CONFORMS** to ±0.5 (absolute), decision rule = Guard-banded acceptance |
 
@@ -213,13 +220,13 @@ max_error + guard = 0.116956 + 0.349147 = 0.466103 ≤ 0.5  →  CONFORMS
 Repeat 1.2 with the channel's Accuracy value changed to **0.4** (edit the channel, save, then
 re-run the same 6 points through Step 3 of a new calibration) and try all three decision rules
 with "Incl. sensor nominal accuracy" still checked. Everything above is unchanged (same fit,
-same budget, same U=0.349147) — only the pass/fail flips:
+same budget, same U=0.342120) — only the pass/fail flips:
 
 | Decision rule | Check | Result |
 |---|---|---|
 | Simple acceptance | `0.116956 ≤ 0.4` | **CONFORMS** |
-| Guard band (− U) | `0.116956 + 0.349147 = 0.466103 ≤ 0.4`? No | **DOES NOT CONFORM** |
-| Shared risk (+ U) | `0.116956 − 0.349147 = -0.232191 ≤ 0.4` | **CONFORMS** |
+| Guard band (− U) | `0.116956 + 0.342120 = 0.459076 ≤ 0.4`? No | **DOES NOT CONFORM** |
+| Shared risk (+ U) | `0.116956 − 0.342120 = -0.225164 ≤ 0.4` | **CONFORMS** |
 
 This is the cleanest way to confirm the decision-rule feature is wired correctly: identical
 data and identical spec, three different verdicts depending only on which rule is selected.
@@ -239,12 +246,11 @@ One asset, one channel:
 |---|---|
 | Name | Line Pressure Transmitter |
 | Physical quantity | Pressure |
+| Measurement type | Absolute (this channel doesn't need gauge/relative — either is fine for this example) |
+| Range min / max | 0 / 700 |
 | Unit | kPa |
-| Calibration role | working |
-| Measurement min / max | 0 / 700 |
 | Accuracy value | 1.0 |
-| Accuracy type | % of Full Scale |
-| Accuracy unit | kPa |
+| Accuracy unit | **% FS** — fill in Range min/max first, then pick "% FS" as the first option in the Accuracy unit dropdown |
 | Resolution | 0.5 |
 | Resolution unit | kPa |
 
@@ -254,8 +260,8 @@ Leave measurement_uncertainty blank (not used in this example).
 
 - Calibration type: external (no reference asset needed for this example)
 - **Regression degree: Auto** (leave as "Auto" — this is the point of the example)
-- Distribution: **t-distribution**, Confidence 95%, Coverage factor 2 (used only as the
-  normal-distribution fallback; the t-distribution path derives its own k)
+- Distribution: **t-distribution**, Confidence 95% (the t-distribution path derives its own
+  coverage factor from the confidence level and the fit's effective degrees of freedom)
 - Decision rule: Simple acceptance
 
 Data points — a transducer with a small but real quadratic non-linearity across its range:
@@ -343,12 +349,10 @@ detector, and another simple-acceptance-vs-shared-risk divergence.
 |---|---|
 | Name | Test Bench Load Cell |
 | Physical quantity | Force |
+| Range min / max | 0 / 500 |
 | Unit | N |
-| Calibration role | working |
-| Measurement min / max | 0 / 500 |
-| Accuracy value | 0.5 |
-| Accuracy type | % of Reading |
-| Accuracy unit | N |
+| Accuracy value | 0.15 |
+| Accuracy unit | **% FS** — fill in Range min/max first, then pick "% FS" as the first option in the Accuracy unit dropdown |
 | Resolution | 0.2 |
 | Resolution unit | N |
 
@@ -356,7 +360,7 @@ detector, and another simple-acceptance-vs-shared-risk divergence.
 
 - Calibration type: external
 - Regression degree: 1 (explicit — this example is about hysteresis/repeatability, not degree selection)
-- Distribution: Normal, Confidence 95%, Coverage factor 2
+- Distribution: Normal, Confidence 95%
 - Decision rule: **Shared risk (tolerance + U)**
 
 Data points — an ascending sweep, a descending sweep back down (for hysteresis), and one
@@ -415,23 +419,24 @@ repeatability = √0.19 = 0.435890 N
 
 - Combined: u_c = √(0.487526² + 0.057735²) = **0.490933 N**
 - ν_eff ≈ **10.3**
-- Expanded (normal, k=2): U = 0.490933 × 2 = **0.981866 N** ≈ **0.98** (2 sig figs)
+- Coverage factor k = norm.ppf(0.975) ≈ 1.96 (derived from Confidence 95%, not entered)
+- Expanded: U = 0.490933 × 1.96 = **0.962211 N** ≈ **0.96** (2 sig figs)
 
 **Decision rule — try both and compare:**
 
-The accuracy spec is ±0.5% of reading, so the tolerance is different at every point
-(`tolerance_i = 0.005 × |reference_i|`) — at reference = 100 N, tolerance = 0.5 N, and that's
-exactly where the sweep has its largest error (0.863215 N):
+The accuracy spec is ±0.15% FS, so the tolerance is flat across the whole range:
+`tolerance = 0.0015 × 500 N = 0.75 N`. The sweep's largest error (0.863215 N, at reference
+100 N) exceeds that:
 
-| Decision rule | Check at the worst point (ref=100N, error=0.863215) | Result |
+| Decision rule | Check (max_error = 0.863215, tolerance = 0.75) | Result |
 |---|---|---|
-| Simple acceptance | `0.863215 ≤ 0.5`? No | **DOES NOT CONFORM** |
-| Shared risk (+U) | `0.863215 − 0.981866 = -0.118651 ≤ 0.5` | **CONFORMS** |
+| Simple acceptance | `0.863215 ≤ 0.75`? No | **DOES NOT CONFORM** |
+| Shared risk (+U) | `0.863215 − 0.962211 = -0.098996 ≤ 0.75` | **CONFORMS** |
 
-This is a genuinely realistic case: a load cell whose raw error exceeds its tight ±0.5%
-reading spec at one point, but whose overall measurement uncertainty is large enough that,
-under a shared-risk rule, the lab and customer agree it's still an acceptable result. It's a
-good test of both "real fails happen" and "the rule you pick changes the outcome."
+This is a genuinely realistic case: a load cell whose raw error exceeds its tight ±0.15% FS
+spec, but whose overall measurement uncertainty is large enough that, under a shared-risk
+rule, the lab and customer agree it's still an acceptable result. It's a good test of both
+"real fails happen" and "the rule you pick changes the outcome."
 
 **Expected results:**
 
@@ -440,9 +445,9 @@ good test of both "real fails happen" and "the rule you pick changes the outcome
 | Hysteresis | 1.2 |
 | Repeatability | 0.435890 raw; displayed as **0.43589** (regression statistics like this use the UI's general 6-decimal display formatting, not the 2-sig-fig uncertainty rounding — see "Rounding" below) |
 | Combined uncertainty | shown rounded: **0.49** |
-| Expanded uncertainty (±) | shown rounded: **0.98** |
-| Statement (simple acceptance) | DOES NOT CONFORM to ±0.5% of reading |
-| Statement (shared risk) | CONFORMS to ±0.5% of reading |
+| Expanded uncertainty (±) | shown rounded: **0.96** |
+| Statement (simple acceptance) | DOES NOT CONFORM to ±0.15% of full scale |
+| Statement (shared risk) | CONFORMS to ±0.15% of full scale |
 
 ---
 
@@ -477,6 +482,9 @@ displayed (combined/expanded uncertainty).
 - **Off by a unit-conversion-sized factor (10, 100, 1000...)**: check that "Accuracy unit" on
   the sensor channel matches the reference/measured unit you used when entering points. MAR
   does not currently validate that these agree (see the note in `CALIBRATION.md`).
+- **"% FS" doesn't appear in the Accuracy/Resolution/Uncertainty unit dropdown**: it only shows
+  up once both Range min and Range max are filled in on that channel — it needs a range to
+  convert a percentage into an absolute value against.
 - **"Reference standard" row missing in Example 1.2**: confirm Asset A's calibration (1.1) was
   actually saved (not just analyzed) before starting Asset B's calibration, and that Asset A's
   channel has Calibration role = reference (the reference-asset picker only lists assets with

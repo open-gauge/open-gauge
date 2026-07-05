@@ -312,28 +312,34 @@ def _expand(
     dof_eff: float | None,
     distribution_type: str,
     confidence_level: float,
-    coverage_factor: float,
-) -> float:
+) -> tuple[float, float]:
     """
-    Expanded uncertainty U = k * u_c (GUM Eq. 18). For "t"/"chi_squared", k is
-    derived from dof_eff (GUM §6.3, Annex G); falls back to the normal-
-    distribution factor when dof_eff is unavailable/infinite (GUM Table G.1),
-    which is the correct limit as degrees of freedom -> infinity.
+    Expanded uncertainty U = k * u_c (GUM Eq. 18). The coverage factor k is
+    always *derived* from the requested confidence level (GUM §6.3, Annex G)
+    rather than entered separately — there is no statistically meaningful way
+    for a user to pick an arbitrary k independent of the confidence level and
+    distribution shape, so MAR doesn't ask for one:
+      - "t": k from the Student-t quantile at dof_eff (falls back to the
+        normal quantile when dof_eff is unavailable/infinite — the correct
+        limit as degrees of freedom -> infinity).
+      - "chi_squared": k from the chi-squared quantile at dof_eff.
+      - "normal": k from the normal quantile directly (the GUM §6.3.3 "simple
+        case" — e.g. confidence_level=95 gives k≈1.96, ≈95.45% gives k=2).
+    Returns (expanded_uncertainty, coverage_factor_used).
     """
     if distribution_type == "t":
         if dof_eff is not None and dof_eff > 0:
-            factor = float(stats.t.ppf(0.5 + confidence_level / 200.0, df=dof_eff))
+            k = float(stats.t.ppf(0.5 + confidence_level / 200.0, df=dof_eff))
         else:
-            factor = float(stats.norm.ppf(0.5 + confidence_level / 200.0))
-        return combined_u * factor
+            k = float(stats.norm.ppf(0.5 + confidence_level / 200.0))
     elif distribution_type == "chi_squared":
         if dof_eff is not None and dof_eff > 0:
-            factor = float(np.sqrt(stats.chi2.ppf(confidence_level / 100.0, df=dof_eff) / dof_eff))
+            k = float(np.sqrt(stats.chi2.ppf(confidence_level / 100.0, df=dof_eff) / dof_eff))
         else:
-            factor = 1.0
-        return combined_u * factor
+            k = 1.0
     else:  # normal
-        return combined_u * coverage_factor
+        k = float(stats.norm.ppf(0.5 + confidence_level / 200.0))
+    return combined_u * k, k
 
 
 DecisionRule = Literal["simple_acceptance", "guard_band_w_uncertainty", "shared_risk"]
@@ -409,7 +415,6 @@ def run_analysis(
     poly_degree: int | None = None,
     distribution_type: Literal["normal", "t", "chi_squared"] = "normal",
     confidence_level: float = 95.0,
-    coverage_factor: float = 2.0,
     channel_accuracy_value: float | None = None,
     channel_accuracy_type: str | None = None,
     reference_standard_uncertainty: float | None = None,
@@ -425,6 +430,10 @@ def run_analysis(
 
     reference_values / measured_values must be in SI units.
     poly_degree=None triggers automatic degree selection via AIC.
+
+    There is no separate "coverage factor" input: the coverage factor k is
+    always derived from confidence_level (and, for "t"/"chi_squared", the
+    Welch-Satterthwaite effective degrees of freedom) — see `_expand`.
 
     Uncertainty contributions beyond the fit-residual scatter (Type A) are
     optional Type B inputs, each expressed in the measurand's own units:
@@ -494,7 +503,7 @@ def run_analysis(
         sensor_nominal_uncertainty, sensor_nominal_coverage_factor, include_sensor_nominal_uncertainty,
     )
     combined_u, dof_eff = _combine_budget(budget)
-    expanded_u = _expand(combined_u, dof_eff, distribution_type, confidence_level, coverage_factor)
+    expanded_u, coverage_factor = _expand(combined_u, dof_eff, distribution_type, confidence_level)
 
     # Pass/fail against channel accuracy spec, per a documented decision rule
     # (ISO/IEC 17025 §7.1.3/§7.8.6 — see _apply_decision_rule).
@@ -532,7 +541,7 @@ def run_analysis(
         expanded_uncertainty=round(expanded_u, 8),
         distribution_type=distribution_type,
         confidence_level=confidence_level,
-        coverage_factor=coverage_factor,
+        coverage_factor=round(coverage_factor, 4),
         valid_range_min=float(np.min(ref)),
         valid_range_max=float(np.max(ref)),
         passed=passed,

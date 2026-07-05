@@ -530,6 +530,78 @@ export function getUnitsForQuantity(quantity: string): UnitOption[] {
   return QUANTITY_MAP.get(quantity)?.units ?? [];
 }
 
+// ---------------------------------------------------------------------------
+// Measurement type (e.g. absolute vs. gauge pressure)
+// ---------------------------------------------------------------------------
+
+export interface QuantityTypeOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Measurement-mode options for physical quantities that need one. Quantities
+ * not listed here have no "Measurement type" field shown at all.
+ */
+export const PHYSICAL_QUANTITY_TYPES: Record<string, QuantityTypeOption[]> = {
+  pressure: [
+    { value: "absolute", label: "Absolute" },
+    { value: "gauge", label: "Gauge (relative)" },
+  ],
+};
+
+export function getTypesForQuantity(quantity: string): QuantityTypeOption[] {
+  return PHYSICAL_QUANTITY_TYPES[quantity] ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// "% of Full Scale" as a unit option for accuracy/resolution/uncertainty
+// ---------------------------------------------------------------------------
+
+/** Sentinel unit value representing "% of full scale". */
+export const PERCENT_FS_UNIT = "%FS";
+
+function hasRange(
+  rangeMin: string | number | null | undefined,
+  rangeMax: string | number | null | undefined,
+): boolean {
+  return rangeMin !== null && rangeMin !== undefined && rangeMin !== "" &&
+    rangeMax !== null && rangeMax !== undefined && rangeMax !== "";
+}
+
+/**
+ * Unit options for an accuracy/resolution/uncertainty spec: the quantity's own
+ * compatible units, plus "% FS" first — but only once a measurement range
+ * (min and max) has been entered, since %FS is meaningless without one.
+ */
+export function getSpecUnitOptions(
+  quantity: string,
+  rangeMin: string | number | null | undefined,
+  rangeMax: string | number | null | undefined,
+): UnitOption[] {
+  const units = getUnitsForQuantity(quantity);
+  return hasRange(rangeMin, rangeMax)
+    ? [{ value: PERCENT_FS_UNIT, label: "% FS" }, ...units]
+    : units;
+}
+
+/**
+ * Resolve a stored spec value (accuracy/resolution/uncertainty) to an absolute
+ * value in the quantity's own unit, converting from %FS if that's what was
+ * selected. Returns null if conversion is needed but the range isn't available.
+ */
+export function resolveSpecValue(
+  value: number | null | undefined,
+  unit: string | null | undefined,
+  rangeMin: number | null | undefined,
+  rangeMax: number | null | undefined,
+): number | null {
+  if (value == null) return null;
+  if (unit !== PERCENT_FS_UNIT) return value;
+  if (rangeMin == null || rangeMax == null) return null;
+  return (value / 100) * (rangeMax - rangeMin);
+}
+
 export function getTechsForQuantity(quantity: string): TechFamilyOption[] {
   return QUANTITY_MAP.get(quantity)?.technologies ?? [];
 }

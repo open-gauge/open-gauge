@@ -128,6 +128,30 @@ class TestCreateAsset:
         assert ch["physical_quantity"] == "temperature"
         assert ch["technology"] == "thermocouple type K"
 
+    def test_create_with_measurement_type_round_trips(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        # e.g. a pressure channel's absolute-vs-gauge measurement mode.
+        payload = {
+            "asset_id": make_asset_id(),
+            "asset_type": "sensor",
+            "name": "Test Pressure Transmitter",
+            "manufacturer": "WIKA",
+            "model": "P-10",
+            "sensor_channels": [
+                {
+                    "channel_id": "CH1",
+                    "physical_quantity": "pressure",
+                    "measurement_type": "gauge",
+                    "unit": "kPa",
+                }
+            ],
+        }
+        response = client.post("/api/v1/assets", json=payload, headers=auth_headers)
+        assert response.status_code == 201, response.text
+        ch = response.json()["sensor_channels"][0]
+        assert ch["measurement_type"] == "gauge"
+
 
 # ---------------------------------------------------------------------------
 # Get

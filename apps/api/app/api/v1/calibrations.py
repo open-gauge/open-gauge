@@ -68,7 +68,6 @@ def analyze_calibration(
             poly_degree=body.poly_degree,
             distribution_type=body.distribution_type,  # type: ignore[arg-type]
             confidence_level=body.confidence_level,
-            coverage_factor=body.coverage_factor,
             channel_accuracy_value=body.channel_accuracy_value,
             channel_accuracy_type=body.channel_accuracy_type,
             reference_standard_uncertainty=body.reference_standard_uncertainty,

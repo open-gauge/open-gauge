@@ -152,7 +152,6 @@ _ANALYZE_PAYLOAD = {
     "poly_degree": None,
     "distribution_type": "normal",
     "confidence_level": 95.0,
-    "coverage_factor": 2.0,
     "channel_accuracy_value": 0.5,
     "channel_accuracy_type": "absolute",
 }

@@ -109,7 +109,6 @@ export interface AnalyzeRequest {
   poly_degree: number | null;
   distribution_type: DistributionType;
   confidence_level: number;
-  coverage_factor: number;
   channel_accuracy_value: number | null;
   channel_accuracy_type: string | null;
   decision_rule?: DecisionRule;

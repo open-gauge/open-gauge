@@ -190,36 +190,40 @@ Per-channel measurement specification for sensor assets. One asset may have mult
 | asset_id | UUID FK → assets | |
 | channel_id | VARCHAR(255) | user-defined label, unique per asset |
 | physical_quantity | VARCHAR(255) | e.g. temperature, pressure |
+| measurement_type | VARCHAR(50) | *(migration 014)* measurement mode for quantities that need one, e.g. pressure's `absolute` / `gauge` — only shown in the UI for quantities with defined options (`apps/web/src/lib/sensor-options.ts::PHYSICAL_QUANTITY_TYPES`); `null` for quantities that don't need one |
 | unit | VARCHAR(50) | display unit |
 | technology | VARCHAR(255) | |
 | measurement_min | NUMERIC(18,8) | SI units |
 | measurement_max | NUMERIC(18,8) | SI units |
 | accuracy_value | NUMERIC(18,8) | manufacturer/nominal accuracy spec |
-| accuracy_type | VARCHAR(255) | percent_of_reading / percent_of_full_scale / absolute |
-| accuracy_unit | VARCHAR(50) | |
+| accuracy_type | VARCHAR(255) | `absolute` / `percent_of_full_scale` (auto-derived from `accuracy_unit`, not directly editable — see `CALIBRATION.md`'s "% FS" convention); `percent_of_reading` remains valid for existing data but isn't offered as a channel-editing option any more |
+| accuracy_unit | VARCHAR(50) | a real unit (e.g. °C) or the literal string `%FS` |
 | resolution | NUMERIC(18,8) | fed into the calibration uncertainty budget as a Type B (rectangular) contribution |
-| resolution_unit | VARCHAR(50) | |
+| resolution_unit | VARCHAR(50) | a real unit or the literal string `%FS` (converted to an absolute value client-side before use — see `CALIBRATION.md`) |
 | measurement_uncertainty | NUMERIC(18,8) | nominal/manufacturer expanded uncertainty; optional Type B contribution (opt-in, to avoid double-counting against the fit-residual term) |
-| uncertainty_unit | VARCHAR(50) | |
-| confidence_level | NUMERIC(5,2) | % |
-| coverage_factor | NUMERIC(5,2) | |
+| uncertainty_unit | VARCHAR(50) | a real unit or the literal string `%FS` |
 | drift_rate | NUMERIC(18,8) | |
 | drift_unit | VARCHAR(50) | |
-| sensitivity | NUMERIC(18,8) | |
-| sensitivity_unit | VARCHAR(100) | |
 | response_time_ms | NUMERIC(18,8) | SI: ms |
 | bandwidth_hz | NUMERIC(18,8) | SI: Hz |
 | output_signal_min | NUMERIC(18,8) | SI units |
 | output_signal_max | NUMERIC(18,8) | SI units |
 | output_signal_unit | VARCHAR(50) | display unit |
 | output_type | VARCHAR(255) | analog / digital / frequency / resistance / capacitance |
-| calibration_role | VARCHAR(255) | working / reference / transfer |
-| criticality | VARCHAR(255) | non-critical / critical / safety-critical |
+| calibration_role | VARCHAR(255) | `reference` or `null`/`working`; edited as a checkbox ("Reference standard") rather than a role dropdown — see `CALIBRATION.md` |
 | calibration_method_id | UUID FK → procedures | default procedure for this channel |
-| calibration_interval | INTEGER | days |
 | is_active | BOOLEAN | |
 | created_at | TIMESTAMPTZ | |
 | updated_at | TIMESTAMPTZ | |
+
+**Legacy columns still in the schema but no longer editable via the channel UI**
+(`confidence_level` NUMERIC(5,2), `coverage_factor` NUMERIC(5,2), `sensitivity` NUMERIC(18,8),
+`sensitivity_unit` VARCHAR(100), `criticality` VARCHAR(255), `calibration_interval` INTEGER —
+days). None of these fed any calculation (confirmed unused by calibration analysis, health
+scoring, or certificate generation before removal), so they were dropped from the channel
+add/edit form; the columns themselves were left in place rather than migrated away. Saving a
+channel through the current UI writes `null` to all of them going forward, since the update
+payload no longer sends a value for any of these fields.
 
 Unique constraint: `(asset_id, channel_id)`.
 
@@ -451,6 +455,7 @@ Immutable record of every significant state change. Not organization-scoped as a
 | 011 | Add uncertainty_budget (JSONB) and effective_degrees_of_freedom columns to calibrations — GUM Type A + Type B uncertainty combination |
 | 012 | Add poly_coefficients_covariance column to calibrations — coefficient covariance for correct downstream uncertainty propagation |
 | 013 | Add decision_rule and conformity_statement columns to calibrations — ISO/IEC 17025 §7.1.3/§7.8.6 decision rules |
+| 014 | Add measurement_type column to sensors — e.g. absolute vs. gauge pressure |
 
 ---
 
@@ -462,3 +467,5 @@ Immutable record of every significant state change. Not organization-scoped as a
 - **Versioning**: `assets.version` is an optimistic-lock counter incremented on every PUT. `calibrations.calibration_version` numbers calibration events per (asset, channel).
 - **Uncertainty as an itemized budget, not a single number**: `calibrations.uncertainty_budget` stores every contribution (Type A fit-residual scatter, Type B reference-standard/resolution/nominal-accuracy) as its own row rather than only the final combined/expanded numbers, so the certificate and UI can show — and a future auditor can verify — exactly how the reported uncertainty was built up (GUM Annex H.1). See `CALIBRATION.md` for the full methodology.
 - **Decision rule stored per calibration, not global**: `decision_rule` defaults to `simple_acceptance` (uncertainty-blind tolerance comparison) so existing historical records are not reinterpreted; a calibration technician can opt into `guard_band_w_uncertainty` or `shared_risk` per event, and the choice is persisted and printed on the certificate rather than being an ephemeral UI toggle.
+- **`calibrations.coverage_factor` is an output, not an input**: earlier revisions let a user type in an arbitrary coverage factor for the "normal" distribution case; it's now always derived from `confidence_level` (and, for `t`/`chi_squared`, the fit's effective degrees of freedom too), since a hand-picked k disconnected from the stated confidence level isn't statistically meaningful. The column still exists and is still populated — just never from a form field.
+- **"% FS" as a unit, not a separate type field**: `sensors.accuracy_unit` / `resolution_unit` / `uncertainty_unit` can hold the literal string `%FS` instead of a physical unit, meaning "value is a percentage of (measurement_max − measurement_min)" rather than introducing a parallel `*_type` column for each of the three fields. `accuracy_type` still exists as a real column (other code depends on its `absolute`/`percent_of_full_scale` values) but is now auto-set from `accuracy_unit` rather than user-editable.

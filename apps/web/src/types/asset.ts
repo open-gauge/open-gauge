@@ -6,6 +6,7 @@ export interface SensorChannelFull {
   asset_id: string;
   channel_id: string;
   physical_quantity: string;
+  measurement_type: string | null;
   unit: string;
   technology: string | null;
   measurement_min: number | null;
@@ -154,6 +155,7 @@ export interface SensorChannelUpdateInput {
   sensor_id?: string | null;
   channel_id: string;
   physical_quantity: string;
+  measurement_type?: string | null;
   unit: string;
   technology?: string | null;
   measurement_min?: number | null;
@@ -165,12 +167,8 @@ export interface SensorChannelUpdateInput {
   resolution_unit?: string | null;
   measurement_uncertainty?: number | null;
   uncertainty_unit?: string | null;
-  confidence_level?: number | null;
-  coverage_factor?: number | null;
   drift_rate?: number | null;
   drift_unit?: string | null;
-  sensitivity?: number | null;
-  sensitivity_unit?: string | null;
   response_time_ms?: number | null;
   bandwidth_hz?: number | null;
   output_signal_min?: number | null;
@@ -178,8 +176,6 @@ export interface SensorChannelUpdateInput {
   output_signal_unit?: string | null;
   output_type?: string | null;
   calibration_role?: string | null;
-  criticality?: string | null;
-  calibration_interval?: number | null;
 }
 
 export interface AssetCreateBody {

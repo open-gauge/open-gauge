@@ -89,6 +89,23 @@ own units:
 | `resolution` | B | Included automatically whenever the sensor channel has a `resolution` value. Rectangular distribution per GUM §4.3.7: `u = resolution / √12`. |
 | `sensor_nominal_accuracy` | B | The sensor channel's manufacturer-stated `measurement_uncertainty`, converted via GUM §4.3.3. **Opt-in only** (a checkbox in the wizard) — folding it in by default risks double-counting against `fit_residuals`, since both can reflect the same underlying instrument imprecision. |
 
+**Sensor channel spec units — the "% FS" convention.** A sensor channel's Accuracy,
+Resolution, and Uncertainty fields each pair a value with a unit dropdown. That dropdown
+offers the channel's compatible physical units (e.g. °C for temperature) plus, once the
+channel's measurement range (min/max) is filled in, a **"% FS"** option as the first choice
+(`apps/web/src/lib/sensor-options.ts::getSpecUnitOptions`). There's no separate
+"accuracy type" field: picking a real unit means the value is absolute; picking "% FS" means
+it's a percentage of the range span. For Accuracy this maps directly onto the existing
+`accuracy_type` column (`absolute` / `percent_of_full_scale`, auto-set by the channel form —
+see `resolveSpecValue`/`getSpecUnitOptions` in `sensor-options.ts`). Resolution and Uncertainty
+have no separate type column, so "% FS" is stored as the literal unit string and converted to
+an absolute value (`value/100 × (range_max − range_min)`) by the wizard before it's sent to
+`/calibrations/analyze` (`resolveSpecValue`, applied in `CalibrationWizard.tsx`) — the backend
+always receives an absolute value for these two. `percent_of_reading` is no longer offered as
+a channel-level accuracy option (only `absolute` and `percent_of_full_scale`, via the unit
+dropdown) — it's still supported by the decision-rule engine (`_apply_decision_rule`) for any
+data that already has it, just not selectable for new channel specs going forward.
+
 ### Combination
 
 All rows are combined via **root-sum-square** (GUM Eq. 10, uncorrelated inputs):
@@ -101,10 +118,16 @@ stored as `calibrations.combined_uncertainty`.
 
 ### Expansion
 
-Expanded uncertainty `U = k · u_c(y)` (`calibrations.expanded_uncertainty`), with the
-coverage factor `k` chosen per `distribution_type`:
+Expanded uncertainty `U = k · u_c(y)` (`calibrations.expanded_uncertainty`). The coverage
+factor `k` is **always derived** from the requested confidence level and `distribution_type`
+— there's no separate "coverage factor" input anywhere in MAR, because a user-picked k
+independent of the confidence level and distribution shape isn't statistically meaningful
+(see `AnalyzeRequest`/`run_analysis` — neither takes a `coverage_factor` parameter; it's an
+output only):
 
-- **normal** — the user-supplied `coverage_factor` directly (the common k=2 ≈ 95% shortcut).
+- **normal** — the normal-distribution quantile for the requested confidence level (GUM
+  §6.3.3's "simple case"): `k = norm.ppf(0.5 + confidence_level/200)`, e.g. 95% confidence →
+  k ≈ 1.96, 99% → k ≈ 2.58.
 - **t** / **chi_squared** — `k` is derived from the **effective degrees of freedom**
   (`calibrations.effective_degrees_of_freedom`), via the Welch-Satterthwaite formula
   (GUM Eq. G.2b):
@@ -115,10 +138,12 @@ coverage factor `k` chosen per `distribution_type`:
 
   Rows with `degrees_of_freedom: null` (exactly-known Type B contributions) drop out of the
   sum entirely. If no row has finite degrees of freedom, `ν_eff` is `null` and MAR falls back
-  to the normal-distribution factor (the correct limit as ν → ∞).
+  to the normal-distribution quantile above (the correct limit as ν → ∞).
 
 All of the above lives in `apps/api/app/services/calibration_analysis.py`
-(`_build_uncertainty_budget`, `_combine_budget`, `_expand`).
+(`_build_uncertainty_budget`, `_combine_budget`, `_expand`). The resulting `k` is still stored
+per calibration (`calibrations.coverage_factor`) and shown in the UI/certificate — it's just
+computed, never typed in.
 
 ### Reporting rounding
 
@@ -152,10 +177,15 @@ no accuracy spec was configured (conformity wasn't evaluated at all). This is co
 `_apply_decision_rule` in `calibration_analysis.py`, and printed on the certificate as a
 "Statement of Conformity" section.
 
-The wizard's **"Tolerance criteria (preview)"** controls are a separate, older, client-only
-"what if" exploration tool (not persisted) — kept for quickly trying different thresholds, but
-clearly labeled to avoid confusion with the authoritative, server-computed, certified
-conformity statement shown just above it.
+There is no separate client-side "what if" tolerance preview anymore — an earlier version of
+the wizard had one (a manually-typed threshold, disconnected from the channel's real spec and
+never persisted), but it was removed because it duplicated and could contradict the real
+conformity result. The `conformity_statement` shown in the wizard's Uncertainty panel *is* the
+one that gets saved and printed on the certificate. When it doesn't conform, the wizard's
+save-confirmation dialog shows an explicit warning naming the specification and decision rule,
+and the save button relabels to "Save anyway" — saving is never blocked outright, since a
+failed calibration is itself an important record (per `AGENTS.md`'s calibration philosophy:
+never overwrite or suppress historical results).
 
 ---
 
