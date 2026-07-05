@@ -7,9 +7,9 @@
 export const chartCenterContainerClassName =
   "@container/chart-center size-full min-w-0";
 
-/** Primary stat — ~22% of center width, clamped between text-sm and text-3xl. */
+/** Primary stat — ~15% of center width, clamped between text-sm and text-2xl. */
 export const chartCenterValueClassName =
-  "font-bold tabular-nums leading-none text-[clamp(0.75rem,22cqw,1.875rem)] text-mar-text dark:text-white";
+  "font-bold tabular-nums leading-none text-[clamp(0.75rem,15cqw,1.5rem)] text-mar-text dark:text-white";
 
 /** Supporting label — ~9% of center width, clamped between 10px and text-xs. */
 export const chartCenterLabelClassName =

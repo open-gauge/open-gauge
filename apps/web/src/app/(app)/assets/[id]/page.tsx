@@ -28,8 +28,12 @@ import {
   CALIBRATION_STATUS_LABEL,
   CALIBRATION_STATUS_STYLE,
   COLORS,
+  HEALTH_LABEL_STYLE,
+  STABILITY_STYLE,
   SUBTYPE_LABEL,
 } from "@/lib/tokens";
+import { getAssetHealth } from "@/services/health.service";
+import type { HealthOverview } from "@/types/health";
 import {
   PHYSICAL_QUANTITIES,
   parseTechnology,
@@ -62,7 +66,6 @@ import {
 import { CalibrationWizard } from "./CalibrationWizard";
 import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
-import { Gauge } from "@/components/charts/gauge";
 import { UserMention } from "@/components/user-mention";
 import { Tooltip } from "@/components/tooltip";
 import { HealthTab } from "./HealthTab";
@@ -2267,7 +2270,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Calibration gauge — 2/3 dates + 1/3 bklit Gauge, gradient per remaining days
+// Calibration ring card — 2/3 dates + 1/3 270° arc ring, color per remaining days
 // ---------------------------------------------------------------------------
 function CalibrationRingCard({
   lastCal,
@@ -2277,8 +2280,8 @@ function CalibrationRingCard({
   dueAt: string | null;
   status: string;
 }) {
-  const { days, gaugeValue, gradStart, gradEnd } = useMemo(() => {
-    if (!dueAt) return { days: null, gaugeValue: 0, gradStart: "#9ca3af", gradEnd: "#6b7280" };
+  const { days, gaugeValue, ringColor } = useMemo(() => {
+    if (!dueAt) return { days: null, gaugeValue: 0, ringColor: "#9ca3af" };
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2295,21 +2298,42 @@ function CalibrationRingCard({
       if (totalDays > 0) prog = Math.max(0, Math.min(1, daysUntil / totalDays));
     }
 
-    // Gradient colors based on remaining days thresholds
-    const [gs, ge] =
-      daysUntil > 90 ? ["#22c55e", "#16a34a"] :
-      daysUntil > 30 ? ["#f59e0b", "#d97706"] :
-                       ["#ef4444", "#dc2626"];
+    const color =
+      daysUntil > 90 ? "#22c55e" :
+      daysUntil > 30 ? "#f59e0b" : "#ef4444";
 
-    return { days: daysUntil, gaugeValue: Math.max(0, Math.min(100, prog * 100)), gradStart: gs, gradEnd: ge };
+    return { days: daysUntil, gaugeValue: Math.max(0, Math.min(100, prog * 100)), ringColor: color };
   }, [lastCal, dueAt]);
 
-  const textColor = gradStart;
+  // 270° arc ring: gap at bottom (6 o'clock). Arc starts at 135° and sweeps 270° clockwise to 45°.
+  const SIZE = 100;
+  const cx = SIZE / 2;
+  const R = 38;
+  const START_DEG = 135;
+  const SWEEP_DEG = 270;
+
+  function polar(angleDeg: number) {
+    const a = (angleDeg * Math.PI) / 180;
+    return { x: cx + R * Math.cos(a), y: cx + R * Math.sin(a) };
+  }
+
+  function arcPath(sweepDeg: number): string {
+    if (sweepDeg <= 0) return "";
+    const clampedSweep = Math.min(sweepDeg, 359.99);
+    const endDeg = START_DEG + clampedSweep;
+    const start = polar(START_DEG);
+    const end = polar(endDeg);
+    const largeArc = clampedSweep > 180 ? 1 : 0;
+    return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${R} ${R} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+  }
+
+  const trackPath = arcPath(SWEEP_DEG);
+  const progressSweep = (gaugeValue / 100) * SWEEP_DEG;
 
   return (
     <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
       <div className="flex items-stretch gap-3">
-        {/* Dates — 2/3 width, centred */}
+        {/* Dates — left column */}
         <div className="w-2/3 space-y-1.5 flex flex-col items-center text-center">
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Last</p>
@@ -2320,21 +2344,17 @@ function CalibrationRingCard({
             <p className="text-sm font-semibold font-mono text-mar-text tabular-nums">{fmtDate(dueAt)}</p>
           </div>
         </div>
-        {/* Gauge — 1/3 width, bklit dual-arc gradient */}
+        {/* 270° arc ring — right column, centered */}
         <div className="w-1/3 flex items-center justify-center">
-          <div className="relative">
-            <Gauge
-              value={gaugeValue}
-              width={72}
-              height={72}
-              useGradient
-              activeGradient={[gradStart, gradEnd] as [string, string]}
-              inactiveFill="var(--border)"
-              totalNotches={20}
-              spacing={15}
-            />
-            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingTop: "6px" }}>
-              <span className="text-xs font-bold tabular-nums leading-none" style={{ color: textColor }}>
+          <div className="relative" style={{ width: SIZE, height: SIZE }}>
+            <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ display: "block" }}>
+              <path d={trackPath} fill="none" stroke="var(--mar-border-md, #d1d5db)" strokeWidth={7} strokeLinecap="round" />
+              {progressSweep > 0 && (
+                <path d={arcPath(progressSweep)} fill="none" stroke={ringColor} strokeWidth={7} strokeLinecap="round" />
+              )}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingBottom: "10px" }}>
+              <span className="text-xs font-bold tabular-nums leading-none" style={{ color: ringColor }}>
                 {days !== null ? String(days) : "—"}
               </span>
               <span className="text-[9px] text-gray-400 mt-0.5 leading-none">days</span>
@@ -2460,6 +2480,7 @@ export default function AssetProfilePage() {
   const [calibrations, setCalibrations] = useState<CalibrationRecord[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [files, setFiles] = useState<StoredFile[]>([]);
+  const [healthOverview, setHealthOverview] = useState<HealthOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -2489,6 +2510,7 @@ export default function AssetProfilePage() {
         setCalibrations(calsData);
         setAuditLogs(logsData);
         setFiles(filesData);
+        getAssetHealth(id).then((h) => setHealthOverview(h.overview)).catch(() => {});
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -2569,6 +2591,7 @@ export default function AssetProfilePage() {
     ]);
     setCalibrations(calsData);
     setProfile(updatedProfile);
+    getAssetHealth(id).then((h) => setHealthOverview(h.overview)).catch(() => {});
   }
 
   async function handleCalibrationDeleted() {
@@ -2578,6 +2601,7 @@ export default function AssetProfilePage() {
     ]);
     setCalibrations(calsData);
     setProfile(updatedProfile);
+    getAssetHealth(id).then((h) => setHealthOverview(h.overview)).catch(() => {});
   }
 
   if (loading) {
@@ -2742,29 +2766,79 @@ export default function AssetProfilePage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5 flex flex-col items-center text-center">
-          <p className="text-xs text-gray-400 mb-1 flex items-center justify-center gap-1">
-            Health score
-            <Tooltip content={profile.calibration_health_score != null
-              ? "Worst-performing channel's calibration Health Score — a weighted composite of drift, RMSE, uncertainty, hysteresis, linearity, and trend. See the Health tab for the full breakdown."
-              : "Default score. Becomes calibration-based once a channel has at least two calibrations — see the Health tab."}>
-              <InfoIcon size={11} className="text-gray-400 cursor-help" />
-            </Tooltip>
-          </p>
-          <p className="text-2xl font-bold text-mar-text">{Math.round(profile.calibration_health_score ?? profile.health_score)}%</p>
-          <div className="mt-2 h-1.5 rounded-full bg-mar-border overflow-hidden w-full">
-            <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.calibration_health_score ?? profile.health_score}%` }} />
-          </div>
+        {/* Health panel */}
+        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">Health Score</p>
+          {healthOverview ? (
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold text-mar-text tabular-nums">
+                    {Math.round(healthOverview.health_score)}
+                    <span className="text-sm text-gray-400 font-normal"> / 100</span>
+                  </span>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${HEALTH_LABEL_STYLE[healthOverview.health_label] ?? ""}`}>
+                    {healthOverview.health_label}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 rounded-full bg-mar-border overflow-hidden">
+                  {(() => {
+                    const sc = healthOverview.health_score;
+                    const barColor = sc >= 90 ? "#22c55e" : sc >= 75 ? COLORS.accent : sc >= 50 ? "#f59e0b" : "#ef4444";
+                    return <div className="h-full rounded-full transition-all" style={{ width: `${sc}%`, backgroundColor: barColor }} />;
+                  })()}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-400 uppercase tracking-wide w-16 shrink-0">Stability</span>
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${STABILITY_STYLE[healthOverview.stability] ?? ""}`}>
+                  {healthOverview.stability}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-2xl font-bold text-mar-text">{Math.round(profile.calibration_health_score ?? profile.health_score)}%</p>
+              <div className="mt-2 h-1.5 rounded-full bg-mar-border overflow-hidden">
+                <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.calibration_health_score ?? profile.health_score}%` }} />
+              </div>
+            </div>
+          )}
         </div>
+        {/* Date ring panel */}
         <CalibrationRingCard
           lastCal={profile.last_calibration_date}
           dueAt={profile.next_due_at}
           status={profile.calibration_status}
         />
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5 flex flex-col items-center text-center">
-          <p className="text-xs text-gray-400 mb-1">Calibrations</p>
-          <p className="text-2xl font-bold text-mar-text">{profile.calibration_count}</p>
-          <p className="text-xs text-gray-400 mt-1">all-time</p>
+        {/* Calibrations panel */}
+        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">Calibrations</p>
+          <div className="flex gap-4">
+            <div className="flex flex-col">
+              <p className="text-2xl font-bold text-mar-text tabular-nums">{profile.calibration_count}</p>
+              <p className="text-xs text-gray-400 mt-1">all-time</p>
+            </div>
+            {calibrations[0]?.poly_coefficients && calibrations[0].poly_coefficients.length > 0 && (
+              <div className="flex-1 min-w-0 border-l border-mar-border pl-4">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Latest coefficients</p>
+                <table className="w-full text-xs">
+                  <tbody>
+                    {calibrations[0].poly_coefficients.map((v, i) => (
+                      <tr key={i} className="border-b border-mar-border last:border-b-0">
+                        <td className="py-0.5 pr-2 text-gray-400 whitespace-nowrap">
+                          {COEFF_DESC[i] ?? `Order-${i} term`}
+                        </td>
+                        <td className="py-0.5 text-mar-text font-mono tabular-nums text-right whitespace-nowrap">
+                          {fmtNum(v)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
