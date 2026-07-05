@@ -191,6 +191,59 @@ def list_points(
     return cal_repo.list_points(db, cal_id)
 
 
+@router.delete("/{cal_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_calibration(
+    cal_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Permanently remove a calibration record. Restricted to admin and superadmin."""
+    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+
+    # Delete certificate file from storage if present.
+    # Must null out the FK on cal first; otherwise deleting the files row
+    # while calibrations.calibration_file_id still references it raises a FK violation.
+    if cal.calibration_file_id:
+        try:
+            file_id_to_delete = cal.calibration_file_id
+            file_rec = sf_repo.get_by_id(db, file_id_to_delete)
+            if file_rec:
+                delete_file(file_rec.storage_path, file_rec.bucket)
+            cal.calibration_file_id = None
+            db.flush()
+            if file_rec:
+                sf_repo.delete(db, file_id_to_delete)
+        except Exception:
+            logger.warning("Could not delete certificate file for calibration %s", cal_id, exc_info=True)
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="calibration.deleted",
+        entity_type="calibration",
+        entity_id=cal_id,
+        entity_asset_id=asset.asset_id if asset else None,
+        before_state={
+            "calibration_version": cal.calibration_version,
+            "calibration_date": str(cal.calibration_date),
+            "due_date": str(cal.due_date),
+        },
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    cal_repo.delete_calibration(db, cal)
+
+
 @router.get("/{cal_id}/certificate")
 def get_certificate(
     cal_id: uuid.UUID,

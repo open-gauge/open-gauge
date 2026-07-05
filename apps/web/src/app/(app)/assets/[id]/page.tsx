@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   deleteAssetFile,
+  deleteCalibration,
   fetchAssetLabelBlob,
   getAssetAuditLogs,
   getAssetCalibrations,
@@ -18,6 +19,7 @@ import {
   updateAsset,
   uploadAssetFile,
 } from "@/services/asset.service";
+import { useAuth } from "@/lib/auth-context";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
 import type { CalibrationPoint, CalibrationRecord } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
@@ -1312,6 +1314,8 @@ interface CalibrationTabProps {
   calibrations: CalibrationRecord[];
   profile: AssetProfile;
   onCalibrationSaved: () => void;
+  onCalibrationDeleted: () => void;
+  isAdmin: boolean;
 }
 
 // Stat row used in the calibration detail panel
@@ -1512,7 +1516,7 @@ const COEFF_DESC: Record<number, string> = {
 
 type ResultView = "equation" | "coefficients";
 
-function CalibrationTab({ calibrations, profile, onCalibrationSaved }: CalibrationTabProps) {
+function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrationDeleted, isAdmin }: CalibrationTabProps) {
   // --- channel logic ---
   const channelIdsWithCals = profile.sensor_channels
     .map((ch) => ch.id)
@@ -1530,6 +1534,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
   const [wizardOpen, setWizardOpen] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
   const [calLocation, setCalLocation] = useState<LocationItem | null>(null);
+  const [deletingCalId, setDeletingCalId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const filteredCals = hasChannelTabs && activeChannelId
     ? calibrations.filter((c) => c.sensor_id === activeChannelId)
@@ -1563,6 +1569,20 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
     return total - idx;
   }
 
+  async function handleDeleteCal(calId: string) {
+    setDeletingCalId(calId);
+    try {
+      await deleteCalibration(calId);
+      setDeleteConfirmId(null);
+      if (selectedCalId === calId) setSelectedCalId(null);
+      onCalibrationDeleted();
+    } catch {
+      // leave modal open so user sees error feedback via disabled state
+    } finally {
+      setDeletingCalId(null);
+    }
+  }
+
   const referenceUnit = points[0]?.reference_unit ?? "";
   const measuredUnit = points[0]?.measured_unit ?? "";
 
@@ -1576,6 +1596,60 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
         onSaved={() => { setWizardOpen(false); onCalibrationSaved(); }}
       />
     )}
+
+    {deleteConfirmId && (() => {
+      const calToDelete = filteredCals.find((c) => c.id === deleteConfirmId);
+      const isDeleting = !!deletingCalId;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => { if (!isDeleting) setDeleteConfirmId(null); }}
+          />
+          <div className="relative bg-mar-surface border border-mar-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <TrashIcon size={16} className="text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-mar-text">Remove calibration</h3>
+                {calToDelete && (
+                  <p className="text-xs text-gray-400">
+                    Version {calToDelete.calibration_version} · {fmtDate(calToDelete.calibration_date)}
+                  </p>
+                )}
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              This will permanently delete the calibration record and its certificate. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={isDeleting}
+                className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteCal(deleteConfirmId)}
+                disabled={isDeleting}
+                className="px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-60 flex items-center gap-1.5"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Removing…
+                  </>
+                ) : "Remove permanently"}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     <div className="space-y-5">
 
       {/* Top bar: channel tabs (left) + PDF + Add Calibration (right) */}
@@ -1917,44 +1991,61 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved }: Calibrati
             {filteredCals.map((cal) => {
               const isSelected = cal.id === (selectedCal?.id ?? null);
               return (
-                <button
+                <div
                   key={cal.id}
-                  type="button"
-                  onClick={() => setSelectedCalId(cal.id)}
-                  className={`w-full flex items-start gap-4 px-5 py-3 text-left transition-colors
+                  className={`flex items-start gap-4 px-5 py-3 transition-colors
                     ${isSelected ? "bg-mar-surface-alt" : "hover:bg-mar-surface-alt/50"}`}
                 >
-                  <div className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
-                    ${isSelected ? "border-mar-accent text-mar-accent" : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
-                    <span className="text-[10px] font-bold">v{versionOf(cal)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-mar-text">{fmtDate(cal.calibration_date)}</span>
-                      {cal.r_squared != null && (
-                        <span className="text-[10px] font-mono text-gray-400">R²={fmtNum(cal.r_squared, 4)}</span>
-                      )}
-                      {cal.poly_order != null && (
-                        <span className="text-[10px] text-gray-400">deg-{cal.poly_order}</span>
-                      )}
-                      {cal.external_lab_certificate_number && (
-                        <span className="text-[10px] text-gray-400">📄 {cal.external_lab_certificate_number}</span>
-                      )}
+                  {/* Clickable row content */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCalId(cal.id)}
+                    className="flex items-start gap-4 flex-1 min-w-0 text-left"
+                  >
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
+                      ${isSelected ? "border-mar-accent text-mar-accent" : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
+                      <span className="text-[10px] font-bold">v{versionOf(cal)}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {cal.calibration_type === "external" ? "External" : "Internal"}
-                      {" · "}by {cal.performed_by_name}
-                      {cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
-                    </p>
-                    {cal.notes && <p className="text-xs text-gray-500 mt-1 italic truncate">{cal.notes}</p>}
-                  </div>
-                  {cal.due_date && (
-                    <div className="flex-shrink-0 text-right hidden sm:block">
-                      <p className="text-[10px] text-gray-400">Due</p>
-                      <p className="text-xs text-mar-text font-mono">{fmtDate(cal.due_date)}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-mar-text">{fmtDate(cal.calibration_date)}</span>
+                        {cal.r_squared != null && (
+                          <span className="text-[10px] font-mono text-gray-400">R²={fmtNum(cal.r_squared, 4)}</span>
+                        )}
+                        {cal.poly_order != null && (
+                          <span className="text-[10px] text-gray-400">deg-{cal.poly_order}</span>
+                        )}
+                        {cal.external_lab_certificate_number && (
+                          <span className="text-[10px] text-gray-400">📄 {cal.external_lab_certificate_number}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {cal.calibration_type === "external" ? "External" : "Internal"}
+                        {" · "}by {cal.performed_by_name}
+                        {cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
+                      </p>
+                      {cal.notes && <p className="text-xs text-gray-500 mt-1 italic truncate">{cal.notes}</p>}
                     </div>
+                    {cal.due_date && (
+                      <div className="flex-shrink-0 text-right hidden sm:block">
+                        <p className="text-[10px] text-gray-400">Due</p>
+                        <p className="text-xs text-mar-text font-mono">{fmtDate(cal.due_date)}</p>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Admin delete */}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(cal.id); }}
+                      title="Remove calibration"
+                      className="flex-shrink-0 self-center p-1 text-gray-300 hover:text-red-500 transition-colors rounded"
+                    >
+                      <TrashIcon size={13} />
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -2369,6 +2460,8 @@ export default function AssetProfilePage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user.is_superuser || user.role === "superadmin" || user.role === "admin";
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [profile, setProfile] = useState<AssetProfile | null>(null);
@@ -2478,6 +2571,15 @@ export default function AssetProfilePage() {
   }
 
   async function handleCalibrationSaved() {
+    const [calsData, updatedProfile] = await Promise.all([
+      getAssetCalibrations(id),
+      getAssetProfile(id),
+    ]);
+    setCalibrations(calsData);
+    setProfile(updatedProfile);
+  }
+
+  async function handleCalibrationDeleted() {
     const [calsData, updatedProfile] = await Promise.all([
       getAssetCalibrations(id),
       getAssetProfile(id),
@@ -2703,6 +2805,8 @@ export default function AssetProfilePage() {
               calibrations={calibrations}
               profile={profile}
               onCalibrationSaved={handleCalibrationSaved}
+              onCalibrationDeleted={handleCalibrationDeleted}
+              isAdmin={isAdmin}
             />
           )}
           {activeTab === "files" && (

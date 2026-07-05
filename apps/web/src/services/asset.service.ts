@@ -126,6 +126,13 @@ export async function createCalibration(body: CalibrationCreateBody): Promise<Ca
   });
 }
 
+export async function deleteCalibration(calId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/calibrations/${calId}`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
 export async function getNextCalibrationVersion(assetId: string, sensorId?: string): Promise<number> {
   const qs = new URLSearchParams({ count: "true" });
   if (sensorId) qs.set("sensor_id", sensorId);

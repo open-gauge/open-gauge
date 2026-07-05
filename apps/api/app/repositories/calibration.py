@@ -27,10 +27,24 @@ def list_calibrations(db: Session, skip: int = 0, limit: int = 50) -> list[Calib
 
 
 def get_next_version(db: Session, asset_id: uuid.UUID, sensor_id: uuid.UUID | None) -> int:
-    q = db.query(Calibration).filter(Calibration.asset_id == asset_id)
+    from sqlalchemy import func as _func
+    q = db.query(_func.max(Calibration.calibration_version)).filter(Calibration.asset_id == asset_id)
     if sensor_id:
         q = q.filter(Calibration.sensor_id == sensor_id)
-    return q.count() + 1
+    current_max = q.scalar()
+    return (current_max or 0) + 1
+
+
+def delete_calibration(db: Session, cal: Calibration) -> None:
+    """Hard-delete a calibration and all its data points (admin-only operation)."""
+    from ..models.calibration_point import CalibrationData
+    # calibrations.calibration_data_id FK references one of the data rows; null it out
+    # before the bulk DELETE or PostgreSQL raises a FK violation.
+    cal.calibration_data_id = None
+    db.flush()
+    db.query(CalibrationData).filter(CalibrationData.calibration_id == cal.id).delete()
+    db.delete(cal)
+    db.commit()
 
 
 def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -> Calibration:

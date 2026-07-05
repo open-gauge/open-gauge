@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from ..models.asset import Asset, AssetType
@@ -150,10 +150,33 @@ def get_calibration_events(db: Session, months_past: int = 3, months_ahead: int 
     now = datetime.now(timezone.utc).date()
     start = now - timedelta(days=months_past * 31)
     end = now + timedelta(days=months_ahead * 31)
+
+    # Subquery: most-recently-created calibration timestamp per asset
+    latest_subq = (
+        db.query(
+            Calibration.asset_id,
+            func.max(Calibration.created_at).label("max_ts"),
+        )
+        .group_by(Calibration.asset_id)
+        .subquery()
+    )
+
+    # Only the latest calibration record per asset; filter by its due_date
     rows = (
         db.query(Calibration, Asset)
         .join(Asset, Calibration.asset_id == Asset.id)
-        .filter(Calibration.due_date >= start, Calibration.due_date <= end)
+        .join(
+            latest_subq,
+            and_(
+                Calibration.asset_id == latest_subq.c.asset_id,
+                Calibration.created_at == latest_subq.c.max_ts,
+            ),
+        )
+        .filter(
+            Asset.is_active.is_(True),
+            Calibration.due_date >= start,
+            Calibration.due_date <= end,
+        )
         .order_by(Calibration.due_date.asc())
         .all()
     )

@@ -316,11 +316,9 @@ function TreeItem({
         <span className="flex-1 truncate text-xs">{node.name}</span>
         {node.is_calibration_lab && (
           <span
-            title="This is a location where sensors are calibrated"
-            className="flex-shrink-0 px-1 py-px rounded text-[9px] font-bold bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
-          >
-            LAB
-          </span>
+            title="This is a location where sensors can be calibrated."
+            className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"
+          />
         )}
         {displayCount > 0 && (
           <span className={`text-[10px] tabular-nums flex-shrink-0 ${isSelected ? "text-mar-accent/80" : "text-gray-400"}`}>
@@ -526,10 +524,6 @@ function LocationDetail({
   const infoCards: { label: string; value: React.ReactNode }[] = [];
   if (location.location_type) infoCards.push({ label: "Type", value: location.location_type });
   if (location.code)          infoCards.push({ label: "Code", value: <span className="font-mono text-xs">{location.code}</span> });
-  if (location.is_calibration_lab) infoCards.push({
-    label: "Calibration Lab",
-    value: <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40">Yes</span>,
-  });
   if (location.address)       infoCards.push({ label: "Address", value: location.address });
   if (hasMap) infoCards.push({
     label: "GPS Coordinates",
@@ -617,10 +611,11 @@ function LocationDetail({
               <h2 className="text-xl font-bold text-mar-text leading-tight">{location.name}</h2>
               {location.is_calibration_lab && (
                 <div className="flex justify-center mt-1">
-                  <span className="relative group/lab inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40 cursor-default">
-                    Calibration Lab
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 flex-shrink-0" />
+                    Calibration location
                     <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/lab:block w-56 bg-gray-900 dark:bg-gray-700 text-white text-[10px] rounded-lg px-3 py-2 z-50 shadow-lg whitespace-normal text-left leading-relaxed">
-                      This is a location where sensors are calibrated.
+                      This is a location where sensors can be calibrated.
                     </span>
                   </span>
                 </div>
