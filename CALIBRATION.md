@@ -87,7 +87,8 @@ own units:
 | `fit_residuals` | A | Always present. Standard deviation of the calibration curve's fit residuals (`ddof=1`). Degrees of freedom = n − k (points − parameters), or `null` if that's ≤ 0. |
 | `reference_standard` | B | Optional. The reference standard's own stated (expanded) uncertainty, converted to a standard uncertainty via GUM §4.3.3 (`u = U/k`). For internal calibrations, auto-fetched from the selected reference asset's own most recent calibration; otherwise entered manually (e.g. transcribed from an external lab's certificate). |
 | `resolution` | B | Included automatically whenever the sensor channel has a `resolution` value. Rectangular distribution per GUM §4.3.7: `u = resolution / √12`. |
-| `sensor_nominal_accuracy` | B | The sensor channel's manufacturer-stated `measurement_uncertainty`, converted via GUM §4.3.3. **Opt-in only** (a checkbox in the wizard) — folding it in by default risks double-counting against `fit_residuals`, since both can reflect the same underlying instrument imprecision. |
+| `sensor_nominal_accuracy` | B | A manufacturer-stated nominal accuracy/uncertainty, converted via GUM §4.3.3. The wizard's "Sensor nominal accuracy" field pre-fills from the channel's `measurement_uncertainty` (still editable on the channel itself, as a manufacturer-spec default) but is freely editable per calibration afterwards — the value that actually applies belongs to this calibration event, not silently to the channel. **Opt-in only** (a checkbox next to the field) — folding it in by default risks double-counting against `fit_residuals`, since both can reflect the same underlying instrument imprecision. |
+| `external_certificate_stated` | B | Only appears on **coefficients-only** calibrations (see below) that have a lab-stated uncertainty. Not decomposed into Type A/B parts — it's recorded as a single row holding the certificate's expanded uncertainty and coverage factor as-is. |
 
 **Sensor channel spec units — the "% FS" convention.** A sensor channel's Accuracy,
 Resolution, and Uncertainty fields each pair a value with a unit dropdown. That dropdown
@@ -105,6 +106,32 @@ always receives an absolute value for these two. `percent_of_reading` is no long
 a channel-level accuracy option (only `absolute` and `percent_of_full_scale`, via the unit
 dropdown) — it's still supported by the decision-rule engine (`_apply_decision_rule`) for any
 data that already has it, just not selectable for new channel specs going forward.
+
+### Coefficients-only calibrations
+
+Some sensors — mainly ones from external labs — come with a calibration certificate that
+states the calibration polynomial's coefficients directly, with no raw reference/measured
+data points included. For these, checking **"Coefficients only (no raw data)"** on an
+**External** calibration (Step 1) replaces the wizard's raw-data step with a manual
+coefficient-entry form:
+
+- **Polynomial order** (1–5) and the corresponding **coefficients**, entered in the same
+  descending-power convention the regression engine uses (`coefficients[0]` = highest
+  degree … `coefficients[order]` = constant term).
+- **Valid range** (min/max) the polynomial applies over.
+- Optionally, **"Uncertainty stated on certificate"** — if the lab's certificate states an
+  expanded uncertainty and coverage factor, entering them here stores
+  `expanded_uncertainty`/`coverage_factor`/`combined_uncertainty` (`= expanded/k`) directly,
+  plus a single `external_certificate_stated` uncertainty budget row (see the Contributions
+  table above) rather than fabricating a fit-derived value.
+
+Because there's no raw data, there are no fit residuals to compute, so this path
+intentionally leaves `r_squared`, `rmse`, `uncertainty_budget`'s `fit_residuals` row, and —
+critically — `decision_rule`/`conformity_statement` all `null`. A conformity (pass/fail)
+statement requires an assessed error to compare against a spec (GUM §6.3, ISO/IEC
+17025 §7.8.6), and a coefficients-only record has no assessed error, only the calibration
+function itself — so MAR does not display or store a fabricated pass/fail result for these
+records.
 
 ### Combination
 

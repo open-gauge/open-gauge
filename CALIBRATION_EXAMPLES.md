@@ -1,6 +1,6 @@
 # CALIBRATION_EXAMPLES.md — Worked Examples for Cross-Checking MAR
 
-Three fully worked calibration examples, each exercising a different part of MAR's
+Four fully worked calibration examples, each exercising a different part of MAR's
 calibration engine (`apps/api/app/services/calibration_analysis.py`). Every number below was
 produced by **running the real production code** against the input data shown (not
 hand-estimated), then independently re-derived by hand from the underlying formulas to
@@ -451,6 +451,94 @@ rule, the lab and customer agree it's still an acceptable result. It's a good te
 
 ---
 
+## Example 4 — Pressure transmitter, coefficients-only external certificate
+
+Exercises: the "Coefficients only (no raw data)" wizard path — for sensors that arrive with a
+calibration certificate stating the calibration polynomial directly, with no raw
+reference/measured data points to re-fit.
+
+### 4.0 Setup
+
+**Asset** (create via Assets → New Asset):
+
+| Field | Value |
+|---|---|
+| Name | External Pressure Transmitter |
+| Manufacturer / Model | anything, e.g. WIKA / A-10 |
+| Asset type | sensor |
+
+Add one sensor channel:
+
+| Field | Value |
+|---|---|
+| Channel ID | CH1 |
+| Physical quantity | Pressure |
+| Range min / max | 0 / 1000 |
+| Unit | kPa |
+
+Nothing else is required on the channel — a coefficients-only calibration doesn't consult
+`accuracy_value`, `resolution`, or `measurement_uncertainty` (there's no analysis run to fold
+them into).
+
+### 4.1 Wizard — Step 1 (General Info)
+
+| Field | Value |
+|---|---|
+| Calibration type | External |
+| Calibration provider | Any Cal Lab Inc. |
+| Certificate number | ACL-2026-00842 |
+| Coefficients only (no raw data) | **checked** |
+
+Checking the box swaps Step 2 from raw-data entry to a coefficient-entry form, and the step
+indicator relabels to "Coefficients" / "Review" instead of "Raw Data" / "Analysis".
+
+### 4.2 Wizard — Step 2 (Coefficients)
+
+The certificate states: *reference ≈ 1.0025 × measured − 0.42 kPa, valid 0–1000 kPa, expanded
+uncertainty ±1.2 kPa (k=2)*.
+
+| Field | Value |
+|---|---|
+| Polynomial order | 1 |
+| Coefficient (× x) | 1.0025 |
+| Coefficient (Constant) | -0.42 |
+| Valid range min | 0 |
+| Valid range max | 1000 |
+| Uncertainty stated on certificate | **checked** |
+| Expanded uncertainty (±) | 1.2 |
+| Coverage factor k | 2 |
+
+The equation preview should read `f(x) = 1.0025·x − 0.42 (kPa)`.
+
+### 4.3 Wizard — Step 3 (Review) and what gets saved
+
+There's no analysis to run, so Step 3 just echoes back the equation, valid range, and stated
+uncertainty for a final check before saving. On save:
+
+- `poly_order = 1`, `poly_coefficients = [1.0025, -0.42]`, `range_min = 0`,
+  `range_max = 1000`, `valid_range_min = 0`, `valid_range_max = 1000`.
+- `expanded_uncertainty = 1.2`, `coverage_factor = 2`,
+  `combined_uncertainty = 1.2 / 2 = 0.6`.
+- `uncertainty_budget = [{ source: "external_certificate_stated", value: 1.2, divisor: 2,
+  standard_uncertainty: 0.6, ... }]` — a single row, not decomposed into Type A/B parts,
+  since the certificate only gives one overall figure.
+- `r_squared`, `rmse`, `standard_error`, `max_error`, `decision_rule`, and
+  `conformity_statement` are all **`null`** — with no raw data there's no fit to score and no
+  assessed error to check against a spec, so MAR doesn't display a CONFORMS/DOES NOT CONFORM
+  badge for this record (see `CALIBRATION.md`).
+
+**Expected results:**
+
+| Field | Value |
+|---|---|
+| Equation | f(x) = 1.0025·x − 0.42 |
+| Valid range | 0 – 1000 kPa |
+| Combined uncertainty | 0.6 kPa |
+| Expanded uncertainty (±) | 1.2 kPa |
+| Conformity statement | not shown / not computed |
+
+---
+
 ## Rounding — what you'll actually see on screen
 
 The raw numbers above are what the calculation engine produces internally (and what's stored
@@ -493,3 +581,7 @@ displayed (combined/expanded uncertainty).
   re-entering the points exactly as listed (small transcription errors shift which degree AIC
   prefers) — polynomial fitting is sensitive to exact input values in a way the other checks
   aren't.
+- **No CONFORMS/DOES NOT CONFORM badge in Example 4**: this is expected, not a bug — a
+  coefficients-only calibration has no raw data to compute an assessed error from, so there's
+  nothing to compare against a spec. If you want a conformity statement, use a regular
+  (non-coefficients-only) calibration instead.

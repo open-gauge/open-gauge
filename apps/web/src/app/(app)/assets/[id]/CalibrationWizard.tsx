@@ -165,9 +165,17 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+const SUPERS: Record<number, string> = { 2: "²", 3: "³", 4: "⁴", 5: "⁵" };
+
+// Label for a polynomial coefficient's power of x, e.g. "× x²", "× x", "Constant".
+function coeffPowerLabel(power: number): string {
+  if (power === 0) return "Constant";
+  if (power === 1) return "× x";
+  return `× x${SUPERS[power] ?? `^${power}`}`;
+}
+
 // Format polynomial as human-readable equation string — ascending order: a₀ + a₁·x + a₂·x² + …
 function formatEquation(coefficients: number[], degree: number): string {
-  const SUPERS: Record<number, string> = { 2: "²", 3: "³", 4: "⁴", 5: "⁵" };
   const parts: string[] = [];
   // coefficients[0] = highest degree, coefficients[degree] = constant (np.polyfit convention)
   for (let exp = 0; exp <= degree; exp++) {
@@ -214,6 +222,19 @@ interface AnalyzeParams {
   poly_degree: number | null;
   distribution_type: DistributionType;
   confidence_level: number;
+}
+
+// Manual polynomial entry for "coefficients only" external calibrations —
+// coefficients[0] = highest degree … coefficients[order] = constant term
+// (same np.polyfit-style convention as AnalyzeResponse.coefficients).
+interface ManualCoeffState {
+  poly_order: number;
+  coefficients: string[];
+  range_min: string;
+  range_max: string;
+  has_uncertainty: boolean;
+  expanded_uncertainty: string;
+  coverage_factor: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +297,17 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   const [csvError, setCsvError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Step 2 alternative: manual coefficient entry ("coefficients only" externals)
+  const [manualCoeff, setManualCoeff] = useState<ManualCoeffState>({
+    poly_order: 1,
+    coefficients: ["", ""],
+    range_min: "",
+    range_max: "",
+    has_uncertainty: false,
+    expanded_uncertainty: "",
+    coverage_factor: "2",
+  });
+
   // Step 3: analysis
   const [analyzeParams, setAnalyzeParams] = useState<AnalyzeParams>({
     poly_degree: null,
@@ -288,8 +320,12 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
   // Opt-in: fold the sensor's nominal manufacturer accuracy spec into the
   // uncertainty budget as a Type B contribution (off by default — it risks
-  // double-counting against the Type A fit-residual term, GUM §4).
+  // double-counting against the Type A fit-residual term, GUM §4). The value
+  // pre-fills from the channel's manufacturer spec but is editable per
+  // calibration — the uncertainty actually used belongs to this calibration
+  // event, not silently to the channel.
   const [includeSensorNominalUncertainty, setIncludeSensorNominalUncertainty] = useState(false);
+  const [sensorNominalUncertaintyManual, setSensorNominalUncertaintyManual] = useState<string>("");
   // ISO/IEC 17025 §7.1.3/§7.8.6 decision rule — how measurement uncertainty is
   // factored into the pass/fail conformity statement. This is the value that
   // gets stored and printed on the certificate (unlike the ad-hoc tolerance
@@ -340,7 +376,34 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     isNumOrEmpty(step1.temperature_value) &&
     isNumOrEmpty(step1.pressure_value) &&
     isNumOrEmpty(step1.humidity_value);
-  const step2Valid = step1.coefficients_only || validPoints.length >= 2;
+
+  const manualCoeffValid =
+    manualCoeff.coefficients.every((c) => c.trim() !== "" && !isNaN(parseFloat(c))) &&
+    manualCoeff.range_min.trim() !== "" && !isNaN(parseFloat(manualCoeff.range_min)) &&
+    manualCoeff.range_max.trim() !== "" && !isNaN(parseFloat(manualCoeff.range_max)) &&
+    (!manualCoeff.has_uncertainty || (
+      manualCoeff.expanded_uncertainty.trim() !== "" && !isNaN(parseFloat(manualCoeff.expanded_uncertainty)) &&
+      manualCoeff.coverage_factor.trim() !== "" && !isNaN(parseFloat(manualCoeff.coverage_factor))
+    ));
+  const step2Valid = step1.coefficients_only ? manualCoeffValid : validPoints.length >= 2;
+
+  // Pre-fill the sensor nominal accuracy input from the channel's manufacturer
+  // spec whenever the selected channel changes; still freely editable per
+  // calibration afterwards (the value used belongs to this calibration event).
+  useEffect(() => {
+    const defaultVal = resolveSpecValue(
+      selectedChannel?.measurement_uncertainty ?? null, selectedChannel?.uncertainty_unit ?? null,
+      selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+    );
+    setSensorNominalUncertaintyManual(defaultVal != null ? String(defaultVal) : "");
+    setIncludeSensorNominalUncertainty(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChannel?.id]);
+
+  const sensorNominalUncertaintyNum = (() => {
+    const v = parseFloat(sensorNominalUncertaintyManual);
+    return sensorNominalUncertaintyManual.trim() !== "" && !isNaN(v) ? v : null;
+  })();
 
   // Load reference assets and calibration labs on mount
   useEffect(() => {
@@ -429,7 +492,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
 
     const key = JSON.stringify({
       vp, referenceUnit, measuredUnit, analyzeParams, includeSensorNominalUncertainty, decisionRule,
-      referenceStandardUncertainty, referenceStandardCoverageFactor,
+      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum,
     });
     if (key === lastAnalysisKeyRef.current) return;
     lastAnalysisKeyRef.current = key;
@@ -458,10 +521,9 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
           selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
         ),
         // Type B: sensor's nominal manufacturer accuracy spec, opt-in only.
-        sensor_nominal_uncertainty: resolveSpecValue(
-          selectedChannel?.measurement_uncertainty ?? null, selectedChannel?.uncertainty_unit ?? null,
-          selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
-        ),
+        // Pre-filled from the channel's spec but editable per calibration —
+        // see sensorNominalUncertaintyManual above.
+        sensor_nominal_uncertainty: sensorNominalUncertaintyNum,
         // The channel no longer carries its own coverage factor (removed from
         // channel editing) — a nominal manufacturer spec's k is conventionally 2.
         sensor_nominal_coverage_factor: 2.0,
@@ -484,7 +546,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     }, 400);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [step, rawPoints, referenceUnit, measuredUnit, analyzeParams, step1.coefficients_only, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor]);
+  }, [step, rawPoints, referenceUnit, measuredUnit, analyzeParams, step1.coefficients_only, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
 
   // ---------------------------------------------------------------------------
   // CSV parsing
@@ -533,7 +595,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   // ---------------------------------------------------------------------------
 
   async function handleSave() {
-    if (!analysisResult && !step1.coefficients_only) return;
+    if (step1.coefficients_only ? !manualCoeffValid : !analysisResult) return;
 
     setSaving(true);
     setSaveError(null);
@@ -610,6 +672,37 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
           reference_unit: referenceUnit,
           measured_unit: measuredUnit,
         }));
+      } else if (step1.coefficients_only) {
+        // No raw data: coefficients come straight from the certificate, so
+        // there's no fit to residuals, no computed budget, and — since there's
+        // no assessed error to compare against a spec — no conformity
+        // statement (decision_rule/conformity_statement stay null).
+        const rangeMin = n(manualCoeff.range_min);
+        const rangeMax = n(manualCoeff.range_max);
+        polyStats = {
+          poly_order: manualCoeff.poly_order,
+          poly_coefficients: manualCoeff.coefficients.map((c) => parseFloat(c)),
+          range_min: rangeMin,
+          range_max: rangeMax,
+          valid_range_min: rangeMin,
+          valid_range_max: rangeMax,
+        };
+        if (manualCoeff.has_uncertainty) {
+          const expandedU = n(manualCoeff.expanded_uncertainty)!;
+          const k = n(manualCoeff.coverage_factor) || 2;
+          polyStats.expanded_uncertainty = expandedU;
+          polyStats.coverage_factor = k;
+          polyStats.combined_uncertainty = expandedU / k;
+          polyStats.uncertainty_budget = [{
+            source: "external_certificate_stated",
+            description: "Expanded uncertainty as stated on the external calibration certificate (no raw data / fit residuals available)",
+            value: expandedU,
+            distribution: "normal",
+            divisor: k,
+            standard_uncertainty: expandedU / k,
+            degrees_of_freedom: null,
+          }];
+        }
       }
 
       // Compute due_date from calibration_interval
@@ -668,7 +761,10 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             <p className="text-xs text-gray-400 mt-0.5">{profile.name} · {profile.asset_id}</p>
           </div>
           <div className="flex items-center gap-6">
-            <StepIndicator step={step} steps={["General Info", "Raw Data", "Analysis"]} />
+            <StepIndicator
+              step={step}
+              steps={step1.coefficients_only ? ["General Info", "Coefficients", "Review"] : ["General Info", "Raw Data", "Analysis"]}
+            />
             <button
               type="button"
               onClick={onClose}
@@ -695,21 +791,29 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             />
           )}
           {step === 2 && (
-            <Step2
-              points={rawPoints}
-              onPointsChange={setRawPoints}
-              referenceUnit={referenceUnit}
-              measuredUnit={measuredUnit}
-              onReferenceUnitChange={setReferenceUnit}
-              onMeasuredUnitChange={setMeasuredUnit}
-              physicalQuantity={selectedChannel?.physical_quantity ?? ""}
-              outputType={selectedChannel?.output_type ?? null}
-              inputMode={inputMode}
-              onInputModeChange={setInputMode}
-              csvError={csvError}
-              onFileUpload={handleFileUpload}
-              fileInputRef={fileInputRef}
-            />
+            step1.coefficients_only ? (
+              <ManualCoefficientsStep
+                state={manualCoeff}
+                onChange={setManualCoeff}
+                referenceUnit={referenceUnit}
+              />
+            ) : (
+              <Step2
+                points={rawPoints}
+                onPointsChange={setRawPoints}
+                referenceUnit={referenceUnit}
+                measuredUnit={measuredUnit}
+                onReferenceUnitChange={setReferenceUnit}
+                onMeasuredUnitChange={setMeasuredUnit}
+                physicalQuantity={selectedChannel?.physical_quantity ?? ""}
+                outputType={selectedChannel?.output_type ?? null}
+                inputMode={inputMode}
+                onInputModeChange={setInputMode}
+                csvError={csvError}
+                onFileUpload={handleFileUpload}
+                fileInputRef={fileInputRef}
+              />
+            )
           )}
           {step === 3 && (
             <Step3
@@ -724,9 +828,11 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               hoveredPointIdx={hoveredPointIdx}
               onHoverPoint={setHoveredPointIdx}
               coefficientsOnly={step1.coefficients_only}
+              manualCoeff={manualCoeff}
               includeSensorNominalUncertainty={includeSensorNominalUncertainty}
               onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
-              sensorNominalUncertaintyAvailable={selectedChannel?.measurement_uncertainty != null}
+              sensorNominalUncertaintyManual={sensorNominalUncertaintyManual}
+              onSensorNominalUncertaintyManualChange={setSensorNominalUncertaintyManual}
               decisionRule={decisionRule}
               onDecisionRuleChange={setDecisionRule}
               referenceStandardAuto={referenceStandardAuto}
@@ -757,12 +863,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               onClick={() => {
                 if (step === 1 && !step1Valid) return;
                 if (step === 2 && !step2Valid) return;
-                // Skip step 2 if coefficients_only
-                if (step === 1 && step1.coefficients_only) {
-                  setStep(3);
-                } else {
-                  setStep((s) => (s + 1) as 2 | 3);
-                }
+                setStep((s) => (s + 1) as 2 | 3);
               }}
               disabled={(step === 1 && !step1Valid) || (step === 2 && !step2Valid)}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-mar-action hover:bg-mar-action-dark text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -773,7 +874,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
-              disabled={!step1.coefficients_only && (analyzing || !analysisResult)}
+              disabled={step1.coefficients_only ? !manualCoeffValid : (analyzing || !analysisResult)}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Confirm &amp; Save
@@ -1269,6 +1370,123 @@ function Step2({
 }
 
 // ---------------------------------------------------------------------------
+// Step 2 alternative — manual coefficient entry ("coefficients only")
+// ---------------------------------------------------------------------------
+
+function ManualCoefficientsStep({
+  state, onChange, referenceUnit,
+}: {
+  state: ManualCoeffState;
+  onChange: (s: ManualCoeffState) => void;
+  referenceUnit: string;
+}) {
+  function setOrder(order: number) {
+    const coefficients = [...state.coefficients];
+    while (coefficients.length < order + 1) coefficients.push("");
+    coefficients.length = order + 1;
+    onChange({ ...state, poly_order: order, coefficients });
+  }
+
+  function setCoeff(idx: number, val: string) {
+    const coefficients = [...state.coefficients];
+    coefficients[idx] = val;
+    onChange({ ...state, coefficients });
+  }
+
+  const numericCoeffs = state.coefficients.map((c) => parseFloat(c));
+  const previewValid = numericCoeffs.every((c) => !isNaN(c));
+
+  return (
+    <div className="p-6 space-y-5">
+      <p className="text-xs text-gray-400">
+        Enter the calibration coefficients directly from the certificate — no raw data points are required in this mode.
+      </p>
+
+      <div className="flex flex-col gap-1 w-40">
+        <WLabel text="Polynomial order" required />
+        <select
+          value={state.poly_order}
+          onChange={(e) => setOrder(parseInt(e.target.value))}
+          className={`${IB} ${IB_OK}`}
+        >
+          {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {state.coefficients.map((c, i) => {
+          const power = state.poly_order - i;
+          return (
+            <WInput
+              key={i}
+              label={`Coefficient (${coeffPowerLabel(power)})`}
+              type="number"
+              value={c}
+              onChange={(v) => setCoeff(i, v)}
+              placeholder="0.0"
+              required
+            />
+          );
+        })}
+      </div>
+
+      {previewValid && (
+        <div className="px-4 py-2 rounded-lg bg-mar-surface-alt border border-mar-border">
+          <span className="text-[11px] text-gray-400 mr-2">Equation</span>
+          <span className="text-xs font-mono text-mar-text">{formatEquation(numericCoeffs, state.poly_order)}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <WInput
+          label={`Valid range min${referenceUnit ? ` (${referenceUnit})` : ""}`}
+          type="number"
+          value={state.range_min}
+          onChange={(v) => onChange({ ...state, range_min: v })}
+          required
+        />
+        <WInput
+          label={`Valid range max${referenceUnit ? ` (${referenceUnit})` : ""}`}
+          type="number"
+          value={state.range_max}
+          onChange={(v) => onChange({ ...state, range_max: v })}
+          required
+        />
+      </div>
+
+      <div className="border border-mar-border rounded-lg overflow-hidden">
+        <div className="px-4 py-3">
+          <WCheckbox
+            label="Uncertainty stated on certificate"
+            checked={state.has_uncertainty}
+            onChange={(v) => onChange({ ...state, has_uncertainty: v })}
+          />
+        </div>
+        {state.has_uncertainty && (
+          <div className="px-4 pb-4 pt-1 grid grid-cols-2 gap-4 border-t border-mar-border">
+            <WInput
+              label={`Expanded uncertainty (±)${referenceUnit ? ` (${referenceUnit})` : ""}`}
+              type="number"
+              value={state.expanded_uncertainty}
+              onChange={(v) => onChange({ ...state, expanded_uncertainty: v })}
+              required
+            />
+            <WInput
+              label="Coverage factor k"
+              type="number"
+              value={state.coverage_factor}
+              onChange={(v) => onChange({ ...state, coverage_factor: v })}
+              placeholder="2"
+              required
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Step 3 — Analysis & Results
 // ---------------------------------------------------------------------------
 
@@ -1287,8 +1505,9 @@ function residualColor(residual: number, maxAbsResidual: number): string {
 
 function Step3({
   analyzeParams, onAnalyzeParamsChange, result, analyzing, analyzeError,
-  referenceUnit, measuredUnit, hoveredPointIdx, onHoverPoint, coefficientsOnly,
-  includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange, sensorNominalUncertaintyAvailable,
+  referenceUnit, measuredUnit, hoveredPointIdx, onHoverPoint, coefficientsOnly, manualCoeff,
+  includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange,
+  sensorNominalUncertaintyManual, onSensorNominalUncertaintyManualChange,
   decisionRule, onDecisionRuleChange,
   referenceStandardAuto, referenceStandardAutoLoading, referenceAssetName,
   referenceStandardManualUncertainty, onReferenceStandardManualUncertaintyChange,
@@ -1305,9 +1524,11 @@ function Step3({
   hoveredPointIdx: number | null;
   onHoverPoint: (i: number | null) => void;
   coefficientsOnly: boolean;
+  manualCoeff: ManualCoeffState;
   includeSensorNominalUncertainty: boolean;
   onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
-  sensorNominalUncertaintyAvailable: boolean;
+  sensorNominalUncertaintyManual: string;
+  onSensorNominalUncertaintyManualChange: (v: string) => void;
   decisionRule: DecisionRule;
   onDecisionRuleChange: (v: DecisionRule) => void;
   referenceStandardAuto: { expandedUncertainty: number; coverageFactor: number } | null;
@@ -1437,9 +1658,33 @@ function Step3({
   }, []);
 
   if (coefficientsOnly) {
+    const numericCoeffs = manualCoeff.coefficients.map((c) => parseFloat(c));
+    const rangeMin = parseFloat(manualCoeff.range_min);
+    const rangeMax = parseFloat(manualCoeff.range_max);
+    const expandedU = manualCoeff.has_uncertainty ? parseFloat(manualCoeff.expanded_uncertainty) : null;
+    const covFactor = manualCoeff.has_uncertainty ? (parseFloat(manualCoeff.coverage_factor) || 2) : null;
+    const hasUncertainty = expandedU != null && !isNaN(expandedU);
     return (
-      <div className="p-6">
-        <p className="text-sm text-gray-400">Coefficients-only mode — no analysis. Fill in the coefficient values directly after saving.</p>
+      <div className="p-6 space-y-4">
+        <div className="px-4 py-2 rounded-lg bg-mar-surface-alt border border-mar-border">
+          <span className="text-[11px] text-gray-400 mr-2">Equation</span>
+          <span className="text-xs font-mono text-mar-text">{formatEquation(numericCoeffs, manualCoeff.poly_order)}</span>
+          {referenceUnit && <span className="text-[11px] text-gray-400 ml-2">({referenceUnit})</span>}
+        </div>
+        <div className="rounded-xl border border-mar-border p-4 bg-mar-surface-alt max-w-sm">
+          <StatRow label="Valid range" value={`${fmtN(rangeMin)} – ${fmtN(rangeMax)} ${referenceUnit}`} />
+          <StatRow label="Polynomial order" value={String(manualCoeff.poly_order)} />
+          {hasUncertainty && (
+            <StatRow
+              label="Expanded uncertainty (±)"
+              value={`${fmtN(expandedU)} ${referenceUnit}`}
+              tip={`As stated on the calibration certificate, k=${fmtN(covFactor, 3)}.`}
+            />
+          )}
+        </div>
+        <p className="text-xs text-gray-400 max-w-md">
+          No raw data was recorded for this calibration, so fit residuals and a conformity statement cannot be computed. Only the coefficients{hasUncertainty ? " and certificate-stated uncertainty" : ""} above will be saved.
+        </p>
       </div>
     );
   }
@@ -1493,7 +1738,21 @@ function Step3({
             <option value="shared_risk">Shared risk (tolerance + U)</option>
           </select>
         </div>
-        {sensorNominalUncertaintyAvailable && (
+        {/* Sensor nominal accuracy (Type B) — pre-filled from the channel's
+            manufacturer spec but editable per calibration; the uncertainty
+            actually used belongs to this calibration event, not the channel. */}
+        <div className="flex flex-col gap-1 w-36">
+          <WLabel text="Sensor nominal accuracy" />
+          <input
+            type="number"
+            value={sensorNominalUncertaintyManual}
+            onChange={(e) => onSensorNominalUncertaintyManualChange(e.target.value)}
+            min={0} step="any"
+            placeholder="from datasheet"
+            className={`${IB} ${IB_OK} py-1.5`}
+          />
+        </div>
+        {sensorNominalUncertaintyManual.trim() !== "" && !isNaN(parseFloat(sensorNominalUncertaintyManual)) && (
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
               <input
@@ -1502,7 +1761,7 @@ function Step3({
                 onChange={(e) => onIncludeSensorNominalUncertaintyChange(e.target.checked)}
                 className="rounded border-mar-border-md"
               />
-              Incl. sensor nominal accuracy
+              Incl. in budget
             </label>
           </div>
         )}

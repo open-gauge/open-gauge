@@ -163,6 +163,7 @@ export const UNCERTAINTY_SOURCE_LABEL: Record<string, string> = {
   reference_standard:      "Reference standard (Type B)",
   resolution:               "Resolution (Type B)",
   sensor_nominal_accuracy: "Sensor nominal accuracy (Type B)",
+  external_certificate_stated: "Stated on external certificate (Type B)",
 };
 
 // Human-readable labels for ISO/IEC 17025 §7.1.3/§7.8.6 decision rules.
