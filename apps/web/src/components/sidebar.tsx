@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import type * as PageTree from "fumadocs-core/page-tree";
 import {
   ActivityIcon,
-  ApiIcon,
   AssetRegistryIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -16,15 +15,13 @@ import {
   ProceduresIcon,
   SettingsIcon,
 } from "@/components/icons";
-import { externalDocsUrl } from "@/lib/docs-links";
 import { DocsNavTree } from "@/components/docs-nav-tree";
+import { ApiNavTree } from "@/components/api-nav-tree";
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
-  /** Opens in a new tab instead of client-side routing — used for links into apps/docs. */
-  external?: boolean;
 }
 
 const WORKSPACE_NAV: NavItem[] = [
@@ -36,8 +33,7 @@ const WORKSPACE_NAV: NavItem[] = [
 ];
 
 const SYSTEM_NAV: NavItem[] = [
-  { href: externalDocsUrl("/docs/api"), label: "API Reference", icon: <ApiIcon size={15} />, external: true },
-  { href: "/settings",          label: "Settings",      icon: <SettingsIcon size={15} /> },
+  { href: "/settings", label: "Settings", icon: <SettingsIcon size={15} /> },
 ];
 
 export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
@@ -141,6 +137,9 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
             <li>
               <DocsNavTree tree={docsTree} collapsed={collapsed} />
             </li>
+            <li>
+              <ApiNavTree collapsed={collapsed} />
+            </li>
             {SYSTEM_NAV.map((item) => (
               <li key={item.href}>
                 <NavLink
@@ -210,14 +209,6 @@ function NavLink({
       {!collapsed && item.label}
     </>
   );
-
-  if (item.external) {
-    return (
-      <a href={item.href} target="_blank" rel="noopener noreferrer" title={collapsed ? item.label : undefined} className={className}>
-        {content}
-      </a>
-    );
-  }
 
   return (
     <Link href={item.href} title={collapsed ? item.label : undefined} className={className}>

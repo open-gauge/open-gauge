@@ -10,15 +10,6 @@ export function docsUrl(path: string): string {
   return path.replace(/^\/docs\/guide/, "/documentation");
 }
 
-function getDocsBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_DOCS_URL ?? "http://localhost:3002";
-}
-
-/** Absolute URL into the standalone apps/docs site (external link, opens in a new tab). */
-export function externalDocsUrl(path: string): string {
-  return `${getDocsBaseUrl()}${path}`;
-}
-
 // Sensor channel fields — apps/docs/content/docs/guide/sensors/adding-a-sensor.mdx
 export const CHAN_DOCS_LINKS: Record<string, string> = {
   physical_quantity: "/docs/guide/sensors/adding-a-sensor#physical-quantity",

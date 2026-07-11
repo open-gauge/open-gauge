@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import NextLink from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { DocsBody } from "fumadocs-ui/layouts/docs/page";
@@ -7,17 +8,16 @@ import type { TOCItemType } from "fumadocs-core/toc";
 import type { Page } from "fumadocs-core/source";
 import { docsSource } from "@/lib/docs-source";
 import { getMDXComponents } from "@/mdx-components";
-import { externalDocsUrl } from "@/lib/docs-links";
 
 // Guide-content links are resolved relative to the current page (createRelativeLink), so
 // they land on the equivalent /documentation/... page here rather than apps/docs' /docs/guide
-// URLs. Links into the API Reference (a separate root, not embedded — see docs/README.md)
-// point at the standalone apps/docs site instead, since /docs/api doesn't exist in this app.
+// URLs. Links into the API Reference (a separate embedded root, see
+// documentation/api/[[...slug]]/page.tsx) are rewritten to their in-app equivalent instead.
 function DocLink(source: typeof docsSource, page: Page) {
   const RelativeLink = createRelativeLink(source, page);
   return function Link({ href, ...props }: ComponentProps<"a">) {
     if (href?.startsWith("/docs/api")) {
-      return <a href={externalDocsUrl(href)} target="_blank" rel="noopener noreferrer" {...props} />;
+      return <NextLink href={href.replace(/^\/docs\/api/, "/documentation/api")} {...props} />;
     }
     return <RelativeLink href={href} {...props} />;
   };

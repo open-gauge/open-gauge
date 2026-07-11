@@ -2,7 +2,7 @@ interface ApiError {
   detail: string;
 }
 
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   if (typeof window === "undefined") {
     // Server-side: use internal Docker network URL when available
     return process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";

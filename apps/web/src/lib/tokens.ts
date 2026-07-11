@@ -23,6 +23,17 @@ export const COLORS = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// API Reference — HTTP method badges (embedded API Reference sidebar/pages)
+// ---------------------------------------------------------------------------
+export const HTTP_METHOD_STYLE: Record<string, string> = {
+  GET:    "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  POST:   "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  PUT:    "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  PATCH:  "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  DELETE: "bg-red-500/10 text-red-600 dark:text-red-400",
+};
+
+// ---------------------------------------------------------------------------
 // Calibration status
 // ---------------------------------------------------------------------------
 export const CALIBRATION_STATUS_STYLE: Record<string, string> = {
