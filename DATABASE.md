@@ -1,4 +1,4 @@
-# DATABASE.md — MAR Schema Reference
+# DATABASE.md — Open Gauge Schema Reference
 
 All stored numeric physical values are in SI units. Display units are stored alongside values so the frontend can convert for presentation.
 
@@ -134,7 +134,7 @@ The central registry entity. Represents a physical instrument or sensor. Not dir
 | Column | Type | Notes |
 |---|---|---|
 | id | UUID PK | |
-| asset_id | VARCHAR(20) UNIQUE | human-readable ID, e.g. MAR-00042 |
+| asset_id | VARCHAR(20) UNIQUE | human-readable ID, e.g. OG-00042 |
 | asset_type | ENUM | sensor / daq |
 | name | VARCHAR(255) | |
 | description | TEXT | |

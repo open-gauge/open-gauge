@@ -1,16 +1,16 @@
 /**
- * MAR design tokens — single source of truth for colours, labels, and
+ * Open Gauge design tokens — single source of truth for colours, labels, and
  * chart-specific data used across the frontend.
  *
- * Tailwind semantic classes (text-mar-*, bg-mar-*, …) are defined in
- * tailwind.config.ts and should be used for JSX class names.
+ * Tailwind semantic classes (text-og-*, bg-og-*, …) are defined in the
+ * `@theme` block in globals.css and should be used for JSX class names.
  *
  * The COLORS object below is for contexts where a raw hex string is
  * required (e.g. Recharts stroke/fill props, SVG attributes).
  */
 
 // ---------------------------------------------------------------------------
-// Brand colours (hex) — mirrors the mar.* entries in tailwind.config.ts
+// Brand colours (hex) — mirrors the --color-og-* entries in globals.css
 // ---------------------------------------------------------------------------
 export const COLORS = {
   bgDark:      "#0f1c26",

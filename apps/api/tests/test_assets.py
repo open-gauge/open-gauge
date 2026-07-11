@@ -110,7 +110,7 @@ class TestCreateAsset:
         self, client: TestClient, auth_headers: dict
     ) -> None:
         payload = {
-            "asset_id": "NOTMAR001",  # wrong format
+            "asset_id": "NOTOG001",  # wrong format
             "asset_type": "sensor",
             "name": "Bad",
             "manufacturer": "X",

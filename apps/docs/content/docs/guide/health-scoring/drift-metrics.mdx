@@ -1,9 +1,9 @@
 ---
 title: Drift metrics
-description: How MAR compares two calibration curves — max/mean/RMS drift, offset, gain, and residual drift.
+description: How Open Gauge compares two calibration curves — max/mean/RMS drift, offset, gain, and residual drift.
 ---
 
-To measure how much a sensor has drifted, MAR compares two of its calibration curves — a
+To measure how much a sensor has drifted, Open Gauge compares two of its calibration curves — a
 reference calibration (typically the baseline/first one) and a current one — by evaluating
 both fitted polynomials across their **shared operating range** and looking at the difference
 curve between them, $d(x) = f_{\text{current}}(x) - f_{\text{reference}}(x)$.
@@ -17,7 +17,7 @@ $$
 \text{max drift} = \max_x \left| d(x) \right|
 $$
 
-The single biggest weight in the [health score](/docs/guide/health-scoring/overview#score)
+The single biggest weight in the [health score](./overview.mdx#score)
 (30%) — it answers "at its worst point, how far has this sensor's calibration moved?"
 
 ## Mean drift [#mean-drift]
@@ -31,7 +31,7 @@ $$
 ## RMS drift [#rms-drift]
 
 The root-mean-square difference between the two curves — penalizes larger deviations more
-heavily than mean drift does, the same way [RMSE](/docs/guide/calibration/curve-fitting#rmse)
+heavily than mean drift does, the same way [RMSE](../calibration/curve-fitting.mdx#rmse)
 penalizes large residuals more than a simple average would:
 
 $$

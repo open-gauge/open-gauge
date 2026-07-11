@@ -1,9 +1,9 @@
 # CALIBRATION.md — Calibration & Uncertainty Reference
 
-How MAR fits calibration curves, evaluates measurement uncertainty, and decides pass/fail.
+How Open Gauge fits calibration curves, evaluates measurement uncertainty, and decides pass/fail.
 The methodology follows JCGM 100:2008 (GUM) and ISO/IEC 17025:2017 — see
 `references/References.md` for the full standards distillation this implementation is based
-on, and `ACTION_PLAN.md` for the phased work that brought MAR into compliance.
+on, and `ACTION_PLAN.md` for the phased work that brought Open Gauge into compliance.
 
 For table/column-level schema, see `DATABASE.md`. This document covers the *domain logic*:
 what gets computed, why, and where it surfaces in the API and UI. For fully worked,
@@ -53,7 +53,7 @@ helper, `predict_with_uncertainty(coefficients, covariance, x)`, implements the 
 GUM Eq. H.15 propagation for evaluating the fitted curve with correctly propagated
 uncertainty at an arbitrary point. **It is not yet called from any endpoint** — it's
 infrastructure for a future "evaluate this calibration at a live reading" feature that
-doesn't exist in MAR yet.
+doesn't exist in Open Gauge yet.
 
 Degenerate fits (points ≤ parameters, e.g. a 2-point straight-line fit) have zero residual
 degrees of freedom: no covariance matrix is stored (`null`), and the Type A uncertainty row
@@ -63,7 +63,7 @@ degrees of freedom: no covariance matrix is stored (`null`), and the Type A unce
 
 ## Uncertainty: the budget model
 
-MAR expresses measurement uncertainty as an **itemized budget** (GUM Annex H.1 table format),
+Open Gauge expresses measurement uncertainty as an **itemized budget** (GUM Annex H.1 table format),
 not a single opaque number. Each calibration stores `uncertainty_budget`: an array of rows,
 one per contribution, each already expressed as a *standard uncertainty* in the measurand's
 own units:
@@ -130,7 +130,7 @@ intentionally leaves `r_squared`, `rmse`, `uncertainty_budget`'s `fit_residuals`
 critically — `decision_rule`/`conformity_statement` all `null`. A conformity (pass/fail)
 statement requires an assessed error to compare against a spec (GUM §6.3, ISO/IEC
 17025 §7.8.6), and a coefficients-only record has no assessed error, only the calibration
-function itself — so MAR does not display or store a fabricated pass/fail result for these
+function itself — so Open Gauge does not display or store a fabricated pass/fail result for these
 records.
 
 ### Combination
@@ -147,7 +147,7 @@ stored as `calibrations.combined_uncertainty`.
 
 Expanded uncertainty `U = k · u_c(y)` (`calibrations.expanded_uncertainty`). The coverage
 factor `k` is **always derived** from the requested confidence level and `distribution_type`
-— there's no separate "coverage factor" input anywhere in MAR, because a user-picked k
+— there's no separate "coverage factor" input anywhere in Open Gauge, because a user-picked k
 independent of the confidence level and distribution shape isn't statistically meaningful
 (see `AnalyzeRequest`/`run_analysis` — neither takes a `coverage_factor` parameter; it's an
 output only):
@@ -164,7 +164,7 @@ output only):
   ```
 
   Rows with `degrees_of_freedom: null` (exactly-known Type B contributions) drop out of the
-  sum entirely. If no row has finite degrees of freedom, `ν_eff` is `null` and MAR falls back
+  sum entirely. If no row has finite degrees of freedom, `ν_eff` is `null` and Open Gauge falls back
   to the normal-distribution quantile above (the correct limit as ν → ∞).
 
 All of the above lives in `apps/api/app/services/calibration_analysis.py`
@@ -178,7 +178,7 @@ Per GUM §7.2.6, uncertainty values are rounded to **at most 2 significant figur
 display and on the certificate (`apps/api/app/utils/uncertainty_format.py::round_to_sig_figs`,
 mirrored on the frontend as `apps/web/src/lib/uncertainty-format.ts::roundToSigFigs`). The
 certificate additionally prints a full-sentence GUM §7.2.4-style statement (adapted for a
-calibration *function* rather than a single measurement result, since that's what MAR
+calibration *function* rather than a single measurement result, since that's what Open Gauge
 certifies): value, coverage factor, basis (normal vs. t-distribution), confidence level, and
 the valid range the uncertainty applies over.
 
@@ -188,12 +188,12 @@ the valid range the uncertainty applies over.
 
 ISO/IEC 17025 §7.1.3 and §7.8.6 require that whenever a pass/fail statement is issued, the lab
 documents *which decision rule* was applied — a bare "measured value within spec" comparison
-is not sufficient once uncertainty is in the picture. MAR stores `decision_rule` and the
+is not sufficient once uncertainty is in the picture. Open Gauge stores `decision_rule` and the
 resulting `conformity_statement` on every calibration:
 
 | Rule | Behavior | When to use |
 |---|---|---|
-| `simple_acceptance` (default) | Pass iff the reading is within the channel's tolerance, ignoring uncertainty entirely. | Matches MAR's original behavior; used when no formal risk analysis has been done, or the customer hasn't agreed to a different rule. |
+| `simple_acceptance` (default) | Pass iff the reading is within the channel's tolerance, ignoring uncertainty entirely. | Matches Open Gauge's original behavior; used when no formal risk analysis has been done, or the customer hasn't agreed to a different rule. |
 | `guard_band_w_uncertainty` | Pass iff `error + U ≤ tolerance` — the acceptance zone shrinks inward by the expanded uncertainty. | Reduces false-accept risk; use when a false pass is costly. |
 | `shared_risk` | Pass iff `error − U ≤ tolerance` — the acceptance zone expands outward by the expanded uncertainty. | Reduces false-reject risk, at the cost of some false-accept risk near the boundary; use when a false fail is costly. |
 
@@ -226,7 +226,7 @@ Generated best-effort on calibration creation and on-demand via
 `GET /calibrations/{id}/certificate` (returns a 1-hour presigned MinIO URL).
 
 Per ISO/IEC 17025 §7.8.4.3, the certificate deliberately **never** prints a calibration-
-interval recommendation unless explicitly agreed with the customer — MAR doesn't have that
+interval recommendation unless explicitly agreed with the customer — Open Gauge doesn't have that
 agreement flow yet, so no interval/due-date language appears on the certificate at all.
 
 ---
@@ -254,7 +254,7 @@ in `apps/api/app/schemas/calibration.py`; frontend mirrors in `apps/web/src/type
 
 - **Phase 4 (Chebyshev basis / domain-normalized polynomial fitting)** is deferred per
   `ACTION_PLAN.md` — only worth doing if `poly_order ≥ 3` fits turn out to be common in
-  practice; MAR's raw monomial coefficients become numerically ill-conditioned at higher
+  practice; Open Gauge's raw monomial coefficients become numerically ill-conditioned at higher
   degree (GUM-6 Annex D).
-- **`predict_with_uncertainty`** exists but is unused — no MAR feature yet evaluates a
+- **`predict_with_uncertainty`** exists but is unused — no Open Gauge feature yet evaluates a
   calibration's curve against a live/arbitrary reading. Wire it up when that feature is built.

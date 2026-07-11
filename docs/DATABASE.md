@@ -1,6 +1,6 @@
-# MAR Database Schema
+# Open Gauge Database Schema
 
-MAR uses PostgreSQL as its authoritative source of truth. The schema is designed around **traceability, auditability, and historical integrity** — calibration data is immutable; records are soft-deleted, never hard-deleted; every important action is logged.
+Open Gauge uses PostgreSQL as its authoritative source of truth. The schema is designed around **traceability, auditability, and historical integrity** — calibration data is immutable; records are soft-deleted, never hard-deleted; every important action is logged.
 
 ---
 
@@ -47,7 +47,7 @@ calibration_methods  →  reusable calibration procedure definitions
 
 ### `organizations`
 
-The root grouping. Represents a company, customer, or enterprise running MAR.
+The root grouping. Represents a company, customer, or enterprise running Open Gauge.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
@@ -144,7 +144,7 @@ Top-level table for all physical assets (sensors and DAQ systems). Subtype-speci
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `asset_id` | VARCHAR(20) | NOT NULL, UNIQUE, indexed | Human-readable ID, e.g. `MAR-00421` |
+| `asset_id` | VARCHAR(20) | NOT NULL, UNIQUE, indexed | Human-readable ID, e.g. `OG-00421` |
 | `asset_type` | ENUM | NOT NULL | `sensor`, `daq` |
 | `name` | VARCHAR(255) | NOT NULL | |
 | `description` | TEXT | nullable | |
@@ -396,7 +396,7 @@ Immutable append-only audit trail.
 | `action` | VARCHAR(100) | NOT NULL, indexed | Dot-namespaced: `asset.created`, `calibration.recorded`, `user.login` |
 | `entity_type` | VARCHAR(50) | NOT NULL, indexed | `asset`, `calibration`, `certificate`, `user`, `location` |
 | `entity_id` | UUID | nullable, indexed | |
-| `entity_asset_id` | VARCHAR(20) | nullable | For assets — fast lookup by MAR ID |
+| `entity_asset_id` | VARCHAR(20) | nullable | For assets — fast lookup by Open Gauge ID |
 | `before_state` | JSONB | nullable | Snapshot before change |
 | `after_state` | JSONB | nullable | Snapshot after change |
 | `ip_address` | VARCHAR(45) | nullable | Supports IPv6 |

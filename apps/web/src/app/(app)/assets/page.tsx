@@ -139,8 +139,8 @@ function StatusBadge({ status }: { status: string }) {
 function SortIndicator({ col, sortCol, sortDir }: { col: string; sortCol: SortKey | null; sortDir: SortDir }) {
   if (sortCol !== col) return <ChevronDownIcon size={10} className="opacity-30" />;
   return sortDir === "asc"
-    ? <ChevronUpIcon size={10} className="text-mar-accent" />
-    : <ChevronDownIcon size={10} className="text-mar-accent" />;
+    ? <ChevronUpIcon size={10} className="text-og-accent" />
+    : <ChevronDownIcon size={10} className="text-og-accent" />;
 }
 
 function TypeCell({ subtype, technology }: { subtype: string | null; technology: string | null }) {
@@ -148,7 +148,7 @@ function TypeCell({ subtype, technology }: { subtype: string | null; technology:
   const capitalised = label.charAt(0).toUpperCase() + label.slice(1);
   return (
     <div>
-      <p className="text-sm text-mar-text leading-snug">{capitalised}</p>
+      <p className="text-sm text-og-text leading-snug">{capitalised}</p>
       {technology && <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{technology}</p>}
     </div>
   );
@@ -165,7 +165,7 @@ function SiteCell({ site, location }: { site: string | null; location: string | 
   const showSecond = location && location !== site;
   return (
     <div>
-      <p className="text-sm text-mar-text leading-snug">{site}</p>
+      <p className="text-sm text-og-text leading-snug">{site}</p>
       {showSecond && <p className="text-xs text-gray-400 mt-0.5 leading-snug">{location}</p>}
     </div>
   );
@@ -191,9 +191,9 @@ function DualRangeSlider({ min, max, from, to, onFromChange, onToChange }: DualR
 
   return (
     <div className="px-1 pt-2 pb-1">
-      <div className="relative h-1.5 rounded-full bg-mar-border">
+      <div className="relative h-1.5 rounded-full bg-og-border">
         <div
-          className="absolute h-full rounded-full bg-mar-accent"
+          className="absolute h-full rounded-full bg-og-accent"
           style={{ left: `${fromPct}%`, right: `${100 - toPct}%` }}
         />
       </div>
@@ -205,7 +205,7 @@ function DualRangeSlider({ min, max, from, to, onFromChange, onToChange }: DualR
             const v = Math.min(Number(e.target.value), to);
             onFromChange(v);
           }}
-          className="mar-range absolute inset-0"
+          className="og-range absolute inset-0"
           style={{ zIndex: from >= to ? 5 : 3 }}
         />
         <input
@@ -215,7 +215,7 @@ function DualRangeSlider({ min, max, from, to, onFromChange, onToChange }: DualR
             const v = Math.max(Number(e.target.value), from);
             onToChange(v);
           }}
-          className="mar-range absolute inset-0"
+          className="og-range absolute inset-0"
           style={{ zIndex: 4 }}
         />
       </div>
@@ -242,8 +242,8 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
 
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
   return (
-    <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer hover:text-mar-text">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-mar-action" />
+    <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer hover:text-og-text">
+      <input type="checkbox" checked={checked} onChange={onChange} className="accent-og-action" />
       {label}
     </label>
   );
@@ -288,18 +288,18 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
   const toDay   = filters.nextDueTo   ?? options.maxDay;
 
   return (
-    <div className="absolute top-full right-0 mt-1 w-80 bg-mar-surface border border-mar-border-md rounded-xl shadow-lg z-50 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
-        <span className="text-xs font-semibold text-mar-text">Filters</span>
+    <div className="absolute top-full right-0 mt-1 w-80 bg-og-surface border border-og-border-md rounded-xl shadow-lg z-50 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+        <span className="text-xs font-semibold text-og-text">Filters</span>
         {hasFilters && (
           <button type="button" onClick={() => onChange(INITIAL_FILTERS)}
-            className="text-[10px] text-mar-accent hover:underline">
+            className="text-[10px] text-og-accent hover:underline">
             Clear all
           </button>
         )}
       </div>
 
-      <div className="max-h-[520px] overflow-y-auto divide-y divide-mar-border">
+      <div className="max-h-[520px] overflow-y-auto divide-y divide-og-border">
 
         {/* Status */}
         <FilterSection title="Status">
@@ -337,7 +337,7 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
             <select
               value={filters.rangeUnit}
               onChange={(e) => onChange({ ...filters, rangeUnit: e.target.value, rangeMin: "", rangeMax: "" })}
-              className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text outline-hidden"
+              className="w-full text-xs bg-og-surface-alt border border-og-border-md rounded-lg px-2.5 py-1.5 text-og-text outline-hidden"
             >
               <option value="">Select unit…</option>
               {options.units.map((u) => <option key={u} value={u}>{u}</option>)}
@@ -349,7 +349,7 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
                   placeholder="Min"
                   value={filters.rangeMin}
                   onChange={(e) => onChange({ ...filters, rangeMin: e.target.value })}
-                  className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text placeholder:text-gray-400 outline-hidden"
+                  className="w-full text-xs bg-og-surface-alt border border-og-border-md rounded-lg px-2.5 py-1.5 text-og-text placeholder:text-gray-400 outline-hidden"
                 />
                 <span className="text-xs text-gray-400 shrink-0">–</span>
                 <input
@@ -357,7 +357,7 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
                   placeholder="Max"
                   value={filters.rangeMax}
                   onChange={(e) => onChange({ ...filters, rangeMax: e.target.value })}
-                  className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text placeholder:text-gray-400 outline-hidden"
+                  className="w-full text-xs bg-og-surface-alt border border-og-border-md rounded-lg px-2.5 py-1.5 text-og-text placeholder:text-gray-400 outline-hidden"
                 />
                 <span className="text-[10px] text-gray-400 shrink-0">{filters.rangeUnit}</span>
               </div>
@@ -380,9 +380,9 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
         )}
       </div>
 
-      <div className="px-4 py-3 border-t border-mar-border">
+      <div className="px-4 py-3 border-t border-og-border">
         <button type="button" onClick={onClose}
-          className="w-full py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+          className="w-full py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
           Apply
         </button>
       </div>
@@ -394,8 +394,8 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
 // Table rows — supports multichannel expand with HTML rowspan
 // ---------------------------------------------------------------------------
 
-const SHARED_TD = "px-4 py-2.5 border-b border-mar-border align-top";
-const PER_CH_TD = "px-4 py-2.5 border-b border-mar-border align-top";
+const SHARED_TD = "px-4 py-2.5 border-b border-og-border align-top";
+const PER_CH_TD = "px-4 py-2.5 border-b border-og-border align-top";
 
 interface RowProps {
   asset: AssetListItem;
@@ -410,14 +410,14 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
   // Shared cell content
   const sharedId = (
     <a href={`/assets/${asset.id}`}
-      className="font-mono text-xs font-semibold text-mar-accent hover:underline whitespace-nowrap">
+      className="font-mono text-xs font-semibold text-og-accent hover:underline whitespace-nowrap">
       {asset.asset_id}
     </a>
   );
-  const sharedName = <p className="text-sm font-medium text-mar-text leading-snug">{asset.name}</p>;
+  const sharedName = <p className="text-sm font-medium text-og-text leading-snug">{asset.name}</p>;
   const sharedMfr = (
     <div>
-      <p className="text-sm text-mar-text leading-snug">{asset.manufacturer}</p>
+      <p className="text-sm text-og-text leading-snug">{asset.manufacturer}</p>
       <p className="text-xs text-gray-400 mt-0.5 leading-snug">{asset.model}</p>
     </div>
   );
@@ -425,7 +425,7 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
   const sharedSite = <SiteCell site={asset.site_name} location={asset.location_name} />;
   const sharedChevron = isMulti ? (
     <button type="button" onClick={onToggle}
-      className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+      className="p-1 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
       {expanded ? <ChevronUpIcon size={12} /> : <ChevronRightIcon size={12} />}
     </button>
   ) : null;
@@ -448,12 +448,12 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
     // Single row — for multi-channel collapsed, show summary instead of first channel details
     const ch = visibleChannels[0];
     return (
-      <tr className="border-b border-mar-border hover:bg-mar-surface-alt transition-colors">
+      <tr className="border-b border-og-border hover:bg-og-surface-alt transition-colors">
         <td className="px-4 py-2.5 whitespace-nowrap">{sharedId}</td>
         <td className="px-4 py-2.5 max-w-[200px]">{sharedName}</td>
         <td className="px-4 py-2.5">
           {isMulti
-            ? <p className="text-sm text-mar-text leading-snug">{asset.channels.length} channels</p>
+            ? <p className="text-sm text-og-text leading-snug">{asset.channels.length} channels</p>
             : <TypeCell subtype={ch.physical_quantity || asset.subtype} technology={ch.technology ?? asset.technology} />}
         </td>
         <td className="px-4 py-2.5 whitespace-nowrap">
@@ -479,7 +479,7 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
   return (
     <>
       {visibleChannels.map((ch, idx) => (
-        <tr key={ch.channel_id} className="border-b border-mar-border hover:bg-mar-surface-alt/60 transition-colors">
+        <tr key={ch.channel_id} className="border-b border-og-border hover:bg-og-surface-alt/60 transition-colors">
           {idx === 0 && (
             <td className={SHARED_TD} rowSpan={rowCount} style={{ verticalAlign: "top" }}>
               {sharedId}
@@ -527,12 +527,12 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
   const subtypeLabel = asset.subtype ? (SUBTYPE_LABEL[asset.subtype] ?? asset.subtype) : null;
   const range = isMulti ? null : formatRange(asset.range_min, asset.range_max, asset.range_unit);
   return (
-    <a href={`/assets/${asset.id}`} className="block bg-mar-surface border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-xs transition-all cursor-pointer">
+    <a href={`/assets/${asset.id}`} className="block bg-og-surface border border-og-border rounded-xl p-4 hover:border-og-border-md hover:shadow-xs transition-all cursor-pointer">
       <div className="flex items-start justify-between mb-3">
-        <span className="font-mono text-[10px] font-semibold text-mar-accent">{asset.asset_id}</span>
+        <span className="font-mono text-[10px] font-semibold text-og-accent">{asset.asset_id}</span>
         <StatusBadge status={asset.calibration_status} />
       </div>
-      <p className="text-sm font-semibold text-mar-text leading-tight mb-1">{asset.name}</p>
+      <p className="text-sm font-semibold text-og-text leading-tight mb-1">{asset.name}</p>
       <p className="text-xs text-gray-400 truncate">{asset.manufacturer} · {asset.model}</p>
       <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
         <span>
@@ -557,14 +557,14 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
 function suggestNextId(assets: AssetListItem[]): string {
   let max = 0;
   for (const a of assets) {
-    const m = a.asset_id.match(/^MAR-(\d{5})$/);
+    const m = a.asset_id.match(/^Open Gauge-(\d{5})$/);
     if (m) max = Math.max(max, parseInt(m[1], 10));
   }
-  return `MAR-${String(max + 1).padStart(5, "0")}`;
+  return `Open Gauge-${String(max + 1).padStart(5, "0")}`;
 }
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
-const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
+const IB_OK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
 const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
 interface NewAssetModalProps {
@@ -671,13 +671,13 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-lg bg-mar-surface border border-mar-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative z-10 w-full max-w-lg bg-og-surface border border-og-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-mar-border">
-          <h2 className="text-sm font-semibold text-mar-text">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
+          <h2 className="text-sm font-semibold text-og-text">
             {mode === "choose" ? "Add asset" : mode === "new" ? "New asset" : "Copy from existing"}
           </h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
             <XIcon size={15} />
           </button>
         </div>
@@ -691,13 +691,13 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
               <button
                 type="button"
                 onClick={() => setMode("new")}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-mar-border hover:border-mar-accent hover:bg-mar-accent/5 transition-colors group text-left"
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-og-border hover:border-og-accent hover:bg-og-accent/5 transition-colors group text-left"
               >
-                <div className="w-10 h-10 rounded-full bg-mar-action/10 flex items-center justify-center group-hover:bg-mar-action/20 transition-colors">
-                  <PlusIcon size={18} className="text-mar-action" />
+                <div className="w-10 h-10 rounded-full bg-og-action/10 flex items-center justify-center group-hover:bg-og-action/20 transition-colors">
+                  <PlusIcon size={18} className="text-og-action" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-mar-text">New asset</p>
+                  <p className="text-sm font-semibold text-og-text">New asset</p>
                   <p className="text-xs text-gray-400 mt-0.5">Start from scratch with a blank record.</p>
                 </div>
               </button>
@@ -707,13 +707,13 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                   setMode("copy");
                   setNewCopyId(suggestNextId(existingAssets));
                 }}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-mar-border hover:border-mar-accent hover:bg-mar-accent/5 transition-colors group text-left"
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-og-border hover:border-og-accent hover:bg-og-accent/5 transition-colors group text-left"
               >
-                <div className="w-10 h-10 rounded-full bg-mar-accent/10 flex items-center justify-center group-hover:bg-mar-accent/20 transition-colors">
-                  <CopyIcon size={18} className="text-mar-accent" />
+                <div className="w-10 h-10 rounded-full bg-og-accent/10 flex items-center justify-center group-hover:bg-og-accent/20 transition-colors">
+                  <CopyIcon size={18} className="text-og-accent" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-mar-text">Copy existing</p>
+                  <p className="text-sm font-semibold text-og-text">Copy existing</p>
                   <p className="text-xs text-gray-400 mt-0.5">Duplicate a registered asset&apos;s metadata.</p>
                 </div>
               </button>
@@ -729,7 +729,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                 <input
                   value={form.asset_id}
                   onChange={(e) => set("asset_id")(e.target.value)}
-                  placeholder="e.g. MAR-00001"
+                  placeholder="e.g. OG-00001"
                   className={`${IB} ${formErrors.asset_id ? IB_ERR : IB_OK} font-mono`}
                 />
                 {formErrors.asset_id && <p className="text-xs text-red-500">{formErrors.asset_id}</p>}
@@ -747,8 +747,8 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                       onClick={() => set("asset_type")(t)}
                       className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors capitalize ${
                         form.asset_type === t
-                          ? "border-mar-accent bg-mar-accent/10 text-mar-accent"
-                          : "border-mar-border-md text-gray-400 hover:bg-mar-surface-alt"
+                          ? "border-og-accent bg-og-accent/10 text-og-accent"
+                          : "border-og-border-md text-gray-400 hover:bg-og-surface-alt"
                       }`}
                     >
                       {t === "daq" ? "DAQ" : "Sensor"}
@@ -801,20 +801,20 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                       autoFocus
                     />
                   </div>
-                  <div className="rounded-xl border border-mar-border overflow-hidden max-h-72 overflow-y-auto">
+                  <div className="rounded-xl border border-og-border overflow-hidden max-h-72 overflow-y-auto">
                     {filteredSources.length === 0 ? (
                       <p className="px-4 py-6 text-sm text-gray-400 text-center">No assets found.</p>
                     ) : (
-                      <div className="divide-y divide-mar-border">
+                      <div className="divide-y divide-og-border">
                         {filteredSources.map((a) => (
                           <button
                             key={a.id}
                             type="button"
                             onClick={() => setSelectedSource(a)}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-mar-surface-alt transition-colors"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-og-surface-alt transition-colors"
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-mar-text truncate">{a.name}</p>
+                              <p className="text-sm font-medium text-og-text truncate">{a.name}</p>
                               <p className="text-xs text-gray-400 mt-0.5">
                                 <span className="font-mono">{a.asset_id}</span>
                                 {" · "}{a.manufacturer} {a.model}
@@ -831,13 +831,13 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
               ) : (
                 <>
                   {/* Selected source summary */}
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-mar-surface-alt border border-mar-border">
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-og-surface-alt border border-og-border">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-400">Copying from</p>
-                      <p className="text-sm font-semibold text-mar-text">{selectedSource.name}</p>
+                      <p className="text-sm font-semibold text-og-text">{selectedSource.name}</p>
                       <p className="text-xs font-mono text-gray-400 mt-0.5">{selectedSource.asset_id} · {selectedSource.manufacturer} {selectedSource.model}</p>
                     </div>
-                    <button type="button" onClick={() => setSelectedSource(null)} className="text-xs text-gray-400 hover:text-mar-text transition-colors shrink-0">
+                    <button type="button" onClick={() => setSelectedSource(null)} className="text-xs text-gray-400 hover:text-og-text transition-colors shrink-0">
                       Change
                     </button>
                   </div>
@@ -847,7 +847,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                     <input
                       value={newCopyId}
                       onChange={(e) => { setNewCopyId(e.target.value); setCopyIdError(null); }}
-                      placeholder="e.g. MAR-00002"
+                      placeholder="e.g. OG-00002"
                       className={`${IB} ${copyIdError ? IB_ERR : IB_OK} font-mono`}
                     />
                     {copyIdError && <p className="text-xs text-red-500">{copyIdError}</p>}
@@ -865,11 +865,11 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
 
         {/* Footer */}
         {mode !== "choose" && (
-          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-mar-border">
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-og-border">
             <button
               type="button"
               onClick={() => { setMode("choose"); setSaveError(null); setCopyError(null); setFormErrors({}); }}
-              className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+              className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
             >
               Back
             </button>
@@ -878,7 +878,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                 type="button"
                 onClick={handleCreate}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
               >
                 {saving && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 Create asset
@@ -888,7 +888,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                 type="button"
                 onClick={handleDuplicate}
                 disabled={copying}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
               >
                 {copying && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 Duplicate asset
@@ -1108,25 +1108,25 @@ export default function AssetsPage() {
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-mar-text">Asset registry</h1>
+          <h1 className="text-xl font-bold text-og-text">Asset registry</h1>
           <p className="text-sm text-gray-400 mt-1">
             {loading ? "Loading…" : `${filtered.length} of ${assets.length} assets`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
             <QrCodeIcon size={13} />
             Scan QR
           </button>
           <button type="button"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
             <DownloadIcon size={13} />
             Export
           </button>
           <button type="button"
             onClick={() => setNewAssetOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
             <PlusIcon size={13} />
             New asset
           </button>
@@ -1134,14 +1134,14 @@ export default function AssetsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
         <div className="flex items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg">
+          <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-og-surface-alt border border-og-border-md rounded-lg">
             <SearchIcon size={13} className="text-gray-400 shrink-0" />
             <input
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, ID, serial, model…"
-              className="flex-1 bg-transparent text-xs text-mar-text placeholder:text-gray-400 outline-hidden"
+              className="flex-1 bg-transparent text-xs text-og-text placeholder:text-gray-400 outline-hidden"
             />
           </div>
 
@@ -1149,13 +1149,13 @@ export default function AssetsPage() {
             <button type="button" onClick={() => setFilterOpen((o) => !o)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
                 activeFilterCount > 0
-                  ? "border-mar-accent text-mar-accent bg-mar-accent/5"
-                  : "text-gray-500 dark:text-gray-400 border-mar-border-md hover:bg-mar-surface-alt"
+                  ? "border-og-accent text-og-accent bg-og-accent/5"
+                  : "text-gray-500 dark:text-gray-400 border-og-border-md hover:bg-og-surface-alt"
               }`}>
               <FilterIcon size={13} />
               Filters
               {activeFilterCount > 0 && (
-                <span className="bg-mar-accent text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="bg-og-accent text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -1170,16 +1170,16 @@ export default function AssetsPage() {
             />
           </div>
 
-          <div className="flex items-center border border-mar-border-md rounded-lg overflow-hidden">
+          <div className="flex items-center border border-og-border-md rounded-lg overflow-hidden">
             <button type="button" onClick={() => setViewMode("list")}
               className={`p-1.5 transition-colors ${
-                viewMode === "list" ? "bg-mar-accent/10 text-mar-accent" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                viewMode === "list" ? "bg-og-accent/10 text-og-accent" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               }`}>
               <ListViewIcon size={14} />
             </button>
             <button type="button" onClick={() => setViewMode("grid")}
               className={`p-1.5 transition-colors ${
-                viewMode === "grid" ? "bg-mar-accent/10 text-mar-accent" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                viewMode === "grid" ? "bg-og-accent/10 text-og-accent" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               }`}>
               <GridViewIcon size={14} />
             </button>
@@ -1188,15 +1188,15 @@ export default function AssetsPage() {
       </div>
 
       {locationFilter && (
-        <div className="flex items-center gap-3 rounded-xl bg-mar-accent/5 border border-mar-accent/20 px-4 py-2.5">
-          <span className="text-xs text-mar-accent font-medium">
+        <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
+          <span className="text-xs text-og-accent font-medium">
             Filtered by location: <span className="font-semibold">{locationFilter.name}</span>
             {locationFilter.includeDescendants && <span className="font-normal text-gray-500"> (including sub-locations)</span>}
           </span>
           <button
             type="button"
             onClick={() => setLocationFilter(null)}
-            className="ml-auto text-[10px] text-gray-400 hover:text-mar-text transition-colors"
+            className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
             View all ✕
           </button>
@@ -1204,14 +1204,14 @@ export default function AssetsPage() {
       )}
 
       {quickFilter && (
-        <div className="flex items-center gap-3 rounded-xl bg-mar-accent/5 border border-mar-accent/20 px-4 py-2.5">
-          <span className="text-xs text-mar-accent font-medium">
+        <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
+          <span className="text-xs text-og-accent font-medium">
             Showing: <span className="font-semibold">{quickFilter.label}</span>
           </span>
           <button
             type="button"
             onClick={() => setQuickFilter(null)}
-            className="ml-auto text-[10px] text-gray-400 hover:text-mar-text transition-colors"
+            className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
             View all ✕
           </button>
@@ -1226,19 +1226,19 @@ export default function AssetsPage() {
 
       {loading && (
         <div className="flex items-center justify-center py-20 text-gray-400">
-          <span className="inline-block w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin mr-3" />
+          <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
           Loading assets…
         </div>
       )}
 
       {!loading && !error && viewMode === "list" && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-x-auto">
+        <div className="bg-og-surface rounded-xl border border-og-border shadow-xs overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-mar-border">
+              <tr className="border-b border-og-border">
                 {SORT_COLS.map(({ key, label }) => (
                   <th key={key} onClick={() => handleSort(key)}
-                    className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:text-mar-text transition-colors">
+                    className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:text-og-text transition-colors">
                     <span className="inline-flex items-center gap-1">
                       {label}
                       <SortIndicator col={key} sortCol={sortCol} sortDir={sortDir} />

@@ -115,7 +115,7 @@ export default function ActivityPage() {
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-mar-text">Activity log</h1>
+          <h1 className="text-xl font-bold text-og-text">Activity log</h1>
           <p className="text-sm text-gray-400 mt-1">
             {loading ? "Loading…" : `${filtered.length} of ${logs.length} entries loaded`}
           </p>
@@ -123,27 +123,27 @@ export default function ActivityPage() {
       </div>
 
       {actorIdParam && (
-        <div className="rounded-lg bg-mar-surface border border-mar-accent/30 px-4 py-2 flex items-center gap-2 text-xs text-mar-text">
-          <span className="text-mar-accent font-semibold">Filtered by user</span>
+        <div className="rounded-lg bg-og-surface border border-og-accent/30 px-4 py-2 flex items-center gap-2 text-xs text-og-text">
+          <span className="text-og-accent font-semibold">Filtered by user</span>
           <span className="text-gray-400">Showing activity for a specific user.</span>
-          <a href="/activity" className="ml-auto text-mar-accent hover:underline">Clear filter</a>
+          <a href="/activity" className="ml-auto text-og-accent hover:underline">Clear filter</a>
         </div>
       )}
 
       {/* Toolbar */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
         <div className="flex items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg">
+          <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-og-surface-alt border border-og-border-md rounded-lg">
             <SearchIcon size={13} className="text-gray-400 shrink-0" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by user, action, asset ID…"
-              className="flex-1 bg-transparent text-xs text-mar-text placeholder:text-gray-400 outline-hidden"
+              className="flex-1 bg-transparent text-xs text-og-text placeholder:text-gray-400 outline-hidden"
             />
           </div>
-          <div className="flex items-center gap-1 p-1 bg-mar-surface-alt border border-mar-border rounded-lg">
+          <div className="flex items-center gap-1 p-1 bg-og-surface-alt border border-og-border rounded-lg">
             {ENTITY_FILTERS.map((f) => (
               <button
                 key={f.value}
@@ -151,8 +151,8 @@ export default function ActivityPage() {
                 onClick={() => setEntityType(f.value)}
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                   entityType === f.value
-                    ? "bg-mar-surface text-mar-text shadow-xs border border-mar-border"
-                    : "text-gray-400 hover:text-mar-text"
+                    ? "bg-og-surface text-og-text shadow-xs border border-og-border"
+                    : "text-gray-400 hover:text-og-text"
                 }`}
               >
                 {f.label}
@@ -170,14 +170,14 @@ export default function ActivityPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-gray-400">
-          <span className="inline-block w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin mr-3" />
+          <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
           Loading activity…
         </div>
       ) : (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-x-auto">
+        <div className="bg-og-surface rounded-xl border border-og-border shadow-xs overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-mar-border">
+              <tr className="border-b border-og-border">
                 <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Date</th>
                 <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">User</th>
                 <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Entity</th>
@@ -198,7 +198,7 @@ export default function ActivityPage() {
                   const dateStr = d.toLocaleDateString("en-GB", { year: "numeric", month: "2-digit", day: "2-digit" });
                   const timeStr = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
                   return (
-                    <tr key={log.id} className="border-b border-mar-border hover:bg-mar-surface-alt transition-colors">
+                    <tr key={log.id} className="border-b border-og-border hover:bg-og-surface-alt transition-colors">
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         <span className="font-mono text-xs text-gray-500">{dateStr} {timeStr}</span>
                       </td>
@@ -215,7 +215,7 @@ export default function ActivityPage() {
                         <EntityBadge entityType={log.entity_type} />
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
-                        <span className="text-sm font-medium text-mar-text">{actionLabel(log.action)}</span>
+                        <span className="text-sm font-medium text-og-text">{actionLabel(log.action)}</span>
                       </td>
                       <td className="px-4 py-2.5">
                         <span className="text-xs font-mono text-gray-500">{describeLog(log)}</span>
@@ -227,14 +227,14 @@ export default function ActivityPage() {
             </tbody>
           </table>
           {hasMore && (
-            <div className="flex items-center justify-center py-4 border-t border-mar-border">
+            <div className="flex items-center justify-center py-4 border-t border-og-border">
               <button
                 type="button"
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50"
               >
-                {loadingMore && <span className="w-3 h-3 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />}
+                {loadingMore && <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />}
                 {loadingMore ? "Loading…" : "Load more"}
               </button>
             </div>

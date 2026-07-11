@@ -13,10 +13,10 @@ const ASSET_TYPE_LABEL: Record<string, string> = {
 
 export default function RecentAssets({ data }: { data: RecentAsset[] }) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-mar-text">Recently updated assets</h3>
+          <h3 className="text-sm font-semibold text-og-text">Recently updated assets</h3>
           <p className="text-xs text-gray-400 mt-0.5">Most recent edits across all locations</p>
         </div>
         <ActivityIcon size={14} className="text-gray-300 mt-0.5" />
@@ -31,7 +31,7 @@ export default function RecentAssets({ data }: { data: RecentAsset[] }) {
             <Link
               key={asset.id}
               href={`/assets/${asset.id}`}
-              className="shrink-0 w-52 border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-xs transition-all"
+              className="shrink-0 w-52 border border-og-border rounded-xl p-4 hover:border-og-border-md hover:shadow-xs transition-all"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-mono text-gray-400">{asset.asset_id}</span>
@@ -39,7 +39,7 @@ export default function RecentAssets({ data }: { data: RecentAsset[] }) {
                   {typeLabel}
                 </span>
               </div>
-              <p className="text-sm font-semibold text-mar-text leading-tight mb-1">{asset.name}</p>
+              <p className="text-sm font-semibold text-og-text leading-tight mb-1">{asset.name}</p>
               <p className="text-xs text-gray-400 truncate">
                 {asset.manufacturer} · {asset.model}
               </p>

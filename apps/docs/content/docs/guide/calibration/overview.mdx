@@ -3,10 +3,10 @@ title: Calibration overview
 description: The end-to-end calibration workflow — the wizard, analyze vs. save, and where each result lives.
 ---
 
-Calibration is the core of what MAR does: comparing a sensor's readings against a trusted
+Calibration is the core of what Open Gauge does: comparing a sensor's readings against a trusted
 reference, fitting a correction curve, evaluating measurement uncertainty, and issuing a
-pass/fail statement — all following [JCGM 100:2008 (GUM)](/docs/guide/reference/standards-glossary)
-and [ISO/IEC 17025:2017](/docs/guide/reference/standards-glossary).
+pass/fail statement — all following [JCGM 100:2008 (GUM)](../reference/standards-glossary.mdx)
+and [ISO/IEC 17025:2017](../reference/standards-glossary.mdx).
 
 ## Two backend touchpoints
 
@@ -34,12 +34,12 @@ Start a calibration from an asset's channel. The wizard has three steps:
    conditions, and (for internal calibrations) the reference standard used and procedure
    followed. This step also has a **"Coefficients only (no raw data)"** checkbox for
    externally-issued certificates that state a polynomial directly — see
-   [Coefficients-only calibrations](/docs/guide/calibration/coefficients-only).
+   [Coefficients-only calibrations](./coefficients-only.mdx).
 2. **Raw data** — enter (reference, measured) point pairs. See
-   [Curve fitting](/docs/guide/calibration/curve-fitting) for what MAR does with them.
+   [Curve fitting](./curve-fitting.mdx) for what Open Gauge does with them.
 3. **Analysis / review** — the live-computed fit, uncertainty budget, and conformity
-   statement. See [The uncertainty budget](/docs/guide/calibration/uncertainty-budget) and
-   [Decision rules](/docs/guide/calibration/decision-rules).
+   statement. See [The uncertainty budget](./uncertainty-budget.mdx) and
+   [Decision rules](./decision-rules.mdx).
 
 Saving is never blocked by a failed (non-conforming) result — a failed calibration is still an
 important, real record. If the result doesn't conform to the channel's spec, the save
@@ -49,11 +49,11 @@ save button relabels to **"Save anyway."**
 ## Internal vs. external calibrations
 
 - **Internal** — performed in-house, against one of your own assets flagged as a
-  [reference standard](/docs/guide/sensors/adding-a-sensor#calibration-role). When you pick a
-  reference asset, MAR automatically fetches that asset's own most recent calibration's
+  [reference standard](../sensors/adding-a-sensor.mdx#calibration-role). When you pick a
+  reference asset, Open Gauge automatically fetches that asset's own most recent calibration's
   expanded uncertainty and folds it into this calibration's uncertainty budget as a
   `reference_standard` contribution — see
-  [The uncertainty budget](/docs/guide/calibration/uncertainty-budget#contributions).
+  [The uncertainty budget](./uncertainty-budget.mdx#contributions).
 - **External** — performed by an outside calibration lab. You record the lab's name and
   certificate number; if the lab's certificate states a polynomial directly rather than raw
   data, use the coefficients-only path instead of re-deriving a fit from scratch.

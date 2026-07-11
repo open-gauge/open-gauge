@@ -1,6 +1,6 @@
 {
   "title": "Documentation",
-  "description": "Knowledge center: how MAR works, self-hosting, and operational workflows.",
+  "description": "Knowledge center: how Open Gauge works, self-hosting, and operational workflows.",
   "root": true,
   "pages": [
     "index",
@@ -10,7 +10,7 @@
     "self-hosting",
     "---Concepts---",
     "concepts",
-    "---Operating MAR---",
+    "---Operating Open Gauge---",
     "sensors",
     "locations",
     "procedures",

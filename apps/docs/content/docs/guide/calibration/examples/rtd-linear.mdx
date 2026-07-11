@@ -7,15 +7,15 @@ Exercises: linear regression, all four Type A/B budget contributions at once (fi
 reference standard, resolution, sensor nominal accuracy), the reference-standard-uncertainty
 auto-fetch feature, and the three decision rules diverging on identical data.
 
-Every number below was produced by running MAR's real calculation engine against the input
+Every number below was produced by running Open Gauge's real calculation engine against the input
 data shown, then independently re-derived by hand from the underlying formulas to confirm they
 match. If you enter the same setup and data through the UI, you should see the same numbers (up
-to the [display rounding](/docs/guide/calibration/examples/rounding-and-troubleshooting)
+to the [display rounding](./rounding-and-troubleshooting.mdx)
 described at the end).
 
 This example has **two calibrations**: first you calibrate a reference thermometer (so it has
 an expanded uncertainty on file), then you calibrate the working sensor *against* that
-reference — this is what makes MAR auto-populate the "reference standard" budget row.
+reference — this is what makes Open Gauge auto-populate the "reference standard" budget row.
 
 ## 1.0 Setup — two assets
 
@@ -57,7 +57,7 @@ One channel:
 | Range min / max | 0 / 100 |
 | Unit | °C |
 | Accuracy value | 0.5 |
-| Accuracy unit | °C (a real unit means "absolute" — see [The "% FS" convention](/docs/guide/sensors/adding-a-sensor#the-fs-convention)) |
+| Accuracy unit | °C (a real unit means "absolute" — see [The "% FS" convention](../../sensors/adding-a-sensor.mdx#the-fs-convention)) |
 | Resolution | 0.1 |
 | Resolution unit | °C |
 | Measurement uncertainty | 0.3 |
@@ -204,7 +204,7 @@ $$
 
 Repeat 1.2 with the channel's Accuracy value changed to **0.4** (edit the channel, save, then
 re-run the same 6 points through Step 3 of a new calibration) and try all three
-[decision rules](/docs/guide/calibration/decision-rules) with "Incl. sensor nominal accuracy"
+[decision rules](../decision-rules.mdx) with "Incl. sensor nominal accuracy"
 still checked. Everything above is unchanged (same fit, same budget, same $U = 0.342120$) —
 only the pass/fail flips:
 

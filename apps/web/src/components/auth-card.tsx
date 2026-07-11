@@ -25,7 +25,7 @@ export default function AuthCard() {
         tab === "signin"
           ? await login(email, password)
           : await register(email, name, password);
-      localStorage.setItem("mar_token", token);
+      localStorage.setItem("og_token", token);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -37,17 +37,17 @@ export default function AuthCard() {
   const switchTab = (t: Tab) => { setTab(t); setError(null); };
 
   const inputClass =
-    "w-full px-3 py-2 text-sm border border-mar-border-md dark:border-mar-border bg-mar-surface rounded-lg outline-hidden focus:border-mar-accent focus:ring-2 focus:ring-mar-accent/20 transition-all placeholder:text-gray-400 text-mar-text";
+    "w-full px-3 py-2 text-sm border border-og-border-md dark:border-og-border bg-og-surface rounded-lg outline-hidden focus:border-og-accent focus:ring-2 focus:ring-og-accent/20 transition-all placeholder:text-gray-400 text-og-text";
 
   return (
-    <div className="bg-mar-surface rounded-2xl shadow-xl border border-mar-border p-8 w-full">
+    <div className="bg-og-surface rounded-2xl shadow-xl border border-og-border p-8 w-full">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-mar-text">Access your workspace</h2>
+        <h2 className="text-xl font-semibold text-og-text">Access your workspace</h2>
         <p className="text-sm text-gray-500 mt-1">Authenticate to continue to the registry.</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-mar-surface-alt rounded-lg p-1 mb-6 border border-mar-border">
+      <div className="flex bg-og-surface-alt rounded-lg p-1 mb-6 border border-og-border">
         {(["signin", "register"] as Tab[]).map((t) => (
           <button
             key={t}
@@ -55,7 +55,7 @@ export default function AuthCard() {
             onClick={() => switchTab(t)}
             className={`flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all ${
               tab === t
-                ? "bg-mar-surface text-mar-text shadow-xs"
+                ? "bg-og-surface text-og-text shadow-xs"
                 : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
@@ -67,23 +67,23 @@ export default function AuthCard() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {tab === "register" && (
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-mar-text mb-1">Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-og-text mb-1">Name</label>
             <input id="name" type="text" autoComplete="name" required placeholder="Jane Smith"
               value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-mar-text mb-1">Email</label>
+          <label htmlFor="email" className="block text-sm font-medium text-og-text mb-1">Email</label>
           <input id="email" type="email" autoComplete="email" required placeholder="engineer@lab.io"
             value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label htmlFor="password" className="block text-sm font-medium text-mar-text">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-og-text">Password</label>
             {tab === "signin" && (
-              <a href="/auth/forgot-password" className="text-xs text-gray-400 hover:text-mar-accent transition-colors">
+              <a href="/auth/forgot-password" className="text-xs text-gray-400 hover:text-og-accent transition-colors">
                 Forgot?
               </a>
             )}
@@ -108,7 +108,7 @@ export default function AuthCard() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 px-4 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full py-2.5 px-4 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading ? (
             <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -119,16 +119,16 @@ export default function AuthCard() {
       </form>
 
       <div className="my-6 flex items-center gap-3">
-        <div className="flex-1 h-px bg-mar-border-md" />
+        <div className="flex-1 h-px bg-og-border-md" />
         <span className="text-xs text-gray-400 font-medium tracking-wide">OR CONTINUE WITH</span>
-        <div className="flex-1 h-px bg-mar-border-md" />
+        <div className="flex-1 h-px bg-og-border-md" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => alert("GitHub OAuth not configured in this deployment.")}
-          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
         >
           <GitHubIcon />
           GitHub
@@ -136,7 +136,7 @@ export default function AuthCard() {
         <button
           type="button"
           onClick={() => alert("SSO / SAML not configured in this deployment.")}
-          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+          className="flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
         >
           <SSOIcon />
           SSO / SAML

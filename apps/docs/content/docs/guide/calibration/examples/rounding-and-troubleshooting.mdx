@@ -1,11 +1,11 @@
 ---
 title: Rounding, and if your numbers don't match
-description: The two display-rounding rules MAR applies, and how to debug a worked example that doesn't reproduce.
+description: The two display-rounding rules Open Gauge applies, and how to debug a worked example that doesn't reproduce.
 ---
 
 ## Rounding — what you'll actually see on screen
 
-The raw numbers in each [worked example](/docs/guide/calibration/examples) are what MAR's
+The raw numbers in each [worked example](./index.mdx) are what Open Gauge's
 calculation engine produces internally (and what's stored in the database, already rounded
 server-side to 8 decimal places — not the same thing as the display rule below). Two different
 rounding rules apply on top of that in the UI:
@@ -14,7 +14,7 @@ rounding rules apply on top of that in the UI:
    display, per GUM §7.2.6 — in the wizard, the historical calibration view, and the
    certificate PDF. This is the "shown rounded: …" value in each worked example.
 2. **Every other stat** ([R², RMSE, max error, hysteresis, repeatability,
-   ...](/docs/guide/calibration/curve-fitting)) goes through a general-purpose fixed-decimal
+   ...](../curve-fitting.mdx)) goes through a general-purpose fixed-decimal
    formatter that strips trailing zeros. The wizard's live analysis defaults to 6 decimals; the
    historical-calibration view on the asset page defaults to 4 — so the same stored value can
    display with one fewer decimal digit once a calibration is saved and you're looking at its
@@ -30,14 +30,14 @@ changes what's displayed (combined/expanded uncertainty).
 ## If your numbers don't match
 
 - **Off by a unit-conversion-sized factor (10, 100, 1000...)** — check that the channel's
-  Accuracy unit matches the reference/measured unit you used when entering points. MAR does
+  Accuracy unit matches the reference/measured unit you used when entering points. Open Gauge does
   not currently validate that these agree.
 - **"% FS" doesn't appear in the Accuracy/Resolution/Uncertainty unit dropdown** — it only
   shows up once both Range min and Range max are filled in on that channel; see
-  [The "% FS" convention](/docs/guide/sensors/adding-a-sensor#the-fs-convention).
+  [The "% FS" convention](../../sensors/adding-a-sensor.mdx#the-fs-convention).
 - **"Reference standard" row missing** (Example 1.2) — confirm Asset A's calibration (1.1) was
   actually *saved*, not just analyzed, before starting Asset B's calibration, and that Asset
-  A's channel has [Calibration role](/docs/guide/sensors/adding-a-sensor#calibration-role)
+  A's channel has [Calibration role](../../sensors/adding-a-sensor.mdx#calibration-role)
   checked (the reference-asset picker only lists assets with at least one reference-role
   channel).
 - **Different polynomial degree** (Example 2) — if you get a different degree than 2, try

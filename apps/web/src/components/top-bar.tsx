@@ -172,10 +172,10 @@ export default function TopBar() {
   const initials = getInitials(user.name);
 
   return (
-    <header className="h-14 shrink-0 flex items-center justify-between px-6 bg-mar-surface border-b border-mar-border gap-4">
+    <header className="h-14 shrink-0 flex items-center justify-between px-6 bg-og-surface border-b border-og-border gap-4">
       {/* Search (left) */}
       <div className="relative flex-1 max-w-sm" ref={searchRef}>
-        <div className="flex items-center gap-2 w-full px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg text-sm">
+        <div className="flex items-center gap-2 w-full px-3 py-1.5 bg-og-surface-alt border border-og-border-md rounded-lg text-sm">
           <SearchIcon size={13} className="text-gray-400 shrink-0" />
           <input
             ref={inputRef}
@@ -184,7 +184,7 @@ export default function TopBar() {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={handleFocus}
             placeholder="Search assets & docs..."
-            className="flex-1 bg-transparent text-xs text-mar-text placeholder-gray-400 outline-hidden min-w-0"
+            className="flex-1 bg-transparent text-xs text-og-text placeholder-gray-400 outline-hidden min-w-0"
           />
           {query ? (
             <button
@@ -195,7 +195,7 @@ export default function TopBar() {
               <XIcon size={12} />
             </button>
           ) : (
-            <kbd className="text-[10px] text-gray-400 border border-mar-border-md rounded-sm px-1 py-0.5 font-mono shrink-0">
+            <kbd className="text-[10px] text-gray-400 border border-og-border-md rounded-sm px-1 py-0.5 font-mono shrink-0">
               ⌘K
             </kbd>
           )}
@@ -203,7 +203,7 @@ export default function TopBar() {
 
         {/* Results dropdown */}
         {searchOpen && (results.length > 0 || docResults.length > 0) && (
-          <div className="absolute top-full mt-1 left-0 right-0 bg-mar-surface rounded-xl border border-mar-border shadow-lg z-50 overflow-hidden max-h-96 overflow-y-auto">
+          <div className="absolute top-full mt-1 left-0 right-0 bg-og-surface rounded-xl border border-og-border shadow-lg z-50 overflow-hidden max-h-96 overflow-y-auto">
             {results.length > 0 && (
               <div className="py-1">
                 <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Assets</p>
@@ -212,11 +212,11 @@ export default function TopBar() {
                     key={asset.id}
                     type="button"
                     onClick={() => handleSelect(asset)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-mar-border transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-og-border transition-colors"
                   >
                     <AssetRegistryIcon size={13} className="text-gray-500 shrink-0" />
                     <div className="min-w-0">
-                      <div className="text-xs font-medium text-mar-text truncate">{asset.name}</div>
+                      <div className="text-xs font-medium text-og-text truncate">{asset.name}</div>
                       <div className="text-[10px] text-gray-400">{asset.asset_id}</div>
                     </div>
                   </button>
@@ -224,19 +224,19 @@ export default function TopBar() {
               </div>
             )}
             {docResults.length > 0 && (
-              <div className="py-1 border-t border-mar-border">
+              <div className="py-1 border-t border-og-border">
                 <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Documentation</p>
                 {docResults.map((doc) => (
                   <button
                     key={doc.id}
                     type="button"
                     onClick={() => handleSelectDoc(doc)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-mar-border transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-og-border transition-colors"
                   >
                     <DocumentIcon size={13} className="text-gray-500 shrink-0" />
                     <div className="min-w-0">
                       <div
-                        className="text-xs font-medium text-mar-text truncate [&_mark]:bg-mar-accent/20 [&_mark]:text-mar-accent [&_mark]:rounded-sm"
+                        className="text-xs font-medium text-og-text truncate [&_mark]:bg-og-accent/20 [&_mark]:text-og-accent [&_mark]:rounded-sm"
                         // Own search index content (fumadocs' highlighter output), not user input — safe to render.
                         dangerouslySetInnerHTML={{ __html: doc.content }}
                       />
@@ -256,25 +256,25 @@ export default function TopBar() {
           <button
             type="button"
             onClick={() => setNewMenuOpen((o) => !o)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
           >
             <PlusIcon size={13} />
             New
             <ChevronDownIcon size={11} />
           </button>
           {newMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-mar-surface border border-mar-border rounded-lg shadow-lg z-50 py-1 min-w-[150px]">
+            <div className="absolute right-0 top-full mt-1 bg-og-surface border border-og-border rounded-lg shadow-lg z-50 py-1 min-w-[150px]">
               <button
                 type="button"
                 onClick={() => { setNewMenuOpen(false); router.push("/assets?new=1"); }}
-                className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors"
+                className="w-full text-left px-3 py-2 text-xs text-og-text hover:bg-og-surface-alt transition-colors"
               >
                 New Asset
               </button>
               <button
                 type="button"
                 onClick={() => { setNewMenuOpen(false); router.push("/procedures?new=1"); }}
-                className="w-full text-left px-3 py-2 text-xs text-mar-text hover:bg-mar-surface-alt transition-colors"
+                className="w-full text-left px-3 py-2 text-xs text-og-text hover:bg-og-surface-alt transition-colors"
               >
                 New Procedure
               </button>
@@ -289,7 +289,7 @@ export default function TopBar() {
           <button
             type="button"
             onClick={() => setAvatarOpen((v) => !v)}
-            className="w-8 h-8 rounded-full bg-mar-accent flex items-center justify-center text-white text-xs font-semibold hover:bg-mar-accent-dark transition-colors focus:outline-hidden focus:ring-2 focus:ring-mar-accent/40"
+            className="w-8 h-8 rounded-full bg-og-accent flex items-center justify-center text-white text-xs font-semibold hover:bg-og-accent-dark transition-colors focus:outline-hidden focus:ring-2 focus:ring-og-accent/40"
             aria-haspopup="true"
             aria-expanded={avatarOpen}
           >
@@ -297,13 +297,13 @@ export default function TopBar() {
           </button>
 
           {avatarOpen && (
-            <div className="absolute right-0 top-10 w-56 bg-mar-surface rounded-xl border border-mar-border shadow-lg z-50 overflow-hidden">
-              <div className="px-4 py-3 border-b border-mar-border">
-                <p className="text-sm font-semibold text-mar-text leading-tight truncate">
+            <div className="absolute right-0 top-10 w-56 bg-og-surface rounded-xl border border-og-border shadow-lg z-50 overflow-hidden">
+              <div className="px-4 py-3 border-b border-og-border">
+                <p className="text-sm font-semibold text-og-text leading-tight truncate">
                   {user.name}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{user.email}</p>
-                <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-sm text-[10px] font-medium bg-mar-accent/10 text-mar-action dark:text-mar-accent">
+                <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-sm text-[10px] font-medium bg-og-accent/10 text-og-action dark:text-og-accent">
                   {ROLE_LABEL[user.role] ?? user.role}
                 </span>
               </div>
@@ -313,7 +313,7 @@ export default function TopBar() {
                   <button
                     type="button"
                     onClick={() => { setAvatarOpen(false); router.push("/admin"); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-mar-border hover:text-mar-text transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-og-border hover:text-og-text transition-colors text-left"
                   >
                     <ShieldCheckIcon size={14} />
                     Admin Panel
@@ -322,7 +322,7 @@ export default function TopBar() {
                 <button
                   type="button"
                   onClick={() => { setAvatarOpen(false); router.push("/settings"); }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-mar-border hover:text-mar-text transition-colors text-left"
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-og-border hover:text-og-text transition-colors text-left"
                 >
                   <SettingsIcon size={14} />
                   Settings
@@ -330,7 +330,7 @@ export default function TopBar() {
                 <button
                   type="button"
                   onClick={() => { setAvatarOpen(false); logout(); }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-mar-border hover:text-red-500 transition-colors text-left"
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-og-border hover:text-red-500 transition-colors text-left"
                 >
                   <SignOutIcon size={14} />
                   Sign out

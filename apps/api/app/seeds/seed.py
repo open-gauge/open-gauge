@@ -212,7 +212,7 @@ def seed_database(db: Session) -> None:
     # ------------------------------------------------------------------ #
     # Organization                                                        #
     # ------------------------------------------------------------------ #
-    org = Organization(name="Demo Corp", description="MAR demonstration organization")
+    org = Organization(name="Demo Corp", description="Open Gauge demonstration organization")
     db.add(org)
     db.flush()
 
@@ -220,9 +220,9 @@ def seed_database(db: Session) -> None:
     # Users                                                               #
     # ------------------------------------------------------------------ #
     admin = User(
-        email="admin@mar.local",
+        email="admin@opengauge.local",
         name="A. Lindberg",
-        hashed_password=hash_password("mar-admin-2026"),
+        hashed_password=hash_password("opengauge-admin-2026"),
         role=UserRole.admin,
         organization_id=org.id,
         is_superuser=True,
@@ -231,9 +231,9 @@ def seed_database(db: Session) -> None:
     db.flush()
 
     tech = User(
-        email="tech@mar.local",
+        email="tech@opengauge.local",
         name="M. Schmidt",
-        hashed_password=hash_password("mar-tech-2026"),
+        hashed_password=hash_password("opengauge-tech-2026"),
         role=UserRole.technician,
         organization_id=org.id,
     )
@@ -369,7 +369,7 @@ def seed_database(db: Session) -> None:
 
     # --- Pressure sensors ---
     a = make_sensor(
-        "MAR-00421", "Reactor Inlet PT-01", "Endress+Hauser", "Cerabar PMP55",
+        "OG-00421", "Reactor Inlet PT-01", "Endress+Hauser", "Cerabar PMP55",
         "Reactor Room", 95,
         channels=[dict(
             channel_id="Pressure",
@@ -385,10 +385,10 @@ def seed_database(db: Session) -> None:
         operating_temperature_min=-40.0, operating_temperature_max=85.0,
         power_supply="24 VDC", power_consumption_w=1,
     )
-    asset_map["MAR-00421"] = a
+    asset_map["OG-00421"] = a
 
     a = make_sensor(
-        "MAR-00425", "Boiler Output PT-04", "WIKA", "S-20",
+        "OG-00425", "Boiler Output PT-04", "WIKA", "S-20",
         "Boiler Unit 4", 92,
         channels=[dict(
             channel_id="Pressure",
@@ -402,11 +402,11 @@ def seed_database(db: Session) -> None:
         operating_temperature_min=-20.0, operating_temperature_max=80.0,
         power_supply="24 VDC",
     )
-    asset_map["MAR-00425"] = a
+    asset_map["OG-00425"] = a
 
     # --- Temperature sensors ---
     a = make_sensor(
-        "MAR-00422", "Coolant Loop TT-12", "Omega", "PR-21SL-3-100-A",
+        "OG-00422", "Coolant Loop TT-12", "Omega", "PR-21SL-3-100-A",
         "Loop 2", 82,
         channels=[dict(
             channel_id="Temperature",
@@ -421,10 +421,10 @@ def seed_database(db: Session) -> None:
         serial_number="OM-TT-00422",
         operating_temperature_min=-20.0, operating_temperature_max=80.0,
     )
-    asset_map["MAR-00422"] = a
+    asset_map["OG-00422"] = a
 
     a = make_sensor(
-        "MAR-00427", "Furnace TT-22", "Yokogawa", "EJX910A",
+        "OG-00427", "Furnace TT-22", "Yokogawa", "EJX910A",
         "Furnace Hall", 76,
         channels=[dict(
             channel_id="Temperature",
@@ -440,10 +440,10 @@ def seed_database(db: Session) -> None:
         operating_temperature_min=-40.0, operating_temperature_max=85.0,
         power_supply="24 VDC", power_consumption_w=2,
     )
-    asset_map["MAR-00427"] = a
+    asset_map["OG-00427"] = a
 
     a = make_sensor(
-        "MAR-00432", "Tank Bottom TT-19", "WIKA", "TR10-B",
+        "OG-00432", "Tank Bottom TT-19", "WIKA", "TR10-B",
         "Tank Farm", 38,
         channels=[dict(
             channel_id="Temperature",
@@ -455,10 +455,10 @@ def seed_database(db: Session) -> None:
         )],
         serial_number="WIKA-TT-00432",
     )
-    asset_map["MAR-00432"] = a
+    asset_map["OG-00432"] = a
 
     a = make_sensor(
-        "MAR-00438", "Ambient TT-38", "Fluke", "1502A",
+        "OG-00438", "Ambient TT-38", "Fluke", "1502A",
         "Ambient Bay", 100,
         channels=[dict(
             channel_id="Temperature",
@@ -472,11 +472,11 @@ def seed_database(db: Session) -> None:
         serial_number="FL-TT-00438",
         owner_id=team_lab.id,
     )
-    asset_map["MAR-00438"] = a
+    asset_map["OG-00438"] = a
 
     # --- Humidity sensors ---
     a = make_sensor(
-        "MAR-00423", "Cleanroom RH-Sensor", "Vaisala", "HMP110",
+        "OG-00423", "Cleanroom RH-Sensor", "Vaisala", "HMP110",
         "Cleanroom Bay 3", 88,
         channels=[
             dict(
@@ -499,10 +499,10 @@ def seed_database(db: Session) -> None:
         ],
         serial_number="VA-RH-00423", ip_rating="IP65",
     )
-    asset_map["MAR-00423"] = a
+    asset_map["OG-00423"] = a
 
     a = make_sensor(
-        "MAR-00428", "Cooling Tower RH-02", "Rotronic", "HC2A",
+        "OG-00428", "Cooling Tower RH-02", "Rotronic", "HC2A",
         "Cooling Tower B", 89,
         channels=[dict(
             channel_id="Humidity",
@@ -514,11 +514,11 @@ def seed_database(db: Session) -> None:
         )],
         serial_number="RT-RH-00428",
     )
-    asset_map["MAR-00428"] = a
+    asset_map["OG-00428"] = a
 
     # --- Flow sensors ---
     a = make_sensor(
-        "MAR-00424", "Process Flow FT-08", "Siemens", "SITRANS F M MAG 5100",
+        "OG-00424", "Process Flow FT-08", "Siemens", "SITRANS F M MAG 5100",
         "Pipeline Line 2", 41,
         channels=[dict(
             channel_id="Flow",
@@ -534,10 +534,10 @@ def seed_database(db: Session) -> None:
         operating_temperature_min=-20.0, operating_temperature_max=70.0,
         power_supply="24 VDC", power_consumption_w=10,
     )
-    asset_map["MAR-00424"] = a
+    asset_map["OG-00424"] = a
 
     a = make_sensor(
-        "MAR-00429", "Cooling Water FT-14", "Endress+Hauser", "Promag 50W",
+        "OG-00429", "Cooling Water FT-14", "Endress+Hauser", "Promag 50W",
         "Cooling Tower B", 91,
         channels=[dict(
             channel_id="Flow",
@@ -550,11 +550,11 @@ def seed_database(db: Session) -> None:
         )],
         serial_number="EH-FT-00429", ip_rating="IP67",
     )
-    asset_map["MAR-00429"] = a
+    asset_map["OG-00429"] = a
 
     # --- Reference standard sensor ---
     a = make_sensor(
-        "MAR-00504", "Reference Pressure Standard RPS-01", "WIKA", "CPH7600",
+        "OG-00504", "Reference Pressure Standard RPS-01", "WIKA", "CPH7600",
         "Metrology Lab", 99,
         channels=[dict(
             channel_id="Pressure",
@@ -568,10 +568,10 @@ def seed_database(db: Session) -> None:
         serial_number="WIKA-RPS-00504",
         owner_id=team_lab.id,
     )
-    asset_map["MAR-00504"] = a
+    asset_map["OG-00504"] = a
 
     a = make_sensor(
-        "MAR-00505", "Reference Thermometer RTD-01", "Fluke", "1524",
+        "OG-00505", "Reference Thermometer RTD-01", "Fluke", "1524",
         "Metrology Lab", 98,
         channels=[dict(
             channel_id="Temperature",
@@ -586,12 +586,12 @@ def seed_database(db: Session) -> None:
         serial_number="FL-RTD-00505",
         owner_id=team_lab.id,
     )
-    asset_map["MAR-00505"] = a
+    asset_map["OG-00505"] = a
 
     # --- Retired sensor ---
     retired_loc = locs["Old Vent Stack"]
     retired = Asset(
-        asset_id="MAR-00399",
+        asset_id="OG-00399",
         asset_type=AssetType.sensor,
         name="Exhaust Vent TT-99",
         manufacturer="Honeywell",
@@ -602,7 +602,7 @@ def seed_database(db: Session) -> None:
         is_active=False,
         retired_at=now - timedelta(days=2),
         retired_by=admin.id,
-        retired_reason="Decommissioned — replaced with MAR-00422",
+        retired_reason="Decommissioned — replaced with OG-00422",
         created_by=admin.id,
     )
     db.add(retired)
@@ -615,13 +615,13 @@ def seed_database(db: Session) -> None:
         measurement_min=-40.0, measurement_max=150.0,
         calibration_role="working",
     ))
-    asset_map["MAR-00399"] = retired
+    asset_map["OG-00399"] = retired
 
     # ------------------------------------------------------------------ #
     # Assets — DAQ systems                                                #
     # ------------------------------------------------------------------ #
     a = make_daq(
-        "MAR-00426", "Gateway CO-01", "ABB", "Wireless HART Bridge",
+        "OG-00426", "Gateway CO-01", "ABB", "Wireless HART Bridge",
         "Control Room", 79,
         daq_kwargs=dict(
             daq_type="Wireless",
@@ -636,10 +636,10 @@ def seed_database(db: Session) -> None:
         power_supply="24 VDC", power_consumption_w=5,
         ip_rating="IP65",
     )
-    asset_map["MAR-00426"] = a
+    asset_map["OG-00426"] = a
 
     a = make_daq(
-        "MAR-00506", "Field Data Logger FDL-04", "Honeywell", "DL06",
+        "OG-00506", "Field Data Logger FDL-04", "Honeywell", "DL06",
         "Tank Farm", 85,
         daq_kwargs=dict(
             daq_type="USB",
@@ -655,10 +655,10 @@ def seed_database(db: Session) -> None:
         serial_number="HW-DL-00506",
         power_supply="5 VDC USB",
     )
-    asset_map["MAR-00506"] = a
+    asset_map["OG-00506"] = a
 
     a = make_daq(
-        "MAR-00507", "NI USB-6341 Multifunction DAQ", "National Instruments", "USB-6341",
+        "OG-00507", "NI USB-6341 Multifunction DAQ", "National Instruments", "USB-6341",
         "Metrology Lab", 97,
         daq_kwargs=dict(
             daq_type="USB",
@@ -683,7 +683,7 @@ def seed_database(db: Session) -> None:
         serial_number="NI-USB6341-507",
         owner_id=team_lab.id,
     )
-    asset_map["MAR-00507"] = a
+    asset_map["OG-00507"] = a
 
     db.flush()
 
@@ -691,7 +691,7 @@ def seed_database(db: Session) -> None:
     # Calibrations                                                        #
     # ------------------------------------------------------------------ #
     cal_pt01 = Calibration(
-        asset_id=asset_map["MAR-00421"].id,
+        asset_id=asset_map["OG-00421"].id,
         calibration_date=date(2025, 12, 10),
         due_date=date(2026, 12, 10),
         performed_by_name="A. Lindberg",
@@ -701,7 +701,7 @@ def seed_database(db: Session) -> None:
         created_by=admin.id,
     )
     cal_tt22 = Calibration(
-        asset_id=asset_map["MAR-00427"].id,
+        asset_id=asset_map["OG-00427"].id,
         calibration_date=date(2025, 5, 30),
         due_date=date(2026, 5, 30),
         performed_by_name="M. Schmidt",
@@ -711,7 +711,7 @@ def seed_database(db: Session) -> None:
         created_by=admin.id,
     )
     cal_rps = Calibration(
-        asset_id=asset_map["MAR-00504"].id,
+        asset_id=asset_map["OG-00504"].id,
         calibration_date=date(2025, 11, 5),
         due_date=date(2026, 11, 5),
         performed_by_name="A. Lindberg",
@@ -721,9 +721,9 @@ def seed_database(db: Session) -> None:
         notes="WIKA reference standard annual calibration",
         created_by=admin.id,
     )
-    # Historical calibration for MAR-00421 (previous annual cycle)
+    # Historical calibration for OG-00421 (previous annual cycle)
     cal_pt01_prev = Calibration(
-        asset_id=asset_map["MAR-00421"].id,
+        asset_id=asset_map["OG-00421"].id,
         calibration_date=date(2024, 12, 10),
         due_date=date(2025, 12, 10),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -731,45 +731,45 @@ def seed_database(db: Session) -> None:
         temperature=20.0, humidity=48.0, pressure=101300.0,
         created_by=admin.id,
     )
-    # MAR-00422 Coolant Loop TT-12 — annual, expired
+    # OG-00422 Coolant Loop TT-12 — annual, expired
     cal_tt12 = Calibration(
-        asset_id=asset_map["MAR-00422"].id,
+        asset_id=asset_map["OG-00422"].id,
         calibration_date=date(2025, 3, 15),
         due_date=date(2026, 3, 15),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
         temperature=22.0, humidity=50.0,
         created_by=admin.id,
     )
-    # MAR-00423 Cleanroom RH-Sensor — annual, upcoming Sep 2026
+    # OG-00423 Cleanroom RH-Sensor — annual, upcoming Sep 2026
     cal_rh01 = Calibration(
-        asset_id=asset_map["MAR-00423"].id,
+        asset_id=asset_map["OG-00423"].id,
         calibration_date=date(2025, 9, 20),
         due_date=date(2026, 9, 20),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
         temperature=20.5, humidity=45.0,
         created_by=admin.id,
     )
-    # MAR-00424 Process Flow FT-08 — annual, expired Feb 2026
+    # OG-00424 Process Flow FT-08 — annual, expired Feb 2026
     cal_ft08 = Calibration(
-        asset_id=asset_map["MAR-00424"].id,
+        asset_id=asset_map["OG-00424"].id,
         calibration_date=date(2025, 2, 28),
         due_date=date(2026, 2, 28),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
         temperature=19.8, humidity=55.0,
         created_by=admin.id,
     )
-    # MAR-00425 Boiler Output PT-04 — annual, upcoming Jul 2026
+    # OG-00425 Boiler Output PT-04 — annual, upcoming Jul 2026
     cal_pt04 = Calibration(
-        asset_id=asset_map["MAR-00425"].id,
+        asset_id=asset_map["OG-00425"].id,
         calibration_date=date(2025, 7, 20),
         due_date=date(2026, 7, 20),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
         temperature=21.0, humidity=48.0,
         created_by=admin.id,
     )
-    # MAR-00427 Furnace TT-22 — recalibration after expiry
+    # OG-00427 Furnace TT-22 — recalibration after expiry
     cal_tt22_new = Calibration(
-        asset_id=asset_map["MAR-00427"].id,
+        asset_id=asset_map["OG-00427"].id,
         calibration_date=date(2026, 6, 15),
         due_date=date(2027, 6, 15),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -778,27 +778,27 @@ def seed_database(db: Session) -> None:
         notes="Recalibrated after expiry. Conditional pass — gain correction applied.",
         created_by=admin.id,
     )
-    # MAR-00428 Cooling Tower RH-02 — annual, upcoming Nov 2026
+    # OG-00428 Cooling Tower RH-02 — annual, upcoming Nov 2026
     cal_rh02 = Calibration(
-        asset_id=asset_map["MAR-00428"].id,
+        asset_id=asset_map["OG-00428"].id,
         calibration_date=date(2025, 11, 8),
         due_date=date(2026, 11, 8),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
         temperature=20.0, humidity=50.0,
         created_by=admin.id,
     )
-    # MAR-00429 Cooling Water FT-14 — annual, upcoming Feb 2027
+    # OG-00429 Cooling Water FT-14 — annual, upcoming Feb 2027
     cal_ft14 = Calibration(
-        asset_id=asset_map["MAR-00429"].id,
+        asset_id=asset_map["OG-00429"].id,
         calibration_date=date(2026, 2, 14),
         due_date=date(2027, 2, 14),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
         temperature=20.0, humidity=48.0,
         created_by=admin.id,
     )
-    # MAR-00432 Tank Bottom TT-19 — annual, expired Apr 2026, FAILED (low health)
+    # OG-00432 Tank Bottom TT-19 — annual, expired Apr 2026, FAILED (low health)
     cal_tt19 = Calibration(
-        asset_id=asset_map["MAR-00432"].id,
+        asset_id=asset_map["OG-00432"].id,
         calibration_date=date(2025, 4, 12),
         due_date=date(2026, 4, 12),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
@@ -806,9 +806,9 @@ def seed_database(db: Session) -> None:
         temperature=21.5, humidity=51.0,
         created_by=admin.id,
     )
-    # MAR-00438 Ambient TT-38 — 6-month schedule, first cycle
+    # OG-00438 Ambient TT-38 — 6-month schedule, first cycle
     cal_tt38_1 = Calibration(
-        asset_id=asset_map["MAR-00438"].id,
+        asset_id=asset_map["OG-00438"].id,
         calibration_date=date(2025, 7, 22),
         due_date=date(2026, 1, 22),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -816,9 +816,9 @@ def seed_database(db: Session) -> None:
         temperature=20.0, humidity=50.0, pressure=101300.0,
         created_by=admin.id,
     )
-    # MAR-00438 Ambient TT-38 — 6-month schedule, second cycle (performed on due date)
+    # OG-00438 Ambient TT-38 — 6-month schedule, second cycle (performed on due date)
     cal_tt38_2 = Calibration(
-        asset_id=asset_map["MAR-00438"].id,
+        asset_id=asset_map["OG-00438"].id,
         calibration_date=date(2026, 1, 22),
         due_date=date(2026, 7, 22),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -826,9 +826,9 @@ def seed_database(db: Session) -> None:
         temperature=20.1, humidity=49.8, pressure=101310.0,
         created_by=admin.id,
     )
-    # MAR-00504 Reference Pressure Standard — historical 2024
+    # OG-00504 Reference Pressure Standard — historical 2024
     cal_rps_prev = Calibration(
-        asset_id=asset_map["MAR-00504"].id,
+        asset_id=asset_map["OG-00504"].id,
         calibration_date=date(2024, 11, 5),
         due_date=date(2025, 11, 5),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -836,9 +836,9 @@ def seed_database(db: Session) -> None:
         temperature=20.0, humidity=50.0, pressure=101300.0,
         created_by=admin.id,
     )
-    # MAR-00505 Reference Thermometer — 6-month, first cycle, expired Mar 2026
+    # OG-00505 Reference Thermometer — 6-month, first cycle, expired Mar 2026
     cal_rtd_1 = Calibration(
-        asset_id=asset_map["MAR-00505"].id,
+        asset_id=asset_map["OG-00505"].id,
         calibration_date=date(2025, 9, 10),
         due_date=date(2026, 3, 10),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -846,9 +846,9 @@ def seed_database(db: Session) -> None:
         temperature=20.0, humidity=50.0, pressure=101300.0,
         created_by=admin.id,
     )
-    # MAR-00505 Reference Thermometer — 6-month, second cycle, upcoming Sep 2026
+    # OG-00505 Reference Thermometer — 6-month, second cycle, upcoming Sep 2026
     cal_rtd_2 = Calibration(
-        asset_id=asset_map["MAR-00505"].id,
+        asset_id=asset_map["OG-00505"].id,
         calibration_date=date(2026, 3, 12),
         due_date=date(2026, 9, 12),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -856,18 +856,18 @@ def seed_database(db: Session) -> None:
         temperature=20.1, humidity=50.2, pressure=101310.0,
         created_by=admin.id,
     )
-    # MAR-00506 Field Data Logger FDL-04 — annual, expired Jun 2026
+    # OG-00506 Field Data Logger FDL-04 — annual, expired Jun 2026
     cal_fdl04 = Calibration(
-        asset_id=asset_map["MAR-00506"].id,
+        asset_id=asset_map["OG-00506"].id,
         calibration_date=date(2025, 6, 1),
         due_date=date(2026, 6, 1),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
         temperature=21.0, humidity=52.0,
         created_by=admin.id,
     )
-    # MAR-00507 NI USB-6341 — annual, upcoming Dec 2026
+    # OG-00507 NI USB-6341 — annual, upcoming Dec 2026
     cal_ni6341 = Calibration(
-        asset_id=asset_map["MAR-00507"].id,
+        asset_id=asset_map["OG-00507"].id,
         calibration_date=date(2025, 12, 15),
         due_date=date(2026, 12, 15),
         performed_by_name="A. Lindberg", performed_by_user_id=admin.id,
@@ -876,9 +876,9 @@ def seed_database(db: Session) -> None:
         notes="Multifunction DAQ annual verification — all channels in spec.",
         created_by=admin.id,
     )
-    # MAR-00426 Gateway CO-01 — annual, expired May 2026
+    # OG-00426 Gateway CO-01 — annual, expired May 2026
     cal_gw01 = Calibration(
-        asset_id=asset_map["MAR-00426"].id,
+        asset_id=asset_map["OG-00426"].id,
         calibration_date=date(2025, 5, 10),
         due_date=date(2026, 5, 10),
         performed_by_name="M. Schmidt", performed_by_user_id=tech.id,
@@ -903,79 +903,79 @@ def seed_database(db: Session) -> None:
     stored_files = [
         StoredFile(
             original_filename="CERT-2025-NMI-0421.pdf",
-            storage_path="assets/MAR-00421/CERT-2025-NMI-0421.pdf",
-            bucket="mar-files",
+            storage_path="assets/OG-00421/CERT-2025-NMI-0421.pdf",
+            bucket="opengauge-files",
             content_type="application/pdf",
             size_bytes=245_760,
             checksum_sha256="a3f1c2d4e5b6789012345678901234567890abcdef1234567890abcdef123456",
             entity_type="asset",
-            entity_id=asset_map["MAR-00421"].id,
+            entity_id=asset_map["OG-00421"].id,
             uploaded_by=admin.id,
         ),
         StoredFile(
             original_filename="EH-Cerabar-PMP55-Datasheet.pdf",
-            storage_path="assets/MAR-00421/EH-Cerabar-PMP55-Datasheet.pdf",
-            bucket="mar-files",
+            storage_path="assets/OG-00421/EH-Cerabar-PMP55-Datasheet.pdf",
+            bucket="opengauge-files",
             content_type="application/pdf",
             size_bytes=1_572_864,
             checksum_sha256="b4e2d3c5f6a7890123456789012345678901bcdef2345678901bcdef234567",
             entity_type="asset",
-            entity_id=asset_map["MAR-00421"].id,
+            entity_id=asset_map["OG-00421"].id,
             uploaded_by=admin.id,
         ),
         StoredFile(
             original_filename="CERT-2025-PTB-0427.pdf",
-            storage_path="assets/MAR-00427/CERT-2025-PTB-0427.pdf",
-            bucket="mar-files",
+            storage_path="assets/OG-00427/CERT-2025-PTB-0427.pdf",
+            bucket="opengauge-files",
             content_type="application/pdf",
             size_bytes=312_320,
             checksum_sha256="c5f3e4d6a7b8901234567890123456789012cdef3456789012cdef345678ab",
             entity_type="asset",
-            entity_id=asset_map["MAR-00427"].id,
+            entity_id=asset_map["OG-00427"].id,
             uploaded_by=admin.id,
         ),
         StoredFile(
             original_filename="Calibration-Report-TT22-Jun2026.pdf",
-            storage_path="assets/MAR-00427/Calibration-Report-TT22-Jun2026.pdf",
-            bucket="mar-files",
+            storage_path="assets/OG-00427/Calibration-Report-TT22-Jun2026.pdf",
+            bucket="opengauge-files",
             content_type="application/pdf",
             size_bytes=89_600,
             checksum_sha256="d6a4f5e7b8c9012345678901234567890123def4567890123def456789abcd",
             entity_type="asset",
-            entity_id=asset_map["MAR-00427"].id,
+            entity_id=asset_map["OG-00427"].id,
             uploaded_by=tech.id,
         ),
         StoredFile(
             original_filename="Vaisala-HMP110-Datasheet.pdf",
-            storage_path="assets/MAR-00423/Vaisala-HMP110-Datasheet.pdf",
-            bucket="mar-files",
+            storage_path="assets/OG-00423/Vaisala-HMP110-Datasheet.pdf",
+            bucket="opengauge-files",
             content_type="application/pdf",
             size_bytes=819_200,
             checksum_sha256="e7b5a6f8c9d0123456789012345678901234ef567890123ef56789012abcde",
             entity_type="asset",
-            entity_id=asset_map["MAR-00423"].id,
+            entity_id=asset_map["OG-00423"].id,
             uploaded_by=admin.id,
         ),
         StoredFile(
             original_filename="RH-Calibration-Raw-2025-09.csv",
-            storage_path="assets/MAR-00423/RH-Calibration-Raw-2025-09.csv",
-            bucket="mar-files",
+            storage_path="assets/OG-00423/RH-Calibration-Raw-2025-09.csv",
+            bucket="opengauge-files",
             content_type="text/csv",
             size_bytes=14_336,
             checksum_sha256="f8c6b7a9d0e1234567890123456789012345f0678901234f067890123bcdef",
             entity_type="asset",
-            entity_id=asset_map["MAR-00423"].id,
+            entity_id=asset_map["OG-00423"].id,
             uploaded_by=admin.id,
         ),
         StoredFile(
             original_filename="CERT-2025-PTB-0504.pdf",
-            storage_path="assets/MAR-00504/CERT-2025-PTB-0504.pdf",
-            bucket="mar-files",
+            storage_path="assets/OG-00504/CERT-2025-PTB-0504.pdf",
+            bucket="opengauge-files",
             content_type="application/pdf",
             size_bytes=278_528,
             checksum_sha256="09d7c8b0e1f234567890123456789012345601789012345067890234cdef01",
             entity_type="asset",
-            entity_id=asset_map["MAR-00504"].id,
+            entity_id=asset_map["OG-00504"].id,
             uploaded_by=admin.id,
         ),
     ]
@@ -986,36 +986,36 @@ def seed_database(db: Session) -> None:
     # Audit logs                                                          #
     # ------------------------------------------------------------------ #
     audit_entries = [
-        dict(actor_id=admin.id, actor_email="admin@mar.local", action="asset.created",
-             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
-             entity_asset_id="MAR-00421", created_at=now - timedelta(days=365)),
-        dict(actor_id=admin.id, actor_email="admin@mar.local", action="calibration.recorded",
-             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
-             entity_asset_id="MAR-00421", created_at=now - timedelta(days=192)),
-        dict(actor_id=admin.id, actor_email="admin@mar.local", action="calibration.recorded",
-             entity_type="asset", entity_id=asset_map["MAR-00421"].id,
-             entity_asset_id="MAR-00421", created_at=now - timedelta(minutes=30)),
-        dict(actor_id=tech.id, actor_email="tech@mar.local", action="calibration.recorded",
-             entity_type="asset", entity_id=asset_map["MAR-00427"].id,
-             entity_asset_id="MAR-00427", created_at=now - timedelta(hours=1)),
+        dict(actor_id=admin.id, actor_email="admin@opengauge.local", action="asset.created",
+             entity_type="asset", entity_id=asset_map["OG-00421"].id,
+             entity_asset_id="OG-00421", created_at=now - timedelta(days=365)),
+        dict(actor_id=admin.id, actor_email="admin@opengauge.local", action="calibration.recorded",
+             entity_type="asset", entity_id=asset_map["OG-00421"].id,
+             entity_asset_id="OG-00421", created_at=now - timedelta(days=192)),
+        dict(actor_id=admin.id, actor_email="admin@opengauge.local", action="calibration.recorded",
+             entity_type="asset", entity_id=asset_map["OG-00421"].id,
+             entity_asset_id="OG-00421", created_at=now - timedelta(minutes=30)),
+        dict(actor_id=tech.id, actor_email="tech@opengauge.local", action="calibration.recorded",
+             entity_type="asset", entity_id=asset_map["OG-00427"].id,
+             entity_asset_id="OG-00427", created_at=now - timedelta(hours=1)),
         dict(actor_id=None, actor_email="system", action="asset.flagged_low_health",
-             entity_type="asset", entity_id=asset_map["MAR-00424"].id,
-             entity_asset_id="MAR-00424", created_at=now - timedelta(hours=3)),
-        dict(actor_id=tech.id, actor_email="tech@mar.local", action="asset.created",
-             entity_type="asset", entity_id=asset_map["MAR-00438"].id,
-             entity_asset_id="MAR-00438", created_at=now - timedelta(days=1)),
+             entity_type="asset", entity_id=asset_map["OG-00424"].id,
+             entity_asset_id="OG-00424", created_at=now - timedelta(hours=3)),
+        dict(actor_id=tech.id, actor_email="tech@opengauge.local", action="asset.created",
+             entity_type="asset", entity_id=asset_map["OG-00438"].id,
+             entity_asset_id="OG-00438", created_at=now - timedelta(days=1)),
         dict(actor_id=None, actor_email="api:ci-runner", action="asset.synced",
-             entity_type="asset", entity_id=asset_map["MAR-00426"].id,
-             entity_asset_id="MAR-00426", created_at=now - timedelta(days=1, hours=2)),
-        dict(actor_id=admin.id, actor_email="admin@mar.local", action="asset.retired",
-             entity_type="asset", entity_id=asset_map["MAR-00399"].id,
-             entity_asset_id="MAR-00399", created_at=now - timedelta(days=2)),
-        dict(actor_id=admin.id, actor_email="admin@mar.local", action="calibration.recorded",
-             entity_type="asset", entity_id=asset_map["MAR-00504"].id,
-             entity_asset_id="MAR-00504", created_at=now - timedelta(days=5)),
-        dict(actor_id=tech.id, actor_email="tech@mar.local", action="asset.moved",
-             entity_type="asset", entity_id=asset_map["MAR-00507"].id,
-             entity_asset_id="MAR-00507", created_at=now - timedelta(days=7)),
+             entity_type="asset", entity_id=asset_map["OG-00426"].id,
+             entity_asset_id="OG-00426", created_at=now - timedelta(days=1, hours=2)),
+        dict(actor_id=admin.id, actor_email="admin@opengauge.local", action="asset.retired",
+             entity_type="asset", entity_id=asset_map["OG-00399"].id,
+             entity_asset_id="OG-00399", created_at=now - timedelta(days=2)),
+        dict(actor_id=admin.id, actor_email="admin@opengauge.local", action="calibration.recorded",
+             entity_type="asset", entity_id=asset_map["OG-00504"].id,
+             entity_asset_id="OG-00504", created_at=now - timedelta(days=5)),
+        dict(actor_id=tech.id, actor_email="tech@opengauge.local", action="asset.moved",
+             entity_type="asset", entity_id=asset_map["OG-00507"].id,
+             entity_asset_id="OG-00507", created_at=now - timedelta(days=7)),
     ]
     for ae in audit_entries:
         db.add(AuditLog(**ae))

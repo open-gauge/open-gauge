@@ -69,7 +69,7 @@ interface CardProps {
 
 function StatCard({ label, centerLabel, icon, iconCls, slices, filterHref }: CardProps) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border p-4 shadow-xs flex flex-col gap-3">
+    <div className="bg-og-surface rounded-xl border border-og-border p-4 shadow-xs flex flex-col gap-3">
       {/* Header: icon + label + optional filter */}
       <div className="flex items-center gap-2">
         <span className={`${iconCls} shrink-0`}>{icon}</span>
@@ -79,7 +79,7 @@ function StatCard({ label, centerLabel, icon, iconCls, slices, filterHref }: Car
         {filterHref && (
           <Link
             href={filterHref}
-            className="text-gray-300 hover:text-mar-accent transition-colors shrink-0"
+            className="text-gray-300 hover:text-og-accent transition-colors shrink-0"
             title="View in asset registry"
           >
             <FilterIcon size={12} />
@@ -132,27 +132,27 @@ export default function StatsCards({
       <StatCard
         label="Registered assets"
         centerLabel="Assets"
-        icon={<DatabaseIcon size={16} />} iconCls="text-mar-accent"
+        icon={<DatabaseIcon size={16} />} iconCls="text-og-accent"
         slices={calSlices}
       />
       <StatCard
         label="Sensors"
         centerLabel="Sensors"
-        icon={<ActivityIcon size={16} />} iconCls="text-mar-accent"
+        icon={<ActivityIcon size={16} />} iconCls="text-og-accent"
         slices={sensorSlices}
         filterHref="/assets?asset_type=sensor"
       />
       <StatCard
         label="DAQ units"
         centerLabel="DAQ"
-        icon={<ApiIcon size={16} />} iconCls="text-mar-accent"
+        icon={<ApiIcon size={16} />} iconCls="text-og-accent"
         slices={daqSlices}
         filterHref="/assets?asset_type=daq"
       />
       <StatCard
         label="Procedures"
         centerLabel="Procedures"
-        icon={<ProceduresIcon size={16} />} iconCls="text-mar-accent"
+        icon={<ProceduresIcon size={16} />} iconCls="text-og-accent"
         slices={procedureSlices}
       />
     </div>

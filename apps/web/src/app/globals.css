@@ -9,16 +9,16 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --color-mar-bg: var(--mar-bg);
-  --color-mar-text: var(--mar-text);
-  --color-mar-action: var(--mar-action);
-  --color-mar-action-dark: var(--mar-action-dark);
-  --color-mar-accent: rgb(var(--mar-accent-rgb));
-  --color-mar-accent-dark: var(--mar-accent-dark);
-  --color-mar-surface: var(--mar-surface);
-  --color-mar-surface-alt: var(--mar-surface-alt);
-  --color-mar-border: var(--mar-border);
-  --color-mar-border-md: var(--mar-border-md);
+  --color-og-bg: var(--og-bg);
+  --color-og-text: var(--og-text);
+  --color-og-action: var(--og-action);
+  --color-og-action-dark: var(--og-action-dark);
+  --color-og-accent: rgb(var(--og-accent-rgb));
+  --color-og-accent-dark: var(--og-accent-dark);
+  --color-og-surface: var(--og-surface);
+  --color-og-surface-alt: var(--og-surface-alt);
+  --color-og-border: var(--og-border);
+  --color-og-border-md: var(--og-border-md);
 }
 
 /*
@@ -47,7 +47,7 @@
   font-family: var(--font-geist-mono), 'Courier New', monospace;
 }
 
-@utility mar-range {
+@utility og-range {
   /* Dual-range slider — shared thumb style for webkit + firefox */
   -webkit-appearance: none;
   appearance: none;
@@ -63,7 +63,7 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: rgb(var(--mar-accent-rgb));
+    background: rgb(var(--og-accent-rgb));
     border: 2px solid white;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
     cursor: grab;
@@ -73,7 +73,7 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: rgb(var(--mar-accent-rgb));
+    background: rgb(var(--og-accent-rgb));
     border: 2px solid white;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
     cursor: grab;
@@ -89,10 +89,10 @@
   }
 }
 
-@utility mar-grid-bg {
+@utility og-grid-bg {
   background-image:
-    linear-gradient(var(--mar-grid-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--mar-grid-color) 1px, transparent 1px);
+    linear-gradient(var(--og-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--og-grid-color) 1px, transparent 1px);
   background-size: 1cm 1cm;
 }
 
@@ -100,22 +100,22 @@
   --background: #ffffff;
   --foreground: #152330;
 
-  /* MAR brand palette — light mode */
-  --mar-bg: #0f1c26;
-  --mar-text: #152330;
-  --mar-action: #1b4f64;
-  --mar-action-dark: #154050;
-  --mar-accent-rgb: 47 129 155; /* #2f819b */
-  --mar-accent-dark: #256a81;
+  /* Open Gauge brand palette — light mode */
+  --og-bg: #0f1c26;
+  --og-text: #152330;
+  --og-action: #1b4f64;
+  --og-action-dark: #154050;
+  --og-accent-rgb: 47 129 155; /* #2f819b */
+  --og-accent-dark: #256a81;
 
   /* Semantic surface tokens — switch automatically in dark mode */
-  --mar-surface: #ffffff;
-  --mar-surface-alt: #f9fafb;
-  --mar-border: #f3f4f6;
-  --mar-border-md: #e5e7eb;
+  --og-surface: #ffffff;
+  --og-surface-alt: #f9fafb;
+  --og-border: #f3f4f6;
+  --og-border-md: #e5e7eb;
 
   /* Graph-paper grid */
-  --mar-grid-color: rgba(47, 129, 155, 0.1);
+  --og-grid-color: rgba(47, 129, 155, 0.1);
 
   /* bklit chart tokens */
   --border: #e5e7eb;
@@ -124,41 +124,41 @@
   --chart-foreground-muted: #6b7280;
   --chart-label: #374151;
 
-  /* Re-point Fumadocs' own color tokens at MAR's palette, so the embedded documentation
+  /* Re-point Fumadocs' own color tokens at Open Gauge's palette, so the embedded documentation
      view (apps/web's /documentation route) renders with its real components looking native
      to the app instead of Fumadocs' default neutral theme. */
-  --color-fd-background: var(--mar-surface-alt);
-  --color-fd-foreground: var(--mar-text);
-  --color-fd-muted: var(--mar-surface-alt);
+  --color-fd-background: var(--og-surface-alt);
+  --color-fd-foreground: var(--og-text);
+  --color-fd-muted: var(--og-surface-alt);
   --color-fd-muted-foreground: var(--chart-foreground-muted);
-  --color-fd-popover: var(--mar-surface);
-  --color-fd-popover-foreground: var(--mar-text);
-  --color-fd-card: var(--mar-surface);
-  --color-fd-card-foreground: var(--mar-text);
-  --color-fd-border: var(--mar-border-md);
-  --color-fd-primary: rgb(var(--mar-accent-rgb));
+  --color-fd-popover: var(--og-surface);
+  --color-fd-popover-foreground: var(--og-text);
+  --color-fd-card: var(--og-surface);
+  --color-fd-card-foreground: var(--og-text);
+  --color-fd-border: var(--og-border-md);
+  --color-fd-primary: rgb(var(--og-accent-rgb));
   --color-fd-primary-foreground: #ffffff;
-  --color-fd-secondary: var(--mar-surface-alt);
-  --color-fd-secondary-foreground: var(--mar-text);
-  --color-fd-accent: var(--mar-surface-alt);
-  --color-fd-accent-foreground: var(--mar-text);
-  --color-fd-ring: rgb(var(--mar-accent-rgb));
+  --color-fd-secondary: var(--og-surface-alt);
+  --color-fd-secondary-foreground: var(--og-text);
+  --color-fd-accent: var(--og-surface-alt);
+  --color-fd-accent-foreground: var(--og-text);
+  --color-fd-ring: rgb(var(--og-accent-rgb));
 }
 
 .dark {
-  --mar-text: #d0e8f0;
-  --mar-action: #256a81;
-  --mar-action-dark: #1b5f72;
-  --mar-accent-rgb: 61 154 184; /* #3d9ab8 */
-  --mar-accent-dark: #2f819b;
+  --og-text: #d0e8f0;
+  --og-action: #256a81;
+  --og-action-dark: #1b5f72;
+  --og-accent-rgb: 61 154 184; /* #3d9ab8 */
+  --og-accent-dark: #2f819b;
 
-  --mar-surface: #0f1c26;
-  --mar-surface-alt: #080f16;
-  --mar-border: #1a2e3d;
-  --mar-border-md: #1e3a52;
+  --og-surface: #0f1c26;
+  --og-surface-alt: #080f16;
+  --og-border: #1a2e3d;
+  --og-border-md: #1e3a52;
 
   /* Graph-paper grid */
-  --mar-grid-color: rgba(61, 154, 184, 0.07);
+  --og-grid-color: rgba(61, 154, 184, 0.07);
 
   /* bklit chart tokens */
   --border: #1e3a52;
@@ -167,22 +167,22 @@
   --chart-foreground-muted: #9ca3af;
   --chart-label: #d1d5db;
 
-  --color-fd-background: var(--mar-surface-alt);
-  --color-fd-foreground: var(--mar-text);
-  --color-fd-muted: var(--mar-surface-alt);
+  --color-fd-background: var(--og-surface-alt);
+  --color-fd-foreground: var(--og-text);
+  --color-fd-muted: var(--og-surface-alt);
   --color-fd-muted-foreground: var(--chart-foreground-muted);
-  --color-fd-popover: var(--mar-surface);
-  --color-fd-popover-foreground: var(--mar-text);
-  --color-fd-card: var(--mar-surface);
-  --color-fd-card-foreground: var(--mar-text);
-  --color-fd-border: var(--mar-border-md);
-  --color-fd-primary: rgb(var(--mar-accent-rgb));
+  --color-fd-popover: var(--og-surface);
+  --color-fd-popover-foreground: var(--og-text);
+  --color-fd-card: var(--og-surface);
+  --color-fd-card-foreground: var(--og-text);
+  --color-fd-border: var(--og-border-md);
+  --color-fd-primary: rgb(var(--og-accent-rgb));
   --color-fd-primary-foreground: #08131a;
-  --color-fd-secondary: var(--mar-surface-alt);
-  --color-fd-secondary-foreground: var(--mar-text);
-  --color-fd-accent: var(--mar-surface-alt);
-  --color-fd-accent-foreground: var(--mar-text);
-  --color-fd-ring: rgb(var(--mar-accent-rgb));
+  --color-fd-secondary: var(--og-surface-alt);
+  --color-fd-secondary-foreground: var(--og-text);
+  --color-fd-accent: var(--og-surface-alt);
+  --color-fd-accent-foreground: var(--og-text);
+  --color-fd-ring: rgb(var(--og-accent-rgb));
 }
 
 body {

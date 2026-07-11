@@ -1,11 +1,11 @@
 ---
 title: Docker Compose deployment
-description: Running the full MAR stack with Docker Compose — services, ports, environment variables, backups, and migrations.
+description: Running the full Open Gauge stack with Docker Compose — services, ports, environment variables, backups, and migrations.
 ---
 
-Docker Compose is MAR's primary, first-class deployment target. Every feature is expected to
+Docker Compose is Open Gauge's primary, first-class deployment target. Every feature is expected to
 work on it — from a Raspberry Pi or Intel N100 mini PC in a lab, to an internal company server.
-Kubernetes support is optional and not required to run MAR.
+Kubernetes support is optional and not required to run Open Gauge.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ This builds and starts every service defined in `infrastructure/docker/docker-co
 |---|---|---|---|
 | `db` | `postgres:15-alpine` | `5432` | The single source of truth for all structured data. |
 | `api` | `apps/api/Dockerfile` | `8000` | FastAPI backend (`/api/v1/...`), OpenAPI schema at `/openapi.json`. |
-| `web` | `apps/web/Dockerfile` | `3000` | The MAR user interface. |
+| `web` | `apps/web/Dockerfile` | `3000` | The Open Gauge user interface. |
 | `docs` | `apps/docs/Dockerfile` | `3002` | This documentation site (Knowledge Center + API Reference). |
 | `adminer` | `adminer:4` | `8080` | Lightweight web UI for inspecting the Postgres database directly. |
 | `minio` | `minio/minio` | `9000` (S3 API), `9001` (console) | S3-compatible object storage for certificates, datasheets, and images. |
@@ -75,10 +75,10 @@ Migrations use Alembic and live in `apps/api/migrations/versions/`:
 docker compose -f infrastructure/docker/docker-compose.yml exec api alembic upgrade head
 ```
 
-Run this after pulling a new MAR version that includes schema changes, before restarting the
+Run this after pulling a new Open Gauge version that includes schema changes, before restarting the
 `api` service on the new image.
 
-## Updating MAR
+## Updating Open Gauge
 
 ```bash
 git pull

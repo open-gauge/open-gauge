@@ -1,4 +1,4 @@
-# Contributing to MAR
+# Contributing to Open Gauge
 
 1. Ensure you follow the API-first and explicit architecture styles.
 2. Keep things simple and maintainable.

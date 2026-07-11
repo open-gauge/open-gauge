@@ -41,7 +41,7 @@ export default async function DashboardPage() {
 
         {/* Page header */}
         <div className="shrink-0">
-          <h1 className="text-xl font-bold text-mar-text">Operations dashboard</h1>
+          <h1 className="text-xl font-bold text-og-text">Operations dashboard</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Real-time status across all sites, labs and instrumentation.
           </p>

@@ -23,8 +23,8 @@ import {
 // Shared mini-field components (inlined to avoid page.tsx coupling)
 // ---------------------------------------------------------------------------
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
-const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
+const IB_OK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
 const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
 function WLabel({ text, required }: { text: string; required?: boolean }) {
@@ -88,9 +88,9 @@ function WCheckbox({ label, checked, onChange }: { label: string; checked: boole
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded-sm border-mar-border-md accent-mar-accent"
+        className="w-4 h-4 rounded-sm border-og-border-md accent-og-accent"
       />
-      <span className="text-sm text-mar-text">{label}</span>
+      <span className="text-sm text-og-text">{label}</span>
     </label>
   );
 }
@@ -111,15 +111,15 @@ function StepIndicator({ step, steps }: { step: number; steps: string[] }) {
           <div key={n} className="flex items-center">
             <div className="flex items-center gap-2">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0
-                ${done ? "bg-mar-accent text-white" : active ? "bg-mar-action text-white" : "bg-mar-surface-alt text-gray-400 border border-mar-border-md"}`}>
+                ${done ? "bg-og-accent text-white" : active ? "bg-og-action text-white" : "bg-og-surface-alt text-gray-400 border border-og-border-md"}`}>
                 {done ? <CheckIcon size={12} /> : n}
               </div>
-              <span className={`text-xs font-medium hidden sm:block ${active ? "text-mar-text" : done ? "text-mar-accent" : "text-gray-400"}`}>
+              <span className={`text-xs font-medium hidden sm:block ${active ? "text-og-text" : done ? "text-og-accent" : "text-gray-400"}`}>
                 {label}
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div className={`w-8 h-px mx-2 ${done ? "bg-mar-accent" : "bg-mar-border-md"}`} />
+              <div className={`w-8 h-px mx-2 ${done ? "bg-og-accent" : "bg-og-border-md"}`} />
             )}
           </div>
         );
@@ -731,11 +731,11 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       <div className="absolute inset-0 bg-black/50" />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-5xl max-h-[92vh] bg-mar-surface border border-mar-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative z-10 w-full max-w-5xl max-h-[92vh] bg-og-surface border border-og-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-mar-border shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-og-border shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-mar-text">Add Calibration Record</h2>
+            <h2 className="text-base font-semibold text-og-text">Add Calibration Record</h2>
             <p className="text-xs text-gray-400 mt-0.5">{profile.name} · {profile.asset_id}</p>
           </div>
           <div className="flex items-center gap-6">
@@ -746,7 +746,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors"
+              className="p-1.5 rounded-lg hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors"
             >
               <XIcon size={16} />
             </button>
@@ -825,12 +825,12 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-mar-border shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-og-border shrink-0">
           <button
             type="button"
             onClick={() => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3)}
             disabled={step === 1}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-mar-border-md text-mar-text hover:bg-mar-surface-alt disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-og-border-md text-og-text hover:bg-og-surface-alt disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             Back
           </button>
@@ -844,7 +844,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
                 setStep((s) => (s + 1) as 2 | 3);
               }}
               disabled={(step === 1 && !step1Valid) || (step === 2 && !step2Valid)}
-              className="px-5 py-2 text-sm font-medium rounded-lg bg-mar-action hover:bg-mar-action-dark text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-5 py-2 text-sm font-medium rounded-lg bg-og-action hover:bg-og-action-dark text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Next
             </button>
@@ -864,8 +864,8 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       {/* Confirm dialog */}
       {confirmOpen && (
         <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <div className="bg-mar-surface border border-mar-border rounded-xl shadow-2xl p-6 w-96 mx-auto">
-            <h3 className="text-sm font-semibold text-mar-text mb-3">Save calibration record?</h3>
+          <div className="bg-og-surface border border-og-border rounded-xl shadow-2xl p-6 w-96 mx-auto">
+            <h3 className="text-sm font-semibold text-og-text mb-3">Save calibration record?</h3>
             {hasConformityCheck && conformityStatement!.passed && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 mb-3">
                 <CheckIcon size={13} className="text-emerald-600 shrink-0 mt-0.5" />
@@ -891,7 +891,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={saving}
-                className="px-3 py-1.5 text-sm rounded-lg border border-mar-border-md text-mar-text hover:bg-mar-surface-alt transition-colors"
+                className="px-3 py-1.5 text-sm rounded-lg border border-og-border-md text-og-text hover:bg-og-surface-alt transition-colors"
               >
                 Cancel
               </button>
@@ -1002,7 +1002,7 @@ function Step1({
                 type="button"
                 title="Use my name"
                 onClick={() => onChange({ ...state, performed_by_other: false, performed_by_name: currentUserName })}
-                className="shrink-0 text-gray-400 hover:text-mar-text text-lg leading-none px-1"
+                className="shrink-0 text-gray-400 hover:text-og-text text-lg leading-none px-1"
               >
                 ×
               </button>
@@ -1042,7 +1042,7 @@ function Step1({
 
       {/* External fields */}
       {state.calibration_type === "external" && (
-        <div className="space-y-4 pl-4 border-l-2 border-mar-border">
+        <div className="space-y-4 pl-4 border-l-2 border-og-border">
           <div className="grid grid-cols-2 gap-4">
             <WInput label="Calibration provider" value={state.external_lab_name} onChange={set("external_lab_name") as (v: string) => void} />
             <WInput label="Certificate number" value={state.external_lab_certificate_number} onChange={set("external_lab_certificate_number") as (v: string) => void} />
@@ -1059,7 +1059,7 @@ function Step1({
 
       {/* Internal fields */}
       {state.calibration_type === "internal" && (
-        <div className="space-y-4 pl-4 border-l-2 border-mar-border">
+        <div className="space-y-4 pl-4 border-l-2 border-og-border">
           <div className="grid grid-cols-2 gap-4">
             <WSelect
               label="Reference asset"
@@ -1080,17 +1080,17 @@ function Step1({
       )}
 
       {/* Environmental conditions */}
-      <div className="border border-mar-border rounded-lg overflow-hidden">
+      <div className="border border-og-border rounded-lg overflow-hidden">
         <button
           type="button"
           onClick={() => onChange({ ...state, env_expanded: !state.env_expanded })}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-mar-text hover:bg-mar-surface-alt transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-og-text hover:bg-og-surface-alt transition-colors"
         >
           <span>Environmental conditions <span className="text-xs text-gray-400 font-normal ml-1">(optional)</span></span>
           <ChevronDownIcon size={14} className={`text-gray-400 transition-transform ${state.env_expanded ? "rotate-180" : ""}`} />
         </button>
         {state.env_expanded && (
-          <div className="px-4 pb-4 pt-2 space-y-4 border-t border-mar-border">
+          <div className="px-4 pb-4 pt-2 space-y-4 border-t border-og-border">
             {(() => {
               const numErr = (v: string) =>
                 v.trim() !== "" && isNaN(parseFloat(v.trim())) ? "Must be a number" : undefined;
@@ -1226,14 +1226,14 @@ function Step2({
       </div>
 
       {/* Mode tabs */}
-      <div className="flex gap-1 p-1 bg-mar-surface-alt rounded-lg w-fit">
+      <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit">
         {(["manual", "csv"] as const).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => onInputModeChange(m)}
             className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-              inputMode === m ? "bg-mar-surface text-mar-text shadow-xs" : "text-gray-400 hover:text-mar-text"
+              inputMode === m ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
             }`}
           >
             {m === "manual" ? "Manual entry" : "CSV upload"}
@@ -1244,10 +1244,10 @@ function Step2({
       {inputMode === "manual" && (
         <div className="space-y-3">
           {/* Data table */}
-          <div className="rounded-lg border border-mar-border overflow-hidden">
+          <div className="rounded-lg border border-og-border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-mar-border bg-mar-surface-alt">
+                <tr className="border-b border-og-border bg-og-surface-alt">
                   <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium w-10">#</th>
                   <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
                     Reference {referenceUnit && <span className="font-mono ml-1">({referenceUnit})</span>}
@@ -1260,7 +1260,7 @@ function Step2({
               </thead>
               <tbody>
                 {points.map((pt, i) => (
-                  <tr key={i} className="border-b border-mar-border last:border-b-0 hover:bg-mar-surface-alt/50 transition-colors">
+                  <tr key={i} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
                     <td className="px-3 py-1.5 text-xs text-gray-400 font-mono">{i + 1}</td>
                     <td className="px-2 py-1">
                       <input
@@ -1301,7 +1301,7 @@ function Step2({
           <button
             type="button"
             onClick={addRow}
-            className="flex items-center gap-1.5 text-xs text-mar-accent hover:text-mar-accent-dark font-medium transition-colors"
+            className="flex items-center gap-1.5 text-xs text-og-accent hover:text-og-accent-dark font-medium transition-colors"
           >
             <PlusIcon size={13} />
             Add row
@@ -1322,7 +1322,7 @@ function Step2({
             }}
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-              dragging ? "border-mar-accent bg-mar-accent/5" : "border-mar-border-md hover:border-mar-accent hover:bg-mar-surface-alt"
+              dragging ? "border-og-accent bg-og-accent/5" : "border-og-border-md hover:border-og-accent hover:bg-og-surface-alt"
             }`}
           >
             <input
@@ -1332,7 +1332,7 @@ function Step2({
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileUpload(f); }}
             />
-            <p className="text-sm font-medium text-mar-text">Drop CSV file here or click to browse</p>
+            <p className="text-sm font-medium text-og-text">Drop CSV file here or click to browse</p>
             <p className="text-xs text-gray-400 mt-1">Expected format: header row (Reference, Measured), then data rows</p>
           </div>
           {csvError && (
@@ -1409,9 +1409,9 @@ function ManualCoefficientsStep({
       </div>
 
       {previewValid && (
-        <div className="px-4 py-2 rounded-lg bg-mar-surface-alt border border-mar-border">
+        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
           <span className="text-[11px] text-gray-400 mr-2">Equation</span>
-          <span className="text-xs font-mono text-mar-text">{formatEquation(numericCoeffs, state.poly_order)}</span>
+          <span className="text-xs font-mono text-og-text">{formatEquation(numericCoeffs, state.poly_order)}</span>
         </div>
       )}
 
@@ -1432,7 +1432,7 @@ function ManualCoefficientsStep({
         />
       </div>
 
-      <div className="border border-mar-border rounded-lg overflow-hidden">
+      <div className="border border-og-border rounded-lg overflow-hidden">
         <div className="px-4 py-3">
           <WCheckbox
             label="Uncertainty stated on certificate"
@@ -1441,7 +1441,7 @@ function ManualCoefficientsStep({
           />
         </div>
         {state.has_uncertainty && (
-          <div className="px-4 pb-4 pt-1 grid grid-cols-2 gap-4 border-t border-mar-border">
+          <div className="px-4 pb-4 pt-1 grid grid-cols-2 gap-4 border-t border-og-border">
             <WInput
               label={`Expanded uncertainty (±)${referenceUnit ? ` (${referenceUnit})` : ""}`}
               type="number"
@@ -1644,12 +1644,12 @@ function Step3({
     const hasUncertainty = expandedU != null && !isNaN(expandedU);
     return (
       <div className="p-6 space-y-4">
-        <div className="px-4 py-2 rounded-lg bg-mar-surface-alt border border-mar-border">
+        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
           <span className="text-[11px] text-gray-400 mr-2">Equation</span>
-          <span className="text-xs font-mono text-mar-text">{formatEquation(numericCoeffs, manualCoeff.poly_order)}</span>
+          <span className="text-xs font-mono text-og-text">{formatEquation(numericCoeffs, manualCoeff.poly_order)}</span>
           {referenceUnit && <span className="text-[11px] text-gray-400 ml-2">({referenceUnit})</span>}
         </div>
-        <div className="rounded-xl border border-mar-border p-4 bg-mar-surface-alt max-w-sm">
+        <div className="rounded-xl border border-og-border p-4 bg-og-surface-alt max-w-sm">
           <StatRow label="Valid range" value={`${fmtN(rangeMin)} – ${fmtN(rangeMax)} ${referenceUnit}`} />
           <StatRow label="Polynomial order" value={String(manualCoeff.poly_order)} />
           {hasUncertainty && (
@@ -1671,7 +1671,7 @@ function Step3({
   return (
     <div className="p-5 space-y-4">
       {/* Controls row */}
-      <div className="flex flex-wrap gap-3 p-4 bg-mar-surface-alt rounded-xl border border-mar-border">
+      <div className="flex flex-wrap gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
         <div className="flex flex-col gap-1 min-w-[120px]">
           <WLabel text="Regression degree" />
           <select
@@ -1738,7 +1738,7 @@ function Step3({
                 type="checkbox"
                 checked={includeSensorNominalUncertainty}
                 onChange={(e) => onIncludeSensorNominalUncertaintyChange(e.target.checked)}
-                className="rounded-sm border-mar-border-md"
+                className="rounded-sm border-og-border-md"
               />
               Incl. in budget
             </label>
@@ -1750,14 +1750,14 @@ function Step3({
         {referenceStandardAutoLoading ? (
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <span className="text-xs text-gray-400 flex items-center gap-1.5">
-              <span className="w-3 h-3 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+              <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
               Loading reference standard…
             </span>
           </div>
         ) : referenceStandardAuto ? (
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <span className="text-xs text-gray-400">
-              Ref. standard U: <span className="font-mono text-mar-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
+              Ref. standard U: <span className="font-mono text-og-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
               {referenceAssetName && <span className="text-gray-400"> (last calibration of {referenceAssetName})</span>}
             </span>
           </div>
@@ -1791,7 +1791,7 @@ function Step3({
         {analyzing && (
           <div className="ml-auto flex items-end">
             <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="w-3.5 h-3.5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
               Analyzing…
             </div>
           </div>
@@ -1800,9 +1800,9 @@ function Step3({
 
       {/* Equation display */}
       {result && !analyzing && (
-        <div className="px-4 py-2 rounded-lg bg-mar-surface-alt border border-mar-border">
+        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
           <span className="text-[11px] text-gray-400 mr-2">Equation</span>
-          <span className="text-xs font-mono text-mar-text">
+          <span className="text-xs font-mono text-og-text">
             {formatEquation(result.coefficients, result.poly_degree)}
           </span>
           <span className="text-[11px] text-gray-400 ml-2">
@@ -1821,11 +1821,11 @@ function Step3({
       {result && !analyzing && (
         <div className="flex gap-4 min-h-0">
           {/* Left: stats + uncertainty (40%) */}
-          <div className="w-[40%] shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt">
-            <p className="text-xs font-semibold text-mar-text mb-2">Calibration</p>
+          <div className="w-[40%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt">
+            <p className="text-xs font-semibold text-og-text mb-2">Calibration</p>
             <StatRow label="Valid range" value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
             <StatRow label="Polynomial degree" value={String(result.poly_degree)} />
-            <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Statistics</p>
+            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">Statistics</p>
             <StatRow label="R²" value={fmtN(result.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." docsHref={STAT_DOCS_LINKS.r_squared} />
             <StatRow label="RMSE" value={`${fmtN(result.rmse)} ${referenceUnit}`} tip="Root mean square error — typical magnitude of residuals." docsHref={STAT_DOCS_LINKS.rmse} />
             <StatRow label="Max error" value={`${fmtN(result.max_error)} ${referenceUnit}`} tip="Largest absolute residual." docsHref={STAT_DOCS_LINKS.max_error} />
@@ -1837,7 +1837,7 @@ function Step3({
             {result.hysteresis != null && (
               <StatRow label="Hysteresis†" value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip="Max difference between ascending and descending sweeps." docsHref={STAT_DOCS_LINKS.hysteresis} />
             )}
-            <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Uncertainty budget</p>
+            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">Uncertainty budget</p>
             {result.uncertainty_budget.map((c) => (
               <StatRow
                 key={c.source}
@@ -1866,7 +1866,7 @@ function Step3({
             />
             {result.conformity_statement.specification && (
               <>
-                <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Conformity</p>
+                <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">Conformity</p>
                 <div className="flex items-center justify-between gap-2 py-1">
                   <span className="text-xs text-gray-400">Statement</span>
                   <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
@@ -1892,14 +1892,14 @@ function Step3({
           {/* Right: chart / table toggle (60%) */}
           <div className="flex-1 min-w-0 flex flex-col gap-2">
             {/* Toggle tabs */}
-            <div className="flex gap-1 p-1 bg-mar-surface-alt rounded-lg w-fit border border-mar-border">
+            <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit border border-og-border">
               {(["chart", "table"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setRightView(v)}
                   className={`px-4 py-1 rounded text-xs font-medium transition-colors ${
-                    rightView === v ? "bg-mar-surface text-mar-text shadow-xs" : "text-gray-400 hover:text-mar-text"
+                    rightView === v ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
                   }`}
                 >
                   {v === "chart" ? "Chart" : "Data Table"}
@@ -1908,10 +1908,10 @@ function Step3({
             </div>
 
             {rightView === "chart" && (
-              <div className="rounded-xl border border-mar-border bg-mar-surface flex-1 relative overflow-hidden" style={{ minHeight: 340 }}>
+              <div className="rounded-xl border border-og-border bg-og-surface flex-1 relative overflow-hidden" style={{ minHeight: 340 }}>
                 {/* Gradient legend overlay */}
                 <div className="absolute bottom-20 right-3 z-20 pointer-events-none">
-                  <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-xs">
+                  <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
                     <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 rounded-xs" style={{ height: 48, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
@@ -1927,10 +1927,10 @@ function Step3({
             )}
 
             {rightView === "table" && (
-              <div className="rounded-xl border border-mar-border overflow-hidden flex-1" style={{ maxHeight: 340, overflowY: "auto" }}>
+              <div className="rounded-xl border border-og-border overflow-hidden flex-1" style={{ maxHeight: 340, overflowY: "auto" }}>
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 z-10">
-                    <tr className="border-b border-mar-border bg-mar-surface-alt">
+                    <tr className="border-b border-og-border bg-og-surface-alt">
                       {[
                         "#",
                         `Measured (${measuredUnit})`,
@@ -1949,15 +1949,15 @@ function Step3({
                         key={pt.point_index}
                         onMouseEnter={() => onHoverPoint(pt.point_index)}
                         onMouseLeave={() => onHoverPoint(null)}
-                        className={`border-b border-mar-border last:border-b-0 cursor-default transition-colors ${
-                          hoveredPointIdx === pt.point_index ? "bg-mar-accent/10" : "hover:bg-mar-surface-alt/50"
+                        className={`border-b border-og-border last:border-b-0 cursor-default transition-colors ${
+                          hoveredPointIdx === pt.point_index ? "bg-og-accent/10" : "hover:bg-og-surface-alt/50"
                         }`}
                       >
                         <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
-                        <td className="px-3 py-1.5 font-mono text-mar-text">{fmtN(pt.measured_value)}</td>
-                        <td className="px-3 py-1.5 font-mono text-mar-text">{fmtN(pt.reference_value)}</td>
-                        <td className="px-3 py-1.5 font-mono text-mar-text">{fmtN(pt.calculated_value)}</td>
-                        <td className={`px-3 py-1.5 font-mono ${Math.abs(pt.residual_abs ?? 0) > (result.rmse * 2) ? "text-amber-400 dark:text-amber-300" : "text-mar-text"}`}>
+                        <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.measured_value)}</td>
+                        <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.reference_value)}</td>
+                        <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.calculated_value)}</td>
+                        <td className={`px-3 py-1.5 font-mono ${Math.abs(pt.residual_abs ?? 0) > (result.rmse * 2) ? "text-amber-400 dark:text-amber-300" : "text-og-text"}`}>
                           {fmtN(pt.residual_abs)}
                         </td>
                         <td className="px-3 py-1.5 font-mono text-gray-400">{fmtN(pt.residual_pct, 3)}</td>

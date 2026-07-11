@@ -11,7 +11,7 @@ in the UI — clicking a tooltip brings you back to the matching section on this
 
 Go to **Assets → New Asset**, choose asset type **sensor**, and fill in name,
 manufacturer/model, serial number, and (optionally) a datasheet, location, and owning team.
-Saving creates the asset with an auto-generated ID (e.g. `MAR-00042`).
+Saving creates the asset with an auto-generated ID (e.g. `OG-00042`).
 
 ## 2. Add a channel
 
@@ -57,15 +57,15 @@ the physical unit (e.g. a 4–20 mA current loop representing 0–100 °C).
 Maximum deviation between the sensor output and the true value. Smaller means more accurate.
 Choose **% FS** as the unit to express this as a percentage of the measurable range instead of
 an absolute value — see [The "% FS" convention](#the-fs-convention) below. This is the
-manufacturer/nominal accuracy spec, and it's what MAR compares a calibration's measured error
+manufacturer/nominal accuracy spec, and it's what Open Gauge compares a calibration's measured error
 against to decide pass/fail — see
-[Decision rules](/docs/guide/calibration/decision-rules).
+[Decision rules](../calibration/decision-rules.mdx).
 
 ### Resolution [#resolution]
 
 Smallest change in input the sensor can detect and represent in its output. Resolution feeds
 automatically into every calibration's uncertainty budget as a Type B (rectangular)
-contribution — see [The uncertainty budget](/docs/guide/calibration/uncertainty-budget).
+contribution — see [The uncertainty budget](../calibration/uncertainty-budget.mdx).
 
 ### Uncertainty (±) [#measurement-uncertainty]
 
@@ -78,9 +78,9 @@ double-counting against the fit-residual term computed from the calibration's ow
 ### Drift rate [#drift-rate]
 
 Rate at which the sensor output shifts over time without any change in the measured quantity.
-Purely informational on the channel — MAR's own drift *detection* is computed from actual
+Purely informational on the channel — Open Gauge's own drift *detection* is computed from actual
 calibration history, not from this manufacturer spec; see
-[Drift metrics](/docs/guide/health-scoring/drift-metrics).
+[Drift metrics](../health-scoring/drift-metrics.mdx).
 
 ### Response time (ms) [#response-time-ms]
 
@@ -96,7 +96,7 @@ Maximum frequency of input changes the sensor can accurately follow.
 A checkbox, **"Reference standard"** (default: unchecked/**No**). Check it to mark this
 channel as a reference standard, so it can be selected as the traceability reference when
 calibrating other assets against it — see
-[Calibration overview](/docs/guide/calibration/overview) for how internal calibrations use a
+[Calibration overview](../calibration/overview.mdx) for how internal calibrations use a
 reference asset.
 
 ## The "% FS" convention [#the-fs-convention]
@@ -105,7 +105,7 @@ Accuracy, Resolution, and Uncertainty each pair a numeric value with a **unit dr
 dropdown offers the channel's compatible physical units (e.g. °C for a temperature channel)
 plus, once Range min/max are filled in, a **"% FS"** option as the *first* choice. There's no
 separate "accuracy type" field to set — picking a real unit (like °C) means the value is
-absolute; picking **% FS** means it's a percentage of the range span, and MAR converts it to an
+absolute; picking **% FS** means it's a percentage of the range span, and Open Gauge converts it to an
 absolute value internally (`value/100 × (range_max − range_min)`) wherever it's used in a
 calculation.
 
@@ -117,5 +117,5 @@ asset page — no need to re-open the edit form to check what was configured.
 ## Next steps
 
 With a channel configured, you're ready to run your first calibration — see
-[Calibration overview](/docs/guide/calibration/overview), or work through a complete numeric
-example in [Worked examples](/docs/guide/calibration/examples).
+[Calibration overview](../calibration/overview.mdx), or work through a complete numeric
+example in [Worked examples](../calibration/examples/index.mdx).

@@ -53,7 +53,7 @@ function capitalize(s: string): string {
 }
 
 const INPUT_CLS =
-  "w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors placeholder-gray-400";
+  "w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:ring-og-accent/40 focus:border-og-accent/60 transition-colors placeholder-gray-400";
 
 const DURATION_UNITS = ["seconds", "minutes", "hours", "days"] as const;
 type DurationUnit = (typeof DURATION_UNITS)[number];
@@ -140,7 +140,7 @@ function MetaCell({ label, value }: { label: string; value: string | null | unde
   return (
     <div className="flex flex-col gap-0.5">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{label}</p>
-      <p className="text-xs text-mar-text">{value}</p>
+      <p className="text-xs text-og-text">{value}</p>
     </div>
   );
 }
@@ -155,23 +155,23 @@ function ProcedureListItem({ proc, active, onClick }: { proc: Procedure; active:
       type="button"
       onClick={onClick}
       className={`w-full text-left px-3 py-3 rounded-lg transition-colors flex items-start gap-3 ${
-        active ? "bg-mar-accent/10 dark:bg-white/10" : "hover:bg-mar-surface-alt"
+        active ? "bg-og-accent/10 dark:bg-white/10" : "hover:bg-og-surface-alt"
       }`}
     >
       <div
         className={`shrink-0 w-7 h-7 rounded-md flex items-center justify-center mt-0.5 ${
-          active ? "bg-mar-accent/20 text-mar-accent" : "bg-mar-border text-gray-400"
+          active ? "bg-og-accent/20 text-og-accent" : "bg-og-border text-gray-400"
         }`}
       >
         <ProceduresIcon size={13} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 mb-0.5">
-          <span className={`text-[10px] font-mono font-semibold ${active ? "text-mar-accent" : "text-gray-400"}`}>
+          <span className={`text-[10px] font-mono font-semibold ${active ? "text-og-accent" : "text-gray-400"}`}>
             {proc.proc_id ?? "—"}
           </span>
         </div>
-        <p className="text-xs font-medium leading-snug truncate text-mar-text">{proc.name}</p>
+        <p className="text-xs font-medium leading-snug truncate text-og-text">{proc.name}</p>
         <div className="flex items-center gap-2 mt-1">
           {proc.duration_min != null && (
             <span className="flex items-center gap-1 text-[10px] text-gray-400">
@@ -209,20 +209,20 @@ function DeleteProcedureModal({ procName, onConfirm, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-sm p-6">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-sm p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center shrink-0">
             <TrashIcon size={16} className="text-red-500" />
           </div>
-          <h2 className="text-sm font-semibold text-mar-text">Remove procedure?</h2>
+          <h2 className="text-sm font-semibold text-og-text">Remove procedure?</h2>
         </div>
         <p className="text-sm text-gray-400 mb-2">
-          <span className="font-medium text-mar-text">{procName}</span> will be deactivated and removed from the procedures list.
+          <span className="font-medium text-og-text">{procName}</span> will be deactivated and removed from the procedures list.
         </p>
         {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
         <div className="flex items-center justify-end gap-2 mt-4">
           <button type="button" onClick={onClose} disabled={deleting}
-            className="px-3 py-1.5 text-sm border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors text-mar-text disabled:opacity-50">
+            className="px-3 py-1.5 text-sm border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors text-og-text disabled:opacity-50">
             Cancel
           </button>
           <button type="button" disabled={deleting} onClick={handleConfirm}
@@ -270,7 +270,7 @@ function StepFileChip({ file, isEditing, onDelete, onImageClick }: {
     return (
       <div className="relative group">
         <button type="button" onClick={() => onImageClick(file.url!)}
-          className="w-14 h-14 rounded-lg border border-mar-border overflow-hidden hover:ring-2 hover:ring-mar-accent/50 transition-all block" title={file.original_filename}>
+          className="w-14 h-14 rounded-lg border border-og-border overflow-hidden hover:ring-2 hover:ring-og-accent/50 transition-all block" title={file.original_filename}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={file.url} alt={file.original_filename} className="w-full h-full object-cover" />
         </button>
@@ -284,12 +284,12 @@ function StepFileChip({ file, isEditing, onDelete, onImageClick }: {
     );
   }
   return (
-    <div className="group flex items-center gap-1.5 px-2 py-1 bg-mar-surface-alt border border-mar-border rounded-lg text-[11px]">
+    <div className="group flex items-center gap-1.5 px-2 py-1 bg-og-surface-alt border border-og-border rounded-lg text-[11px]">
       <DocumentIcon size={11} className="text-gray-400 shrink-0" />
       {file.url ? (
-        <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-mar-accent hover:underline truncate max-w-[160px]">{file.original_filename}</a>
+        <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-og-accent hover:underline truncate max-w-[160px]">{file.original_filename}</a>
       ) : (
-        <span className="text-mar-text truncate max-w-[160px]">{file.original_filename}</span>
+        <span className="text-og-text truncate max-w-[160px]">{file.original_filename}</span>
       )}
       {isEditing && (
         <button type="button" onClick={onDelete} className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors"><XIcon size={10} /></button>
@@ -321,9 +321,9 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
   const LABEL_CLS = "w-24 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-gray-400";
 
   return (
-    <div className="flex items-start gap-3 px-5 py-4 border-b border-mar-border last:border-0">
+    <div className="flex items-start gap-3 px-5 py-4 border-b border-og-border last:border-0">
       {/* Step number */}
-      <div className="shrink-0 w-7 h-7 rounded-full bg-mar-accent/10 text-mar-accent flex items-center justify-center text-xs font-bold mt-1">
+      <div className="shrink-0 w-7 h-7 rounded-full bg-og-accent/10 text-og-accent flex items-center justify-center text-xs font-bold mt-1">
         {String(index + 1).padStart(2, "0")}
       </div>
 
@@ -356,15 +356,15 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
       {/* Controls */}
       <div className="flex flex-col gap-1 shrink-0 mt-1">
         <button type="button" onClick={onMoveUp} disabled={index === 0}
-          className="p-1 rounded-sm text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move up">
+          className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move up">
           <ChevronUpIcon size={14} />
         </button>
         <button type="button" onClick={onMoveDown} disabled={index === total - 1}
-          className="p-1 rounded-sm text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move down">
+          className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move down">
           <ChevronDownIcon size={14} />
         </button>
         <button type="button" onClick={onRemove}
-          className="p-1 rounded-sm text-red-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors" title="Remove step">
+          className="p-1 rounded-sm text-red-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors" title="Remove step">
           <TrashIcon size={14} />
         </button>
       </div>
@@ -399,13 +399,13 @@ function TwoColListEditor<T>({ items, col1Label, col2Label, col1Key, col2Key, co
             onChange={(e) => onUpdate(i, { ...item, [col2Key]: e.target.value || (col2Optional ? null : "") })}
             placeholder={col2Optional ? `${col2Label} (opt.)` : col2Label} className={INPUT_CLS} />
           <button type="button" onClick={() => onRemove(i)}
-            className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
+            className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors">
             <TrashIcon size={13} />
           </button>
         </div>
       ))}
       <button type="button" onClick={onAdd}
-        className="flex items-center gap-1.5 text-xs text-mar-accent hover:text-mar-accent-dark transition-colors mt-1">
+        className="flex items-center gap-1.5 text-xs text-og-accent hover:text-og-accent-dark transition-colors mt-1">
         <PlusIcon size={11} />{addLabel}
       </button>
     </div>
@@ -423,7 +423,7 @@ function SafetyEditor({ notes, onAdd, onUpdate, onRemove }: {
           <input type="text" value={note} onChange={(e) => onUpdate(i, e.target.value)}
             placeholder="Safety note" className={`${INPUT_CLS} flex-1`} />
           <button type="button" onClick={() => onRemove(i)}
-            className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
+            className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors">
             <TrashIcon size={13} />
           </button>
         </div>
@@ -649,7 +649,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
       )}
 
       {/* ── Header card ── */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5">
         {/* Top meta row */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -657,16 +657,16 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               <input type="text" value={draft.proc_id ?? ""} maxLength={20}
                 onChange={(e) => setDraftField("proc_id", e.target.value || null)}
                 placeholder="PROC-XX-001"
-                className="w-28 px-1.5 py-0.5 text-xs font-mono font-semibold rounded-sm border border-mar-border-md bg-mar-surface text-mar-accent focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40" />
+                className="w-28 px-1.5 py-0.5 text-xs font-mono font-semibold rounded-sm border border-og-border-md bg-og-surface text-og-accent focus:outline-hidden focus:ring-1 focus:ring-og-accent/40" />
             ) : (
-              <span className="font-mono font-semibold text-mar-accent">{proc.proc_id ?? "—"}</span>
+              <span className="font-mono font-semibold text-og-accent">{proc.proc_id ?? "—"}</span>
             )}
             <span>·</span>
             {isEditing ? (
               <input type="text" value={draft.version}
                 onChange={(e) => setDraftField("version", e.target.value)}
                 placeholder="1.0"
-                className="w-16 px-1.5 py-0.5 text-xs rounded-sm border border-mar-border-md bg-mar-surface text-mar-text focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40" />
+                className="w-16 px-1.5 py-0.5 text-xs rounded-sm border border-og-border-md bg-og-surface text-og-text focus:outline-hidden focus:ring-1 focus:ring-og-accent/40" />
             ) : (
               <span>v{draft.version}</span>
             )}
@@ -682,11 +682,11 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                   <TrashIcon size={12} />Remove
                 </button>
                 <button type="button" onClick={handleCancel} disabled={saving}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50">
                   <XIcon size={12} />Cancel
                 </button>
                 <button type="button" onClick={handleSave} disabled={saving}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50">
                   {saving ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckIcon size={12} />}
                   {saving ? "Saving…" : "Save"}
                 </button>
@@ -694,11 +694,11 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
             ) : (
               <>
                 <button type="button"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
                   <PrinterIcon size={12} />Print
                 </button>
                 <button type="button" onClick={handleStartEdit}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
                   <EditIcon size={12} />Edit
                 </button>
               </>
@@ -711,7 +711,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           <input type="text" value={draft.name} onChange={(e) => setDraftField("name", e.target.value)}
             placeholder="Procedure name" className={`${INPUT_CLS} text-base font-bold mb-2`} />
         ) : (
-          <h2 className="text-lg font-bold text-mar-text mb-1">{draft.name}</h2>
+          <h2 className="text-lg font-bold text-og-text mb-1">{draft.name}</h2>
         )}
 
         {/* Description */}
@@ -723,11 +723,11 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         )}
 
         {/* Meta bar */}
-        <div className="grid grid-cols-4 gap-4 py-3 border-t border-b border-mar-border mb-4">
+        <div className="grid grid-cols-4 gap-4 py-3 border-t border-b border-og-border mb-4">
           {/* Duration: always computed, never an input */}
           <div className="flex flex-col gap-0.5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Duration</p>
-            <p className="text-xs text-mar-text flex items-center gap-1">
+            <p className="text-xs text-og-text flex items-center gap-1">
               {formattedDuration ? (
                 <><ClockIcon size={11} className="text-gray-400" />{formattedDuration}</>
               ) : (
@@ -789,7 +789,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         ) : hasTags ? (
           <div className="flex flex-wrap gap-1.5">
             {(draft.tags ?? []).map((tag) => (
-              <span key={tag} className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-mar-accent/10 text-mar-accent border border-mar-accent/20">
+              <span key={tag} className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-og-accent/10 text-og-accent border border-og-accent/20">
                 {tag}
               </span>
             ))}
@@ -802,7 +802,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         <div className="grid grid-cols-3 gap-4">
           {/* Equipment */}
           {(isEditing || hasEquipment) && (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-4">
+            <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4">
               <SectionHeader>Equipment</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
@@ -817,7 +817,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                 <ul className="space-y-3">
                   {(draft.equipment ?? []).map((item, i) => (
                     <li key={i} className="flex flex-col gap-0.5">
-                      <p className="text-xs font-medium text-mar-text">{item.name}</p>
+                      <p className="text-xs font-medium text-og-text">{item.name}</p>
                       {item.model && <p className="text-[10px] font-mono text-gray-400">{item.model}</p>}
                     </li>
                   ))}
@@ -828,7 +828,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
           {/* Materials */}
           {(isEditing || hasMaterials) && (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-4">
+            <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4">
               <SectionHeader>Materials</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
@@ -843,7 +843,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                 <ul className="space-y-2">
                   {(draft.materials ?? []).map((item, i) => (
                     <li key={i} className="flex items-center justify-between">
-                      <p className="text-xs text-mar-text">{item.name}</p>
+                      <p className="text-xs text-og-text">{item.name}</p>
                       {item.quantity && <span className="text-[10px] font-mono text-gray-400">{item.quantity}</span>}
                     </li>
                   ))}
@@ -854,7 +854,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
           {/* Environment */}
           {(isEditing || hasEnvironment) && (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-4">
+            <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4">
               <SectionHeader>Environment</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
@@ -869,7 +869,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                 <ul className="space-y-2">
                   {(draft.environment ?? []).map((item, i) => (
                     <li key={i} className="flex items-center justify-between">
-                      <p className="text-xs text-mar-text">{item.parameter}</p>
+                      <p className="text-xs text-og-text">{item.parameter}</p>
                       <span className="text-[10px] font-mono text-gray-400">{item.value}</span>
                     </li>
                   ))}
@@ -882,7 +882,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
       {/* ── Safety ── */}
       {(isEditing || hasSafety) && (
-        <div className="bg-mar-surface rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-xs p-4">
+        <div className="bg-og-surface rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-xs p-4">
           <div className="flex items-center gap-2 mb-3">
             <ShieldIcon size={13} className="text-amber-500" />
             <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">Safety</p>
@@ -899,7 +899,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               {(draft.safety_notes ?? []).map((note, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <span className="mt-1.5 w-1 h-1 rounded-full bg-amber-500 shrink-0" />
-                  <p className="text-xs text-mar-text">{note}</p>
+                  <p className="text-xs text-og-text">{note}</p>
                 </li>
               ))}
             </ul>
@@ -908,9 +908,9 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
       )}
 
       {/* ── Steps ── */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-mar-border">
-          <p className="text-xs font-semibold text-mar-text uppercase tracking-wide">Procedure</p>
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-og-border">
+          <p className="text-xs font-semibold text-og-text uppercase tracking-wide">Procedure</p>
           <span className="text-xs text-gray-400">
             {steps.length} step{steps.length !== 1 ? "s" : ""}
             {formattedDuration && ` · ${formattedDuration}`}
@@ -925,7 +925,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           <div className="flex flex-col items-center py-10 text-center">
             <p className="text-sm text-gray-400 mb-3">No steps yet</p>
             <button type="button" onClick={addStep}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-mar-accent border border-mar-accent/30 rounded-lg hover:bg-mar-accent/10 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-og-accent border border-og-accent/30 rounded-lg hover:bg-og-accent/10 transition-colors">
               <PlusIcon size={12} />Add first step
             </button>
           </div>
@@ -949,7 +949,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                           </div>
                         )}
                         <button type="button" onClick={() => handleAttachClick(i)} disabled={uploading === i}
-                          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-mar-accent disabled:opacity-50 transition-colors">
+                          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-og-accent disabled:opacity-50 transition-colors">
                           <PaperclipIcon size={11} />
                           {uploading === i ? "Uploading…" : "Attach file"}
                         </button>
@@ -959,24 +959,24 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                 </div>
               </div>
             ))}
-            <div className="px-5 py-3 border-t border-mar-border">
+            <div className="px-5 py-3 border-t border-og-border">
               <button type="button" onClick={addStep}
-                className="flex items-center gap-1.5 text-xs font-medium text-mar-accent hover:text-mar-accent-dark transition-colors">
+                className="flex items-center gap-1.5 text-xs font-medium text-og-accent hover:text-og-accent-dark transition-colors">
                 <PlusIcon size={12} />Add step
               </button>
             </div>
           </>
         ) : (
-          <div className="divide-y divide-mar-border">
+          <div className="divide-y divide-og-border">
             {steps.map((step, i) => {
               const filesForStep = stepFiles.filter((f) => f.step_index === i);
               return (
                 <div key={i} className="flex items-start gap-4 px-5 py-4">
-                  <div className="shrink-0 w-7 h-7 rounded-full bg-mar-accent/10 text-mar-accent flex items-center justify-center text-xs font-bold">
+                  <div className="shrink-0 w-7 h-7 rounded-full bg-og-accent/10 text-og-accent flex items-center justify-center text-xs font-bold">
                     {String(i + 1).padStart(2, "0")}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-mar-text mb-0.5">{step.title}</p>
+                    <p className="text-sm font-medium text-og-text mb-0.5">{step.title}</p>
                     {step.description && <p className="text-xs text-gray-400">{step.description}</p>}
                     {filesForStep.length > 0 && (
                       <div className="mt-2.5 flex flex-wrap gap-2">
@@ -1004,7 +1004,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
       {/* ── Acceptance criteria ── */}
       {(isEditing || hasCriteria) && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
+        <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Acceptance Criteria</p>
           {isEditing ? (
             <div className="space-y-2">
@@ -1020,22 +1020,22 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                   <input type="text" value={c.limit} onChange={(e) => updateCriterion(i, { ...c, limit: e.target.value })}
                     placeholder="Acceptance condition" className={INPUT_CLS} />
                   <button type="button" onClick={() => removeCriterion(i)}
-                    className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
+                    className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors">
                     <TrashIcon size={13} />
                   </button>
                 </div>
               ))}
               <button type="button" onClick={addCriterion}
-                className="flex items-center gap-1.5 text-xs text-mar-accent hover:text-mar-accent-dark transition-colors mt-1">
+                className="flex items-center gap-1.5 text-xs text-og-accent hover:text-og-accent-dark transition-colors mt-1">
                 <PlusIcon size={11} />Add criterion
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
               {(draft.acceptance_criteria ?? []).map((c, i) => (
-                <div key={i} className="bg-mar-surface-alt border border-mar-border rounded-lg p-3">
+                <div key={i} className="bg-og-surface-alt border border-og-border rounded-lg p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">{c.label}</p>
-                  <p className="text-sm font-mono font-semibold text-mar-text">{c.limit}</p>
+                  <p className="text-sm font-mono font-semibold text-og-text">{c.limit}</p>
                 </div>
               ))}
             </div>
@@ -1072,8 +1072,8 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
   const [copyErrors, setCopyErrors] = useState<Record<string, string>>({});
 
   const inputCls = (hasError: boolean) =>
-    `w-full px-3 py-2 text-sm bg-mar-surface border rounded-lg text-mar-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors ${
-      hasError ? "border-red-400 dark:border-red-600" : "border-mar-border-md"
+    `w-full px-3 py-2 text-sm bg-og-surface border rounded-lg text-og-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-og-accent/40 focus:border-og-accent/60 transition-colors ${
+      hasError ? "border-red-400 dark:border-red-600" : "border-og-border-md"
     }`;
 
   async function handleCreateNew(e: React.FormEvent) {
@@ -1117,10 +1117,10 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-mar-border">
-          <h2 className="text-sm font-semibold text-mar-text">New procedure</h2>
-          <button type="button" onClick={onClose} className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-og-border">
+          <h2 className="text-sm font-semibold text-og-text">New procedure</h2>
+          <button type="button" onClick={onClose} className="p-1 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
             <XIcon size={16} />
           </button>
         </div>
@@ -1129,22 +1129,22 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
           <div className="p-6 space-y-3">
             <p className="text-xs text-gray-400 mb-4">How do you want to create the new procedure?</p>
             <button type="button" onClick={() => setMode("new")}
-              className="w-full flex items-start gap-4 p-4 border border-mar-border-md rounded-xl hover:bg-mar-surface-alt hover:border-mar-accent/40 transition-colors text-left">
-              <div className="shrink-0 w-9 h-9 rounded-lg bg-mar-accent/10 text-mar-accent flex items-center justify-center">
+              className="w-full flex items-start gap-4 p-4 border border-og-border-md rounded-xl hover:bg-og-surface-alt hover:border-og-accent/40 transition-colors text-left">
+              <div className="shrink-0 w-9 h-9 rounded-lg bg-og-accent/10 text-og-accent flex items-center justify-center">
                 <PlusIcon size={16} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-mar-text mb-0.5">Create from scratch</p>
+                <p className="text-sm font-semibold text-og-text mb-0.5">Create from scratch</p>
                 <p className="text-xs text-gray-400">Start with an empty procedure and define steps in the editor</p>
               </div>
             </button>
             <button type="button" onClick={() => setMode("copy")}
-              className="w-full flex items-start gap-4 p-4 border border-mar-border-md rounded-xl hover:bg-mar-surface-alt hover:border-mar-accent/40 transition-colors text-left">
-              <div className="shrink-0 w-9 h-9 rounded-lg bg-mar-accent/10 text-mar-accent flex items-center justify-center">
+              className="w-full flex items-start gap-4 p-4 border border-og-border-md rounded-xl hover:bg-og-surface-alt hover:border-og-accent/40 transition-colors text-left">
+              <div className="shrink-0 w-9 h-9 rounded-lg bg-og-accent/10 text-og-accent flex items-center justify-center">
                 <CopyIcon size={16} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-mar-text mb-0.5">Copy existing procedure</p>
+                <p className="text-sm font-semibold text-og-text mb-0.5">Copy existing procedure</p>
                 <p className="text-xs text-gray-400">Duplicate an existing procedure as a starting point</p>
               </div>
             </button>
@@ -1154,29 +1154,29 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
         {mode === "new" && (
           <form onSubmit={handleCreateNew} className="p-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-mar-text mb-1">Procedure ID *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">Procedure ID *</label>
               <input type="text" maxLength={20} placeholder="PROC-XX-001" value={newForm.proc_id}
                 onChange={(e) => setNewForm((f) => ({ ...f, proc_id: e.target.value }))} className={inputCls(!!newErrors.proc_id)} />
               {newErrors.proc_id && <p className="mt-1 text-xs text-red-500">{newErrors.proc_id}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-mar-text mb-1">Name *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">Name *</label>
               <input type="text" placeholder="Procedure name" value={newForm.name}
                 onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))} className={inputCls(!!newErrors.name)} />
               {newErrors.name && <p className="mt-1 text-xs text-red-500">{newErrors.name}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-mar-text mb-1">Physical quantity *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">Physical quantity *</label>
               <select value={newForm.physical_quantity} onChange={(e) => setNewForm((f) => ({ ...f, physical_quantity: e.target.value }))} className={inputCls(false)}>
                 {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{capitalize(q)}</option>)}
               </select>
             </div>
             {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">{error}</p>}
             <div className="flex justify-between items-center pt-1">
-              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-mar-text transition-colors">← Back</button>
+              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-og-text transition-colors">← Back</button>
               <div className="flex gap-2">
-                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-mar-border-md rounded-lg hover:bg-mar-surface-alt text-mar-text transition-colors disabled:opacity-50">Cancel</button>
-                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-og-border-md rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
                   {saving ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : <CheckIcon size={14} />}
                   {saving ? "Creating…" : "Create & edit"}
                 </button>
@@ -1188,7 +1188,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
         {mode === "copy" && (
           <form onSubmit={handleCreateCopy} className="p-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-mar-text mb-1">Copy from *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">Copy from *</label>
               <select value={sourceId} onChange={(e) => {
                 const id = e.target.value; setSourceId(id);
                 const src = procedures.find((p) => p.id === id);
@@ -1200,23 +1200,23 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
               {copyErrors.source && <p className="mt-1 text-xs text-red-500">{copyErrors.source}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-mar-text mb-1">New procedure ID *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">New procedure ID *</label>
               <input type="text" maxLength={20} placeholder="PROC-XX-002" value={copyProcId}
                 onChange={(e) => setCopyProcId(e.target.value)} className={inputCls(!!copyErrors.proc_id)} />
               {copyErrors.proc_id && <p className="mt-1 text-xs text-red-500">{copyErrors.proc_id}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-mar-text mb-1">Name *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">Name *</label>
               <input type="text" placeholder="Name for the new procedure" value={copyName}
                 onChange={(e) => setCopyName(e.target.value)} className={inputCls(!!copyErrors.name)} />
               {copyErrors.name && <p className="mt-1 text-xs text-red-500">{copyErrors.name}</p>}
             </div>
             {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">{error}</p>}
             <div className="flex justify-between items-center pt-1">
-              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-mar-text transition-colors">← Back</button>
+              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-og-text transition-colors">← Back</button>
               <div className="flex gap-2">
-                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-mar-border-md rounded-lg hover:bg-mar-surface-alt text-mar-text transition-colors disabled:opacity-50">Cancel</button>
-                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-og-border-md rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
                   {saving ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : <CopyIcon size={14} />}
                   {saving ? "Copying…" : "Create copy & edit"}
                 </button>
@@ -1235,11 +1235,11 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
 
 function EmptyDetail() {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-10 h-10 rounded-xl bg-mar-border flex items-center justify-center mb-3">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs flex flex-col items-center justify-center py-24 text-center">
+      <div className="w-10 h-10 rounded-xl bg-og-border flex items-center justify-center mb-3">
         <ProceduresIcon size={18} className="text-gray-400" />
       </div>
-      <p className="text-sm font-medium text-mar-text mb-1">Select a procedure</p>
+      <p className="text-sm font-medium text-og-text mb-1">Select a procedure</p>
       <p className="text-xs text-gray-400">Choose a procedure from the list to view its details</p>
     </div>
   );
@@ -1300,12 +1300,12 @@ export default function ProceduresPage() {
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-mar-text">Calibration procedures</h1>
+          <h1 className="text-xl font-bold text-og-text">Calibration procedures</h1>
           <p className="text-sm text-gray-400 mt-1">{count} procedure{count !== 1 ? "s" : ""} registered.</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
             <PlusIcon size={13} />New procedure
           </button>
         </div>
@@ -1313,18 +1313,18 @@ export default function ProceduresPage() {
 
       <div className="flex gap-5 items-start">
         {/* Sidebar */}
-        <div className="w-72 shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-hidden sticky top-0 max-h-[calc(100vh-180px)] flex flex-col">
-          <div className="px-3 py-2.5 border-b border-mar-border shrink-0">
+        <div className="w-72 shrink-0 bg-og-surface rounded-xl border border-og-border shadow-xs overflow-hidden sticky top-0 max-h-[calc(100vh-180px)] flex flex-col">
+          <div className="px-3 py-2.5 border-b border-og-border shrink-0">
             <div className="relative">
               <SearchIcon size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input type="text" placeholder="Search procedures..." value={search} onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 text-xs bg-mar-surface-alt border border-mar-border rounded-md text-mar-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors" />
+                className="w-full pl-7 pr-3 py-1.5 text-xs bg-og-surface-alt border border-og-border rounded-md text-og-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-og-accent/40 focus:border-og-accent/60 transition-colors" />
             </div>
           </div>
           <div className="overflow-y-auto flex-1 p-2">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="w-5 h-5 border-2 border-mar-accent border-t-transparent rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-og-accent border-t-transparent rounded-full animate-spin" />
               </div>
             ) : procedures.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-10">No procedures found</p>

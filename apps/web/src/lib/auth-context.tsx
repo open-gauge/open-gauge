@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">
-          <span className="inline-block w-6 h-6 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+          <span className="inline-block w-6 h-6 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
           <span className="text-xs text-gray-400">Loading workspace…</span>
         </div>
       </div>

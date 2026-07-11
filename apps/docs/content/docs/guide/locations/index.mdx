@@ -3,7 +3,7 @@ title: Locations
 description: Setting up the location hierarchy, marking calibration labs, and tracking asset movement.
 ---
 
-**Locations** in MAR form a hierarchical tree — organization → site → building → laboratory →
+**Locations** in Open Gauge form a hierarchical tree — organization → site → building → laboratory →
 whatever level of detail makes sense for your facilities. Manage them from the
 **Locations** page in the sidebar.
 
@@ -25,14 +25,14 @@ every warehouse or office in the tree.
 ## Assigning assets to a location
 
 An asset's current location is set from the asset detail page. Every time an asset's location
-changes, MAR records a new entry in its location history (with a timestamp, who moved it, and
+changes, Open Gauge records a new entry in its location history (with a timestamp, who moved it, and
 an optional reason/notes) rather than silently overwriting the previous location — so "where
 was this instrument on a given date" stays answerable even after it's moved multiple times.
-This mirrors MAR's general approach to history: see
-[Data model & concepts](/docs/guide/concepts/data-model).
+This mirrors Open Gauge's general approach to history: see
+[Data model & concepts](../concepts/data-model.mdx).
 
 ## Retiring a location
 
 Locations use the same soft-delete pattern as assets (`is_active` / `archived_at`, see
-[Data model & concepts](/docs/guide/concepts/data-model)) — archiving a location doesn't delete
+[Data model & concepts](../concepts/data-model.mdx)) — archiving a location doesn't delete
 the historical record of any asset that was once assigned there.

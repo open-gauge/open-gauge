@@ -48,8 +48,8 @@ import {
 // ---------------------------------------------------------------------------
 
 const IB =
-  "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
-const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+  "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
+const IB_OK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Super Admin",
@@ -91,7 +91,7 @@ function DashboardSection() {
 
   if (loadErr) {
     return (
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-6 text-sm text-red-500">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-6 text-sm text-red-500">
         {loadErr}
       </div>
     );
@@ -99,35 +99,35 @@ function DashboardSection() {
 
   const statCards = stats
     ? [
-        { label: "Assets",        value: stats.assets,        icon: <AssetRegistryIcon size={14} className="text-mar-accent" /> },
-        { label: "Procedures",    value: stats.procedures,    icon: <DocumentIcon size={14} className="text-mar-accent" /> },
-        { label: "Calibrations",  value: stats.calibrations,  icon: <ActivityIcon size={14} className="text-mar-accent" /> },
-        { label: "Users",         value: stats.users,         icon: <UsersIcon size={14} className="text-mar-accent" /> },
-        { label: "Organizations", value: stats.organizations, icon: <BuildingIcon size={14} className="text-mar-accent" /> },
-        { label: "Teams",         value: stats.teams,         icon: <DashboardIcon size={14} className="text-mar-accent" /> },
+        { label: "Assets",        value: stats.assets,        icon: <AssetRegistryIcon size={14} className="text-og-accent" /> },
+        { label: "Procedures",    value: stats.procedures,    icon: <DocumentIcon size={14} className="text-og-accent" /> },
+        { label: "Calibrations",  value: stats.calibrations,  icon: <ActivityIcon size={14} className="text-og-accent" /> },
+        { label: "Users",         value: stats.users,         icon: <UsersIcon size={14} className="text-og-accent" /> },
+        { label: "Organizations", value: stats.organizations, icon: <BuildingIcon size={14} className="text-og-accent" /> },
+        { label: "Teams",         value: stats.teams,         icon: <DashboardIcon size={14} className="text-og-accent" /> },
       ]
     : [];
 
   return (
     <div className="space-y-5">
       {/* Stats */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-        <div className="px-4 py-3 border-b border-mar-border">
-          <p className="text-xs font-semibold text-mar-text">Statistics</p>
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="px-4 py-3 border-b border-og-border">
+          <p className="text-xs font-semibold text-og-text">Statistics</p>
         </div>
         <div className="p-4">
           {!stats ? (
             <div className="flex items-center gap-2 py-4 text-xs text-gray-400">
-              <span className="w-4 h-4 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
               Loading…
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
               {statCards.map(({ label, value, icon }) => (
-                <div key={label} className="bg-mar-surface-alt border border-mar-border rounded-lg px-4 py-3 flex items-center gap-3">
+                <div key={label} className="bg-og-surface-alt border border-og-border rounded-lg px-4 py-3 flex items-center gap-3">
                   {icon}
                   <div>
-                    <p className="text-xl font-bold text-mar-text leading-none">{value.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-og-text leading-none">{value.toLocaleString()}</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
                   </div>
                 </div>
@@ -138,26 +138,26 @@ function DashboardSection() {
       </div>
 
       {/* System monitor */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-        <div className="px-4 py-3 border-b border-mar-border">
-          <p className="text-xs font-semibold text-mar-text">System Monitor</p>
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="px-4 py-3 border-b border-og-border">
+          <p className="text-xs font-semibold text-og-text">System Monitor</p>
         </div>
         <div className="p-4">
           {!sys ? (
             <div className="flex items-center gap-2 py-4 text-xs text-gray-400">
-              <span className="w-4 h-4 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
               Loading…
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-4 py-3">
+              <div className="bg-og-surface-alt border border-og-border rounded-lg px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
                   <ClockIcon size={12} className="text-gray-400" />
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Uptime</p>
                 </div>
-                <p className="text-sm font-mono text-mar-text">{formatUptime(sys.uptime_seconds)}</p>
+                <p className="text-sm font-mono text-og-text">{formatUptime(sys.uptime_seconds)}</p>
               </div>
-              <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-4 py-3">
+              <div className="bg-og-surface-alt border border-og-border rounded-lg px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
                   <DatabaseIcon size={12} className="text-gray-400" />
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Database</p>
@@ -173,12 +173,12 @@ function DashboardSection() {
                   </p>
                 </div>
               </div>
-              <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-4 py-3">
+              <div className="bg-og-surface-alt border border-og-border rounded-lg px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
                   <ActivityIcon size={12} className="text-gray-400" />
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">API Version</p>
                 </div>
-                <p className="text-sm font-mono text-mar-text">{sys.api_version}</p>
+                <p className="text-sm font-mono text-og-text">{sys.api_version}</p>
               </div>
             </div>
           )}
@@ -250,12 +250,12 @@ function UserRow({
   const orgName = orgs.find((o) => o.id === user.organization_id)?.name;
 
   return (
-    <div className={`px-4 py-3 ${editing ? "bg-mar-surface-alt" : ""}`}>
+    <div className={`px-4 py-3 ${editing ? "bg-og-surface-alt" : ""}`}>
       {editing ? (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-mar-text truncate">{user.name}</p>
+              <p className="text-sm font-medium text-og-text truncate">{user.name}</p>
               <p className="text-xs text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
@@ -290,14 +290,14 @@ function UserRow({
           <div className="flex gap-2">
             <button
               onClick={() => setEditing(false)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
             >
               <XIcon size={12} /> Cancel
             </button>
             <button
               onClick={saveEdit}
               disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
             >
               <CheckIcon size={12} /> {saving ? "Saving…" : "Save"}
             </button>
@@ -313,7 +313,7 @@ function UserRow({
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-medium text-mar-text truncate">{user.name}</p>
+              <p className="text-sm font-medium text-og-text truncate">{user.name}</p>
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
                 {ROLE_LABELS[user.role] ?? user.role}
               </span>
@@ -332,7 +332,7 @@ function UserRow({
               title={user.is_active ? "Disable user" : "Enable user"}
               className={`px-2 py-1 text-[10px] font-medium rounded transition-colors disabled:opacity-50 ${
                 user.is_active
-                  ? "text-gray-500 border border-mar-border-md hover:bg-mar-surface-alt"
+                  ? "text-gray-500 border border-og-border-md hover:bg-og-surface-alt"
                   : "text-emerald-600 border border-emerald-400/40 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
               }`}
             >
@@ -340,7 +340,7 @@ function UserRow({
             </button>
             <button
               onClick={startEdit}
-              className="p-1.5 text-gray-400 hover:text-mar-text rounded-sm transition-colors"
+              className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors"
             >
               <EditIcon size={13} />
             </button>
@@ -392,9 +392,9 @@ function UsersSection({ orgs }: { orgs: Organization[] }) {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border gap-3">
-        <p className="text-xs font-semibold text-mar-text shrink-0">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
+        <p className="text-xs font-semibold text-og-text shrink-0">
           Users {!loading && <span className="text-gray-400 font-normal">({total})</span>}
         </p>
         <input
@@ -402,14 +402,14 @@ function UsersSection({ orgs }: { orgs: Organization[] }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name or email…"
-          className="flex-1 max-w-xs px-3 py-1.5 rounded-lg border border-mar-border-md bg-mar-surface-alt text-xs text-mar-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-mar-accent/20 focus:border-mar-accent transition-colors"
+          className="flex-1 max-w-xs px-3 py-1.5 rounded-lg border border-og-border-md bg-og-surface-alt text-xs text-og-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-og-accent/20 focus:border-og-accent transition-colors"
         />
       </div>
 
-      <div className="divide-y divide-mar-border min-h-[100px]">
+      <div className="divide-y divide-og-border min-h-[100px]">
         {loading && (
           <div className="flex items-center justify-center py-10 gap-2 text-xs text-gray-400">
-            <span className="w-4 h-4 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+            <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
             Loading…
           </div>
         )}
@@ -425,7 +425,7 @@ function UsersSection({ orgs }: { orgs: Organization[] }) {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-mar-border">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-og-border">
           <p className="text-xs text-gray-400">
             Page {page + 1} of {totalPages}
           </p>
@@ -433,14 +433,14 @@ function UsersSection({ orgs }: { orgs: Organization[] }) {
             <button
               onClick={() => setPage((p) => p - 1)}
               disabled={page === 0}
-              className="px-3 py-1.5 text-xs font-medium border border-mar-border-md rounded-lg text-gray-600 dark:text-gray-300 hover:bg-mar-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-xs font-medium border border-og-border-md rounded-lg text-gray-600 dark:text-gray-300 hover:bg-og-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Previous
             </button>
             <button
               onClick={() => setPage((p) => p + 1)}
               disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-xs font-medium border border-mar-border-md rounded-lg text-gray-600 dark:text-gray-300 hover:bg-mar-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-xs font-medium border border-og-border-md rounded-lg text-gray-600 dark:text-gray-300 hover:bg-og-surface-alt transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next
             </button>
@@ -520,13 +520,13 @@ function OrgTeamsPanel({ orgId }: { orgId: string }) {
   }
 
   return (
-    <div className="ml-6 border-l-2 border-mar-border pl-4 pb-2 space-y-1">
+    <div className="ml-6 border-l-2 border-og-border pl-4 pb-2 space-y-1">
       <div className="flex items-center justify-between py-1">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Teams</p>
         {!creating && (
           <button
             onClick={() => setCreating(true)}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-mar-accent border border-mar-accent/30 rounded-sm hover:bg-mar-accent/10 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-og-accent border border-og-accent/30 rounded-sm hover:bg-og-accent/10 transition-colors"
           >
             <PlusIcon size={10} /> New Team
           </button>
@@ -534,7 +534,7 @@ function OrgTeamsPanel({ orgId }: { orgId: string }) {
       </div>
 
       {creating && (
-        <div className="bg-mar-surface-alt border border-mar-border rounded-lg p-3 space-y-2">
+        <div className="bg-og-surface-alt border border-og-border rounded-lg p-3 space-y-2">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -551,11 +551,11 @@ function OrgTeamsPanel({ orgId }: { orgId: string }) {
           {createErr && <p className="text-xs text-red-500">{createErr}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); setCreateErr(""); }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-sm hover:bg-mar-surface-alt transition-colors">
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-sm hover:bg-og-surface-alt transition-colors">
               <XIcon size={10} /> Cancel
             </button>
             <button onClick={handleCreate} disabled={!newName.trim() || createSaving}
-              className="flex items-center gap-1 px-3 py-1 text-[10px] font-medium bg-mar-action hover:bg-mar-action-dark text-white rounded-sm transition-colors disabled:opacity-60">
+              className="flex items-center gap-1 px-3 py-1 text-[10px] font-medium bg-og-action hover:bg-og-action-dark text-white rounded-sm transition-colors disabled:opacity-60">
               <CheckIcon size={10} /> {createSaving ? "Creating…" : "Create"}
             </button>
           </div>
@@ -570,7 +570,7 @@ function OrgTeamsPanel({ orgId }: { orgId: string }) {
 
       {teams.map((team) =>
         editId === team.id ? (
-          <div key={team.id} className="bg-mar-surface-alt border border-mar-border rounded-lg p-3 space-y-2">
+          <div key={team.id} className="bg-og-surface-alt border border-og-border rounded-lg p-3 space-y-2">
             <input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
@@ -586,11 +586,11 @@ function OrgTeamsPanel({ orgId }: { orgId: string }) {
             {editErr && <p className="text-xs text-red-500">{editErr}</p>}
             <div className="flex gap-2">
               <button onClick={() => setEditId(null)}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-sm hover:bg-mar-surface-alt transition-colors">
+                className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-sm hover:bg-og-surface-alt transition-colors">
                 <XIcon size={10} /> Cancel
               </button>
               <button onClick={() => handleSaveEdit(team.id)} disabled={!editName.trim() || editSaving}
-                className="flex items-center gap-1 px-3 py-1 text-[10px] font-medium bg-mar-action hover:bg-mar-action-dark text-white rounded-sm transition-colors disabled:opacity-60">
+                className="flex items-center gap-1 px-3 py-1 text-[10px] font-medium bg-og-action hover:bg-og-action-dark text-white rounded-sm transition-colors disabled:opacity-60">
                 <CheckIcon size={10} /> {editSaving ? "Saving…" : "Save"}
               </button>
             </div>
@@ -598,13 +598,13 @@ function OrgTeamsPanel({ orgId }: { orgId: string }) {
         ) : (
           <div key={team.id} className="flex items-center justify-between py-1.5 gap-2 group">
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-mar-text">{team.name}</p>
+              <p className="text-xs font-medium text-og-text">{team.name}</p>
               {team.description && <p className="text-[10px] text-gray-400">{team.description}</p>}
             </div>
             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => { setEditId(team.id); setEditName(team.name); setEditDesc(team.description ?? ""); setEditErr(""); }}
-                className="p-1 text-gray-400 hover:text-mar-text rounded-sm transition-colors">
+                className="p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors">
                 <EditIcon size={11} />
               </button>
               <button
@@ -664,7 +664,7 @@ function OrgRow({
   return (
     <div>
       {editing ? (
-        <div className="px-4 py-4 space-y-3 bg-mar-surface-alt border-b border-mar-border">
+        <div className="px-4 py-4 space-y-3 bg-og-surface-alt border-b border-og-border">
           <div className="space-y-1">
             <label className="text-xs text-gray-400">Organization name <span className="text-red-400">*</span></label>
             <input value={name} onChange={(e) => setName(e.target.value)} className={`${IB} ${IB_OK}`} autoFocus />
@@ -676,17 +676,17 @@ function OrgRow({
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setEditing(false); setName(org.name); setDesc(org.description ?? ""); setErr(""); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
               <XIcon size={12} /> Cancel
             </button>
             <button onClick={handleSave} disabled={!name.trim() || saving}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
               <CheckIcon size={12} /> {saving ? "Saving…" : "Save"}
             </button>
           </div>
         </div>
       ) : (
-        <div className="px-4 py-3 border-b border-mar-border">
+        <div className="px-4 py-3 border-b border-og-border">
           <div className="flex items-start justify-between gap-3">
             <button
               onClick={() => setExpanded((v) => !v)}
@@ -698,13 +698,13 @@ function OrgRow({
                 <ChevronRightIcon size={13} className="text-gray-400 shrink-0" />
               )}
               <div className="min-w-0">
-                <p className="text-sm font-medium text-mar-text group-hover:text-mar-accent transition-colors truncate">{org.name}</p>
+                <p className="text-sm font-medium text-og-text group-hover:text-og-accent transition-colors truncate">{org.name}</p>
                 {org.description && <p className="text-xs text-gray-400 truncate">{org.description}</p>}
               </div>
             </button>
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={() => { setEditing(true); setName(org.name); setDesc(org.description ?? ""); }}
-                className="p-1.5 text-gray-400 hover:text-mar-text rounded-sm transition-colors">
+                className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors">
                 <EditIcon size={13} />
               </button>
               <button onClick={handleDelete}
@@ -759,13 +759,13 @@ function OrgsSection() {
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
-        <p className="text-xs font-semibold text-mar-text">Organizations</p>
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+        <p className="text-xs font-semibold text-og-text">Organizations</p>
         {!creating && (
           <button
             onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
           >
             <PlusIcon size={12} /> New Organization
           </button>
@@ -773,8 +773,8 @@ function OrgsSection() {
       </div>
 
       {creating && (
-        <div className="px-4 py-4 border-b border-mar-border bg-mar-surface-alt space-y-3">
-          <p className="text-xs font-semibold text-mar-text">New Organization</p>
+        <div className="px-4 py-4 border-b border-og-border bg-og-surface-alt space-y-3">
+          <p className="text-xs font-semibold text-og-text">New Organization</p>
           <div className="space-y-1">
             <label className="text-xs text-gray-400">Name <span className="text-red-400">*</span></label>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} className={`${IB} ${IB_OK}`}
@@ -788,11 +788,11 @@ function OrgsSection() {
           {createErr && <p className="text-xs text-red-500">{createErr}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); setCreateErr(""); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
               <XIcon size={12} /> Cancel
             </button>
             <button onClick={handleCreate} disabled={!newName.trim() || createSaving}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
               <CheckIcon size={12} /> {createSaving ? "Creating…" : "Create"}
             </button>
           </div>
@@ -801,7 +801,7 @@ function OrgsSection() {
 
       {loading && (
         <div className="flex items-center justify-center py-10 gap-2 text-xs text-gray-400">
-          <span className="w-4 h-4 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+          <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
           Loading…
         </div>
       )}
@@ -860,14 +860,14 @@ export default function AdminPage() {
   return (
     <div className="p-6 space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-mar-text">Admin</h1>
+        <h1 className="text-xl font-bold text-og-text">Admin</h1>
         <p className="text-sm text-gray-400 mt-1">Manage users, organizations, and system settings</p>
       </div>
 
       <div className="flex gap-5 items-start">
         {/* Sidebar nav */}
-        <div className="w-52 shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-xs sticky top-4">
-          <div className="px-3 py-3 border-b border-mar-border">
+        <div className="w-52 shrink-0 bg-og-surface rounded-xl border border-og-border shadow-xs sticky top-4">
+          <div className="px-3 py-3 border-b border-og-border">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Administration</p>
           </div>
           <div className="p-2">
@@ -878,8 +878,8 @@ export default function AdminPage() {
                 onClick={() => setSection(item.id)}
                 className={`w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
                   section === item.id
-                    ? "bg-mar-border text-mar-text"
-                    : "text-gray-400 hover:bg-mar-border/50 hover:text-mar-text"
+                    ? "bg-og-border text-og-text"
+                    : "text-gray-400 hover:bg-og-border/50 hover:text-og-text"
                 }`}
               >
                 {item.label}

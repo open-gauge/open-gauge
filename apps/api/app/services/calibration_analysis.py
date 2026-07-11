@@ -318,7 +318,7 @@ def _expand(
     always *derived* from the requested confidence level (GUM §6.3, Annex G)
     rather than entered separately — there is no statistically meaningful way
     for a user to pick an arbitrary k independent of the confidence level and
-    distribution shape, so MAR doesn't ask for one:
+    distribution shape, so Open Gauge doesn't ask for one:
       - "t": k from the Student-t quantile at dof_eff (falls back to the
         normal quantile when dof_eff is unavailable/infinite — the correct
         limit as degrees of freedom -> infinity).
@@ -363,7 +363,7 @@ def _apply_decision_rule(
 
     - simple_acceptance: accept iff the reading is within tolerance, ignoring
       measurement uncertainty (ISO/IEC Guide 98-4's "simple acceptance";
-      matches MAR's original tolerance-only behavior).
+      matches Open Gauge's original tolerance-only behavior).
     - guard_band_w_uncertainty: shrink the acceptance zone inward by the
       expanded uncertainty U (accept iff error + U <= tolerance), reducing
       the risk of a false accept.

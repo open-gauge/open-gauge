@@ -1,10 +1,10 @@
 ---
 title: Units & conversions
-description: Every physical quantity MAR supports, its SI storage unit, and the display-unit conversion factors.
+description: Every physical quantity Open Gauge supports, its SI storage unit, and the display-unit conversion factors.
 ---
 
-All stored numeric values in MAR's database are in **SI units**. The unit you pick in the UI
-(e.g. °C, kPa, psi) is a *display* unit — MAR converts to/from SI at the boundary, and stores
+All stored numeric values in Open Gauge's database are in **SI units**. The unit you pick in the UI
+(e.g. °C, kPa, psi) is a *display* unit — Open Gauge converts to/from SI at the boundary, and stores
 the display unit alongside the value so it can round-trip correctly.
 
 | Physical quantity | SI unit | Display units → SI |
@@ -56,6 +56,6 @@ the display unit alongside the value so it can round-trip correctly.
 | Surface roughness | m | µm ×10⁻⁶ |
 
 Some quantities (sound pressure, radiation, concentration) are noted above as **not**
-universally convertible — MAR stores whatever the user entered for these without attempting a
+universally convertible — Open Gauge stores whatever the user entered for these without attempting a
 lossy conversion, since a correct conversion needs additional context (a reference value,
 molecular weight, measurement conditions) that isn't always available.

@@ -33,7 +33,7 @@ def format_expanded_uncertainty_statement(
     """
     Build the GUM §7.2.4-style full-sentence expanded-uncertainty statement,
     adapted for a calibration *function* (a fitted curve, not a single
-    measurement result) rather than a single "y = value ± U" report: MAR
+    measurement result) rather than a single "y = value ± U" report: Open Gauge
     certifies a calibration function's uncertainty over its valid range, not
     one measured value.
     """

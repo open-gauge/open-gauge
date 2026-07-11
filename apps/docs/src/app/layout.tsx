@@ -5,10 +5,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | MAR Documentation",
-    default: "MAR Documentation",
+    template: "%s | Open Gauge Documentation",
+    default: "Open Gauge Documentation",
   },
-  description: "Knowledge center and API reference for MAR (Measurement Asset Registry).",
+  description: "Knowledge center and API reference for Open Gauge.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

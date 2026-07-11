@@ -49,10 +49,10 @@ async function writeIndexPage() {
 
   const content = `---
 title: API Reference
-description: ${JSON.stringify(schema.info?.description ?? "REST API reference for MAR, generated from its OpenAPI schema.")}
+description: ${JSON.stringify(schema.info?.description ?? "REST API reference for Open Gauge, generated from its OpenAPI schema.")}
 ---
 
-All MAR functionality is available over a REST API at \`/api/v1\`, documented here directly
+All Open Gauge functionality is available over a REST API at \`/api/v1\`, documented here directly
 from the live OpenAPI schema. See [Authentication](/docs/guide/self-hosting/authentication)
 for how to obtain a session token, and [API workflow guides](/docs/guide) for narrative,
 task-oriented documentation (this section is a reference, not a tutorial).

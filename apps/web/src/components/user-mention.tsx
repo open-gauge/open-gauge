@@ -63,7 +63,7 @@ export function UserMention({
     return (
       <Link
         href={`/users/${actorId}`}
-        className={`${sharedCls} text-mar-text hover:text-mar-accent transition-colors`}
+        className={`${sharedCls} text-og-text hover:text-og-accent transition-colors`}
       >
         {displayName}
         {tooltip}
@@ -72,7 +72,7 @@ export function UserMention({
   }
 
   return (
-    <span className={`${sharedCls} text-mar-text cursor-default`}>
+    <span className={`${sharedCls} text-og-text cursor-default`}>
       {displayName}
       {tooltip}
     </span>

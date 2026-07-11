@@ -3,9 +3,9 @@ title: "Example 3 — Load cell, hysteresis + repeatability"
 description: The up/down sweep hysteresis detector, the triplicate-point repeatability detector, and a simple-acceptance-vs-shared-risk divergence.
 ---
 
-Exercises: the up/down sweep [hysteresis](/docs/guide/calibration/curve-fitting#hysteresis)
+Exercises: the up/down sweep [hysteresis](../curve-fitting.mdx#hysteresis)
 detector, the triplicate-point
-[repeatability](/docs/guide/calibration/curve-fitting#repeatability) detector, and another
+[repeatability](../curve-fitting.mdx#repeatability) detector, and another
 simple-acceptance-vs-shared-risk divergence.
 
 ## 3.0 Setup
@@ -52,7 +52,7 @@ Fit (degree 1, all 12 points): $a = 0.99833$, $b = -0.76668$.
 Max error = **0.863215 N**, at point 11 (reference 100 N, measured 101.8 N) → %FS error =
 $0.863215/500 \times 100\% = \mathbf{0.1726\%}$.
 
-**Hysteresis** — MAR groups points by reference value and takes the largest spread of measured
+**Hysteresis** — Open Gauge groups points by reference value and takes the largest spread of measured
 values within any group where the reference value repeats with both an ascending and
 descending segment present:
 
@@ -108,7 +108,7 @@ the lab and customer agree it's still acceptable. A good test of both "real fail
 | Field | Value |
 |---|---|
 | Hysteresis | 1.2 |
-| Repeatability | 0.435890 raw; displayed as **0.43589** in the wizard, **0.4359** in the history view (different fixed-decimal display precision — see [Rounding](/docs/guide/calibration/examples/rounding-and-troubleshooting)) |
+| Repeatability | 0.435890 raw; displayed as **0.43589** in the wizard, **0.4359** in the history view (different fixed-decimal display precision — see [Rounding](./rounding-and-troubleshooting.mdx)) |
 | Combined uncertainty | shown rounded: **0.49** |
 | Expanded uncertainty (±) | shown rounded: **0.96** |
 | Statement (simple acceptance) | DOES NOT CONFORM to ±0.15% of full scale |

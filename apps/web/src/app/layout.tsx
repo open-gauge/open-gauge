@@ -16,8 +16,8 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "MAR — Measurement Asset Registry",
-    template: "%s · MAR",
+    default: "Open Gauge — Open Gauge",
+    template: "%s · Open Gauge",
   },
   description:
     "Version control for metrology. Manage sensors, calibration coefficients, and traceable certificates.",
@@ -35,7 +35,7 @@ export default function RootLayout({
         <script
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
-            __html: `try{const t=localStorage.getItem('mar_theme');const d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(_){}`,
+            __html: `try{const t=localStorage.getItem('og_theme');const d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(_){}`,
           }}
         />
         <ThemeProvider>{children}</ThemeProvider>

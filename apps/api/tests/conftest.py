@@ -22,7 +22,7 @@ from app.models.user import User, UserRole
 
 _DB_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql://mar_user:mar_password@db:5432/mar_db",
+    "postgresql://opengauge_user:opengauge_password@db:5432/opengauge_db",
 )
 
 _engine = create_engine(_DB_URL)
@@ -72,7 +72,7 @@ def test_user(db: Session) -> User:
     """A fresh admin user visible only within the current test transaction."""
     user = User(
         id=uuid.uuid4(),
-        email=f"tester_{uuid.uuid4().hex[:8]}@mar.test",
+        email=f"tester_{uuid.uuid4().hex[:8]}@opengauge.test",
         name="Test Admin",
         hashed_password=hash_password("Testpass123!"),
         role=UserRole.admin,
@@ -92,7 +92,7 @@ def auth_headers(test_user: User) -> dict[str, str]:
 
 
 def make_asset_id() -> str:
-    """Generate a unique asset ID that satisfies the MAR-XXXXX constraint."""
-    # Use 9xxxx range to avoid colliding with seeded MAR-00xxx data
+    """Generate a unique asset ID that satisfies the OG-XXXXX constraint."""
+    # Use 9xxxx range to avoid colliding with seeded OG-00xxx data
     n = (uuid.uuid4().int % 9000) + 90000
-    return f"MAR-{n:05d}"
+    return f"Open Gauge-{n:05d}"

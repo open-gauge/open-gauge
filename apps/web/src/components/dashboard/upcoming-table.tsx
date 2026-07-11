@@ -23,15 +23,15 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
   const sorted = [...data].sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 h-full flex flex-col">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 h-full flex flex-col">
       <div className="flex items-start justify-between mb-4 shrink-0">
         <div>
-          <h3 className="text-sm font-semibold text-mar-text">Upcoming calibrations</h3>
+          <h3 className="text-sm font-semibold text-og-text">Upcoming calibrations</h3>
           <p className="text-xs text-gray-400 mt-0.5">Closest due dates first — click to open asset</p>
         </div>
         <a
           href="/assets"
-          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors shrink-0"
+          className="text-xs text-gray-400 hover:text-og-accent flex items-center gap-1 transition-colors shrink-0"
         >
           View all
           <ExternalLinkIcon />
@@ -50,12 +50,12 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
               <Link
                 key={i}
                 href={`/assets/${event.id}`}
-                className="flex items-center gap-4 py-3 border-b border-mar-border last:border-0 hover:bg-mar-surface-alt rounded-lg px-2 -mx-2 transition-colors"
+                className="flex items-center gap-4 py-3 border-b border-og-border last:border-0 hover:bg-og-surface-alt rounded-lg px-2 -mx-2 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-mar-text truncate">{event.name}</span>
-                    <span className="text-[10px] font-mono text-gray-400 bg-mar-surface-alt px-1.5 py-0.5 rounded-sm shrink-0">
+                    <span className="text-sm font-medium text-og-text truncate">{event.name}</span>
+                    <span className="text-[10px] font-mono text-gray-400 bg-og-surface-alt px-1.5 py-0.5 rounded-sm shrink-0">
                       {event.asset_id}
                     </span>
                   </div>

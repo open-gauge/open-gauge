@@ -184,8 +184,8 @@ function formToUpdateBody(form: LocationEditForm): LocationUpdateBody {
 // Inline edit field components
 // ---------------------------------------------------------------------------
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder-gray-300";
-const IOK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder-gray-300";
+const IOK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
 const IERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
 function FLabel({ label, required }: { label: string; required?: boolean }) {
@@ -263,9 +263,9 @@ function FCheckbox({ label, checked, onChange }: {
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded-sm border-mar-border-md accent-mar-accent"
+        className="w-4 h-4 rounded-sm border-og-border-md accent-og-accent"
       />
-      <span className="text-sm text-mar-text">{label}</span>
+      <span className="text-sm text-og-text">{label}</span>
     </label>
   );
 }
@@ -301,8 +301,8 @@ function TreeItem({
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         className={`w-full flex items-center gap-1.5 pr-3 py-1.5 rounded-md text-left text-sm transition-colors ${
           isSelected
-            ? "bg-mar-accent/10 text-mar-accent font-medium dark:bg-mar-accent/20 dark:text-mar-accent"
-            : "text-gray-600 dark:text-gray-400 hover:bg-mar-border hover:text-gray-900 dark:hover:text-gray-200"
+            ? "bg-og-accent/10 text-og-accent font-medium dark:bg-og-accent/20 dark:text-og-accent"
+            : "text-gray-600 dark:text-gray-400 hover:bg-og-border hover:text-gray-900 dark:hover:text-gray-200"
         }`}
       >
         <span className="w-3.5 h-3.5 shrink-0 flex items-center justify-center text-gray-400">
@@ -310,7 +310,7 @@ function TreeItem({
             ? isExpanded ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />
             : null}
         </span>
-        <span className={`shrink-0 ${isSelected ? "text-mar-accent" : "text-gray-400"}`}>
+        <span className={`shrink-0 ${isSelected ? "text-og-accent" : "text-gray-400"}`}>
           <TypeIcon type={node.location_type} size={13} />
         </span>
         <span className="flex-1 truncate text-xs">{node.name}</span>
@@ -321,7 +321,7 @@ function TreeItem({
           />
         )}
         {displayCount > 0 && (
-          <span className={`text-[10px] tabular-nums shrink-0 ${isSelected ? "text-mar-accent/80" : "text-gray-400"}`}>
+          <span className={`text-[10px] tabular-nums shrink-0 ${isSelected ? "text-og-accent/80" : "text-gray-400"}`}>
             {displayCount}
           </span>
         )}
@@ -353,9 +353,9 @@ function TreeItem({
 
 function InfoCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-4 py-3">
+    <div className="bg-og-surface-alt border border-og-border rounded-lg px-4 py-3">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
-      <p className="text-sm text-mar-text">{value}</p>
+      <p className="text-sm text-og-text">{value}</p>
     </div>
   );
 }
@@ -380,14 +380,14 @@ function RemoveLocationModal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-mar-surface border border-mar-border rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+      <div className="bg-og-surface border border-og-border rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
         <div className="flex items-center gap-3 mb-4">
           <WarningIcon size={20} className="text-red-500 shrink-0" />
-          <h2 className="text-base font-semibold text-mar-text">Remove location?</h2>
+          <h2 className="text-base font-semibold text-og-text">Remove location?</h2>
         </div>
         <p className="text-sm text-gray-500 mb-2">
           You are about to permanently remove{" "}
-          <span className="font-semibold text-mar-text">{locationName}</span>.
+          <span className="font-semibold text-og-text">{locationName}</span>.
         </p>
         <p className="text-sm text-gray-500 mb-5">
           All assets currently assigned to this location will be unassigned. This action cannot be undone.
@@ -397,7 +397,7 @@ function RemoveLocationModal({
             type="button"
             onClick={onClose}
             disabled={removing}
-            className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-60"
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
           >
             Cancel
           </button>
@@ -541,7 +541,7 @@ function LocationDetail({
       />
     <div className="space-y-4">
       {/* Header card */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5">
         {editing ? (
           /* Edit header */
           <div className="space-y-3">
@@ -561,7 +561,7 @@ function LocationDetail({
                   type="button"
                   onClick={handleCancel}
                   disabled={saving}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
                 >
                   <XIcon size={12} />
                   Cancel
@@ -591,10 +591,10 @@ function LocationDetail({
                   href={`/assets?location_id=${location.id}&location_name=${encodeURIComponent(location.name)}&include_descendants=true`}
                   className="group block"
                 >
-                  <p className="text-3xl font-bold text-mar-text tabular-nums group-hover:text-mar-accent transition-colors">
+                  <p className="text-3xl font-bold text-og-text tabular-nums group-hover:text-og-accent transition-colors">
                     {inheritedCount}
                   </p>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 group-hover:text-mar-accent transition-colors">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 group-hover:text-og-accent transition-colors">
                     Assets ↗
                   </p>
                 </Link>
@@ -608,7 +608,7 @@ function LocationDetail({
 
             {/* Center: name + description */}
             <div className="flex-1 text-center min-w-0">
-              <h2 className="text-xl font-bold text-mar-text leading-tight">{location.name}</h2>
+              <h2 className="text-xl font-bold text-og-text leading-tight">{location.name}</h2>
               {location.is_calibration_lab && (
                 <div className="flex justify-center mt-1">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40">
@@ -630,7 +630,7 @@ function LocationDetail({
               <button
                 type="button"
                 onClick={startEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
               >
                 <EditIcon size={12} />
                 Edit
@@ -642,7 +642,7 @@ function LocationDetail({
 
       {/* Edit form (shown below header when editing) */}
       {editing && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 space-y-4">
+        <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 space-y-4">
           <FTextArea
             label="Description"
             value={form.description}
@@ -698,7 +698,7 @@ function LocationDetail({
             checked={form.is_calibration_lab}
             onChange={(v) => setForm((prev) => ({ ...prev, is_calibration_lab: v }))}
           />
-          <div className="pt-1 border-t border-mar-border">
+          <div className="pt-1 border-t border-og-border">
             <button
               type="button"
               onClick={() => setRemoveModalOpen(true)}
@@ -714,7 +714,7 @@ function LocationDetail({
 
       {/* Info grid (view mode only, non-empty fields) */}
       {!editing && infoCards.length > 0 && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
+        <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5">
           <div className="grid grid-cols-2 gap-3">
             {infoCards.map((card) => (
               <InfoCard key={card.label} label={card.label} value={card.value} />
@@ -725,17 +725,17 @@ function LocationDetail({
 
       {/* Map (view mode only) */}
       {!editing && mapSrc && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
-            <div className="flex items-center gap-2 text-sm font-semibold text-mar-text">
-              <MapPinIcon size={14} className="text-mar-accent" />
+        <div className="bg-og-surface rounded-xl border border-og-border shadow-xs overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+            <div className="flex items-center gap-2 text-sm font-semibold text-og-text">
+              <MapPinIcon size={14} className="text-og-accent" />
               Map
             </div>
             <a
               href={mapLink!}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-mar-accent transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-og-accent transition-colors"
             >
               Open ↗
             </a>
@@ -838,14 +838,14 @@ function NewLocationForm({
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       {/* Form header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-mar-border">
-        <p className="text-sm font-semibold text-mar-text">New Location</p>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
+        <p className="text-sm font-semibold text-og-text">New Location</p>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded-sm text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors"
+          className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors"
           aria-label="Close"
         >
           <XIcon size={14} />
@@ -926,7 +926,7 @@ function NewLocationForm({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
           >
             Cancel
           </button>
@@ -1025,7 +1025,7 @@ export default function LocationsPage() {
       {/* Page header — floats over grid background */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-mar-text">Locations</h1>
+          <h1 className="text-xl font-bold text-og-text">Locations</h1>
           <p className="text-sm text-gray-400 mt-1">
             {loading
               ? "Loading…"
@@ -1035,7 +1035,7 @@ export default function LocationsPage() {
         <button
           type="button"
           onClick={() => setNewLocOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
         >
           <PlusIcon size={13} />
           New location
@@ -1054,7 +1054,7 @@ export default function LocationsPage() {
       {/* Two-panel layout */}
       <div className="flex gap-5 items-start">
         {/* Tree panel — floating card, scrolls independently */}
-        <div className="w-72 shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-y-auto max-h-[calc(100vh-180px)] sticky top-0">
+        <div className="w-72 shrink-0 bg-og-surface rounded-xl border border-og-border shadow-xs overflow-y-auto max-h-[calc(100vh-180px)] sticky top-0">
 
           <div className="p-2">
             {loading && <p className="text-xs text-gray-400 px-3 py-4">Loading…</p>}
@@ -1089,7 +1089,7 @@ export default function LocationsPage() {
               inheritedCount={inheritedCounts.get(selectedLocation.id) ?? selectedLocation.asset_count}
             />
           ) : (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs flex items-center justify-center py-24">
+            <div className="bg-og-surface rounded-xl border border-og-border shadow-xs flex items-center justify-center py-24">
               <div className="text-center">
                 <LocationOrgIcon size={32} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                 <p className="text-sm text-gray-400">Select a location from the tree to view details.</p>

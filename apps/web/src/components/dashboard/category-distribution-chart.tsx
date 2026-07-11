@@ -65,7 +65,7 @@ function SinglePie({ data, label, total }: SinglePieProps) {
           )}
         </PieChart>
         <span className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className={`text-xl font-bold leading-none ${isEmpty ? "text-gray-300" : "text-mar-text"}`}>
+          <span className={`text-xl font-bold leading-none ${isEmpty ? "text-gray-300" : "text-og-text"}`}>
             {total}
           </span>
           <span className="text-[10px] text-gray-400 mt-0.5">{label}</span>
@@ -80,7 +80,7 @@ function SinglePie({ data, label, total }: SinglePieProps) {
             <div key={i} className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
               <span className="text-[10px] text-gray-500 flex-1 truncate">{item.name}</span>
-              <span className="text-[10px] font-semibold text-mar-text tabular-nums">{item.value}</span>
+              <span className="text-[10px] font-semibold text-og-text tabular-nums">{item.value}</span>
             </div>
           ))
         )}
@@ -96,15 +96,15 @@ export default function CategoryDistributionChart({ data }: { data: AssetTypeDis
   const daqTotal = data.daqs.reduce((s, d) => s + d.count, 0);
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 h-full">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 h-full">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-mar-text">Asset distribution</h3>
+        <h3 className="text-sm font-semibold text-og-text">Asset distribution</h3>
         <p className="text-xs text-gray-400 mt-0.5">Sensors by type · DAQs by interface</p>
       </div>
 
       <div className="flex gap-4 items-start">
         <SinglePie data={sensorData} label="Sensor" total={sensorTotal} />
-        <div className="w-px self-stretch bg-mar-border" />
+        <div className="w-px self-stretch bg-og-border" />
         <SinglePie data={daqData} label="DAQ" total={daqTotal} />
       </div>
     </div>

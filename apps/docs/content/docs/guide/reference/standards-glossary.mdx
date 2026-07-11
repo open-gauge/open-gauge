@@ -1,20 +1,20 @@
 ---
 title: Standards & glossary
-description: The GUM/VIM nomenclature MAR uses, and the standards its calibration engine implements.
+description: The GUM/VIM nomenclature Open Gauge uses, and the standards its calibration engine implements.
 ---
 
-## Standards MAR implements
+## Standards Open Gauge implements
 
-| Standard | Title | Relevance to MAR |
+| Standard | Title | Relevance to Open Gauge |
 |---|---|---|
-| **JCGM 100:2008 (GUM)** | Guide to the expression of uncertainty in measurement | The foundational document behind [the uncertainty budget](/docs/guide/calibration/uncertainty-budget) — Type A/B evaluation, combination, expansion, coverage factors. |
-| **JCGM GUM-6:2020** | Developing and using measurement models | The most directly applicable document to MAR's calibration-coefficient data model — coefficient covariance, propagating uncertainty through a fitted curve. |
-| **ISO/IEC 17025:2017** | General requirements for the competence of testing and calibration laboratories | §7.1.3/§7.8.6 require documenting a [decision rule](/docs/guide/calibration/decision-rules) whenever a pass/fail statement is issued; §7.8.4.3 governs what a certificate may state about calibration intervals. |
+| **JCGM 100:2008 (GUM)** | Guide to the expression of uncertainty in measurement | The foundational document behind [the uncertainty budget](../calibration/uncertainty-budget.mdx) — Type A/B evaluation, combination, expansion, coverage factors. |
+| **JCGM GUM-6:2020** | Developing and using measurement models | The most directly applicable document to Open Gauge's calibration-coefficient data model — coefficient covariance, propagating uncertainty through a fitted curve. |
+| **ISO/IEC 17025:2017** | General requirements for the competence of testing and calibration laboratories | §7.1.3/§7.8.6 require documenting a [decision rule](../calibration/decision-rules.mdx) whenever a pass/fail statement is issued; §7.8.4.3 governs what a certificate may state about calibration intervals. |
 | **JCGM GUM-1:2023** | Guide to the expression of uncertainty in measurement — Part 1: Introduction | A roadmap/overview of the reorganized GUM document suite. |
 
 ## Core nomenclature (GUM / VIM)
 
-MAR's UI, API field names, and certificate language use these terms precisely — they are not
+Open Gauge's UI, API field names, and certificate language use these terms precisely — they are not
 interchangeable synonyms.
 
 | Term | Symbol | Definition |
@@ -37,7 +37,7 @@ interchangeable synonyms.
 
 **Error** is an idealized, unknowable quantity (result − true value). **Uncertainty** is a
 *positive* parameter characterizing the dispersion of values reasonably attributable to the
-measurand. MAR's field names (`max_error`, `combined_uncertainty`, `expanded_uncertainty`)
+measurand. Open Gauge's field names (`max_error`, `combined_uncertainty`, `expanded_uncertainty`)
 are chosen to be consistent with this distinction — `max_error` is an assessed error from
 real data, while the uncertainty fields describe the *doubt* around a result, not the result
 itself.

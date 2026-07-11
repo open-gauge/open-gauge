@@ -1,6 +1,6 @@
-# CALIBRATION_EXAMPLES.md — Worked Examples for Cross-Checking MAR
+# CALIBRATION_EXAMPLES.md — Worked Examples for Cross-Checking Open Gauge
 
-Four fully worked calibration examples, each exercising a different part of MAR's
+Four fully worked calibration examples, each exercising a different part of Open Gauge's
 calibration engine (`apps/api/app/services/calibration_analysis.py`). Every number below was
 produced by **running the real production code** against the input data shown (not
 hand-estimated), then independently re-derived by hand from the underlying formulas to
@@ -21,7 +21,7 @@ auto-fetch feature (Phase 1b), and the three decision rules diverging on the sam
 
 This example has **two calibrations**: first you calibrate a reference thermometer (so it has
 an `expanded_uncertainty` on file), then you calibrate the working sensor *against* that
-reference — this is what makes MAR auto-populate the "reference standard" budget row.
+reference — this is what makes Open Gauge auto-populate the "reference standard" budget row.
 
 ### 1.0 Setup — two assets
 
@@ -72,7 +72,7 @@ Add one sensor channel:
 
 Leave "Output signal unit" blank on both channels so the measured-value unit defaults to °C
 (same as the reference unit) — this avoids any unit-conversion complexity for this example.
-Note there's no "Accuracy type" field to set separately — MAR derives it from whichever unit
+Note there's no "Accuracy type" field to set separately — Open Gauge derives it from whichever unit
 you pick in the Accuracy/Resolution/Uncertainty unit dropdowns (a real unit like °C means
 "absolute"; picking "% FS" from that same dropdown means "percent of full scale" — that
 option only appears once Range min/max are filled in). There's also no "Confidence level" or
@@ -279,7 +279,7 @@ Data points — a transducer with a small but real quadratic non-linearity acros
 
 **The math:**
 
-MAR tries degree 1 through 5 and picks the lowest degree whose AIC isn't beaten by more than
+Open Gauge tries degree 1 through 5 and picks the lowest degree whose AIC isn't beaten by more than
 2 points by a higher degree (the "parsimony rule" in `_select_degree`). For this data it
 selects **degree 2**:
 
@@ -388,7 +388,7 @@ Fit (degree 1, all 12 points): `a = 0.99833`, `b = -0.76668`.
 Max error = **0.863215 N**, at point 11 (reference 100 N, measured 101.8 N) → Full-scale
 error = 0.863215/500 × 100% = **0.1726%**.
 
-**Hysteresis** — MAR groups points by reference value and takes the largest spread of
+**Hysteresis** — Open Gauge groups points by reference value and takes the largest spread of
 measured values within any group where the reference value repeats with both an ascending and
 descending segment present:
 
@@ -524,7 +524,7 @@ uncertainty for a final check before saving. On save:
   since the certificate only gives one overall figure.
 - `r_squared`, `rmse`, `standard_error`, `max_error`, `decision_rule`, and
   `conformity_statement` are all **`null`** — with no raw data there's no fit to score and no
-  assessed error to check against a spec, so MAR doesn't display a CONFORMS/DOES NOT CONFORM
+  assessed error to check against a spec, so Open Gauge doesn't display a CONFORMS/DOES NOT CONFORM
   badge for this record (see `CALIBRATION.md`).
 
 **Expected results:**
@@ -568,7 +568,7 @@ displayed (combined/expanded uncertainty).
 ## If your numbers don't match
 
 - **Off by a unit-conversion-sized factor (10, 100, 1000...)**: check that "Accuracy unit" on
-  the sensor channel matches the reference/measured unit you used when entering points. MAR
+  the sensor channel matches the reference/measured unit you used when entering points. Open Gauge
   does not currently validate that these agree (see the note in `CALIBRATION.md`).
 - **"% FS" doesn't appear in the Accuracy/Resolution/Uncertainty unit dropdown**: it only shows
   up once both Range min and Range max are filled in on that channel — it needs a range to

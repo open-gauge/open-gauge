@@ -10,7 +10,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Override sqlalchemy.url from environment
-database_url = os.environ.get("DATABASE_URL", "postgresql://mar_user:mar_password@db:5432/mar_db")
+database_url = os.environ.get("DATABASE_URL", "postgresql://opengauge_user:opengauge_password@db:5432/opengauge_db")
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Import all models so their metadata is registered

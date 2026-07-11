@@ -55,7 +55,7 @@ function getCellStatus(
 }
 
 const STATUS_BG: Record<string, string> = {
-  none:      "bg-mar-border",
+  none:      "bg-og-border",
   performed: "bg-teal-400",
   upcoming:  "bg-amber-400",
   expired:   "bg-red-400",
@@ -156,10 +156,10 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
 
   return (
     /* w-fit: panel shrinks to the natural calendar width — no wasted space */
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 w-fit flex flex-col">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 w-fit flex flex-col">
       {/* Title row */}
       <div className="mb-3 shrink-0">
-        <h3 className="text-sm font-semibold text-mar-text">Calibration activity</h3>
+        <h3 className="text-sm font-semibold text-og-text">Calibration activity</h3>
         <p className="text-xs text-gray-400 mt-0.5">Performed calibrations and due dates across all assets</p>
       </div>
 
@@ -168,16 +168,16 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
         <button
           onClick={() => changeYear(year - 1)}
           disabled={loading}
-          className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
+          className="p-1 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors disabled:opacity-40"
           aria-label="Previous year"
         >
           <ChevronLeftIcon size={13} />
         </button>
-        <span className="text-xs font-semibold text-mar-text w-9 text-center tabular-nums">{year}</span>
+        <span className="text-xs font-semibold text-og-text w-9 text-center tabular-nums">{year}</span>
         <button
           onClick={() => changeYear(year + 1)}
           disabled={loading}
-          className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
+          className="p-1 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors disabled:opacity-40"
           aria-label="Next year"
         >
           <ChevronRightIcon size={13} />
@@ -235,7 +235,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
                       className={[
                         "rounded-xs cursor-default transition-opacity",
                         bgClass,
-                        isToday ? "ring-1 ring-offset-1 ring-mar-accent" : "",
+                        isToday ? "ring-1 ring-offset-1 ring-og-accent" : "",
                         loading ? "opacity-50" : "opacity-100",
                         dayEvents.length > 0 ? "hover:opacity-80" : "",
                       ].join(" ")}
@@ -252,7 +252,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 mt-4 pt-3 border-t border-mar-border">
+      <div className="flex items-center gap-5 mt-4 pt-3 border-t border-og-border">
         <span className="text-[10px] text-gray-400"></span>
         {(["none", "performed", "upcoming", "expired"] as const).map((s) => (
           <span key={s} className="flex items-center gap-1.5 text-[10px] text-gray-400">

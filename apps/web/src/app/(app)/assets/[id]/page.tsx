@@ -138,9 +138,9 @@ function StatusBadge({ status }: { status: string }) {
 function SpecRow({ label, value, accent }: { label: string; value: string | null | undefined; accent?: boolean }) {
   if (!value) return null;
   return (
-    <div className="flex flex-col gap-0.5 py-3 border-b border-mar-border last:border-b-0">
+    <div className="flex flex-col gap-0.5 py-3 border-b border-og-border last:border-b-0">
       <span className="text-xs text-gray-400">{label}</span>
-      <span className={`text-sm ${accent ? "text-mar-accent font-medium" : "text-mar-text"}`}>{value}</span>
+      <span className={`text-sm ${accent ? "text-og-accent font-medium" : "text-og-text"}`}>{value}</span>
     </div>
   );
 }
@@ -405,8 +405,8 @@ function validateForm(form: EditFormState): Record<string, string> {
 // Edit field components
 // ---------------------------------------------------------------------------
 
-const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
-const INPUT_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
+const INPUT_OK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
 const INPUT_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
 function ELabel({ label, required, tooltip, tooltipDocsHref }: { label: string; required?: boolean; tooltip?: string; tooltipDocsHref?: string }) {
@@ -713,9 +713,9 @@ function ChannelEditor({
   });
 
   return (
-    <div className="border border-mar-border-md rounded-xl p-4 space-y-4 bg-mar-surface-alt">
+    <div className="border border-og-border-md rounded-xl p-4 space-y-4 bg-og-surface-alt">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-mar-accent uppercase tracking-wide">
+        <span className="text-xs font-semibold text-og-accent uppercase tracking-wide">
           Channel {index + 1}
         </span>
         <button
@@ -802,12 +802,12 @@ function ChannelEditor({
       </div>
 
       {/* Calibration role */}
-      <label className="flex items-center gap-2 text-sm text-mar-text cursor-pointer">
+      <label className="flex items-center gap-2 text-sm text-og-text cursor-pointer">
         <input
           type="checkbox"
           checked={ch.calibration_role}
           onChange={(e) => onChange({ ...ch, calibration_role: e.target.checked })}
-          className="rounded-sm border-mar-border-md"
+          className="rounded-sm border-og-border-md"
         />
         Reference standard
         <Tooltip content={CHAN_TIPS.calibration_role} docsHref={CHAN_DOCS_LINKS.calibration_role}>
@@ -833,13 +833,13 @@ function CollapsibleSection({
   const isOpen = forceOpen || open;
 
   return (
-    <div className="bg-mar-surface border border-mar-border rounded-xl overflow-hidden">
+    <div className="bg-og-surface border border-og-border rounded-xl overflow-hidden">
       <button
         type="button"
         onClick={() => { if (!forceOpen) setOpen((v) => !v); }}
-        className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${forceOpen ? "cursor-default" : "hover:bg-mar-surface-alt"}`}
+        className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${forceOpen ? "cursor-default" : "hover:bg-og-surface-alt"}`}
       >
-        <span className="text-sm font-semibold text-mar-text">{title}</span>
+        <span className="text-sm font-semibold text-og-text">{title}</span>
         {!forceOpen && (
           <span className={`transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`}>
             <ChevronDownIcon size={16} />
@@ -847,7 +847,7 @@ function CollapsibleSection({
         )}
       </button>
       {isOpen && (
-        <div className="px-5 pb-4 border-t border-mar-border">
+        <div className="px-5 pb-4 border-t border-og-border">
           {children}
         </div>
       )}
@@ -877,13 +877,13 @@ function RetireModal({ assetName, onRetire, onClose }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-md p-6">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-md p-6">
         <div className="flex items-center gap-3 mb-4">
           <WarningIcon size={20} className="text-red-500 shrink-0" />
-          <h2 className="text-base font-semibold text-mar-text">Retire asset?</h2>
+          <h2 className="text-base font-semibold text-og-text">Retire asset?</h2>
         </div>
         <p className="text-sm text-gray-500 mb-4">
-          This will mark <span className="font-semibold text-mar-text">{assetName}</span> as retired.
+          This will mark <span className="font-semibold text-og-text">{assetName}</span> as retired.
           Retired assets remain visible but are not editable. An admin can reactivate them later.
         </p>
         <div className="flex flex-col gap-1 mb-5">
@@ -893,12 +893,12 @@ function RetireModal({ assetName, onRetire, onClose }: {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Equipment failure, end of life…"
-            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20 placeholder:text-gray-400 dark:placeholder:text-gray-600"
+            className="w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20 placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
         </div>
         <div className="flex items-center justify-end gap-2">
           <button type="button" onClick={onClose} disabled={retiring}
-            className="px-3 py-1.5 text-sm border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors text-mar-text disabled:opacity-50">
+            className="px-3 py-1.5 text-sm border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors text-og-text disabled:opacity-50">
             Cancel
           </button>
           <button
@@ -989,10 +989,10 @@ function OverviewTab({
         <div className="lg:col-span-2 space-y-3">
 
           {/* General */}
-          <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-mar-text mb-4">General</h3>
+          <div className="bg-og-surface border border-og-border rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-og-text mb-4">General</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <EditInput label="Asset ID" value={form.asset_id} onChange={set("asset_id")} error={errors.asset_id} required placeholder="e.g. MAR-00001" />
+              <EditInput label="Asset ID" value={form.asset_id} onChange={set("asset_id")} error={errors.asset_id} required placeholder="e.g. OG-00001" />
               <EditInput label="Name" value={form.name} onChange={set("name")} error={errors.name} required placeholder="e.g. PT100 Temperature Sensor" />
               <EditInput label="Manufacturer" value={form.manufacturer} onChange={set("manufacturer")} error={errors.manufacturer} required placeholder="e.g. WIKA" />
               <EditInput label="Model" value={form.model} onChange={set("model")} error={errors.model} required placeholder="e.g. TF53" />
@@ -1072,8 +1072,8 @@ function OverviewTab({
         <div className="space-y-4">
           {profile.asset_type === "sensor" && (
             <>
-              <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-mar-text mb-1">Sensor channels</h3>
+              <div className="bg-og-surface border border-og-border rounded-xl p-4">
+                <h3 className="text-sm font-semibold text-og-text mb-1">Sensor channels</h3>
                 <p className="text-xs text-gray-400">Define measurement channels for this sensor.</p>
               </div>
               <div className="space-y-3">
@@ -1097,7 +1097,7 @@ function OverviewTab({
                 <button
                   type="button"
                   onClick={addChannel}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs text-mar-accent border border-dashed border-mar-border rounded-xl px-3 py-3 hover:bg-mar-surface-alt transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 text-xs text-og-accent border border-dashed border-og-border rounded-xl px-3 py-3 hover:bg-og-surface-alt transition-colors"
                 >
                   <PlusIcon size={12} />
                   Add channel
@@ -1107,8 +1107,8 @@ function OverviewTab({
           )}
 
           {profile.asset_type === "daq" && daq && (
-            <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-mar-text mb-1">DAQ specifications</h3>
+            <div className="bg-og-surface border border-og-border rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-og-text mb-1">DAQ specifications</h3>
               <p className="text-xs text-gray-400">DAQ specifications are managed separately.</p>
             </div>
           )}
@@ -1121,8 +1121,8 @@ function OverviewTab({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-3">
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-mar-text mb-3">General</h3>
+        <div className="bg-og-surface border border-og-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-og-text mb-3">General</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
             <SpecRow label="Asset ID" value={profile.asset_id} accent />
             <SpecRow label="Name" value={profile.name} />
@@ -1172,20 +1172,20 @@ function OverviewTab({
             {profile.pinout_table && profile.pinout_table.length > 0 && (
               <div className="mt-4">
                 <p className="text-xs text-gray-400 mb-2">Pinout</p>
-                <div className="overflow-x-auto rounded-lg border border-mar-border">
+                <div className="overflow-x-auto rounded-lg border border-og-border">
                   <table className="w-full text-xs text-left">
                     <thead>
-                      <tr className="border-b border-mar-border bg-mar-surface-alt">
+                      <tr className="border-b border-og-border bg-og-surface-alt">
                         <th className="px-3 py-2 font-semibold text-gray-400 w-16">Pin</th>
                         <th className="px-3 py-2 font-semibold text-gray-400 w-32">Name</th>
                         <th className="px-3 py-2 font-semibold text-gray-400">Description</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-mar-border">
+                    <tbody className="divide-y divide-og-border">
                       {profile.pinout_table.map((row) => (
                         <tr key={row.pin_number}>
-                          <td className="px-3 py-2 font-mono text-mar-text">{row.pin_number}</td>
-                          <td className="px-3 py-2 text-mar-text">{row.name}</td>
+                          <td className="px-3 py-2 font-mono text-og-text">{row.pin_number}</td>
+                          <td className="px-3 py-2 text-og-text">{row.name}</td>
                           <td className="px-3 py-2 text-gray-400">{row.description}</td>
                         </tr>
                       ))}
@@ -1209,22 +1209,22 @@ function OverviewTab({
 
         {profile.notes && (
           <CollapsibleSection title="Notes">
-            <p className="text-sm text-mar-text mt-3 leading-relaxed whitespace-pre-wrap">{profile.notes}</p>
+            <p className="text-sm text-og-text mt-3 leading-relaxed whitespace-pre-wrap">{profile.notes}</p>
           </CollapsibleSection>
         )}
       </div>
 
-      <div className="bg-mar-surface border border-mar-border rounded-xl p-6 h-fit">
+      <div className="bg-og-surface border border-og-border rounded-xl p-6 h-fit">
         {profile.asset_type === "sensor" && (
           <>
-            <h3 className="text-sm font-semibold text-mar-text mb-4">Specifications</h3>
+            <h3 className="text-sm font-semibold text-og-text mb-4">Specifications</h3>
             {profile.sensor_channels.length === 0 ? (
               <p className="text-sm text-gray-400">No channel data recorded.</p>
             ) : (
               <div className="space-y-0">
                 {profile.sensor_channels.map((ch, i) => (
-                  <div key={ch.id} className={i > 0 ? "mt-4 pt-4 border-t border-mar-border" : ""}>
-                    <p className="text-[11px] font-semibold text-mar-accent uppercase tracking-wide mb-1">
+                  <div key={ch.id} className={i > 0 ? "mt-4 pt-4 border-t border-og-border" : ""}>
+                    <p className="text-[11px] font-semibold text-og-accent uppercase tracking-wide mb-1">
                       {ch.channel_id}
                     </p>
                     <SpecRow label="Physical quantity" value={SUBTYPE_LABEL[ch.physical_quantity] ?? ch.physical_quantity} />
@@ -1265,7 +1265,7 @@ function OverviewTab({
 
         {profile.asset_type === "daq" && daq && (
           <>
-            <h3 className="text-sm font-semibold text-mar-text mb-4">Specifications</h3>
+            <h3 className="text-sm font-semibold text-og-text mb-4">Specifications</h3>
             <SpecRow label="DAQ type" value={daq.daq_type} />
             <SpecRow label="Input channels" value={String(daq.input_channels)} />
             <SpecRow label="Output channels" value={String(daq.output_channels)} />
@@ -1290,7 +1290,7 @@ function OverviewTab({
 
         {profile.asset_type === "daq" && !daq && (
           <>
-            <h3 className="text-sm font-semibold text-mar-text mb-4">Specifications</h3>
+            <h3 className="text-sm font-semibold text-og-text mb-4">Specifications</h3>
             <p className="text-sm text-gray-400">No DAQ data recorded.</p>
           </>
         )}
@@ -1458,9 +1458,9 @@ function CalibrationChart({
   }, []);
 
   return (
-    <div className="rounded-xl border border-mar-border bg-mar-surface relative overflow-hidden" style={{ minHeight: 320 }}>
+    <div className="rounded-xl border border-og-border bg-og-surface relative overflow-hidden" style={{ minHeight: 320 }}>
       <div className="absolute bottom-16 right-3 z-20 pointer-events-none">
-        <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-xs">
+        <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
           <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
           <div className="flex items-center gap-1.5">
             <div className="w-3 rounded-xs" style={{ height: 44, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
@@ -1578,13 +1578,13 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             className="absolute inset-0 bg-black/50"
             onClick={() => { if (!isDeleting) setDeleteConfirmId(null); }}
           />
-          <div className="relative bg-mar-surface border border-mar-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
+          <div className="relative bg-og-surface border border-og-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
             <div className="flex items-center gap-3">
               <div className="shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                 <TrashIcon size={16} className="text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-mar-text">Remove calibration</h3>
+                <h3 className="text-sm font-semibold text-og-text">Remove calibration</h3>
                 {calToDelete && (
                   <p className="text-xs text-gray-400">
                     Version {calToDelete.calibration_version} · {fmtDate(calToDelete.calibration_date)}
@@ -1600,7 +1600,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 type="button"
                 onClick={() => setDeleteConfirmId(null)}
                 disabled={isDeleting}
-                className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-60"
+                className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -1627,7 +1627,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       {/* Top bar: channel tabs (left) + PDF + Add Calibration (right) */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {hasChannelTabs ? (
-          <div className="flex gap-1 p-1 bg-mar-surface-alt border border-mar-border rounded-xl w-fit">
+          <div className="flex gap-1 p-1 bg-og-surface-alt border border-og-border rounded-xl w-fit">
             {channelIdsWithCals.map((chId) => {
               const ch = profile.sensor_channels.find((c) => c.id === chId);
               const label = ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId;
@@ -1639,8 +1639,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   onClick={() => setActiveChannelId(chId)}
                   className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     isActive
-                      ? "bg-mar-surface text-mar-text shadow-xs border border-mar-border"
-                      : "text-gray-400 hover:text-mar-text"
+                      ? "bg-og-surface text-og-text shadow-xs border border-og-border"
+                      : "text-gray-400 hover:text-og-text"
                   }`}
                 >
                   {label}
@@ -1669,7 +1669,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   setCertLoading(false);
                 }
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <DownloadIcon size={12} />
               {certLoading ? "Generating…" : "Download Certificate"}
@@ -1678,7 +1678,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           <button
             type="button"
             onClick={() => setWizardOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
           >
             <PlusIcon size={12} />
             Add Calibration
@@ -1687,13 +1687,13 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       </div>
 
       {selectedCal ? (
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5 space-y-4">
+        <div className="bg-og-surface border border-og-border rounded-xl p-5 space-y-4">
           {/* Header row — version / date / performed by */}
           <div className="flex items-start gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-mono font-bold text-mar-accent">v{versionOf(selectedCal)}</span>
-                <span className="text-sm font-semibold text-mar-text">{fmtDate(selectedCal.calibration_date)}</span>
+                <span className="text-xs font-mono font-bold text-og-accent">v{versionOf(selectedCal)}</span>
+                <span className="text-sm font-semibold text-og-text">{fmtDate(selectedCal.calibration_date)}</span>
                 <span className="text-xs text-gray-400">by {selectedCal.performed_by_name}{selectedCal.external_lab_name ? ` · ${selectedCal.external_lab_name}` : ""}</span>
               </div>
               {selectedCal.external_lab_certificate_number && (
@@ -1707,8 +1707,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 
           {/* Result view: Equation / Coefficients */}
           {selectedCal.poly_coefficients && selectedCal.poly_order != null && (
-            <div className="rounded-lg bg-mar-surface-alt border border-mar-border overflow-hidden">
-              <div className="flex items-center px-3 pt-2 pb-0 border-b border-mar-border gap-0.5">
+            <div className="rounded-lg bg-og-surface-alt border border-og-border overflow-hidden">
+              <div className="flex items-center px-3 pt-2 pb-0 border-b border-og-border gap-0.5">
                 {(["equation", "coefficients"] as const).map((v) => (
                   <button
                     key={v}
@@ -1716,8 +1716,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     onClick={() => setResultView(v)}
                     className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-t-md -mb-px capitalize
                       ${resultView === v
-                        ? "bg-mar-surface border border-mar-border text-mar-text"
-                        : "text-gray-400 hover:text-mar-text"
+                        ? "bg-og-surface border border-og-border text-og-text"
+                        : "text-gray-400 hover:text-og-text"
                       }`}
                   >
                     {v === "equation" ? "Equation" : "Coefficients"}
@@ -1728,7 +1728,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 {resultView === "equation" && (
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <span className="text-xs font-mono text-mar-text">
+                      <span className="text-xs font-mono text-og-text">
                         {formatCalEquation(selectedCal.poly_coefficients, selectedCal.poly_order)}
                       </span>
                       {(measuredUnit || referenceUnit) && (
@@ -1747,7 +1747,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         });
                       }}
                       title="Copy"
-                      className="shrink-0 p-1 text-gray-400 hover:text-mar-text rounded-sm transition-colors"
+                      className="shrink-0 p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors"
                     >
                       {copiedKey === "equation" ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
                     </button>
@@ -1766,7 +1766,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                               <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
                                 {COEFF_DESC[exp] ?? `Order-${exp} term`}
                               </p>
-                              <p className="font-mono text-xs text-mar-text">{fmtNum(val, 6)}</p>
+                              <p className="font-mono text-xs text-og-text">{fmtNum(val, 6)}</p>
                             </div>
                             <button
                               type="button"
@@ -1777,7 +1777,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                                 });
                               }}
                               title="Copy"
-                              className="shrink-0 mt-3 p-1 text-gray-400 hover:text-mar-text rounded-sm transition-colors"
+                              className="shrink-0 mt-3 p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors"
                             >
                               {copiedKey === ck ? <CheckIcon size={11} /> : <CopyIcon size={11} />}
                             </button>
@@ -1794,7 +1794,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           {selectedCal.poly_coefficients ? (
             <div className="flex gap-4 min-h-0">
               {/* Left: stats panel (40%) */}
-              <div className="w-[38%] shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt space-y-0">
+              <div className="w-[38%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Calibration</p>
                 <StatRow label="Poly degree" value={String(selectedCal.poly_order ?? "—")} />
                 {(selectedCal.valid_range_min != null || selectedCal.range_min != null) && (
@@ -1803,7 +1803,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     value={`${fmtNum(selectedCal.valid_range_min ?? selectedCal.range_min)} – ${fmtNum(selectedCal.valid_range_max ?? selectedCal.range_max)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
                   />
                 )}
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Statistics</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">Statistics</p>
                 <StatRow label="R²" value={fmtNum(selectedCal.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." docsHref={STAT_DOCS_LINKS.r_squared} />
                 <StatRow label="RMSE" value={selectedCal.rmse != null ? `${fmtNum(selectedCal.rmse)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root mean square error." docsHref={STAT_DOCS_LINKS.rmse} />
                 <StatRow label="Max error" value={selectedCal.max_error != null ? `${fmtNum(selectedCal.max_error)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Largest absolute residual." docsHref={STAT_DOCS_LINKS.max_error} />
@@ -1815,7 +1815,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 {selectedCal.hysteresis != null && (
                   <StatRow label="Hysteresis†" value={`${fmtNum(selectedCal.hysteresis)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Max difference ascending vs. descending." docsHref={STAT_DOCS_LINKS.hysteresis} />
                 )}
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Uncertainty budget</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">Uncertainty budget</p>
                 {selectedCal.uncertainty_budget?.map((c) => (
                   <StatRow
                     key={c.source}
@@ -1839,7 +1839,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 />
                 {selectedCal.conformity_statement?.specification && (
                   <>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Conformity</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">Conformity</p>
                     <div className="flex items-center justify-between gap-2 py-1">
                       <span className="text-xs text-gray-400">Statement</span>
                       <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
@@ -1863,14 +1863,14 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 
               {/* Right: chart/table toggle (60%) */}
               <div className="flex-1 min-w-0 flex flex-col gap-2">
-                <div className="flex gap-1 p-1 bg-mar-surface-alt rounded-lg w-fit border border-mar-border">
+                <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit border border-og-border">
                   {(["chart", "table"] as const).map((v) => (
                     <button
                       key={v}
                       type="button"
                       onClick={() => setRightView(v)}
                       className={`px-4 py-1 rounded text-xs font-medium transition-colors ${
-                        rightView === v ? "bg-mar-surface text-mar-text shadow-xs" : "text-gray-400 hover:text-mar-text"
+                        rightView === v ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
                       }`}
                     >
                       {v === "chart" ? "Chart" : "Data Table"}
@@ -1880,7 +1880,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 
                 {loadingPoints ? (
                   <div className="flex items-center justify-center flex-1 text-gray-400 gap-2 text-xs py-10">
-                    <span className="w-4 h-4 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
                     Loading data…
                   </div>
                 ) : points.length === 0 ? (
@@ -1895,10 +1895,10 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     referenceUnit={referenceUnit}
                   />
                 ) : (
-                  <div className="rounded-xl border border-mar-border overflow-hidden" style={{ maxHeight: 340, overflowY: "auto" }}>
+                  <div className="rounded-xl border border-og-border overflow-hidden" style={{ maxHeight: 340, overflowY: "auto" }}>
                     <table className="w-full text-xs">
                       <thead className="sticky top-0 z-10">
-                        <tr className="border-b border-mar-border bg-mar-surface-alt">
+                        <tr className="border-b border-og-border bg-og-surface-alt">
                           {[
                             "#",
                             `Measured${measuredUnit ? ` (${measuredUnit})` : ""}`,
@@ -1913,12 +1913,12 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                       </thead>
                       <tbody>
                         {points.map((pt) => (
-                          <tr key={pt.point_index} className="border-b border-mar-border last:border-b-0 hover:bg-mar-surface-alt/50 transition-colors">
+                          <tr key={pt.point_index} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
                             <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
-                            <td className="px-3 py-1.5 font-mono text-mar-text">{fmtNum(pt.measured_value)}</td>
-                            <td className="px-3 py-1.5 font-mono text-mar-text">{fmtNum(pt.reference_value)}</td>
-                            <td className="px-3 py-1.5 font-mono text-mar-text">{fmtNum(pt.calculated_value)}</td>
-                            <td className={`px-3 py-1.5 font-mono ${selectedCal.rmse != null && Math.abs(pt.residual_abs ?? 0) > selectedCal.rmse * 2 ? "text-amber-400 dark:text-amber-300" : "text-mar-text"}`}>
+                            <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.measured_value)}</td>
+                            <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.reference_value)}</td>
+                            <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.calculated_value)}</td>
+                            <td className={`px-3 py-1.5 font-mono ${selectedCal.rmse != null && Math.abs(pt.residual_abs ?? 0) > selectedCal.rmse * 2 ? "text-amber-400 dark:text-amber-300" : "text-og-text"}`}>
                               {fmtNum(pt.residual_abs)}
                             </td>
                             <td className="px-3 py-1.5 font-mono text-gray-400">{fmtNum(pt.residual_pct, 3)}</td>
@@ -1936,14 +1936,14 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 
           {/* Conditions & Notes */}
           {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null || selectedCal.notes || calLocation) && (
-            <div className="rounded-xl border border-mar-border bg-mar-surface-alt p-4 space-y-3">
+            <div className="rounded-xl border border-og-border bg-og-surface-alt p-4 space-y-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Conditions &amp; Notes</p>
               {calLocation && (
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Calibration Lab</p>
                   <Link
                     href={`/sites?id=${calLocation.id}`}
-                    className="text-xs text-mar-accent hover:underline inline-flex items-center gap-1"
+                    className="text-xs text-og-accent hover:underline inline-flex items-center gap-1"
                   >
                     <MapPinIcon size={11} />
                     {calLocation.name}
@@ -1955,7 +1955,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   {selectedCal.temperature != null && (
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Temperature</p>
-                      <p className="font-mono text-xs text-mar-text">
+                      <p className="font-mono text-xs text-og-text">
                         {fmtNum(selectedCal.temperature, 2)} <span className="text-gray-400">°C</span>
                       </p>
                     </div>
@@ -1963,7 +1963,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   {selectedCal.humidity != null && (
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Humidity</p>
-                      <p className="font-mono text-xs text-mar-text">
+                      <p className="font-mono text-xs text-og-text">
                         {fmtNum(selectedCal.humidity, 2)} <span className="text-gray-400">%RH</span>
                       </p>
                     </div>
@@ -1971,7 +1971,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   {selectedCal.pressure != null && (
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Pressure</p>
-                      <p className="font-mono text-xs text-mar-text">
+                      <p className="font-mono text-xs text-og-text">
                         {fmtNum(selectedCal.pressure, 2)} <span className="text-gray-400">Pa</span>
                       </p>
                     </div>
@@ -1981,33 +1981,33 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               {selectedCal.notes && (
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Notes</p>
-                  <p className="text-xs text-mar-text leading-relaxed">{selectedCal.notes}</p>
+                  <p className="text-xs text-og-text leading-relaxed">{selectedCal.notes}</p>
                 </div>
               )}
             </div>
           )}
         </div>
       ) : (
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
+        <div className="bg-og-surface border border-og-border rounded-xl p-6">
           <p className="text-sm text-gray-400">No calibrations recorded{hasChannelTabs ? " for this channel" : ""}.</p>
         </div>
       )}
 
       {/* Calibration history */}
       {filteredCals.length > 0 && (
-        <div className="bg-mar-surface border border-mar-border rounded-xl">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-mar-border">
-            <p className="text-xs font-semibold text-mar-text">Calibration history</p>
+        <div className="bg-og-surface border border-og-border rounded-xl">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-og-border">
+            <p className="text-xs font-semibold text-og-text">Calibration history</p>
             <p className="text-xs text-gray-400">{filteredCals.length} record{filteredCals.length !== 1 ? "s" : ""}</p>
           </div>
-          <div className="divide-y divide-mar-border">
+          <div className="divide-y divide-og-border">
             {filteredCals.map((cal) => {
               const isSelected = cal.id === (selectedCal?.id ?? null);
               return (
                 <div
                   key={cal.id}
                   className={`flex items-start gap-4 px-5 py-3 transition-colors
-                    ${isSelected ? "bg-mar-surface-alt" : "hover:bg-mar-surface-alt/50"}`}
+                    ${isSelected ? "bg-og-surface-alt" : "hover:bg-og-surface-alt/50"}`}
                 >
                   {/* Clickable row content */}
                   <button
@@ -2016,12 +2016,12 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     className="flex items-start gap-4 flex-1 min-w-0 text-left"
                   >
                     <div className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
-                      ${isSelected ? "border-mar-accent text-mar-accent" : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
+                      ${isSelected ? "border-og-accent text-og-accent" : "border-og-border bg-og-surface-alt text-gray-400"}`}>
                       <span className="text-[10px] font-bold">v{versionOf(cal)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-mar-text">{fmtDate(cal.calibration_date)}</span>
+                        <span className="text-sm font-medium text-og-text">{fmtDate(cal.calibration_date)}</span>
                         {cal.r_squared != null && (
                           <span className="text-[10px] font-mono text-gray-400">R²={fmtNum(cal.r_squared, 4)}</span>
                         )}
@@ -2042,7 +2042,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     {cal.due_date && (
                       <div className="shrink-0 text-right hidden sm:block">
                         <p className="text-[10px] text-gray-400">Due</p>
-                        <p className="text-xs text-mar-text font-mono">{fmtDate(cal.due_date)}</p>
+                        <p className="text-xs text-og-text font-mono">{fmtDate(cal.due_date)}</p>
                       </div>
                     )}
                   </button>
@@ -2137,8 +2137,8 @@ function FilesTab({
   const typeLabel: Record<string, string> = { pdf: "PDF", csv: "CSV", zip: "Archive", doc: "File" };
 
   return (
-    <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-      <h3 className="text-sm font-semibold text-mar-text mb-4">Files &amp; attachments</h3>
+    <div className="bg-og-surface border border-og-border rounded-xl p-6">
+      <h3 className="text-sm font-semibold text-og-text mb-4">Files &amp; attachments</h3>
 
       {/* Drop zone — only shown in edit mode */}
       {isEditing && (
@@ -2148,11 +2148,11 @@ function FilesTab({
           onDrop={handleDrop}
           className={`mb-4 border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer
             ${isDragging
-              ? "border-mar-accent bg-mar-accent/5"
-              : "border-mar-border hover:border-mar-accent/50 hover:bg-mar-surface-alt"}`}
+              ? "border-og-accent bg-og-accent/5"
+              : "border-og-border hover:border-og-accent/50 hover:bg-og-surface-alt"}`}
           onClick={() => fileInputRef.current?.click()}
         >
-          <UploadCloudIcon size={24} className={isDragging ? "text-mar-accent" : "text-gray-400"} />
+          <UploadCloudIcon size={24} className={isDragging ? "text-og-accent" : "text-gray-400"} />
           <p className="text-sm text-gray-500">
             {uploading ? "Uploading…" : "Drop a file here or click to browse"}
           </p>
@@ -2183,27 +2183,27 @@ function FilesTab({
             const isImage = f.content_type.startsWith("image/");
             const type = fileIcon(f.content_type);
             return (
-              <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg border border-mar-border hover:border-mar-border-md hover:bg-mar-surface-alt transition-colors">
+              <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg border border-og-border hover:border-og-border-md hover:bg-og-surface-alt transition-colors">
                 {/* Thumbnail or type badge */}
                 {isImage && f.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={f.url}
                     alt={f.original_filename}
-                    className="w-9 h-9 rounded-lg object-cover shrink-0 border border-mar-border"
+                    className="w-9 h-9 rounded-lg object-cover shrink-0 border border-og-border"
                   />
                 ) : (
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold
                     ${type === "pdf" ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
                       type === "csv" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
                       type === "zip" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30" :
-                      "bg-mar-surface-alt text-gray-400"}`}>
+                      "bg-og-surface-alt text-gray-400"}`}>
                     {typeLabel[type]}
                   </div>
                 )}
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-mar-text truncate">{f.original_filename}</p>
+                  <p className="text-sm font-medium text-og-text truncate">{f.original_filename}</p>
                   <p className="text-xs text-gray-400">{fmtBytes(f.size_bytes)}</p>
                 </div>
 
@@ -2212,7 +2212,7 @@ function FilesTab({
                     href={f.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors shrink-0"
+                    className="p-1.5 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors shrink-0"
                     title="Download"
                   >
                     <DownloadIcon size={14} />
@@ -2244,12 +2244,12 @@ function FilesTab({
 
 function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
   return (
-    <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
-      <h3 className="text-sm font-semibold text-mar-text mb-4">Audit log</h3>
+    <div className="bg-og-surface border border-og-border rounded-xl p-6">
+      <h3 className="text-sm font-semibold text-og-text mb-4">Audit log</h3>
       {logs.length === 0 ? (
         <p className="text-sm text-gray-400 py-4">No activity recorded for this asset.</p>
       ) : (
-        <div className="divide-y divide-mar-border">
+        <div className="divide-y divide-og-border">
           {logs.map((log) => {
             const d = new Date(log.created_at);
             const dateStr = d.toLocaleDateString("en-GB", { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -2264,7 +2264,7 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
                   actorRole={log.actor_role}
                   className="text-xs truncate"
                 />
-                <span className="font-medium text-mar-text">{actionLabel(log.action)}</span>
+                <span className="font-medium text-og-text">{actionLabel(log.action)}</span>
               </div>
             );
           })}
@@ -2350,24 +2350,24 @@ function CalibrationRingCard({
   const progressSweep = (gaugeValue / 100) * SWEEP_DEG;
 
   return (
-    <div className="bg-mar-surface border border-mar-border rounded-xl p-4">
+    <div className="bg-og-surface border border-og-border rounded-xl p-4">
       <div className="flex items-stretch gap-3">
         {/* Dates — left column */}
         <div className="w-2/3 space-y-1.5 flex flex-col items-center text-center">
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Last</p>
-            <p className="text-sm font-semibold font-mono text-mar-text tabular-nums">{fmtDate(lastCal)}</p>
+            <p className="text-sm font-semibold font-mono text-og-text tabular-nums">{fmtDate(lastCal)}</p>
           </div>
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Due</p>
-            <p className="text-sm font-semibold font-mono text-mar-text tabular-nums">{fmtDate(dueAt)}</p>
+            <p className="text-sm font-semibold font-mono text-og-text tabular-nums">{fmtDate(dueAt)}</p>
           </div>
         </div>
         {/* 270° arc ring — right column, centered */}
         <div className="w-1/3 flex items-center justify-center">
           <div className="relative" style={{ width: SIZE, height: SIZE }}>
             <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ display: "block" }}>
-              <path d={trackPath} fill="none" stroke="var(--mar-border-md, #d1d5db)" strokeWidth={7} strokeLinecap="round" />
+              <path d={trackPath} fill="none" stroke="var(--og-border-md, #d1d5db)" strokeWidth={7} strokeLinecap="round" />
               {progressSweep > 0 && (
                 <path d={arcPath(progressSweep)} fill="none" stroke={ringColor} strokeWidth={7} strokeLinecap="round" />
               )}
@@ -2431,16 +2431,16 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-xl mx-4 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-mar-border">
-          <h2 className="text-sm font-semibold text-mar-text">Asset Sticker — {assetTag}</h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-xl mx-4 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
+          <h2 className="text-sm font-semibold text-og-text">Asset Sticker — {assetTag}</h2>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
             <XIcon size={15} />
           </button>
         </div>
         <div className="p-5 space-y-5">
           <StickerRow size="2x2" label="2×2 inches" preview={preview2} aspect="w-28 h-28" loading={loading} downloading={downloading} onDownload={download} />
-          <div className="border-t border-mar-border" />
+          <div className="border-t border-og-border" />
           <StickerRow size="4x2" label="4×2 inches" preview={preview4} aspect="w-56 h-28" loading={loading} downloading={downloading} onDownload={download} />
         </div>
       </div>
@@ -2456,12 +2456,12 @@ function StickerRow({
 }) {
   return (
     <div className="flex items-center gap-4">
-      <div className={`shrink-0 bg-mar-surface-alt rounded-lg border border-mar-border overflow-hidden flex items-center justify-center ${aspect}`}>
+      <div className={`shrink-0 bg-og-surface-alt rounded-lg border border-og-border overflow-hidden flex items-center justify-center ${aspect}`}>
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt={`${label} sticker`} className="w-full h-full object-contain" />
         ) : loading ? (
-          <span className="w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+          <span className="w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
         ) : (
           <QrCodeIcon size={24} className="text-gray-300" />
         )}
@@ -2477,7 +2477,7 @@ function StickerRow({
                 type="button"
                 disabled={downloading === key}
                 onClick={() => onDownload(size, fmt)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-40"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-40"
               >
                 <DownloadIcon size={11} />
                 {downloading === key ? "…" : fmt.toUpperCase()}
@@ -2629,7 +2629,7 @@ export default function AssetProfilePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-400">
-        <span className="inline-block w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin mr-3" />
+        <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
         Loading asset…
       </div>
     );
@@ -2679,27 +2679,27 @@ export default function AssetProfilePage() {
       <button
         type="button"
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-mar-text transition-colors"
+        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-og-text transition-colors"
       >
         <ChevronLeftIcon size={13} />
         Back
       </button>
 
       {/* Header card */}
-      <div className="bg-mar-surface border border-mar-border rounded-xl p-6">
+      <div className="bg-og-surface border border-og-border rounded-xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-mar-text">
+              <h1 className="text-2xl font-bold text-og-text">
                 {isEditing && editForm ? (editForm.name || profile.name) : profile.name}
               </h1>
               <StatusBadge status={profile.calibration_status} />
             </div>
             <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-sm text-gray-400">
-              <span className="font-mono text-xs text-mar-accent">{profile.asset_id}</span>
+              <span className="font-mono text-xs text-og-accent">{profile.asset_id}</span>
               {(profile.site_name || profile.location_name) && (
                 <span className="flex items-center gap-1">
-                  <MapPinIcon size={12} className="text-mar-accent" />
+                  <MapPinIcon size={12} className="text-og-accent" />
                   <span>
                     {profile.location_name}
                     {profile.site_name && profile.site_name !== profile.location_name ? ` · ${profile.site_name}` : ""}
@@ -2719,7 +2719,7 @@ export default function AssetProfilePage() {
               <>
                 <button type="button"
                   onClick={() => setStickerOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-mar-border rounded-lg hover:bg-mar-surface-alt text-gray-500 hover:text-mar-text text-sm font-medium transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors">
                   <QrCodeIcon size={15} />
                   Sticker
                 </button>
@@ -2727,7 +2727,7 @@ export default function AssetProfilePage() {
                   <button
                     type="button"
                     onClick={handleStartEdit}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-sm font-medium rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     <EditIcon size={14} />
                     Edit
@@ -2741,7 +2741,7 @@ export default function AssetProfilePage() {
                     type="button"
                     onClick={handleCancelEdit}
                     disabled={isSaving}
-                    className="flex items-center gap-1.5 px-3 py-2 border border-mar-border-md text-sm font-medium rounded-lg hover:bg-mar-surface-alt text-mar-text transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-2 border border-og-border-md text-sm font-medium rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50"
                   >
                     <XIcon size={14} />
                     Cancel
@@ -2789,13 +2789,13 @@ export default function AssetProfilePage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Health panel */}
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+        <div className="bg-og-surface border border-og-border rounded-xl p-5">
           <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">Health Score</p>
           {healthOverview ? (
             <div className="space-y-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-mar-text tabular-nums">
+                  <span className="text-2xl font-bold text-og-text tabular-nums">
                     {Math.round(healthOverview.health_score)}
                     <span className="text-sm text-gray-400 font-normal"> / 100</span>
                   </span>
@@ -2803,7 +2803,7 @@ export default function AssetProfilePage() {
                     {healthOverview.health_label}
                   </span>
                 </div>
-                <div className="mt-1.5 h-1.5 rounded-full bg-mar-border overflow-hidden">
+                <div className="mt-1.5 h-1.5 rounded-full bg-og-border overflow-hidden">
                   {(() => {
                     const sc = healthOverview.health_score;
                     const barColor = sc >= 90 ? "#22c55e" : sc >= 75 ? COLORS.accent : sc >= 50 ? "#f59e0b" : "#ef4444";
@@ -2820,9 +2820,9 @@ export default function AssetProfilePage() {
             </div>
           ) : (
             <div>
-              <p className="text-2xl font-bold text-mar-text">{Math.round(profile.calibration_health_score ?? profile.health_score)}%</p>
-              <div className="mt-2 h-1.5 rounded-full bg-mar-border overflow-hidden">
-                <div className="h-full rounded-full bg-mar-accent transition-all" style={{ width: `${profile.calibration_health_score ?? profile.health_score}%` }} />
+              <p className="text-2xl font-bold text-og-text">{Math.round(profile.calibration_health_score ?? profile.health_score)}%</p>
+              <div className="mt-2 h-1.5 rounded-full bg-og-border overflow-hidden">
+                <div className="h-full rounded-full bg-og-accent transition-all" style={{ width: `${profile.calibration_health_score ?? profile.health_score}%` }} />
               </div>
             </div>
           )}
@@ -2834,24 +2834,24 @@ export default function AssetProfilePage() {
           status={profile.calibration_status}
         />
         {/* Calibrations panel */}
-        <div className="bg-mar-surface border border-mar-border rounded-xl p-5">
+        <div className="bg-og-surface border border-og-border rounded-xl p-5">
           <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">Calibrations</p>
           <div className="flex gap-4">
             <div className="flex flex-col">
-              <p className="text-2xl font-bold text-mar-text tabular-nums">{profile.calibration_count}</p>
+              <p className="text-2xl font-bold text-og-text tabular-nums">{profile.calibration_count}</p>
               <p className="text-xs text-gray-400 mt-1">all-time</p>
             </div>
             {calibrations[0]?.poly_coefficients && calibrations[0].poly_coefficients.length > 0 && (
-              <div className="flex-1 min-w-0 border-l border-mar-border pl-4">
+              <div className="flex-1 min-w-0 border-l border-og-border pl-4">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Latest coefficients</p>
                 <table className="w-full text-xs">
                   <tbody>
                     {calibrations[0].poly_coefficients.map((v, i) => (
-                      <tr key={i} className="border-b border-mar-border last:border-b-0">
+                      <tr key={i} className="border-b border-og-border last:border-b-0">
                         <td className="py-0.5 pr-2 text-gray-400 whitespace-nowrap">
                           {COEFF_DESC[i] ?? `Order-${i} term`}
                         </td>
-                        <td className="py-0.5 text-mar-text font-mono tabular-nums text-right whitespace-nowrap">
+                        <td className="py-0.5 text-og-text font-mono tabular-nums text-right whitespace-nowrap">
                           {fmtNum(v)}
                         </td>
                       </tr>
@@ -2865,8 +2865,8 @@ export default function AssetProfilePage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-mar-surface border border-mar-border rounded-xl">
-        <div className="flex border-b border-mar-border px-1">
+      <div className="bg-og-surface border border-og-border rounded-xl">
+        <div className="flex border-b border-og-border px-1">
           {TABS.map((tab) => (
             <button
               key={tab.key}
@@ -2874,8 +2874,8 @@ export default function AssetProfilePage() {
               onClick={() => setActiveTab(tab.key)}
               className={`px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.key
-                  ? "border-mar-accent text-mar-accent"
-                  : "border-transparent text-gray-400 hover:text-mar-text"
+                  ? "border-og-accent text-og-accent"
+                  : "border-transparent text-gray-400 hover:text-og-text"
               }`}
             >
               {tab.label}

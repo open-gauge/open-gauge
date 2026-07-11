@@ -1,36 +1,36 @@
 ---
 title: Curve fitting & regression statistics
-description: How MAR fits a calibration curve and computes R², RMSE, max error, non-linearity, repeatability, and hysteresis.
+description: How Open Gauge fits a calibration curve and computes R², RMSE, max error, non-linearity, repeatability, and hysteresis.
 ---
 
-MAR fits a polynomial calibration curve to your (reference, measured) data points, then
+Open Gauge fits a polynomial calibration curve to your (reference, measured) data points, then
 reports a set of standard regression statistics describing how good that fit is.
 
 ## The fit
 
-MAR fits:
+Open Gauge fits:
 
 $$
 \text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
 $$
 
 via least-squares (`np.polyfit`), degree 1 through 5. By default the degree is **auto-selected
-via AIC** (Akaike Information Criterion) with a parsimony rule: MAR picks the lowest degree
+via AIC** (Akaike Information Criterion) with a parsimony rule: Open Gauge picks the lowest degree
 whose AIC isn't beaten by more than 2 points by a higher degree, so it won't fit unnecessary
 higher-order wiggle to noise. You can also pin a specific degree explicitly in the wizard.
 
-**Coefficient covariance.** When there are more data points than fitted parameters, MAR also
+**Coefficient covariance.** When there are more data points than fitted parameters, Open Gauge also
 computes the fitted coefficients' covariance matrix (`np.polyfit(..., cov=True)`), stored
 alongside the calibration. This matters because evaluating the curve at a point using two or
 more fitted coefficients together — without their covariance — understates the true
-uncertainty (GUM Annex H.3 shows 30%+ underestimates from dropping it). MAR stores this
-matrix so a correct propagation is possible; there isn't yet a MAR feature that evaluates a
+uncertainty (GUM Annex H.3 shows 30%+ underestimates from dropping it). Open Gauge stores this
+matrix so a correct propagation is possible; there isn't yet an Open Gauge feature that evaluates a
 saved calibration's curve at a live reading, but the covariance is captured for when there is.
 
 A **degenerate fit** — as few or fewer data points than fitted parameters (e.g. a 2-point
 straight-line fit) — has zero residual degrees of freedom: no covariance matrix is stored, and
 the fit-residual uncertainty term (see
-[The uncertainty budget](/docs/guide/calibration/uncertainty-budget)) is marked as having no
+[The uncertainty budget](./uncertainty-budget.mdx)) is marked as having no
 finite degrees of freedom.
 
 ## Residuals
@@ -56,9 +56,9 @@ $$
 
 ## Max error [#max-error]
 
-The single largest absolute residual across all data points. This is the number MAR compares
+The single largest absolute residual across all data points. This is the number Open Gauge compares
 against a spec when deciding pass/fail — see
-[Decision rules](/docs/guide/calibration/decision-rules).
+[Decision rules](./decision-rules.mdx).
 
 ## %FS error [#full-scale-error]
 
@@ -84,7 +84,7 @@ $$
 $$
 
 where $x_1, \ldots, x_m$ are the measured values recorded at the same reference value.
-Requires at least 3 points at that reference to compute — MAR only reports it when the data
+Requires at least 3 points at that reference to compute — Open Gauge only reports it when the data
 supports it.
 
 ## Hysteresis [#hysteresis]
@@ -95,5 +95,5 @@ The largest spread of measured values recorded at the *same* reference value acr
 an up/down sweep in the data (the same reference value visited from both directions) to
 compute.
 
-See [Worked examples](/docs/guide/calibration/examples) for a load-cell example that computes
+See [Worked examples](./examples/index.mdx) for a load-cell example that computes
 both repeatability and hysteresis from a real 12-point ascending/descending dataset by hand.

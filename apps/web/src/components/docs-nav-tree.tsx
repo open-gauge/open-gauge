@@ -37,8 +37,8 @@ export function DocsNavTree({ tree, collapsed }: { tree: PageTree.Root; collapse
         title="Documentation"
         className={`flex items-center justify-center px-0 py-2 w-full rounded-md text-sm transition-colors ${
           isActive
-            ? "bg-mar-accent/10 text-mar-accent font-medium dark:bg-white/10 dark:text-white"
-            : "text-gray-500 hover:text-gray-800 hover:bg-mar-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
+            ? "bg-og-accent/10 text-og-accent font-medium dark:bg-white/10 dark:text-white"
+            : "text-gray-500 hover:text-gray-800 hover:bg-og-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
         }`}
       >
         <DocumentIcon size={15} />
@@ -53,11 +53,11 @@ export function DocsNavTree({ tree, collapsed }: { tree: PageTree.Root; collapse
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-sm transition-colors ${
           isActive
-            ? "bg-mar-accent/10 text-mar-accent font-medium dark:bg-white/10 dark:text-white"
-            : "text-gray-500 hover:text-gray-800 hover:bg-mar-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
+            ? "bg-og-accent/10 text-og-accent font-medium dark:bg-white/10 dark:text-white"
+            : "text-gray-500 hover:text-gray-800 hover:bg-og-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
         }`}
       >
-        <span className={`shrink-0 ${isActive ? "text-mar-accent" : "text-gray-400 dark:text-gray-500"}`}>
+        <span className={`shrink-0 ${isActive ? "text-og-accent" : "text-gray-400 dark:text-gray-500"}`}>
           <DocumentIcon size={15} />
         </span>
         <span className="flex-1 text-left whitespace-nowrap">Documentation</span>
@@ -65,7 +65,7 @@ export function DocsNavTree({ tree, collapsed }: { tree: PageTree.Root; collapse
       </button>
 
       {open && (
-        <ul className="mt-0.5 ml-4 border-l border-mar-border pl-2 space-y-0.5">
+        <ul className="mt-0.5 ml-4 border-l border-og-border pl-2 space-y-0.5">
           {tree.children.map((node, i) => (
             <TreeNode
               key={node.$id ?? i}
@@ -115,8 +115,8 @@ function TreeNode({
           href={node.url}
           className={`block px-2 py-1.5 rounded-md text-xs whitespace-nowrap truncate transition-colors ${
             active
-              ? "text-mar-accent font-medium bg-mar-accent/10"
-              : "text-gray-500 hover:text-gray-800 hover:bg-mar-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
+              ? "text-og-accent font-medium bg-og-accent/10"
+              : "text-gray-500 hover:text-gray-800 hover:bg-og-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
           }`}
         >
           {node.name}
@@ -133,13 +133,13 @@ function TreeNode({
       <button
         type="button"
         onClick={() => onToggleFolder(id)}
-        className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-xs text-gray-600 dark:text-gray-300 hover:bg-mar-border dark:hover:bg-white/5 transition-colors whitespace-nowrap"
+        className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-xs text-gray-600 dark:text-gray-300 hover:bg-og-border dark:hover:bg-white/5 transition-colors whitespace-nowrap"
       >
         <ChevronDownIcon size={10} className={`shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
         <span className="truncate">{node.name}</span>
       </button>
       {isOpen && (
-        <ul className="ml-3 border-l border-mar-border pl-2 space-y-0.5">
+        <ul className="ml-3 border-l border-og-border pl-2 space-y-0.5">
           {node.children.map((child, i) => (
             <TreeNode
               key={child.$id ?? i}

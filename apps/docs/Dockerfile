@@ -7,7 +7,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
 
-# The API Reference section is generated from the live MAR API's OpenAPI schema
+# The API Reference section is generated from the live Open Gauge API's OpenAPI schema
 # (scripts/fetch-openapi.mjs + scripts/generate-openapi.mjs), and fumadocs-mdx compiles
 # content at `next build` time — not on each request. Since Docker Compose only makes the
 # `api` service reachable once containers are *running* (not during `docker build`), the

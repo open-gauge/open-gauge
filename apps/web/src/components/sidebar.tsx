@@ -45,33 +45,33 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("mar_sidebar_collapsed");
+    const saved = localStorage.getItem("og_sidebar_collapsed");
     if (saved !== null) setCollapsed(saved === "true");
   }, []);
 
   function toggle() {
     const next = !collapsed;
     setCollapsed(next);
-    localStorage.setItem("mar_sidebar_collapsed", String(next));
+    localStorage.setItem("og_sidebar_collapsed", String(next));
   }
 
   return (
     <aside
-      className={`shrink-0 flex flex-col h-full bg-mar-surface border-r border-mar-border transition-all duration-300 ease-in-out overflow-hidden ${
+      className={`shrink-0 flex flex-col h-full bg-og-surface border-r border-og-border transition-all duration-300 ease-in-out overflow-hidden ${
         collapsed ? "w-14" : "w-56"
       }`}
     >
       {/* Logo */}
       <div
-        className={`border-b border-mar-border flex items-center shrink-0 ${
+        className={`border-b border-og-border flex items-center shrink-0 ${
           collapsed ? "justify-center py-4 px-0" : "px-4 py-4"
         }`}
       >
         <Link href="/dashboard" className="block shrink-0">
           {collapsed ? (
             <Image
-              src="/assets/Icon.svg"
-              alt="MAR"
+              src="/assets/Icon.png"
+              alt="Open Gauge"
               width={28}
               height={28}
               priority
@@ -80,23 +80,23 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
             <>
               {/* Light mode: use dark logo (dark text on light bg) */}
               <Image
-                src="/assets/Logo dark.svg"
-                alt="MAR"
+                src="/assets/Logo dark.png"
+                alt="Open Gauge"
                 width={0}
                 height={0}
                 sizes="168px"
-                style={{ width: "60%", height: "auto" }}
+                style={{ width: "100%", height: "auto" }}
                 priority
                 className="block dark:hidden"
               />
               {/* Dark mode: use light logo (light text on dark bg) */}
               <Image
-                src="/assets/Logo light.svg"
-                alt="MAR"
+                src="/assets/Logo light.png"
+                alt="Open Gauge"
                 width={0}
                 height={0}
                 sizes="168px"
-                style={{ width: "60%", height: "auto" }}
+                style={{ width: "100%", height: "auto" }}
                 priority
                 className="hidden dark:block"
               />
@@ -156,7 +156,7 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
 
       {/* Footer */}
       <div
-        className={`border-t border-mar-border flex items-center shrink-0 ${
+        className={`border-t border-og-border flex items-center shrink-0 ${
           collapsed ? "justify-center px-2 py-3" : "justify-between px-3 py-3"
         }`}
       >
@@ -169,7 +169,7 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
         <button
           type="button"
           onClick={toggle}
-          className="p-1 rounded-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-mar-border transition-colors shrink-0"
+          className="p-1 rounded-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-og-border transition-colors shrink-0"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <ChevronRightIcon size={14} /> : <ChevronLeftIcon size={14} />}
@@ -192,8 +192,8 @@ function NavLink({
     collapsed ? "justify-center px-0 py-2 w-full" : "gap-2.5 px-3 py-2"
   } ${
     active
-      ? "bg-mar-accent/10 text-mar-accent font-medium dark:bg-white/10 dark:text-white"
-      : "text-gray-500 hover:text-gray-800 hover:bg-mar-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
+      ? "bg-og-accent/10 text-og-accent font-medium dark:bg-white/10 dark:text-white"
+      : "text-gray-500 hover:text-gray-800 hover:bg-og-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
   }`;
 
   const content = (
@@ -201,7 +201,7 @@ function NavLink({
       <span
         className={`shrink-0 ${
           active
-            ? "text-mar-accent"
+            ? "text-og-accent"
             : "text-gray-400 dark:text-gray-500"
         }`}
       >

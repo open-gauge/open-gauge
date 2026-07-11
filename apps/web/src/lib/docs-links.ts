@@ -1,4 +1,4 @@
-// Maps tooltip keys to their explanation in the MAR Knowledge Center, so clicking a tooltip
+// Maps tooltip keys to their explanation in the Open Gauge Knowledge Center, so clicking a tooltip
 // can open the full write-up (with math/examples) for that field or metric. Anchor ids match
 // the `[#id]` markers in the corresponding .mdx pages 1:1. The same content is rendered both
 // standalone (apps/docs, paths under /docs/guide/...) and inline inside this app (the

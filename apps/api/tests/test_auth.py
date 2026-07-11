@@ -43,7 +43,7 @@ class TestLogin:
     def test_unknown_email_is_rejected(self, client: TestClient) -> None:
         response = client.post(
             "/api/v1/auth/login",
-            json={"email": "nobody@mar.test", "password": "password"},
+            json={"email": "nobody@opengauge.test", "password": "password"},
         )
         assert response.status_code == 401
 
@@ -52,7 +52,7 @@ class TestLogin:
     ) -> None:
         inactive = User(
             id=uuid.uuid4(),
-            email=f"inactive_{uuid.uuid4().hex[:6]}@mar.test",
+            email=f"inactive_{uuid.uuid4().hex[:6]}@opengauge.test",
             name="Inactive",
             hashed_password=hash_password("Testpass123!"),
             role=UserRole.viewer,

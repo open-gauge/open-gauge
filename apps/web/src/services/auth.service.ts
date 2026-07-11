@@ -27,9 +27,9 @@ export async function register(
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("mar_token");
+  return localStorage.getItem("og_token");
 }
 
 export function clearToken(): void {
-  localStorage.removeItem("mar_token");
+  localStorage.removeItem("og_token");
 }

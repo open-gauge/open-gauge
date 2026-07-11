@@ -27,15 +27,15 @@ import {
 // Shared primitives
 // ---------------------------------------------------------------------------
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
-const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
+const IB_OK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
 const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-4 py-3">
+    <div className="bg-og-surface-alt border border-og-border rounded-lg px-4 py-3">
       <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
-      <p className="text-sm text-mar-text">{value}</p>
+      <p className="text-sm text-og-text">{value}</p>
     </div>
   );
 }
@@ -119,23 +119,23 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
   return (
     <div className="space-y-4">
       {/* Display Name */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
-          <p className="text-xs font-semibold text-mar-text">Display Name</p>
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+          <p className="text-xs font-semibold text-og-text">Display Name</p>
           {editName ? (
             <div className="flex items-center gap-2">
               <button onClick={() => { setEditName(false); setNameVal(user.name); setNameErr(""); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
                 <XIcon size={12} /> Cancel
               </button>
               <button onClick={saveName} disabled={nameSave === "saving" || !nameVal.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
                 <CheckIcon size={12} /> {nameSave === "saving" ? "Saving…" : "Save"}
               </button>
             </div>
           ) : (
             <button onClick={() => setEditName(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
               <EditIcon size={12} /> Edit
             </button>
           )}
@@ -155,23 +155,23 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       </div>
 
       {/* Email */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
-          <p className="text-xs font-semibold text-mar-text">Email Address</p>
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+          <p className="text-xs font-semibold text-og-text">Email Address</p>
           {editEmail ? (
             <div className="flex items-center gap-2">
               <button onClick={() => { setEditEmail(false); setEmailVal(user.email); setEmailErr(""); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
                 <XIcon size={12} /> Cancel
               </button>
               <button onClick={saveEmail} disabled={emailSave === "saving" || !emailVal.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
                 <CheckIcon size={12} /> {emailSave === "saving" ? "Saving…" : "Save"}
               </button>
             </div>
           ) : (
             <button onClick={() => setEditEmail(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
               <EditIcon size={12} /> Edit
             </button>
           )}
@@ -191,9 +191,9 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       </div>
 
       {/* Change Password */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
-          <p className="text-xs font-semibold text-mar-text">Change Password</p>
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+          <p className="text-xs font-semibold text-og-text">Change Password</p>
           {pwSave === "saved" && (
             <span className="flex items-center gap-1 text-xs text-emerald-500">
               <CheckIcon size={11} /> Password updated
@@ -219,7 +219,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
           </div>
           {pwErr && <p className="text-xs text-red-500">{pwErr}</p>}
           <button onClick={savePassword} disabled={!pwValid || pwSave === "saving"}
-            className="flex items-center gap-1.5 px-4 py-2 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+            className="flex items-center gap-1.5 px-4 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
             <CheckIcon size={12} /> {pwSave === "saving" ? "Saving…" : "Update Password"}
           </button>
         </div>
@@ -315,12 +315,12 @@ function TeamsSection({ user }: { user: UserProfile }) {
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
-        <p className="text-xs font-semibold text-mar-text">Teams</p>
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+        <p className="text-xs font-semibold text-og-text">Teams</p>
         {canManage && !creating && (
           <button onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
             <PlusIcon size={12} /> New Team
           </button>
         )}
@@ -328,8 +328,8 @@ function TeamsSection({ user }: { user: UserProfile }) {
 
       {/* New team form */}
       {creating && (
-        <div className="px-4 py-4 border-b border-mar-border bg-mar-surface-alt space-y-3">
-          <p className="text-xs font-semibold text-mar-text">New Team</p>
+        <div className="px-4 py-4 border-b border-og-border bg-og-surface-alt space-y-3">
+          <p className="text-xs font-semibold text-og-text">New Team</p>
           <div className="space-y-1">
             <label className="text-xs text-gray-400">Team name <span className="text-red-400">*</span></label>
             <input value={newName} onChange={(e) => setNewName(e.target.value)}
@@ -343,21 +343,21 @@ function TeamsSection({ user }: { user: UserProfile }) {
           {createErr && <p className="text-xs text-red-500">{createErr}</p>}
           <div className="flex gap-2">
             <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); setCreateErr(""); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
               <XIcon size={12} /> Cancel
             </button>
             <button onClick={handleCreate} disabled={!newName.trim() || createSaving}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
               <CheckIcon size={12} /> {createSaving ? "Creating…" : "Create"}
             </button>
           </div>
         </div>
       )}
 
-      <div className="divide-y divide-mar-border">
+      <div className="divide-y divide-og-border">
         {loading && (
           <div className="flex items-center justify-center py-10 gap-2 text-xs text-gray-400">
-            <span className="w-4 h-4 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+            <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
             Loading…
           </div>
         )}
@@ -371,7 +371,7 @@ function TeamsSection({ user }: { user: UserProfile }) {
         )}
         {teams.map((team) =>
           editId === team.id ? (
-            <div key={team.id} className="px-4 py-4 space-y-3 bg-mar-surface-alt">
+            <div key={team.id} className="px-4 py-4 space-y-3 bg-og-surface-alt">
               <div className="space-y-1">
                 <label className="text-xs text-gray-400">Team name <span className="text-red-400">*</span></label>
                 <input value={editName} onChange={(e) => setEditName(e.target.value)}
@@ -385,11 +385,11 @@ function TeamsSection({ user }: { user: UserProfile }) {
               {editErr && <p className="text-xs text-red-500">{editErr}</p>}
               <div className="flex gap-2">
                 <button onClick={cancelEdit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors">
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
                   <XIcon size={12} /> Cancel
                 </button>
                 <button onClick={() => saveEdit(team.id)} disabled={!editName.trim() || editSaving}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-mar-action hover:bg-mar-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
                   <CheckIcon size={12} /> {editSaving ? "Saving…" : "Save"}
                 </button>
               </div>
@@ -397,7 +397,7 @@ function TeamsSection({ user }: { user: UserProfile }) {
           ) : (
             <div key={team.id} className="flex items-start justify-between px-4 py-3 gap-4">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-mar-text">{team.name}</p>
+                <p className="text-sm font-medium text-og-text">{team.name}</p>
                 {team.description && (
                   <p className="text-xs text-gray-400 mt-0.5">{team.description}</p>
                 )}
@@ -405,7 +405,7 @@ function TeamsSection({ user }: { user: UserProfile }) {
               {canManage && (
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => startEdit(team)}
-                    className="p-1.5 text-gray-400 hover:text-mar-text rounded-sm transition-colors">
+                    className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors">
                     <EditIcon size={13} />
                   </button>
                   <button onClick={() => handleDelete(team.id, team.name)}
@@ -446,7 +446,7 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-red-400/30 shadow-xs">
+    <div className="bg-og-surface rounded-xl border border-red-400/30 shadow-xs">
       <div className="px-4 py-3 border-b border-red-400/20">
         <p className="text-xs font-semibold text-red-500">Delete Account</p>
       </div>
@@ -461,7 +461,7 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
 
         <div className="space-y-1">
           <label className="text-xs text-gray-400">
-            Type <span className="font-mono text-mar-text">{CONFIRM_PHRASE}</span> to confirm
+            Type <span className="font-mono text-og-text">{CONFIRM_PHRASE}</span> to confirm
           </label>
           <input
             value={confirmed}
@@ -511,14 +511,14 @@ export default function SettingsPage() {
   return (
     <div className="p-6 space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-mar-text">Settings</h1>
+        <h1 className="text-xl font-bold text-og-text">Settings</h1>
         <p className="text-sm text-gray-400 mt-1">Manage your profile and workspace</p>
       </div>
 
       <div className="flex gap-5 items-start">
         {/* Sidebar nav */}
-        <div className="w-52 shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-xs sticky top-4">
-          <div className="px-3 py-3 border-b border-mar-border">
+        <div className="w-52 shrink-0 bg-og-surface rounded-xl border border-og-border shadow-xs sticky top-4">
+          <div className="px-3 py-3 border-b border-og-border">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Account</p>
           </div>
           <div className="p-2">
@@ -529,8 +529,8 @@ export default function SettingsPage() {
                 onClick={() => setSection(item.id)}
                 className={`w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left
                   ${section === item.id
-                    ? "bg-mar-border text-mar-text"
-                    : "text-gray-400 hover:bg-mar-border/50 hover:text-mar-text"
+                    ? "bg-og-border text-og-text"
+                    : "text-gray-400 hover:bg-og-border/50 hover:text-og-text"
                   }
                   ${item.id === "delete" ? "mt-1 text-red-500 hover:text-red-500" : ""}
                 `}

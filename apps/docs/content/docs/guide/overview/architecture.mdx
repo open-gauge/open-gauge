@@ -1,16 +1,16 @@
 ---
 title: Architecture
-description: The technical shape of MAR — frontend, backend, storage, and how they fit together.
+description: The technical shape of Open Gauge — frontend, backend, storage, and how they fit together.
 ---
 
-MAR is a modern monolith with separated frontend and backend applications, designed to be
+Open Gauge is a modern monolith with separated frontend and backend applications, designed to be
 boring, reliable, and easy to self-host.
 
 ## Applications
 
 | App | Stack | Responsibility |
 |---|---|---|
-| `apps/web` | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui | The MAR user interface. |
+| `apps/web` | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui | The Open Gauge user interface. |
 | `apps/api` | FastAPI, Python, SQLAlchemy, Alembic, Pydantic | REST API, business logic, calibration analysis engine. |
 | `apps/docs` | Next.js, Fumadocs | This documentation site. |
 
@@ -26,25 +26,25 @@ shared database access or hidden coupling between `apps/web` and `apps/api`.
 - **MinIO** (S3-compatible object storage) — calibration certificates (generated PDFs),
   datasheets, raw calibration files, and images. Only file *metadata* lives in PostgreSQL —
   binary content is never stored in the database.
-- **Redis** — used only where genuinely necessary; MAR avoids infrastructure complexity by
+- **Redis** — used only where genuinely necessary; Open Gauge avoids infrastructure complexity by
   default.
 - **Docker Compose** — the primary, first-class deployment target. See
-  [Self-hosting](/docs/guide/self-hosting) for the full service list and how to run it.
+  [Self-hosting](../self-hosting/deployment.mdx) for the full service list and how to run it.
 
 ## Design principles
 
-MAR is built around a few non-negotiable principles that shape almost every design decision
+Open Gauge is built around a few non-negotiable principles that shape almost every design decision
 in the product:
 
-- **Traceability over convenience.** Calibration data is historical data. MAR never overwrites
+- **Traceability over convenience.** Calibration data is historical data. Open Gauge never overwrites
   a calibration record — a new calibration always creates a new, immutable row. Treat
   calibration history the way you'd treat Git commits: append-only and auditable.
-- **API-first.** APIs are designed before UI. Every feature in MAR is reachable through the
+- **API-first.** APIs are designed before UI. Every feature in Open Gauge is reachable through the
   REST API, documented via OpenAPI — see the [API Reference](/docs/api).
 - **Self-hosted first.** Every feature has to work in Docker Compose on modest hardware
   (a Raspberry Pi or an Intel N100 mini PC is a realistic deployment target), and
   authentication has to work fully offline/air-gapped — see
-  [Authentication](/docs/guide/self-hosting/authentication).
+  [Authentication](../self-hosting/authentication.mdx).
 - **Auditable.** Every important record carries `created_at`, `updated_at`, and `created_by`.
-  Audit-sensitive entities go further, keeping `version` and `change_reason`. MAR prefers soft
+  Audit-sensitive entities go further, keeping `version` and `change_reason`. Open Gauge prefers soft
   deletion (`is_active` / `archived_at`) over destructive deletes wherever it can.

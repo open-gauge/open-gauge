@@ -1,4 +1,4 @@
-// Pulls the live OpenAPI schema from the MAR API and writes it to ./openapi.json,
+// Pulls the live OpenAPI schema from the Open Gauge API and writes it to ./openapi.json,
 // so fumadocs-openapi can generate the API Reference pages from it (see
 // scripts/generate-openapi.mjs). Uses the same API_INTERNAL_URL convention
 // apps/web already uses for server-to-server calls inside Docker Compose.
@@ -21,7 +21,7 @@ async function main() {
 main().catch((err) => {
   console.error(err);
   console.error(
-    "[fetch-openapi] Could not reach the MAR API. Start it first (e.g. `docker compose up api` " +
+    "[fetch-openapi] Could not reach the Open Gauge API. Start it first (e.g. `docker compose up api` " +
       "or `uvicorn app.main:app` from apps/api), or run against an existing ./openapi.json."
   );
   process.exit(1);

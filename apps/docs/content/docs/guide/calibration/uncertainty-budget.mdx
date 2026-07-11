@@ -1,9 +1,9 @@
 ---
 title: The uncertainty budget
-description: How MAR builds a GUM-compliant uncertainty budget, combines it, and expands it into a reported ± value.
+description: How Open Gauge builds a GUM-compliant uncertainty budget, combines it, and expands it into a reported ± value.
 ---
 
-MAR expresses measurement uncertainty as an **itemized budget** (GUM Annex H.1 table format),
+Open Gauge expresses measurement uncertainty as an **itemized budget** (GUM Annex H.1 table format),
 not a single opaque number. Every calibration stores an array of budget rows, one per
 contribution, each expressed as a *standard uncertainty* in the measurand's own units.
 
@@ -24,8 +24,8 @@ whether it's "random" or "systematic" (GUM explicitly deprecates that older dist
 | `fit_residuals` | A | Always present. Standard deviation of the calibration curve's fit residuals. Degrees of freedom = points − parameters, or unknown if that's ≤ 0. |
 | `reference_standard` | B | Optional. The reference standard's own stated expanded uncertainty, converted to a standard uncertainty via $u = U/k$ (GUM §4.3.3). For internal calibrations, auto-fetched from the selected reference asset's most recent calibration; otherwise entered manually. |
 | `resolution` | B | Included automatically whenever the channel has a resolution value. Rectangular distribution per GUM §4.3.7 — see below. |
-| `sensor_nominal_accuracy` | B | The channel's manufacturer-stated uncertainty, converted via $u = U/k$. Pre-fills from the channel's [Uncertainty (±)](/docs/guide/sensors/adding-a-sensor#measurement-uncertainty) field but is freely editable per calibration. **Opt-in only** — folding it in by default risks double-counting against `fit_residuals`, since both can reflect the same underlying instrument imprecision. |
-| `external_certificate_stated` | B | Only appears on [coefficients-only](/docs/guide/calibration/coefficients-only) calibrations that have a lab-stated uncertainty. Recorded as a single row holding the certificate's expanded uncertainty and coverage factor as-is, not decomposed further. |
+| `sensor_nominal_accuracy` | B | The channel's manufacturer-stated uncertainty, converted via $u = U/k$. Pre-fills from the channel's [Uncertainty (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) field but is freely editable per calibration. **Opt-in only** — folding it in by default risks double-counting against `fit_residuals`, since both can reflect the same underlying instrument imprecision. |
+| `external_certificate_stated` | B | Only appears on [coefficients-only](./coefficients-only.mdx) calibrations that have a lab-stated uncertainty. Recorded as a single row holding the certificate's expanded uncertainty and coverage factor as-is, not decomposed further. |
 
 ### Resolution as a rectangular distribution
 
@@ -63,7 +63,7 @@ reasonably attributable to the measurand.
 ### Coverage factor [#coverage-factor]
 
 The coverage factor $k$ is **always derived** from the requested confidence level and
-distribution — there's no separate "coverage factor" input anywhere in MAR, because a
+distribution — there's no separate "coverage factor" input anywhere in Open Gauge, because a
 user-picked $k$ independent of confidence level and distribution shape isn't statistically
 meaningful:
 
@@ -85,7 +85,7 @@ meaningful:
 
   Rows with unknown (infinite) degrees of freedom — exactly-known Type B contributions — drop
   out of this sum entirely. If *no* row has finite degrees of freedom, $\nu_{\text{eff}}$ is
-  undefined and MAR falls back to the normal-distribution quantile above (the correct limit as
+  undefined and Open Gauge falls back to the normal-distribution quantile above (the correct limit as
   $\nu \to \infty$).
 
 ## Reporting rounding
@@ -93,5 +93,5 @@ meaningful:
 Per GUM §7.2.6, combined and expanded uncertainty are rounded to **at most 2 significant
 figures** for display and on the certificate — everywhere else (R², RMSE, max error,
 hysteresis, ...) uses a plain fixed-decimal display. See
-[Rounding](/docs/guide/calibration/examples/rounding-and-troubleshooting) for exactly how this
+[Rounding](./examples/rounding-and-troubleshooting.mdx) for exactly how this
 plays out in practice.

@@ -1,18 +1,18 @@
 ---
 title: Decision rules & conformity
-description: How MAR decides pass/fail once measurement uncertainty is in the picture — simple acceptance, guard-banding, and shared risk.
+description: How Open Gauge decides pass/fail once measurement uncertainty is in the picture — simple acceptance, guard-banding, and shared risk.
 ---
 
 ISO/IEC 17025 §7.1.3 and §7.8.6 require that whenever a lab issues a pass/fail statement, it
 documents **which decision rule** was applied — a bare "reading within spec" comparison isn't
-sufficient once measurement uncertainty is accounted for. MAR stores the decision rule and the
+sufficient once measurement uncertainty is accounted for. Open Gauge stores the decision rule and the
 resulting conformity statement on every calibration.
 
 ## The three rules [#decision-rule]
 
-Let $\text{error}$ be the calibration's [max error](/docs/guide/calibration/curve-fitting#max-error)
+Let $\text{error}$ be the calibration's [max error](./curve-fitting.mdx#max-error)
 and $\text{tolerance}$ be the channel's accuracy spec (e.g. ±0.5 °C, or ±1% FS converted to an
-absolute value), and $U$ be the [expanded uncertainty](/docs/guide/calibration/uncertainty-budget#expanded-uncertainty).
+absolute value), and $U$ be the [expanded uncertainty](./uncertainty-budget.mdx#expanded-uncertainty).
 
 | Rule | Passes when | Effect | When to use |
 |---|---|---|---|
@@ -21,7 +21,7 @@ absolute value), and $U$ be the [expanded uncertainty](/docs/guide/calibration/u
 | **Shared risk** | $\text{error} - U \le \text{tolerance}$ | The acceptance zone expands outward by $U$. | Reduces false-reject risk, at the cost of some false-accept risk near the boundary — use when a false *fail* is costly. |
 
 Notice these three rules can genuinely disagree on the *same* fit and the *same* spec —
-see [Example 1.3](/docs/guide/calibration/examples/rtd-linear#bonus-check) for a worked case
+see [Example 1.3](./examples/rtd-linear.mdx#bonus-check) for a worked case
 where all three rules produce a different verdict from identical input data.
 
 ## What gets stored
@@ -34,7 +34,7 @@ accuracy spec was configured at all, meaning conformity wasn't evaluated).
 ## Saving a non-conforming calibration
 
 Saving is **never blocked** by a non-conforming result. A failed calibration is itself an
-important record — MAR's [calibration philosophy](/docs/guide/concepts/data-model) treats
+important record — Open Gauge's [calibration philosophy](../concepts/data-model.mdx) treats
 history as immutable and never suppresses a real result just because it's inconvenient. When a
 result doesn't conform, the save-confirmation dialog names the specification and decision rule
 explicitly, and the save button relabels to **"Save anyway."**

@@ -1,41 +1,41 @@
 ---
 title: Introduction
-description: What MAR is, who it's for, and how this documentation is organized.
+description: What Open Gauge is, who it's for, and how this documentation is organized.
 ---
 
-## What is MAR?
+## What is Open Gauge?
 
-**MAR (Measurement Asset Registry)** is a self-hosted platform for managing industrial
+**Open Gauge** is a self-hosted platform for managing industrial
 sensors, instrumentation assets, calibration records, calibration coefficients, certificates,
 and traceability data. It's built for laboratories, industrial sites, and engineering
 organizations that need to know — with evidence — that a measurement can be trusted.
 
-MAR keeps track of:
+Open Gauge keeps track of:
 
 - The **asset registry**: every sensor and data-acquisition (DAQ) device you own, its
   specifications, and where it's physically located.
 - **Calibration history**: every calibration event, as an immutable, append-only record —
   never overwritten, never silently corrected.
-- **Measurement uncertainty**, computed per [JCGM 100:2008 (GUM)](/docs/guide/reference/standards-glossary)
-  and reported per [ISO/IEC 17025:2017](/docs/guide/reference/standards-glossary).
+- **Measurement uncertainty**, computed per [JCGM 100:2008 (GUM)](./reference/standards-glossary.mdx)
+  and reported per [ISO/IEC 17025:2017](./reference/standards-glossary.mdx).
 - **Certificates**, procedures, sites/locations, and an audit trail of who changed what and
   when.
 
 ## Who this documentation is for
 
-- **Lab technicians and calibration engineers** — the [Sensors](/docs/guide/sensors),
-  [Locations](/docs/guide/locations), [Procedures](/docs/guide/procedures), and
-  [Calibration](/docs/guide/calibration) sections walk through the day-to-day workflows.
-- **Metrologists** — the [Calibration](/docs/guide/calibration) and
-  [Health scoring](/docs/guide/health-scoring) sections cover the full mathematical basis:
+- **Lab technicians and calibration engineers** — the [Sensors](./sensors/asset-registry.mdx),
+  [Locations](./locations/index.mdx), [Procedures](./procedures/index.mdx), and
+  [Calibration](./calibration/overview.mdx) sections walk through the day-to-day workflows.
+- **Metrologists** — the [Calibration](./calibration/overview.mdx) and
+  [Health scoring](./health-scoring/overview.mdx) sections cover the full mathematical basis:
   curve fitting, uncertainty budgets, decision rules, and worked numerical examples.
-- **IT / DevOps deploying MAR on-site** — see [Self-hosting](/docs/guide/self-hosting).
-- **Developers integrating with MAR** — see the [API Reference](/docs/api), generated
+- **IT / DevOps deploying Open Gauge on-site** — see [Self-hosting](./self-hosting/deployment.mdx).
+- **Developers integrating with Open Gauge** — see the [API Reference](/docs/api), generated
   directly from the live OpenAPI schema.
 
-## How MAR is organized
+## How Open Gauge is organized
 
-MAR models a simple hierarchy:
+Open Gauge models a simple hierarchy:
 
 ```
 Organization
@@ -45,6 +45,6 @@ Organization
              └─ Calibrations (immutable history, one row per event)
 ```
 
-Read [Data model & concepts](/docs/guide/concepts) next for the full picture, or jump
-straight to [Adding a sensor](/docs/guide/sensors/adding-a-sensor) if you already have MAR
+Read [Data model & concepts](./concepts/data-model.mdx) next for the full picture, or jump
+straight to [Adding a sensor](./sensors/adding-a-sensor.mdx) if you already have Open Gauge
 running and just want to register your first instrument.

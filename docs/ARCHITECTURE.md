@@ -1,6 +1,6 @@
 # Architecture Overview
 
-MAR is designed around a modern monolith paradigm with separated frontend and backend applications for scalability and maintainability.
+Open Gauge is designed around a modern monolith paradigm with separated frontend and backend applications for scalability and maintainability.
 
 ## Backend (FastAPI)
 - Uses FastAPI with Python for high performance and standard OpenAPI schema generation.

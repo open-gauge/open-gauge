@@ -29,9 +29,9 @@ const ROLE_COLORS: Record<string, string> = {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-4 py-3 border-b border-mar-border last:border-0">
+    <div className="flex items-start gap-4 py-3 border-b border-og-border last:border-0">
       <span className="w-32 shrink-0 text-xs text-gray-400 pt-0.5">{label}</span>
-      <span className="flex-1 text-sm text-mar-text">{value}</span>
+      <span className="flex-1 text-sm text-og-text">{value}</span>
     </div>
   );
 }
@@ -62,7 +62,7 @@ export default function UserProfilePage() {
       <button
         type="button"
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-mar-text transition-colors"
+        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-og-text transition-colors"
       >
         <ChevronLeftIcon size={13} />
         Back
@@ -70,7 +70,7 @@ export default function UserProfilePage() {
 
       {loading && (
         <div className="flex items-center justify-center py-20 text-gray-400">
-          <span className="inline-block w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin mr-3" />
+          <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
           Loading…
         </div>
       )}
@@ -85,11 +85,11 @@ export default function UserProfilePage() {
         <>
           {/* Header */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-mar-action flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-og-action flex items-center justify-center shrink-0">
               <UsersIcon size={18} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-mar-text">{user.name}</h1>
+              <h1 className="text-xl font-bold text-og-text">{user.name}</h1>
               <p className="text-sm text-gray-400">{user.email}</p>
             </div>
             <div className="ml-2 flex items-center gap-2">
@@ -109,7 +109,7 @@ export default function UserProfilePage() {
           </div>
 
           {/* Details card */}
-          <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs px-5 py-2">
+          <div className="bg-og-surface rounded-xl border border-og-border shadow-xs px-5 py-2">
             <InfoRow label="Email" value={user.email} />
             <InfoRow label="Role" value={
               <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
@@ -126,14 +126,14 @@ export default function UserProfilePage() {
           </div>
 
           {/* Activity link */}
-          <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs px-5 py-4 flex items-center justify-between">
+          <div className="bg-og-surface rounded-xl border border-og-border shadow-xs px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ActivityIcon size={15} className="text-gray-400" />
-              <span className="text-sm font-medium text-mar-text">Activity log</span>
+              <span className="text-sm font-medium text-og-text">Activity log</span>
             </div>
             <Link
               href={`/activity?actor_id=${user.id}`}
-              className="text-xs text-mar-accent hover:underline"
+              className="text-xs text-og-accent hover:underline"
             >
               View activity →
             </Link>

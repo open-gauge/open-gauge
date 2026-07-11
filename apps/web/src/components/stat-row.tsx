@@ -16,7 +16,7 @@ export function StatRow({
 }) {
   if (value == null) return null;
   return (
-    <div className="flex items-center justify-between gap-2 py-1.5 border-b border-mar-border last:border-b-0">
+    <div className="flex items-center justify-between gap-2 py-1.5 border-b border-og-border last:border-b-0">
       <span className="flex items-center gap-1 text-xs text-gray-400">
         {label}
         {tip && (
@@ -25,7 +25,7 @@ export function StatRow({
           </Tooltip>
         )}
       </span>
-      <span className="text-xs font-mono text-mar-text">{value}</span>
+      <span className="text-xs font-mono text-og-text">{value}</span>
     </div>
   );
 }

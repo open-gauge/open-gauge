@@ -46,7 +46,7 @@ OPENAPI_TAGS = [
 
 app = FastAPI(
     title=settings.app_name,
-    description="Measurement Asset Registry API",
+    description="Open Gauge API",
     version="0.1.0",
     lifespan=lifespan,
     openapi_tags=OPENAPI_TAGS,
@@ -75,4 +75,4 @@ app.include_router(admin_router.router, prefix="/api/v1")
 
 @app.get("/health", tags=["Health"])
 def health_check() -> JSONResponse:
-    return JSONResponse(content={"status": "ok", "service": "MAR API"})
+    return JSONResponse(content={"status": "ok", "service": "Open Gauge API"})

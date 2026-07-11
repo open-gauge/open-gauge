@@ -387,7 +387,7 @@ def generate_certificate(
         topMargin=TMARGIN,
         bottomMargin=BMARGIN,
         title=f"Calibration Certificate — {asset.asset_id}",
-        author="MAR",
+        author="Open Gauge",
     )
 
     lab = calibration.external_lab_name or ""
@@ -428,7 +428,7 @@ def _build_header(
         Paragraph("CERTIFICATE OF CALIBRATION", _style(
             "h1", fontSize=14, fontName="Helvetica-Bold", textColor=C_DARK, spaceAfter=3
         )),
-        Paragraph(f"MAR-CAL-{asset.asset_id}-v{version}", _style(
+        Paragraph(f"OG-CAL-{asset.asset_id}-v{version}", _style(
             "h1sub", fontSize=8, fontName="Courier", textColor=C_MID
         )),
     ]

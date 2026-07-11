@@ -9,8 +9,8 @@ export const chartCenterContainerClassName =
 
 /** Primary stat — ~15% of center width, clamped between text-sm and text-2xl. */
 export const chartCenterValueClassName =
-  "font-bold tabular-nums leading-none text-[clamp(0.75rem,15cqw,1.5rem)] text-mar-text dark:text-white";
+  "font-bold tabular-nums leading-none text-[clamp(0.75rem,15cqw,1.5rem)] text-og-text dark:text-white";
 
 /** Supporting label — ~9% of center width, clamped between 10px and text-xs. */
 export const chartCenterLabelClassName =
-  "max-w-full truncate leading-none text-[clamp(0.625rem,9cqw,0.75rem)] text-mar-text dark:text-white";
+  "max-w-full truncate leading-none text-[clamp(0.625rem,9cqw,0.75rem)] text-og-text dark:text-white";

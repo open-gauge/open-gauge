@@ -1,5 +1,5 @@
 /**
- * Shared SVG icon library for MAR.
+ * Shared SVG icon library for Open Gauge.
  *
  * All icons accept a `size` prop (default 16) and an optional `className`.
  * They render with `currentColor` so colour is controlled by the parent via

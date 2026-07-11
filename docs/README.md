@@ -1,6 +1,6 @@
-# MAR (Measurement Asset Registry)
+# Open Gauge
 
-MAR is a self-hosted platform for managing industrial sensors, instrumentation assets, calibration records, calibration coefficients, certificates, and audit trails.
+Open Gauge is a self-hosted platform for managing industrial sensors, instrumentation assets, calibration records, calibration coefficients, certificates, and audit trails.
 
 ## Philosophy
 
@@ -38,7 +38,7 @@ MAR is a self-hosted platform for managing industrial sensors, instrumentation a
 A [Fumadocs](https://fumadocs.dev)-based site with two sections, switchable from the sidebar
 dropdown:
 
-* **Documentation** (`/docs/guide`) — the Knowledge Center: how MAR works, self-hosting,
+* **Documentation** (`/docs/guide`) — the Knowledge Center: how Open Gauge works, self-hosting,
   and the operational workflows (adding sensors/DAQs, locations, procedures, running a
   calibration, the full calibration math with worked examples, health scoring).
 * **API Reference** (`/docs/api`) — generated directly from the API's live OpenAPI schema.
@@ -63,7 +63,7 @@ The API Reference content is regenerated from the live API before every `dev`/`b
 
 The Knowledge Center (not the API Reference — see above) also renders *inline inside
 `apps/web`*, at `/documentation`, wrapped in the app's own Sidebar/TopBar and reusing Fumadocs'
-real components — same content, same markup, styled with MAR's own design tokens instead of
+real components — same content, same markup, styled with Open Gauge's own design tokens instead of
 Fumadocs' default theme (see `apps/web/src/app/globals.css`'s `--color-fd-*` remap). This is
 the single source of truth for the content: `apps/web/source.config.ts` reads the exact same
 `apps/docs/content/docs/guide` directory apps/docs does — nothing is duplicated.

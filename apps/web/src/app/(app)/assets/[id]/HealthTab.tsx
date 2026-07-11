@@ -51,9 +51,9 @@ function fmtUnit(n: number | null | undefined, unit: string, decimals = 4): stri
 
 function Card({ title, tooltip, tooltipDocsHref, children }: { title: string; tooltip?: string; tooltipDocsHref?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
-      <div className="flex items-center gap-1.5 px-4 py-3 border-b border-mar-border">
-        <p className="text-xs font-semibold text-mar-text">{title}</p>
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="flex items-center gap-1.5 px-4 py-3 border-b border-og-border">
+        <p className="text-xs font-semibold text-og-text">{title}</p>
         {tooltip && (
           <Tooltip content={tooltip} docsHref={tooltipDocsHref}>
             <InfoIcon size={11} className="text-gray-400 cursor-help" />
@@ -71,7 +71,7 @@ function Card({ title, tooltip, tooltipDocsHref, children }: { title: string; to
 
 function HealthEmptyState() {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-12 flex flex-col items-center text-center gap-3">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-12 flex flex-col items-center text-center gap-3">
       <ActivityIcon size={32} className="text-gray-300 dark:text-gray-600" />
       <p className="text-sm text-gray-400 max-w-sm">
         Health insights become available after at least two calibrations.
@@ -82,7 +82,7 @@ function HealthEmptyState() {
 
 function HealthError({ message }: { message: string }) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-8 flex flex-col items-center text-center gap-2">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-8 flex flex-col items-center text-center gap-2">
       <WarningIcon size={24} className="text-red-400" />
       <p className="text-sm text-gray-400">{message}</p>
     </div>
@@ -91,7 +91,7 @@ function HealthError({ message }: { message: string }) {
 
 function HealthLoading() {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-12 flex items-center justify-center">
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-12 flex items-center justify-center">
       <p className="text-sm text-gray-400">Loading health data…</p>
     </div>
   );
@@ -128,11 +128,11 @@ function HealthOverviewCard({ overview }: { overview: HealthOverview }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div>
           <KpiLabel text="Health Score" tooltip={SCORE_TOOLTIP} tooltipDocsHref={HEALTH_DOCS_LINKS.score} />
-          <p className="text-2xl font-bold text-mar-text tabular-nums">
+          <p className="text-2xl font-bold text-og-text tabular-nums">
             {Math.round(overview.health_score)}
             <span className="text-sm text-gray-400 font-normal"> / 100</span>
           </p>
-          <div className="mt-2 h-1.5 rounded-full bg-mar-surface-alt overflow-hidden">
+          <div className="mt-2 h-1.5 rounded-full bg-og-surface-alt overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
               style={{ width: `${Math.round(overview.health_score)}%`, backgroundColor: scoreColor }}
@@ -152,7 +152,7 @@ function HealthOverviewCard({ overview }: { overview: HealthOverview }) {
 
         <div>
           <KpiLabel text="Average Drift" tooltip="Long-term drift rate from a linear regression over the full calibration history." tooltipDocsHref={HEALTH_DOCS_LINKS.average_drift} />
-          <p className="text-xl font-bold text-mar-text tabular-nums">
+          <p className="text-xl font-bold text-og-text tabular-nums">
             {fmtNum(overview.average_drift_rate)}
             <span className="text-xs text-gray-400 font-normal ml-1">{overview.drift_rate_unit}</span>
           </p>
@@ -160,7 +160,7 @@ function HealthOverviewCard({ overview }: { overview: HealthOverview }) {
 
         <div>
           <KpiLabel text="Recommended Interval" tooltip="Heuristic suggestion based on the current stability classification, starting from the sensor's configured calibration interval." tooltipDocsHref={HEALTH_DOCS_LINKS.recommended_interval} />
-          <p className="text-xl font-bold text-mar-text tabular-nums">
+          <p className="text-xl font-bold text-og-text tabular-nums">
             {overview.recommended_interval_months}
             <span className="text-xs text-gray-400 font-normal ml-1">months</span>
           </p>
@@ -224,17 +224,17 @@ function DriftEvolutionCard({ data, unit }: { data: DriftEvolution; unit: string
         <>
           <div ref={divRef} style={{ height: 300, width: "100%" }} />
           <div className="grid grid-cols-3 gap-3 mt-4">
-            <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-3 py-2">
+            <div className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Current Drift Rate</p>
-              <p className="text-sm text-mar-text tabular-nums">{fmtNum(data.current_drift_rate)} {unit}/yr</p>
+              <p className="text-sm text-og-text tabular-nums">{fmtNum(data.current_drift_rate)} {unit}/yr</p>
             </div>
-            <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-3 py-2">
+            <div className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Slope</p>
-              <p className="text-sm text-mar-text tabular-nums">{fmtNum(data.regression_slope)} {unit}/yr</p>
+              <p className="text-sm text-og-text tabular-nums">{fmtNum(data.regression_slope)} {unit}/yr</p>
             </div>
-            <div className="bg-mar-surface-alt border border-mar-border rounded-lg px-3 py-2">
+            <div className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Regression R²</p>
-              <p className="text-sm text-mar-text tabular-nums">{fmtNum(data.regression_r_squared, 3)}</p>
+              <p className="text-sm text-og-text tabular-nums">{fmtNum(data.regression_r_squared, 3)}</p>
             </div>
           </div>
         </>
@@ -299,7 +299,7 @@ function StabilityCard({ data }: { data: CalibrationStability }) {
             className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
               enabled[s.name]
                 ? "border-transparent text-white"
-                : "border-mar-border-md text-gray-400 hover:bg-mar-surface-alt"
+                : "border-og-border-md text-gray-400 hover:bg-og-surface-alt"
             }`}
             style={enabled[s.name] ? { backgroundColor: HEALTH_METRIC_COLOR[s.name] ?? COLORS.accent } : undefined}
           >
@@ -403,7 +403,7 @@ function CurveComparisonCard({
           <select
             value={referenceId}
             onChange={(e) => setReferenceId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20"
+            className="w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
           >
             {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
@@ -413,7 +413,7 @@ function CurveComparisonCard({
           <select
             value={currentId}
             onChange={(e) => setCurrentId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20"
+            className="w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
           >
             {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
@@ -447,14 +447,14 @@ function CurveComparisonCard({
               ["gain", "Gain Drift", result.summary.gain],
               ["residual_drift", "Residual Drift", result.summary.residual_drift],
             ] as [string, string, number][]).map(([key, label, value]) => (
-              <div key={key} className="bg-mar-surface-alt border border-mar-border rounded-lg px-3 py-2">
+              <div key={key} className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1">
                   {label}
                   <Tooltip content={CURVE_METRIC_TIPS[key]} docsHref={CURVE_METRIC_DOCS_LINKS[key]}>
                     <InfoIcon size={10} className="text-gray-400 cursor-help" />
                   </Tooltip>
                 </p>
-                <p className="text-sm text-mar-text tabular-nums">{fmtUnit(value, unit)}</p>
+                <p className="text-sm text-og-text tabular-nums">{fmtUnit(value, unit)}</p>
               </div>
             ))}
           </div>
@@ -482,9 +482,9 @@ function PredictionCard({ prediction, unit }: { prediction: PredictionOut; unit:
           ["3 years", prediction.projected_drift_3y],
           ["5 years", prediction.projected_drift_5y],
         ] as [string, number | null][]).map(([label, value]) => (
-          <div key={label} className="bg-mar-surface-alt border border-mar-border rounded-lg px-3 py-2">
+          <div key={label} className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Expected drift, {label}</p>
-            <p className="text-sm text-mar-text tabular-nums">{fmtUnit(value, unit)}</p>
+            <p className="text-sm text-og-text tabular-nums">{fmtUnit(value, unit)}</p>
           </div>
         ))}
       </div>
@@ -492,7 +492,7 @@ function PredictionCard({ prediction, unit }: { prediction: PredictionOut; unit:
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Predicted Remaining Useful Calibration Life</p>
-          <p className="text-xl font-bold text-mar-text tabular-nums">
+          <p className="text-xl font-bold text-og-text tabular-nums">
             {rul != null ? `${fmtNum(rul, 1)} years` : "—"}
           </p>
           {prediction.projected_tolerance_exceeded_date && (
@@ -503,7 +503,7 @@ function PredictionCard({ prediction, unit }: { prediction: PredictionOut; unit:
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Confidence</p>
-          <p className="text-xl font-bold text-mar-text tabular-nums">
+          <p className="text-xl font-bold text-og-text tabular-nums">
             {prediction.confidence_pct != null ? `${Math.round(prediction.confidence_pct)}%` : "—"}
           </p>
           {!prediction.confidence_reliable && (
@@ -559,14 +559,14 @@ function MetricGroup({ title, items }: { title: string; items: MetricGroupItem[]
       <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{title}</p>
       <div className="space-y-0">
         {items.map((item) => (
-          <div key={item.key} className="flex items-center justify-between py-2 border-b border-mar-border last:border-b-0">
+          <div key={item.key} className="flex items-center justify-between py-2 border-b border-og-border last:border-b-0">
             <span className="flex items-center gap-1.5 text-xs text-gray-400">
               {item.label}
               <Tooltip content={item.tooltip} docsHref={DETAILED_METRIC_DOCS_LINKS[item.key]}>
                 <InfoIcon size={11} className="text-gray-400 cursor-help" />
               </Tooltip>
             </span>
-            <span className="text-sm text-mar-text tabular-nums flex items-center gap-1">
+            <span className="text-sm text-og-text tabular-nums flex items-center gap-1">
               {item.value === null && item.unit ? (
                 <span className="capitalize">{item.unit}</span>
               ) : (
@@ -632,8 +632,8 @@ export function HealthTab({ assetId, profile }: { assetId: string; profile: Asse
               onClick={() => setActiveChannelId(ch.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                 activeChannelId === ch.id
-                  ? "bg-mar-accent/10 border-mar-accent text-mar-accent"
-                  : "border-mar-border-md text-gray-500 hover:bg-mar-surface-alt"
+                  ? "bg-og-accent/10 border-og-accent text-og-accent"
+                  : "border-og-border-md text-gray-500 hover:bg-og-surface-alt"
               }`}
             >
               {ch.channel_id}
