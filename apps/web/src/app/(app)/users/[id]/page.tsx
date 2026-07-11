@@ -9,9 +9,9 @@ import {
   ActivityIcon,
   ChevronLeftIcon,
   CheckCircleIcon,
-  UsersIcon,
   WarningIcon,
 } from "@/components/icons";
+import { Avatar } from "@/components/avatar";
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Super Admin",
@@ -85,9 +85,7 @@ export default function UserProfilePage() {
         <>
           {/* Header */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-og-action flex items-center justify-center shrink-0">
-              <UsersIcon size={18} className="text-white" />
-            </div>
+            <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={40} />
             <div>
               <h1 className="text-xl font-bold text-og-text">{user.name}</h1>
               <p className="text-sm text-gray-400">{user.email}</p>

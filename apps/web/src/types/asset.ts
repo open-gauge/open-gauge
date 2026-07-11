@@ -112,6 +112,8 @@ export interface AssetProfile {
   pinout_image_id: string | null;
   sensor_image_id: string | null;
   sensor_schematic_id: string | null;
+  picture_id: string | null;
+  picture_url: string | null;
   created_at: string;
   updated_at: string;
   sensor_channels: SensorChannelFull[];

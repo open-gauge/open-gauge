@@ -35,6 +35,14 @@ backend (not just hidden in the UI) — see the [Auth](/docs/api/auth) and
 [Admin](/docs/api/admin) sections of the API Reference for the exact endpoints each role can
 reach.
 
+## Profile picture
+
+Every user can set a profile picture from **Settings → Profile**. It appears in the circular
+avatar in the top-right of the top bar and on the user's profile page (`/users/{id}`, reached by
+clicking a name anywhere it's mentioned — audit logs, activity, etc.). Users without a picture
+fall back to their initials. Uploads are limited to image files under 5MB and are stored in
+MinIO like any other attached file (see [Data model & concepts](../concepts/data-model.mdx)).
+
 ## Session tokens
 
 Once authenticated, the frontend and any API client carry a session token on subsequent

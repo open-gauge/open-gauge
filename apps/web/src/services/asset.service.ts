@@ -66,6 +66,21 @@ export async function deleteAssetFile(assetId: string, fileId: string): Promise<
   });
 }
 
+export async function uploadAssetPicture(assetId: string, file: File): Promise<AssetProfile> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<AssetProfile>(`/api/v1/assets/${assetId}/picture`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteAssetPicture(assetId: string): Promise<AssetProfile> {
+  return apiFetch<AssetProfile>(`/api/v1/assets/${assetId}/picture`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
 export async function updateAsset(id: string, body: AssetUpdateRequest): Promise<AssetProfile> {
   return apiFetch<AssetProfile>(`/api/v1/assets/${id}`, {
     method: "PUT",

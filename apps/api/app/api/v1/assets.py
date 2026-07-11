@@ -49,6 +49,10 @@ def _enrich(asset, db: Session) -> AssetResponse:
     data.sensor_channels = enriched_channels
     if daq:
         data.daq_details = DaqResponse.model_validate(daq)
+    if asset.picture_id:
+        picture_file = file_repo.get_by_id(db, asset.picture_id)
+        if picture_file:
+            data.picture_url = storage_svc.get_presigned_url(picture_file.storage_path, picture_file.bucket)
     return data
 
 
@@ -404,6 +408,97 @@ def delete_asset_file(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+
+
+@router.post("/{asset_pk}/picture", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
+async def upload_asset_picture(
+    asset_pk: uuid.UUID,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AssetResponse:
+    """Upload or replace the asset's picture (a photo of the physical unit, shown circled on the asset detail header). Replaces and deletes any previous picture."""
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    data = await file.read()
+    try:
+        content_type = storage_svc.validate_image_upload(file.content_type, len(data))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    old_file_id = asset.picture_id
+
+    checksum = storage_svc.sha256_hex(data)
+    object_path = storage_svc.unique_object_name(f"assets/{asset_pk}/picture", file.filename or "picture")
+    bucket, path, size = storage_svc.upload_file(data, content_type, object_path)
+
+    record = file_repo.create(
+        db,
+        original_filename=file.filename or "picture",
+        storage_path=path,
+        bucket=bucket,
+        content_type=content_type,
+        size_bytes=size,
+        checksum_sha256=checksum,
+        entity_type="asset_picture",
+        entity_id=asset_pk,
+        uploaded_by=current_user.id,
+    )
+    asset_repo.set_picture(db, asset, record.id)
+
+    if old_file_id:
+        old_file = file_repo.get_by_id(db, old_file_id)
+        if old_file:
+            storage_svc.delete_file(old_file.storage_path, old_file.bucket)
+            file_repo.delete(db, old_file_id)
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.picture_updated",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return _enrich(asset, db)
+
+
+@router.delete("/{asset_pk}/picture", response_model=AssetResponse)
+def delete_asset_picture(
+    asset_pk: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AssetResponse:
+    """Remove the asset's picture, if one is set."""
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    if asset.picture_id:
+        old_file = file_repo.get_by_id(db, asset.picture_id)
+        asset_repo.set_picture(db, asset, None)
+        if old_file:
+            storage_svc.delete_file(old_file.storage_path, old_file.bucket)
+            file_repo.delete(db, old_file.id)
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="asset.picture_removed",
+            entity_type="asset",
+            entity_id=asset.id,
+            entity_asset_id=asset.asset_id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    return _enrich(asset, db)
 
 
 @router.get("/{asset_pk}/label")

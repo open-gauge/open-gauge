@@ -6,6 +6,8 @@ export interface UserProfile {
   team: string | null;
   is_active: boolean;
   is_superuser: boolean;
+  profile_picture_id: string | null;
+  profile_picture_url: string | null;
   organization_id: string | null;
   created_at: string;
   updated_at: string;

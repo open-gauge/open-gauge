@@ -82,6 +82,13 @@ def update(db: Session, user: User, **kwargs) -> User:
     return user
 
 
+def set_profile_picture(db: Session, user: User, file_id: uuid.UUID | None) -> User:
+    user.profile_picture_id = file_id
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def deactivate(db: Session, user: User) -> User:
     user.is_active = False
     db.commit()

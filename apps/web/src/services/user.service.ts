@@ -1,4 +1,4 @@
-import { apiFetch, authHeader } from "@/lib/api";
+import { apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { UserProfile } from "@/types/user";
 
@@ -19,6 +19,21 @@ export async function updateMe(body: { name?: string; email?: string }): Promise
     method: "PATCH",
     headers: { ...tokenHeader(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export async function uploadMyPicture(file: File): Promise<UserProfile> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<UserProfile>("/api/v1/users/me/picture", form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteMyPicture(): Promise<UserProfile> {
+  return apiFetch<UserProfile>("/api/v1/users/me/picture", {
+    method: "DELETE",
+    headers: tokenHeader(),
   });
 }
 

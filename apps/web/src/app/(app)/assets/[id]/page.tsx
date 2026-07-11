@@ -17,7 +17,9 @@ import {
   listTeams,
   retireAsset,
   updateAsset,
+  deleteAssetPicture,
   uploadAssetFile,
+  uploadAssetPicture,
 } from "@/services/asset.service";
 import { useAuth } from "@/lib/auth-context";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
@@ -51,12 +53,14 @@ import {
 import { toSI, fromSI } from "@/lib/unit-conversion";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
 import {
+  CameraIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   CopyIcon,
   DownloadIcon,
   EditIcon,
+  ImageIcon,
   InfoIcon,
   MapPinIcon,
   PlusIcon,
@@ -71,6 +75,7 @@ import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
 import { UserMention } from "@/components/user-mention";
 import { Tooltip } from "@/components/tooltip";
+import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { StatRow } from "@/components/stat-row";
 import { CHAN_DOCS_LINKS, STAT_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
@@ -2517,6 +2522,11 @@ export default function AssetProfilePage() {
   const [retireModalOpen, setRetireModalOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
 
+  // Asset picture
+  const pictureInputRef = useRef<HTMLInputElement>(null);
+  const [pictureUploading, setPictureUploading] = useState(false);
+  const [pictureModalOpen, setPictureModalOpen] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -2606,6 +2616,36 @@ export default function AssetProfilePage() {
     }
   }
 
+  async function handlePictureChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !profile) return;
+    setPictureUploading(true);
+    setSaveError(null);
+    try {
+      const updated = await uploadAssetPicture(profile.id, file);
+      setProfile(updated);
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Failed to upload picture.");
+    } finally {
+      setPictureUploading(false);
+    }
+  }
+
+  async function handlePictureRemove() {
+    if (!profile) return;
+    setPictureUploading(true);
+    setSaveError(null);
+    try {
+      const updated = await deleteAssetPicture(profile.id);
+      setProfile(updated);
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Failed to remove picture.");
+    } finally {
+      setPictureUploading(false);
+    }
+  }
+
   async function handleCalibrationSaved() {
     const [calsData, updatedProfile] = await Promise.all([
       getAssetCalibrations(id),
@@ -2666,6 +2706,15 @@ export default function AssetProfilePage() {
         />
       )}
 
+      {pictureModalOpen && profile.picture_url && (
+        <ImagePreviewModal
+          src={profile.picture_url}
+          alt={profile.name}
+          title={profile.name}
+          onClose={() => setPictureModalOpen(false)}
+        />
+      )}
+
       {!profile.is_active && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-5 py-3 flex items-center gap-3">
           <WarningIcon size={16} className="text-red-500 shrink-0" />
@@ -2688,6 +2737,54 @@ export default function AssetProfilePage() {
       {/* Header card */}
       <div className="bg-og-surface border border-og-border rounded-xl p-6">
         <div className="flex items-start justify-between gap-4">
+          {/* Picture */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => profile.picture_url && setPictureModalOpen(true)}
+              disabled={!profile.picture_url}
+              className="w-20 h-20 rounded-full overflow-hidden bg-og-surface-alt border border-og-border flex items-center justify-center disabled:cursor-default"
+            >
+              {profile.picture_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.picture_url} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                <ImageIcon size={28} className="text-gray-300" />
+              )}
+            </button>
+            {isEditing && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => pictureInputRef.current?.click()}
+                  disabled={pictureUploading}
+                  title="Change picture"
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-og-action hover:bg-og-action-dark text-white flex items-center justify-center shadow-sm transition-colors disabled:opacity-60"
+                >
+                  <CameraIcon size={13} />
+                </button>
+                {profile.picture_url && (
+                  <button
+                    type="button"
+                    onClick={handlePictureRemove}
+                    disabled={pictureUploading}
+                    title="Remove picture"
+                    className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-sm transition-colors disabled:opacity-60"
+                  >
+                    <TrashIcon size={13} />
+                  </button>
+                )}
+                <input
+                  ref={pictureInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePictureChange}
+                />
+              </>
+            )}
+          </div>
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-og-text">

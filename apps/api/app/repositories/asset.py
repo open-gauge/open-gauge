@@ -299,6 +299,13 @@ def update(db: Session, asset: Asset, **kwargs) -> Asset:
     return asset
 
 
+def set_picture(db: Session, asset: Asset, file_id: uuid.UUID | None) -> Asset:
+    asset.picture_id = file_id
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
 def retire(db: Session, asset: Asset, retired_by: uuid.UUID, reason: str | None = None) -> Asset:
     asset.is_active = False
     asset.retired_at = datetime.now(timezone.utc)

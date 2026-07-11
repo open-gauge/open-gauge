@@ -40,6 +40,7 @@ Tenant root.
 | team | VARCHAR(255) | free-text label, separate from the `teams` table |
 | is_active | BOOLEAN | |
 | is_superuser | BOOLEAN | |
+| profile_picture_id | UUID FK → files | nullable *(migration 015)* |
 | last_login_at | TIMESTAMPTZ | |
 | created_at | TIMESTAMPTZ | |
 | updated_at | TIMESTAMPTZ | |
@@ -119,7 +120,7 @@ Metadata for files stored in MinIO (S3-compatible). Not organization-scoped dire
 | content_type | VARCHAR(100) | MIME type |
 | size_bytes | BIGINT | |
 | checksum_sha256 | VARCHAR(64) | |
-| entity_type | VARCHAR(50) | e.g. 'calibration_certificate', 'asset_datasheet', 'procedure_step' |
+| entity_type | VARCHAR(50) | e.g. 'calibration_certificate', 'asset_datasheet', 'procedure_step', 'asset_picture', 'user_profile_picture' |
 | entity_id | UUID | nullable; the owning entity's id |
 | step_index | INTEGER | nullable; ordering for multi-file entities (e.g. procedure steps) |
 | uploaded_by | UUID FK → users | |
@@ -169,6 +170,7 @@ The central registry entity. Represents a physical instrument or sensor. Not dir
 | pinout_image_id | UUID FK → files | |
 | sensor_image_id | UUID FK → files | |
 | sensor_schematic_id | UUID FK → files | |
+| picture_id | UUID FK → files | nullable *(migration 015)*; the asset's own photo, shown on the asset detail header — distinct from `sensor_image_id`/`pinout_image_id`/`sensor_schematic_id`, which are write-once technical reference images set at creation |
 | is_active | BOOLEAN | false = retired |
 | retired_at | TIMESTAMPTZ | |
 | retired_by | UUID FK → users | |
@@ -456,6 +458,7 @@ Immutable record of every significant state change. Not organization-scoped as a
 | 012 | Add poly_coefficients_covariance column to calibrations — coefficient covariance for correct downstream uncertainty propagation |
 | 013 | Add decision_rule and conformity_statement columns to calibrations — ISO/IEC 17025 §7.1.3/§7.8.6 decision rules |
 | 014 | Add measurement_type column to sensors — e.g. absolute vs. gauge pressure |
+| 015 | Add profile_picture_id column to users and picture_id column to assets — profile pictures and asset pictures |
 
 ---
 

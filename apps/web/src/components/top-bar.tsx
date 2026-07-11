@@ -15,6 +15,7 @@ import {
   XIcon,
 } from "@/components/icons";
 import ThemeToggle from "@/components/theme-toggle";
+import { Avatar } from "@/components/avatar";
 import { listAssets } from "@/services/asset.service";
 import type { AssetListItem } from "@/types/asset";
 
@@ -31,15 +32,6 @@ const ROLE_LABEL: Record<string, string> = {
   technician: "Technician",
   viewer:     "Viewer",
 };
-
-function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-}
 
 export default function TopBar() {
   const { user, logout } = useAuth();
@@ -169,8 +161,6 @@ export default function TopBar() {
     inputRef.current?.focus();
   }
 
-  const initials = getInitials(user.name);
-
   return (
     <header className="h-14 shrink-0 flex items-center justify-between px-6 bg-og-surface border-b border-og-border gap-4">
       {/* Search (left) */}
@@ -289,11 +279,11 @@ export default function TopBar() {
           <button
             type="button"
             onClick={() => setAvatarOpen((v) => !v)}
-            className="w-8 h-8 rounded-full bg-og-accent flex items-center justify-center text-white text-xs font-semibold hover:bg-og-accent-dark transition-colors focus:outline-hidden focus:ring-2 focus:ring-og-accent/40"
+            className="rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-og-accent/40"
             aria-haspopup="true"
             aria-expanded={avatarOpen}
           >
-            {initials}
+            <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={32} />
           </button>
 
           {avatarOpen && (

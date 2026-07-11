@@ -26,6 +26,16 @@ mounting, connection type, IP rating, hazardous-area rating), operating temperat
 range, purchase/warranty dates, and a computed **health score** (0–100) — see
 [Health scoring](../health-scoring/overview.mdx).
 
+## Asset picture
+
+Each asset can have a picture of the physical unit, shown as a circled preview to the left of
+the header on the asset detail page. Click the preview to open it full-size in a modal. In edit
+mode, use the camera button on the picture to upload or replace it, and the trash button to
+remove it — changes take effect immediately, independent of the "Save changes" flow used for
+the rest of the asset's fields. The picture is stored in MinIO like any other attached file (see
+[Data model & concepts](../concepts/data-model.mdx)) and is distinct from the write-once
+`sensor_image_id`/`pinout_image_id`/`sensor_schematic_id` reference images set at asset creation.
+
 ## Lifecycle
 
 Assets are never hard-deleted while a deployment is active. Retiring an asset:

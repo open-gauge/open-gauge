@@ -323,3 +323,97 @@ class TestRetireAsset:
         )
         assert response.status_code == 200
         assert response.json()["is_active"] is False
+
+
+# ---------------------------------------------------------------------------
+# Asset picture
+# ---------------------------------------------------------------------------
+
+class TestAssetPicture:
+    def test_upload_picture_sets_picture_url(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        response = client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["picture_id"] is not None
+        assert body["picture_url"]
+
+    def test_uploading_new_picture_replaces_old_one(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        first = client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("first.png", b"first-bytes", "image/png")},
+            headers=auth_headers,
+        ).json()
+        second = client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("second.png", b"second-bytes", "image/png")},
+            headers=auth_headers,
+        ).json()
+        assert second["picture_id"] != first["picture_id"]
+
+    def test_upload_rejects_non_image_content_type(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        response = client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    def test_upload_picture_nonexistent_asset_returns_404(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        import uuid
+        response = client.post(
+            f"/api/v1/assets/{uuid.uuid4()}/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
+    def test_upload_unauthenticated_is_rejected(
+        self, client: TestClient, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        response = client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+        )
+        assert response.status_code == 403
+
+    def test_delete_picture_clears_it(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        response = client.delete(
+            f"/api/v1/assets/{asset_id}/picture", headers=auth_headers
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["picture_id"] is None
+        assert body["picture_url"] is None
+
+    def test_delete_picture_nonexistent_asset_returns_404(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        import uuid
+        response = client.delete(
+            f"/api/v1/assets/{uuid.uuid4()}/picture", headers=auth_headers
+        )
+        assert response.status_code == 404

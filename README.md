@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/assets/Logo%20light.svg">
-    <source media="(prefers-color-scheme: light)" srcset="apps/web/public/assets/Logo%20dark.svg">
-    <img alt="Open Gauge" src="apps/web/public/assets/Logo%20dark.svg" width="360">
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/assets/Logo%20light.png">
+    <source media="(prefers-color-scheme: light)" srcset="apps/web/public/assets/Logo%20dark.png">
+    <img alt="Open Gauge" src="apps/web/public/assets/Logo%20dark.png" width="360">
   </picture>
 </p>
 

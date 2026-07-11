@@ -684,3 +684,24 @@ export function PaperclipIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+/** Camera — change/upload a profile or asset picture. */
+export function CameraIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h1.13a1 1 0 0 0 .87-.5l.4-.7a1 1 0 0 1 .87-.5h2.46a1 1 0 0 1 .87.5l.4.7a1 1 0 0 0 .87.5h1.13A1.5 1.5 0 0 1 14 5.5v6A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5v-6Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <circle cx="8" cy="8.5" r="2.25" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+/** Generic picture placeholder — shown when no profile/asset picture is set. */
+export function ImageIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="5.5" cy="6" r="1.25" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M2 11.5 5.5 8l2 2 3-3.5L14 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+

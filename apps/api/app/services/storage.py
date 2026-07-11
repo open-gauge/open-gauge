@@ -99,3 +99,16 @@ def sha256_hex(data: bytes) -> str:
 
 def unique_object_name(prefix: str, original_filename: str) -> str:
     return f"{prefix}/{uuid.uuid4()}_{original_filename}"
+
+
+MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+
+
+def validate_image_upload(content_type: str | None, size: int) -> str:
+    """Validate an uploaded profile/asset picture. Returns the content type or raises ValueError."""
+    ct = content_type or ""
+    if not ct.startswith("image/"):
+        raise ValueError("File must be an image")
+    if size > MAX_IMAGE_SIZE_BYTES:
+        raise ValueError("Image must be smaller than 5MB")
+    return ct

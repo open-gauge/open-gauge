@@ -43,6 +43,8 @@ class UserResponse(BaseModel):
     organization_id: uuid.UUID | None
     is_active: bool
     is_superuser: bool
+    profile_picture_id: uuid.UUID | None = None
+    profile_picture_url: str | None = None
     last_login_at: datetime | None
     created_at: datetime
     updated_at: datetime

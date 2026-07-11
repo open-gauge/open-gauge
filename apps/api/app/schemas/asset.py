@@ -137,6 +137,8 @@ class AssetResponse(BaseModel):
     pinout_image_id: uuid.UUID | None = None
     sensor_image_id: uuid.UUID | None = None
     sensor_schematic_id: uuid.UUID | None = None
+    picture_id: uuid.UUID | None = None
+    picture_url: str | None = None
     sensor_channels: list[SensorChannelResponse] = []
     daq_details: DaqResponse | None = None
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import type { UserProfile } from "@/types/user";
 import {
+  CameraIcon,
   CheckIcon,
   EditIcon,
   PlusIcon,
@@ -12,14 +13,18 @@ import {
   WarningIcon,
   XIcon,
 } from "@/components/icons";
+import { Avatar } from "@/components/avatar";
+import { ImagePreviewModal } from "@/components/image-preview-modal";
 import {
   changePassword,
   createTeam,
   deleteMe,
+  deleteMyPicture,
   deleteTeam,
   listTeams,
   updateMe,
   updateTeam,
+  uploadMyPicture,
   type Team,
 } from "@/services/user.service";
 
@@ -41,6 +46,104 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+
+// ---------------------------------------------------------------------------
+// Profile picture card
+// ---------------------------------------------------------------------------
+
+function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh: () => Promise<void> }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      await uploadMyPicture(file);
+      await onRefresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to upload picture");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRemove() {
+    setUploading(true);
+    setError("");
+    try {
+      await deleteMyPicture();
+      await onRefresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove picture");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="px-4 py-3 border-b border-og-border">
+        <p className="text-xs font-semibold text-og-text">Profile Picture</p>
+      </div>
+      <div className="p-4 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => user.profile_picture_url && setPreviewOpen(true)}
+          disabled={!user.profile_picture_url}
+          className="rounded-full shrink-0 disabled:cursor-default"
+        >
+          <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={64} />
+        </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+            >
+              <CameraIcon size={12} /> {uploading ? "Uploading…" : "Change picture"}
+            </button>
+            {user.profile_picture_url && (
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={uploading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+              >
+                <TrashIcon size={12} /> Remove
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400">JPG, PNG or GIF. Max 5MB.</p>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      </div>
+
+      {previewOpen && user.profile_picture_url && (
+        <ImagePreviewModal
+          src={user.profile_picture_url}
+          alt={user.name}
+          title={user.name}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Profile section
@@ -118,6 +221,8 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
 
   return (
     <div className="space-y-4">
+      <ProfilePictureCard user={user} onRefresh={onRefresh} />
+
       {/* Display Name */}
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
         <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
