@@ -55,7 +55,12 @@ API_INTERNAL_URL=http://localhost:8000 npm run dev   # fetches the API Reference
 ```
 
 The API Reference content is regenerated from the live API before every `dev`/`build` (see
-`apps/docs/scripts/`) — the `api` service must be reachable. The calibration pages under
+`apps/docs/scripts/`) when the `api` service is reachable. `apps/docs/openapi.json` is
+committed as a fallback snapshot for hosts that build this site without a route to a live
+API (e.g. Cloudflare Pages) — `fetch-openapi.mjs` falls back to it instead of failing the
+build. Refresh the snapshot by running `API_INTERNAL_URL=http://localhost:8000 node
+scripts/fetch-openapi.mjs` from `apps/docs` against a live API and committing the result
+whenever the API schema changes. The calibration pages under
 `apps/docs/content/docs/guide/calibration/` are themselves the source material — there's no
 separate Markdown reference they're built from.
 
