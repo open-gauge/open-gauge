@@ -49,7 +49,7 @@ docker compose up -d
 * [`apps/web`](apps/web) — Next.js frontend
 * [`apps/docs`](apps/docs) — [Fumadocs](https://fumadocs.dev) documentation site (Knowledge Center + API Reference)
 * [`infrastructure/docker`](infrastructure/docker) — Docker Compose configurations
-* [`docs`](docs) — project documentation ([`ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`DATABASE.md`](docs/DATABASE.md))
+* [`docs`](docs) — contributor guide ([`CONTRIBUTING.md`](docs/CONTRIBUTING.md))
 * [`scripts`](scripts) — management scripts
 
 See [`docs/README.md`](docs/README.md) for the full project philosophy and a deeper walkthrough
@@ -57,11 +57,9 @@ of how the documentation site and in-app Knowledge Center relate to each other.
 
 ## Documentation
 
-* [Knowledge Center & API Reference](apps/docs) — self-hosting guides, operational workflows, and
-  the full calibration math, also rendered inline inside the app at `/documentation`
-* [`CALIBRATION.md`](CALIBRATION.md) — calibration and uncertainty methodology
-* [`DATABASE.md`](DATABASE.md) — schema hierarchies and persistence rules
-* [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — technical design overview
+* [Knowledge Center & API Reference](apps/docs) — self-hosting guides, operational workflows,
+  the full calibration math, and the data model/schema reference, also rendered inline inside
+  the app at `/documentation`.
 
 ## Contributing
 

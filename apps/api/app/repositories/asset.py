@@ -24,7 +24,7 @@ def get_by_asset_id(db: Session, asset_id: str) -> Asset | None:
     return db.query(Asset).filter(Asset.asset_id == asset_id).first()
 
 
-def _resolve_location_path(loc_id: uuid.UUID | None, all_locs: dict) -> tuple[str | None, str | None]:
+def resolve_location_path(loc_id: uuid.UUID | None, all_locs: dict) -> tuple[str | None, str | None]:
     """Walk the location ancestor chain and return (root_name, leaf_name)."""
     if not loc_id:
         return None, None
@@ -128,7 +128,7 @@ def list_assets(
     for asset in assets:
         aid = str(asset.id)
 
-        site_name, location_name = _resolve_location_path(asset.location_id, all_locs)
+        site_name, location_name = resolve_location_path(asset.location_id, all_locs)
 
         # Calibration status
         due_date = cal_map.get(aid)
@@ -328,7 +328,7 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
     all_locs: dict[str, Location] = {
         str(loc.id): loc for loc in db.query(Location).all()
     }
-    site_name, location_name = _resolve_location_path(asset.location_id, all_locs)
+    site_name, location_name = resolve_location_path(asset.location_id, all_locs)
 
     location_code: str | None = None
     location_description: str | None = None

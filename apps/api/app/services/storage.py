@@ -93,6 +93,21 @@ def get_presigned_url(storage_path: str, bucket: str | None = None) -> str:
         return ""
 
 
+def download_file(storage_path: str, bucket: str | None = None) -> bytes | None:
+    """Fetch object bytes from MinIO. Returns None if missing (never raises)."""
+    bucket = bucket or settings.minio_bucket
+    client = _upload_client()
+    try:
+        resp = client.get_object(bucket, storage_path)
+        try:
+            return resp.read()
+        finally:
+            resp.close()
+            resp.release_conn()
+    except S3Error:
+        return None
+
+
 def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 

@@ -15,8 +15,8 @@ architectural principles the project follows.
 * **Traceability above convenience** — calibration and coefficient history is append-only and
   auditable; never favor a shortcut that loses history or weakens signature/certificate integrity.
 * **Simple architecture, long-term maintainability** — prefer the explicit, boring solution over
-  a clever abstraction. See [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) for how the pieces fit
-  together.
+  a clever abstraction. See the [Architecture overview](../apps/docs/content/docs/guide/overview/architecture.mdx)
+  in the Knowledge Center for how the pieces fit together.
 
 ## Local development
 
@@ -57,4 +57,6 @@ against a live API.
 
 Open a GitHub issue with steps to reproduce, what you expected, and what happened instead.
 For anything touching calibration correctness, include the inputs and expected numeric result —
-see [`CALIBRATION_EXAMPLES.md`](../CALIBRATION_EXAMPLES.md) for the format worked examples use.
+see the worked examples under
+[`apps/docs/content/docs/guide/calibration/examples/`](../apps/docs/content/docs/guide/calibration/examples/)
+for the format they use.

@@ -1,4 +1,4 @@
-import { apiBlob, apiFetch, apiUpload, authHeader } from "@/lib/api";
+import { apiBlob, apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetCreateBody, AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
 import type { CalibrationRecord, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
@@ -77,6 +77,74 @@ export async function uploadAssetPicture(assetId: string, file: File): Promise<A
 export async function deleteAssetPicture(assetId: string): Promise<AssetProfile> {
   return apiFetch<AssetProfile>(`/api/v1/assets/${assetId}/picture`, {
     method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+export async function fetchAssetExportBlob(assetId: string): Promise<Blob> {
+  return apiBlob(`/api/v1/assets/${assetId}/export`, { headers: tokenHeader() });
+}
+
+export async function fetchBulkExportBlob(assetIds: string[]): Promise<Blob> {
+  return apiBlobPost(`/api/v1/assets/export/bulk`, { asset_ids: assetIds }, { headers: tokenHeader() });
+}
+
+export interface AssetImportResult {
+  source_folder: string;
+  status: "created" | "error";
+  asset_id: string | null;
+  new_asset_pk: string | null;
+  error_message: string | null;
+}
+
+export interface AssetImportResponse {
+  results: AssetImportResult[];
+}
+
+export async function importAssetsZip(files: File[]): Promise<AssetImportResponse> {
+  // The backend endpoint takes a single file; bulk import (one or more zips)
+  // is handled by calling it once per file and merging the result lists.
+  const all: AssetImportResult[] = [];
+  for (const file of files) {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await apiUpload<AssetImportResponse>(`/api/v1/assets/import`, form, {
+      headers: tokenHeader(),
+    });
+    all.push(...res.results);
+  }
+  return { results: all };
+}
+
+export interface AssetImportPreview {
+  valid: boolean;
+  error_message: string | null;
+  asset_id: string | null;
+  name: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  asset_type: string | null;
+  channel_count: number;
+  calibration_count: number;
+}
+
+export async function validateImportZip(file: File): Promise<AssetImportPreview> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<AssetImportPreview>(`/api/v1/assets/import/validate`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function importAssetZipWithOverrides(
+  file: File,
+  overrides: { locationId?: string; owner?: string } = {}
+): Promise<AssetImportResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  if (overrides.locationId) form.append("location_id", overrides.locationId);
+  if (overrides.owner) form.append("owner", overrides.owner);
+  return apiUpload<AssetImportResponse>(`/api/v1/assets/import`, form, {
     headers: tokenHeader(),
   });
 }

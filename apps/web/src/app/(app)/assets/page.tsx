@@ -2,25 +2,39 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createAsset, duplicateAsset, listAssets } from "@/services/asset.service";
-import type { AssetCreateBody, AssetListItem, ChannelListItem } from "@/types/asset";
+import {
+  createAsset,
+  duplicateAsset,
+  fetchBulkExportBlob,
+  importAssetZipWithOverrides,
+  importAssetsZip,
+  listAssets,
+  listLocations,
+  listTeams,
+  validateImportZip,
+  type AssetImportPreview,
+  type AssetImportResult,
+} from "@/services/asset.service";
+import type { AssetCreateBody, AssetListItem, ChannelListItem, LocationOption } from "@/types/asset";
 import {
   CALIBRATION_STATUS_LABEL,
   CALIBRATION_STATUS_STYLE,
   SUBTYPE_LABEL,
 } from "@/lib/tokens";
 import {
+  CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   ChevronUpIcon,
   CopyIcon,
-  DownloadIcon,
+  ExportIcon,
   FilterIcon,
   GridViewIcon,
+  ImportIcon,
   ListViewIcon,
   PlusIcon,
-  QrCodeIcon,
   SearchIcon,
+  WarningIcon,
   XIcon,
 } from "@/components/icons";
 
@@ -551,6 +565,233 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
 }
 
 // ---------------------------------------------------------------------------
+// Bulk export modal
+// ---------------------------------------------------------------------------
+
+interface BulkExportModalProps {
+  assets: AssetListItem[];
+  onClose: () => void;
+}
+
+function BulkExportModal({ assets, onClose }: BulkExportModalProps) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const allSelected = assets.length > 0 && selected.size === assets.length;
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(assets.map((a) => a.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    setError(null);
+    try {
+      const blob = await fetchBulkExportBlob([...selected]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `assets-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to export assets");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-og-surface border border-og-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
+          <h2 className="text-sm font-semibold text-og-text">Export assets</h2>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
+            <XIcon size={15} />
+          </button>
+        </div>
+
+        <div className="px-5 py-3 border-b border-og-border">
+          <CheckRow label={`Select all (${assets.length})`} checked={allSelected} onChange={toggleAll} />
+        </div>
+
+        <div className="overflow-y-auto max-h-96 divide-y divide-og-border">
+          {assets.map((a) => (
+            <label key={a.id} className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-og-surface-alt transition-colors">
+              <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleOne(a.id)} className="accent-og-action shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-og-text truncate">{a.name}</p>
+                <p className="text-xs font-mono text-gray-400">{a.asset_id}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {error && <p className="px-5 pt-3 text-xs text-red-500">{error}</p>}
+
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-og-border">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={selected.size === 0 || exporting}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+          >
+            {exporting && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            Export selected ({selected.size})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Bulk import modal
+// ---------------------------------------------------------------------------
+
+interface BulkImportModalProps {
+  onClose: () => void;
+  onImported: () => void;
+}
+
+function BulkImportModal({ onClose, onImported }: BulkImportModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [results, setResults] = useState<AssetImportResult[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setFiles(Array.from(e.target.files ?? []));
+  }
+
+  async function handleImport() {
+    if (files.length === 0) return;
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await importAssetsZip(files);
+      setResults(res.results);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to import assets");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function handleDone() {
+    onImported();
+    onClose();
+  }
+
+  const createdCount = results?.filter((r) => r.status === "created").length ?? 0;
+  const failedCount = results ? results.length - createdCount : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={results ? undefined : onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-og-surface border border-og-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
+          <h2 className="text-sm font-semibold text-og-text">Import assets</h2>
+          {!results && (
+            <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
+              <XIcon size={15} />
+            </button>
+          )}
+        </div>
+
+        <div className="p-5 overflow-y-auto max-h-[60vh]">
+          {!results ? (
+            <div className="space-y-3">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer border-og-border hover:border-og-accent/50 hover:bg-og-surface-alt transition-colors"
+              >
+                <ImportIcon size={24} className="text-gray-400" />
+                <p className="text-sm text-gray-500">
+                  {files.length > 0 ? `${files.length} file(s) selected` : "Click to select one or more ZIP files"}
+                </p>
+                <p className="text-xs text-gray-400">Each ZIP can contain one or more exported assets.</p>
+                <input ref={fileInputRef} type="file" accept=".zip" multiple className="hidden" onChange={handleFileChange} />
+              </div>
+              {files.length > 0 && (
+                <ul className="text-xs text-gray-500 space-y-1">
+                  {files.map((f) => <li key={f.name} className="font-mono truncate">{f.name}</li>)}
+                </ul>
+              )}
+              {error && <p className="text-xs text-red-500">{error}</p>}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-og-text">
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">{createdCount} created</span>
+                {failedCount > 0 && <span className="text-red-500 font-medium">, {failedCount} failed</span>}
+              </p>
+              <div className="divide-y divide-og-border rounded-lg border border-og-border overflow-hidden">
+                {results.map((r, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                    {r.status === "created" ? (
+                      <CheckCircleIcon size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <WarningIcon size={14} className="text-red-500 shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-og-text truncate">
+                        {r.asset_id ?? r.source_folder}
+                      </p>
+                      {r.status === "error" && r.error_message && (
+                        <p className="text-xs text-red-500 mt-0.5">{r.error_message}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-og-border">
+          {!results ? (
+            <>
+              <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleImport}
+                disabled={files.length === 0 || importing}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {importing && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                Import
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={handleDone} className="px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors">
+              Done
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // New Asset Modal
 // ---------------------------------------------------------------------------
 
@@ -574,7 +815,20 @@ interface NewAssetModalProps {
 }
 
 function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProps) {
-  const [mode, setMode] = useState<"choose" | "new" | "copy">("choose");
+  const [mode, setMode] = useState<"choose" | "new" | "copy" | "import">("choose");
+
+  // --- "import from file" state ---
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDragging, setImportDragging] = useState(false);
+  const [importValidating, setImportValidating] = useState(false);
+  const [importPreview, setImportPreview] = useState<AssetImportPreview | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importLocations, setImportLocations] = useState<LocationOption[]>([]);
+  const [importTeams, setImportTeams] = useState<{ id: string; name: string }[]>([]);
+  const [importLocationId, setImportLocationId] = useState("");
+  const [importOwnerId, setImportOwnerId] = useState("");
 
   // --- "new from scratch" state ---
   const [form, setForm] = useState({
@@ -663,6 +917,71 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
     }
   }
 
+  async function handleImportFileSelected(file: File) {
+    setImportFile(file);
+    setImportPreview(null);
+    setImportError(null);
+    setImportLocationId("");
+    setImportOwnerId("");
+    setImportValidating(true);
+    try {
+      const preview = await validateImportZip(file);
+      if (!preview.valid) {
+        setImportError("The file is not a valid asset. Please check the file and try again.");
+        return;
+      }
+      setImportPreview(preview);
+      if (importLocations.length === 0) listLocations().then(setImportLocations).catch(() => {});
+      if (importTeams.length === 0) listTeams().then(setImportTeams).catch(() => {});
+    } catch {
+      setImportError("The file is not a valid asset. Please check the file and try again.");
+    } finally {
+      setImportValidating(false);
+    }
+  }
+
+  function handleImportDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setImportDragging(true);
+  }
+
+  function handleImportDragLeave(e: React.DragEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setImportDragging(false);
+  }
+
+  function handleImportDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setImportDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleImportFileSelected(file);
+  }
+
+  async function handleImportSubmit() {
+    if (!importFile || !importPreview?.valid) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const res = await importAssetZipWithOverrides(importFile, {
+        locationId: importLocationId || undefined,
+        owner: importOwnerId || undefined,
+      });
+      if (res.results.length !== 1) {
+        setImportError(`Expected exactly one asset in the file, found ${res.results.length}.`);
+        return;
+      }
+      const [only] = res.results;
+      if (only.status === "error" || !only.new_asset_pk) {
+        setImportError(only.error_message ?? "Import failed");
+        return;
+      }
+      onCreated(only.new_asset_pk);
+    } catch (e: unknown) {
+      setImportError(e instanceof Error ? e.message : "Failed to import asset");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const set = (k: keyof typeof form) => (v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
     setFormErrors((e) => { const n = { ...e }; delete n[k]; return n; });
@@ -675,7 +994,10 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
           <h2 className="text-sm font-semibold text-og-text">
-            {mode === "choose" ? "Add asset" : mode === "new" ? "New asset" : "Copy from existing"}
+            {mode === "choose" ? "Add asset"
+              : mode === "new" ? "New asset"
+              : mode === "copy" ? "Copy from existing"
+              : "Import from file"}
           </h2>
           <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
             <XIcon size={15} />
@@ -688,6 +1010,19 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
           {/* Step 1: choose mode */}
           {mode === "choose" && (
             <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => { setMode("import"); setImportFile(null); setImportError(null); setImportPreview(null); setImportLocationId(""); setImportOwnerId(""); }}
+                className="col-span-2 flex items-center gap-3 p-4 rounded-xl border-2 border-og-border hover:border-og-accent hover:bg-og-accent/5 transition-colors group text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-og-accent/10 flex items-center justify-center shrink-0 group-hover:bg-og-accent/20 transition-colors">
+                  <ImportIcon size={18} className="text-og-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-og-text">Import from file</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Restore an asset from a previously exported ZIP.</p>
+                </div>
+              </button>
               <button
                 type="button"
                 onClick={() => setMode("new")}
@@ -861,6 +1196,90 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
               )}
             </div>
           )}
+
+          {/* Step 2c: import from file */}
+          {mode === "import" && (
+            <div className="space-y-3">
+              <div
+                onClick={() => importFileInputRef.current?.click()}
+                onDragOver={handleImportDragOver}
+                onDragLeave={handleImportDragLeave}
+                onDrop={handleImportDrop}
+                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors
+                  ${importDragging
+                    ? "border-og-accent bg-og-accent/5"
+                    : "border-og-border hover:border-og-accent/50 hover:bg-og-surface-alt"}`}
+              >
+                <ImportIcon size={24} className={importDragging ? "text-og-accent" : "text-gray-400"} />
+                <p className="text-sm text-gray-500">
+                  {importValidating
+                    ? "Checking file…"
+                    : importFile
+                    ? importFile.name
+                    : "Drop a ZIP file here or click to browse"}
+                </p>
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".zip"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportFileSelected(file);
+                  }}
+                />
+              </div>
+              <p className="text-[10px] text-gray-400">
+                The ZIP must contain exactly one asset folder (as produced by the asset Export feature).
+              </p>
+
+              {importError && <p className="text-xs text-red-500">{importError}</p>}
+
+              {importPreview?.valid && (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-og-surface-alt border border-og-border px-4 py-3">
+                    <p className="text-sm font-semibold text-og-text">{importPreview.name}</p>
+                    <p className="text-xs font-mono text-gray-400 mt-0.5">
+                      {importPreview.asset_id} · {importPreview.manufacturer} {importPreview.model}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      {importPreview.asset_type === "daq" ? "DAQ" : "Sensor"}
+                      {" · "}{importPreview.channel_count} channel(s)
+                      {" · "}{importPreview.calibration_count} calibration(s)
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-400">Location <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <select
+                      value={importLocationId}
+                      onChange={(e) => setImportLocationId(e.target.value)}
+                      className={`${IB} ${IB_OK}`}
+                    >
+                      <option value="">Unassigned</option>
+                      {importLocations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>{loc.path}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-400">Owning team <span className="text-gray-400 font-normal">(optional)</span></label>
+                    <select
+                      value={importOwnerId}
+                      onChange={(e) => setImportOwnerId(e.target.value)}
+                      className={`${IB} ${IB_OK}`}
+                    >
+                      <option value="">Unassigned</option>
+                      {importTeams.map((team) => (
+                        <option key={team.id} value={team.id}>{team.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -868,7 +1287,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-og-border">
             <button
               type="button"
-              onClick={() => { setMode("choose"); setSaveError(null); setCopyError(null); setFormErrors({}); }}
+              onClick={() => { setMode("choose"); setSaveError(null); setCopyError(null); setFormErrors({}); setImportError(null); }}
               className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
             >
               Back
@@ -883,7 +1302,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                 {saving && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 Create asset
               </button>
-            ) : selectedSource ? (
+            ) : mode === "copy" && selectedSource ? (
               <button
                 type="button"
                 onClick={handleDuplicate}
@@ -892,6 +1311,16 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
               >
                 {copying && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 Duplicate asset
+              </button>
+            ) : mode === "import" ? (
+              <button
+                type="button"
+                onClick={handleImportSubmit}
+                disabled={!importPreview?.valid || importing}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {importing && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                Import asset
               </button>
             ) : null}
           </div>
@@ -920,6 +1349,8 @@ export default function AssetsPage() {
   const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
   const [quickFilter, setQuickFilter] = useState<{ label: string; type: "asset_type" | "health_max"; value: string } | null>(null);
   const [newAssetOpen, setNewAssetOpen] = useState(false);
+  const [bulkExportOpen, setBulkExportOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -943,13 +1374,17 @@ export default function AssetsPage() {
     }
   }, [router]);
 
-  useEffect(() => {
+  function loadAssets() {
     setLoading(true);
     setError(null);
-    listAssets({ limit: 200, location_id: locationFilter?.id, include_descendants: locationFilter?.includeDescendants })
+    return listAssets({ limit: 200, location_id: locationFilter?.id, include_descendants: locationFilter?.includeDescendants })
       .then(setAssets)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadAssets();
   }, [locationFilter]);
 
   useEffect(() => {
@@ -1105,6 +1540,15 @@ export default function AssetsPage() {
           onCreated={handleAssetCreated}
         />
       )}
+      {bulkExportOpen && (
+        <BulkExportModal assets={assets} onClose={() => setBulkExportOpen(false)} />
+      )}
+      {bulkImportOpen && (
+        <BulkImportModal
+          onClose={() => setBulkImportOpen(false)}
+          onImported={loadAssets}
+        />
+      )}
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
@@ -1115,14 +1559,16 @@ export default function AssetsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button type="button"
+            onClick={() => setBulkExportOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-            <QrCodeIcon size={13} />
-            Scan QR
+            <ExportIcon size={13} />
+            Export
           </button>
           <button type="button"
+            onClick={() => setBulkImportOpen(true)}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-            <DownloadIcon size={13} />
-            Export
+            <ImportIcon size={13} />
+            Import
           </button>
           <button type="button"
             onClick={() => setNewAssetOpen(true)}

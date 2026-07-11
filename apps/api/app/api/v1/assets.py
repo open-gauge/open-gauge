@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,7 @@ from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import stored_file as file_repo
-from ...schemas.asset import AssetCreate, AssetDuplicateRequest, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
+from ...schemas.asset import AssetBulkExportRequest, AssetCreate, AssetDuplicateRequest, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
 from ...schemas.calibration import CalibrationResponse
 from ...health import service as health_service
 from ...health.models import AssetHealthResponse, CurveComparisonResponse
@@ -23,7 +23,10 @@ from ...schemas.sensor import SensorChannelResponse
 from ...schemas.daq import DaqResponse
 from ...schemas.audit_log import AuditLogResponse
 from ...schemas.stored_file import StoredFileResponse
+from ...schemas.asset_import import AssetImportPreview, AssetImportResponse
 from ...services import storage as storage_svc
+from ...services import asset_export as export_svc
+from ...services import asset_import as import_svc
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
@@ -102,6 +105,102 @@ def create_asset(
         user_agent=request.headers.get("user-agent"),
     )
     return _enrich(asset, db)
+
+
+@router.post(
+    "/export/bulk",
+    summary="Bulk export assets",
+    description="Export multiple assets as one ZIP archive, one folder per asset "
+    "(metadata + channels/DAQ + full calibration history + associated media).",
+    tags=["Assets"],
+)
+def export_assets_bulk(
+    body: AssetBulkExportRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    assets = [a for pk in body.asset_ids if (a := asset_repo.get_by_id(db, pk))]
+    if not assets:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No matching assets found")
+    zip_bytes = export_svc.build_bulk_export_zip(db, assets)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.exported_bulk",
+        entity_type="asset",
+        entity_id=None,
+        after_state={"asset_ids": [a.asset_id for a in assets], "count": len(assets)},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="assets-export-{stamp}.zip"'},
+    )
+
+
+@router.post(
+    "/import/validate",
+    response_model=AssetImportPreview,
+    summary="Validate a single-asset import ZIP",
+    description="Check whether a ZIP contains exactly one valid, importable asset (used by the "
+    "'New Asset → Import from file' flow before it asks the user to pick a location/owner). "
+    "Never creates anything — always returns 200 with a `valid` flag rather than an error status, "
+    "so the UI can show either the asset preview or a plain 'not a valid asset' message.",
+    tags=["Assets"],
+)
+async def validate_import_zip(
+    file: UploadFile = File(...),
+    _: User = Depends(get_current_user),
+) -> AssetImportPreview:
+    data = await file.read()
+    return import_svc.preview_asset_zip(data)
+
+
+@router.post(
+    "/import",
+    response_model=AssetImportResponse,
+    summary="Import assets from a ZIP",
+    description="Import one or more assets from a ZIP archive produced by the asset export "
+    "feature. Each top-level folder containing an asset.yaml is imported independently — "
+    "a failure importing one asset does not block the others in the same file. Used by both "
+    "the registry's bulk 'Import' button and the 'New Asset → Import from file' flow. "
+    "location_id/owner are optional and, when given, are applied to every asset imported in "
+    "this call (the 'Import from file' flow only ever imports one asset at a time).",
+    tags=["Assets"],
+)
+async def import_assets(
+    request: Request,
+    file: UploadFile = File(...),
+    location_id: uuid.UUID | None = Form(None),
+    owner: uuid.UUID | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AssetImportResponse:
+    data = await file.read()
+    results = import_svc.import_assets_zip(
+        db, data, created_by=current_user.id, location_id=location_id, owner=owner
+    )
+    db.commit()
+    for r in results:
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="asset.imported" if r.status == "created" else "asset.import_failed",
+            entity_type="asset",
+            entity_id=r.new_asset_pk,
+            entity_asset_id=r.asset_id,
+            after_state={"source_folder": r.source_folder, "error_message": r.error_message}
+            if r.status == "error" else None,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    return AssetImportResponse(results=results)
 
 
 @router.get("/{asset_pk}/profile", response_model=AssetProfileResponse)
@@ -499,6 +598,42 @@ def delete_asset_picture(
             user_agent=request.headers.get("user-agent"),
         )
     return _enrich(asset, db)
+
+
+@router.get(
+    "/{asset_pk}/export",
+    summary="Export an asset",
+    description="Export a single asset as a downloadable ZIP archive: asset.yaml with all "
+    "metadata, channels/DAQ, and full calibration history, plus a media/ folder with the "
+    "picture, datasheet, pinout/sensor images, attached files, and calibration certificates.",
+    tags=["Assets"],
+)
+def export_asset(
+    asset_pk: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    asset = asset_repo.get_by_id(db, asset_pk)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    zip_bytes = export_svc.build_asset_export_zip(db, asset)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.exported",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{asset.asset_id}.zip"'},
+    )
 
 
 @router.get("/{asset_pk}/label")

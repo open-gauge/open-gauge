@@ -36,6 +36,50 @@ the rest of the asset's fields. The picture is stored in MinIO like any other at
 [Data model & concepts](../concepts/data-model.mdx)) and is distinct from the write-once
 `sensor_image_id`/`pinout_image_id`/`sensor_schematic_id` reference images set at asset creation.
 
+## Import & export
+
+Any asset can be exported as a ZIP bundle — from the **Export** button on the asset detail
+page for a single asset, or from the **Export** button on the asset registry page to bulk-export
+a selection of assets (a checklist modal lets you pick individual assets or select all at once).
+Both produce the same bundle shape; a bulk export is just several single-asset bundles inside
+one outer ZIP.
+
+Each asset gets its own folder named after its `asset_id` (e.g. `OG-00042/`), containing:
+
+- **`asset.yaml`** — every asset field, its sensor channels or DAQ details, and its complete
+  calibration history (including calibration data points and computed statistics), in a
+  human-readable format.
+- **`media/`** — the actual files: the asset picture, datasheet, pinout/sensor images and
+  schematic, any bulk-attached files, and each calibration's certificate PDF (one subfolder per
+  calibration, oldest first).
+
+**What's deliberately left out of `asset.yaml`**: internal database UUIDs — the asset's own id,
+its location, its owning team, `created_by`/`retired_by`, and every file's id. These only make
+sense inside the database they came from. Where useful, a human-readable name is included
+instead purely for reference (e.g. `location_name`, `owner_team_name`, `calibration_method_name`,
+`internal_procedure_name`) — sensor channels are relinked by `channel_id` rather than a raw
+sensor UUID. One field has no safe substitute and is omitted entirely: a calibration's reference
+to another asset (`internal_reference_asset_id`) is not exported or re-linked.
+
+Calibration history is exported and re-imported **verbatim** — `calibration_version` and every
+computed statistic are copied as-is, never recalculated, since they represent historical fact
+(see [Data model & concepts](../concepts/data-model.mdx)).
+
+### Importing
+
+Import a ZIP either from **Assets → + New Asset → Import from file** (expects exactly one asset
+in the file) or from the registry's **Import** button (accepts one or more ZIPs at once, each of
+which may itself contain one or more asset folders — handy for re-importing a prior bulk
+export). Both flows call the same backend endpoint and report one result per asset folder, so a
+problem with one asset never blocks the others in the same file.
+
+On import, a brand-new asset is created with a new internal id. Its `location_id` and `owner`
+are left unset (the exported names are informational only) until you assign them manually.
+`calibration_method_name`/`internal_procedure_name` are matched case-insensitively against
+procedures already registered in the target system; if no match is found, the link is simply
+left blank rather than failing the import. If the exported `asset_id` already exists in the
+target system, that asset's import fails with a clear error — rename it in the YAML and retry.
+
 ## Lifecycle
 
 Assets are never hard-deleted while a deployment is active. Retiring an asset:

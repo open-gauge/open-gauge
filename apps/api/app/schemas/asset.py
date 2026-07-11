@@ -61,6 +61,10 @@ class AssetDuplicateRequest(BaseModel):
     new_asset_id: str = Field(min_length=1, max_length=20)
 
 
+class AssetBulkExportRequest(BaseModel):
+    asset_ids: list[uuid.UUID] = Field(min_length=1)
+
+
 class AssetUpdate(BaseModel):
     asset_id: str | None = Field(None, min_length=1, max_length=20)
     name: str | None = Field(None, min_length=1, max_length=255)

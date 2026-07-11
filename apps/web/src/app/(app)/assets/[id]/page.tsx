@@ -18,6 +18,7 @@ import {
   retireAsset,
   updateAsset,
   deleteAssetPicture,
+  fetchAssetExportBlob,
   uploadAssetFile,
   uploadAssetPicture,
 } from "@/services/asset.service";
@@ -60,6 +61,7 @@ import {
   CopyIcon,
   DownloadIcon,
   EditIcon,
+  ExportIcon,
   ImageIcon,
   InfoIcon,
   MapPinIcon,
@@ -2521,6 +2523,7 @@ export default function AssetProfilePage() {
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
   const [retireModalOpen, setRetireModalOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Asset picture
   const pictureInputRef = useRef<HTMLInputElement>(null);
@@ -2613,6 +2616,24 @@ export default function AssetProfilePage() {
       setSaveError(e instanceof Error ? e.message : "Failed to save changes.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleExportAsset() {
+    if (!profile) return;
+    setExporting(true);
+    try {
+      const blob = await fetchAssetExportBlob(profile.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${profile.asset_id}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Failed to export asset.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -2814,6 +2835,13 @@ export default function AssetProfilePage() {
           <div className="flex items-center gap-2 shrink-0">
             {!isEditing ? (
               <>
+                <button type="button"
+                  onClick={handleExportAsset}
+                  disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors disabled:opacity-50">
+                  <ExportIcon size={15} />
+                  {exporting ? "Exporting…" : "Export"}
+                </button>
                 <button type="button"
                   onClick={() => setStickerOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors">

@@ -19,9 +19,8 @@ Open Gauge is a self-hosted platform for managing industrial sensors, instrument
 * `/apps/web`: Next.js frontend
 * `/apps/docs`: Fumadocs documentation site (Knowledge Center + API Reference), see below
 * `/infrastructure/docker`: Docker compose configurations
-* `/docs`: Project documentation
-  * `ARCHITECTURE.md`: Technical design overview
-  * `DATABASE.md`: Schema hierarchies and persistence rules
+* `/docs`: Contributor guide (`CONTRIBUTING.md`) — technical/schema reference lives in
+  `apps/docs` now, not as separate root-level Markdown files
 * `/scripts`: Management scripts
 
 ## Getting Started
@@ -56,8 +55,9 @@ API_INTERNAL_URL=http://localhost:8000 npm run dev   # fetches the API Reference
 ```
 
 The API Reference content is regenerated from the live API before every `dev`/`build` (see
-`apps/docs/scripts/`) — the `api` service must be reachable. See `CALIBRATION.md` and
-`CALIBRATION_EXAMPLES.md` for the source material the calibration pages are built from.
+`apps/docs/scripts/`) — the `api` service must be reachable. The calibration pages under
+`apps/docs/content/docs/guide/calibration/` are themselves the source material — there's no
+separate Markdown reference they're built from.
 
 ## The Knowledge Center, embedded in the app
 
