@@ -40,7 +40,7 @@ export default async function DashboardPage() {
       <div className="h-full flex flex-col gap-5 p-6">
 
         {/* Page header */}
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <h1 className="text-xl font-bold text-mar-text">Operations dashboard</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Real-time status across all sites, labs and instrumentation.
@@ -48,7 +48,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stat cards — ~20% of visible height at typical viewport */}
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <StatsCards data={summary} assetTypeDistribution={assetTypeDistribution} />
         </div>
 
@@ -65,8 +65,8 @@ export default async function DashboardPage() {
         <div className="flex gap-5 flex-1 min-h-0">
 
           {/* Left: calendar (natural height) + upcoming (fills rest) */}
-          <div className="w-fit flex-shrink-0 flex flex-col gap-5 min-h-0">
-            <div className="flex-shrink-0">
+          <div className="w-fit shrink-0 flex flex-col gap-5 min-h-0">
+            <div className="shrink-0">
               <CalibrationCalendar initialEvents={calendarEvents} initialYear={currentYear} />
             </div>
             <div className="flex-1 min-h-0 w-full">

@@ -30,7 +30,7 @@ const ROLE_COLORS: Record<string, string> = {
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start gap-4 py-3 border-b border-mar-border last:border-0">
-      <span className="w-32 flex-shrink-0 text-xs text-gray-400 pt-0.5">{label}</span>
+      <span className="w-32 shrink-0 text-xs text-gray-400 pt-0.5">{label}</span>
       <span className="flex-1 text-sm text-mar-text">{value}</span>
     </div>
   );
@@ -85,7 +85,7 @@ export default function UserProfilePage() {
         <>
           {/* Header */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-mar-action flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-mar-action flex items-center justify-center shrink-0">
               <UsersIcon size={18} className="text-white" />
             </div>
             <div>
@@ -93,15 +93,15 @@ export default function UserProfilePage() {
               <p className="text-sm text-gray-400">{user.email}</p>
             </div>
             <div className="ml-2 flex items-center gap-2">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
                 {ROLE_LABELS[user.role] ?? user.role}
               </span>
               {user.is_active ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                   <CheckCircleIcon size={11} /> Active
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
                   <WarningIcon size={11} /> Disabled
                 </span>
               )}
@@ -109,10 +109,10 @@ export default function UserProfilePage() {
           </div>
 
           {/* Details card */}
-          <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm px-5 py-2">
+          <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs px-5 py-2">
             <InfoRow label="Email" value={user.email} />
             <InfoRow label="Role" value={
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
                 {ROLE_LABELS[user.role] ?? user.role}
               </span>
             } />
@@ -126,7 +126,7 @@ export default function UserProfilePage() {
           </div>
 
           {/* Activity link */}
-          <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm px-5 py-4 flex items-center justify-between">
+          <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ActivityIcon size={15} className="text-gray-400" />
               <span className="text-sm font-medium text-mar-text">Activity log</span>

@@ -46,8 +46,12 @@ services:
 
   web:
     build:
-      context: ../../apps/web
-      dockerfile: Dockerfile
+      # Repo-root context (not apps/web) so the build can also reach
+      # apps/docs/content/docs/guide — the Knowledge Center is rendered inline at
+      # /documentation using the same content apps/docs serves standalone. See
+      # apps/web/source.config.ts and apps/web/Dockerfile.
+      context: ../..
+      dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
         NEXT_PUBLIC_DOCS_URL: http://localhost:3002

@@ -29,6 +29,7 @@ export default function LoginPage() {
               <Image
                 src="/assets/Logo dark.svg"
                 alt="MAR icon"
+                width={70}
                 height={35}
                 priority
                 className="block dark:hidden"
@@ -38,6 +39,7 @@ export default function LoginPage() {
               <Image
                 src="/assets/Logo light.svg"
                 alt="MAR icon"
+                width={70}
                 height={35}
                 priority
                 className="hidden dark:block"
@@ -54,7 +56,7 @@ export default function LoginPage() {
           {/* Left: marketing copy */}
           <div className="flex-1 space-y-7">
             {/* Status badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/60 dark:bg-mar-action/30 backdrop-blur-sm rounded-full text-xs text-gray-600 dark:text-gray-300 border border-white/80 dark:border-white/10 shadow-sm">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/60 dark:bg-mar-action/30 backdrop-blur-xs rounded-full text-xs text-gray-600 dark:text-gray-300 border border-white/80 dark:border-white/10 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               v1.0.0 · self-hosted
             </div>
@@ -79,22 +81,22 @@ export default function LoginPage() {
             {/* Feature list */}
             <ul className="space-y-3.5">
               <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                <GitBranchIcon size={16} className="text-mar-accent flex-shrink-0" />
+                <GitBranchIcon size={16} className="text-mar-accent shrink-0" />
                 Git-style history for every coefficient change
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                <ShieldCheckIcon size={16} className="text-mar-accent flex-shrink-0" />
+                <ShieldCheckIcon size={16} className="text-mar-accent shrink-0" />
                 Cryptographically signed calibration certificates
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                <ActivityIcon size={16} className="text-mar-accent flex-shrink-0" />
+                <ActivityIcon size={16} className="text-mar-accent shrink-0" />
                 Live telemetry &amp; drift monitoring
               </li>
             </ul>
           </div>
 
           {/* Right: auth card */}
-          <div className="w-[420px] flex-shrink-0">
+          <div className="w-[420px] shrink-0">
             <AuthCard />
           </div>
         </main>

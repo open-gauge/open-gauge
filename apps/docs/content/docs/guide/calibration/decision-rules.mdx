@@ -6,9 +6,9 @@ description: How MAR decides pass/fail once measurement uncertainty is in the pi
 ISO/IEC 17025 §7.1.3 and §7.8.6 require that whenever a lab issues a pass/fail statement, it
 documents **which decision rule** was applied — a bare "reading within spec" comparison isn't
 sufficient once measurement uncertainty is accounted for. MAR stores the decision rule and the
-resulting conformity statement on every calibration [#decision-rule].
+resulting conformity statement on every calibration.
 
-## The three rules
+## The three rules [#decision-rule]
 
 Let $\text{error}$ be the calibration's [max error](/docs/guide/calibration/curve-fitting#max-error)
 and $\text{tolerance}$ be the channel's accuracy spec (e.g. ±0.5 °C, or ±1% FS converted to an

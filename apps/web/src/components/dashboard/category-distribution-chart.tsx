@@ -60,7 +60,6 @@ function SinglePie({ data, label, total }: SinglePieProps) {
                 background: "#111827",
                 color: "#f3f4f6",
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(value: any, name: any) => [value, name]}
             />
           )}
@@ -79,7 +78,7 @@ function SinglePie({ data, label, total }: SinglePieProps) {
         ) : (
           data.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
               <span className="text-[10px] text-gray-500 flex-1 truncate">{item.name}</span>
               <span className="text-[10px] font-semibold text-mar-text tabular-nums">{item.value}</span>
             </div>
@@ -97,7 +96,7 @@ export default function CategoryDistributionChart({ data }: { data: AssetTypeDis
   const daqTotal = data.daqs.reduce((s, d) => s + d.count, 0);
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 h-full">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 h-full">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-mar-text">Asset distribution</h3>
         <p className="text-xs text-gray-400 mt-0.5">Sensors by type · DAQs by interface</p>

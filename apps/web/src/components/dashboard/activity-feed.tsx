@@ -27,15 +27,15 @@ function humanAction(action: string): string {
 
 export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 h-full flex flex-col">
-      <div className="flex items-start justify-between mb-4 flex-shrink-0">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 h-full flex flex-col">
+      <div className="flex items-start justify-between mb-4 shrink-0">
         <div>
           <h3 className="text-sm font-semibold text-mar-text">Activity</h3>
           <p className="text-xs text-gray-400 mt-0.5">Recent audit events</p>
         </div>
         <Link
           href="/activity"
-          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors flex-shrink-0"
+          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors shrink-0"
         >
           View all
           <ExternalLinkIcon />
@@ -46,7 +46,7 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
       <ul className="space-y-3 overflow-y-auto flex-1 pr-0.5">
         {data.map((item, i) => (
           <li key={i} className="flex gap-3 text-xs">
-            <span className="mt-1.5 w-1.5 h-1.5 flex-shrink-0 rounded-full bg-mar-accent" />
+            <span className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-mar-accent" />
             <div className="leading-relaxed min-w-0">
               <UserMention
                 actorId={item.actor_id}
@@ -56,7 +56,7 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
               />{" "}
               <span className="text-gray-500">{humanAction(item.action)}</span>
               {item.entity_asset_id && (
-                <span className="ml-1 font-mono text-[10px] text-gray-400 bg-mar-surface-alt px-1 rounded">
+                <span className="ml-1 font-mono text-[10px] text-gray-400 bg-mar-surface-alt px-1 rounded-sm">
                   {item.entity_asset_id}
                 </span>
               )}

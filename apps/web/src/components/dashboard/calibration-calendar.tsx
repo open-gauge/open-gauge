@@ -156,19 +156,19 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
 
   return (
     /* w-fit: panel shrinks to the natural calendar width — no wasted space */
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 w-fit flex flex-col">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 w-fit flex flex-col">
       {/* Title row */}
-      <div className="mb-3 flex-shrink-0">
+      <div className="mb-3 shrink-0">
         <h3 className="text-sm font-semibold text-mar-text">Calibration activity</h3>
         <p className="text-xs text-gray-400 mt-0.5">Performed calibrations and due dates across all assets</p>
       </div>
 
       {/* Year navigator — right-aligned, sits directly above the grid */}
-      <div className="flex justify-end items-center gap-1 mb-1.5 flex-shrink-0">
+      <div className="flex justify-end items-center gap-1 mb-1.5 shrink-0">
         <button
           onClick={() => changeYear(year - 1)}
           disabled={loading}
-          className="p-1 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
+          className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
           aria-label="Previous year"
         >
           <ChevronLeftIcon size={13} />
@@ -177,7 +177,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
         <button
           onClick={() => changeYear(year + 1)}
           disabled={loading}
-          className="p-1 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
+          className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors disabled:opacity-40"
           aria-label="Next year"
         >
           <ChevronRightIcon size={13} />
@@ -185,7 +185,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
       </div>
 
       {/* Calendar grid */}
-      <div className="overflow-x-auto flex-shrink-0">
+      <div className="overflow-x-auto shrink-0">
         <div className="flex gap-2 items-start" style={{ minWidth: "fit-content" }}>
           {/* Day-of-week labels */}
           <div className="flex flex-col" style={{ paddingTop: 20 }}>
@@ -233,7 +233,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
                     <div
                       key={wi}
                       className={[
-                        "rounded-sm cursor-default transition-opacity",
+                        "rounded-xs cursor-default transition-opacity",
                         bgClass,
                         isToday ? "ring-1 ring-offset-1 ring-mar-accent" : "",
                         loading ? "opacity-50" : "opacity-100",
@@ -256,7 +256,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
         <span className="text-[10px] text-gray-400"></span>
         {(["none", "performed", "upcoming", "expired"] as const).map((s) => (
           <span key={s} className="flex items-center gap-1.5 text-[10px] text-gray-400">
-            <span className={`w-2.5 h-2.5 rounded-sm ${STATUS_BG[s]}`} />
+            <span className={`w-2.5 h-2.5 rounded-xs ${STATUS_BG[s]}`} />
             {{ none: "No events", performed: "Calibrated", upcoming: "Upcoming due", expired: "Overdue" }[s]}
           </span>
         ))}

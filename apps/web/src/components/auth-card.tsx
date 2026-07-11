@@ -37,7 +37,7 @@ export default function AuthCard() {
   const switchTab = (t: Tab) => { setTab(t); setError(null); };
 
   const inputClass =
-    "w-full px-3 py-2 text-sm border border-mar-border-md dark:border-mar-border bg-mar-surface rounded-lg outline-none focus:border-mar-accent focus:ring-2 focus:ring-mar-accent/20 transition-all placeholder:text-gray-400 text-mar-text";
+    "w-full px-3 py-2 text-sm border border-mar-border-md dark:border-mar-border bg-mar-surface rounded-lg outline-hidden focus:border-mar-accent focus:ring-2 focus:ring-mar-accent/20 transition-all placeholder:text-gray-400 text-mar-text";
 
   return (
     <div className="bg-mar-surface rounded-2xl shadow-xl border border-mar-border p-8 w-full">
@@ -55,7 +55,7 @@ export default function AuthCard() {
             onClick={() => switchTab(t)}
             className={`flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all ${
               tab === t
-                ? "bg-mar-surface text-mar-text shadow-sm"
+                ? "bg-mar-surface text-mar-text shadow-xs"
                 : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >

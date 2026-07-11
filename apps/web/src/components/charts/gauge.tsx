@@ -717,7 +717,7 @@ export function Gauge({
       className={cn("relative w-full max-w-full", className)}
       style={{ minWidth: resolvedMinWidth }}
     >
-      <div className="mx-auto aspect-[21/16] w-full max-w-[560px]">
+      <div className="mx-auto aspect-21/16 w-full max-w-[560px]">
         <ParentSize debounceTime={10}>
           {({ width, height }) =>
             width > 0 && height > 0 ? (

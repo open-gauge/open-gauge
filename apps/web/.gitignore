@@ -13,6 +13,11 @@
 /.next/
 /out/
 
+# fumadocs-mdx (see source.config.ts — reads apps/docs/content in dev, or ./docs-content
+# copied in at Docker build time; neither should be committed here)
+/.source
+/docs-content
+
 # production
 /build
 

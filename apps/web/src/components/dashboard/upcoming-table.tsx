@@ -23,15 +23,15 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
   const sorted = [...data].sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 h-full flex flex-col">
-      <div className="flex items-start justify-between mb-4 flex-shrink-0">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 h-full flex flex-col">
+      <div className="flex items-start justify-between mb-4 shrink-0">
         <div>
           <h3 className="text-sm font-semibold text-mar-text">Upcoming calibrations</h3>
           <p className="text-xs text-gray-400 mt-0.5">Closest due dates first — click to open asset</p>
         </div>
         <a
           href="/assets"
-          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors flex-shrink-0"
+          className="text-xs text-gray-400 hover:text-mar-accent flex items-center gap-1 transition-colors shrink-0"
         >
           View all
           <ExternalLinkIcon />
@@ -55,12 +55,12 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-mar-text truncate">{event.name}</span>
-                    <span className="text-[10px] font-mono text-gray-400 bg-mar-surface-alt px-1.5 py-0.5 rounded flex-shrink-0">
+                    <span className="text-[10px] font-mono text-gray-400 bg-mar-surface-alt px-1.5 py-0.5 rounded-sm shrink-0">
                       {event.asset_id}
                     </span>
                   </div>
                 </div>
-                <div className="flex-shrink-0 text-right pr-2">
+                <div className="shrink-0 text-right pr-2">
                   <p className="text-xs text-gray-500">
                     {dueDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                   </p>

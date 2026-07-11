@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   AssetRegistryIcon,
   ChevronDownIcon,
+  DocumentIcon,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
@@ -16,6 +17,13 @@ import {
 import ThemeToggle from "@/components/theme-toggle";
 import { listAssets } from "@/services/asset.service";
 import type { AssetListItem } from "@/types/asset";
+
+interface DocSearchResult {
+  id: string;
+  url: string;
+  type: "page" | "heading" | "text";
+  content: string;
+}
 
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "Super Admin",
@@ -49,6 +57,7 @@ export default function TopBar() {
   const [query, setQuery] = useState("");
   const [allAssets, setAllAssets] = useState<AssetListItem[]>([]);
   const [results, setResults] = useState<AssetListItem[]>([]);
+  const [docResults, setDocResults] = useState<DocSearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -97,7 +106,7 @@ export default function TopBar() {
     }
   }
 
-  // Filter on query or allAssets change
+  // Filter assets on query or allAssets change
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -117,16 +126,45 @@ export default function TopBar() {
     setSearchOpen(filtered.length > 0);
   }, [query, allAssets]);
 
+  // Search documentation content (debounced)
+  useEffect(() => {
+    if (!query.trim()) {
+      setDocResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(`/api/docs-search?query=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then((res) => (res.ok ? res.json() : []))
+        .then((data: DocSearchResult[]) => {
+          setDocResults(data.slice(0, 5));
+          if (data.length > 0) setSearchOpen(true);
+        })
+        .catch(() => {});
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [query]);
+
   function handleSelect(asset: AssetListItem) {
     router.push(`/assets/${asset.id}`);
     setQuery("");
     setResults([]);
+    setDocResults([]);
+    setSearchOpen(false);
+  }
+
+  function handleSelectDoc(doc: DocSearchResult) {
+    router.push(doc.url);
+    setQuery("");
+    setResults([]);
+    setDocResults([]);
     setSearchOpen(false);
   }
 
   function clearSearch() {
     setQuery("");
     setResults([]);
+    setDocResults([]);
     setSearchOpen(false);
     inputRef.current?.focus();
   }
@@ -134,52 +172,80 @@ export default function TopBar() {
   const initials = getInitials(user.name);
 
   return (
-    <header className="h-14 flex-shrink-0 flex items-center justify-between px-6 bg-mar-surface border-b border-mar-border gap-4">
+    <header className="h-14 shrink-0 flex items-center justify-between px-6 bg-mar-surface border-b border-mar-border gap-4">
       {/* Search (left) */}
       <div className="relative flex-1 max-w-sm" ref={searchRef}>
         <div className="flex items-center gap-2 w-full px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg text-sm">
-          <SearchIcon size={13} className="text-gray-400 flex-shrink-0" />
+          <SearchIcon size={13} className="text-gray-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={handleFocus}
-            placeholder="Search assets..."
-            className="flex-1 bg-transparent text-xs text-mar-text placeholder-gray-400 outline-none min-w-0"
+            placeholder="Search assets & docs..."
+            className="flex-1 bg-transparent text-xs text-mar-text placeholder-gray-400 outline-hidden min-w-0"
           />
           {query ? (
             <button
               type="button"
               onClick={clearSearch}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors shrink-0"
             >
               <XIcon size={12} />
             </button>
           ) : (
-            <kbd className="text-[10px] text-gray-400 border border-mar-border-md rounded px-1 py-0.5 font-mono flex-shrink-0">
+            <kbd className="text-[10px] text-gray-400 border border-mar-border-md rounded-sm px-1 py-0.5 font-mono shrink-0">
               ⌘K
             </kbd>
           )}
         </div>
 
         {/* Results dropdown */}
-        {searchOpen && results.length > 0 && (
-          <div className="absolute top-full mt-1 left-0 right-0 bg-mar-surface rounded-xl border border-mar-border shadow-lg z-50 overflow-hidden">
-            {results.map((asset) => (
-              <button
-                key={asset.id}
-                type="button"
-                onClick={() => handleSelect(asset)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-mar-border transition-colors"
-              >
-                <AssetRegistryIcon size={13} className="text-gray-500 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-mar-text truncate">{asset.name}</div>
-                  <div className="text-[10px] text-gray-400">{asset.asset_id}</div>
-                </div>
-              </button>
-            ))}
+        {searchOpen && (results.length > 0 || docResults.length > 0) && (
+          <div className="absolute top-full mt-1 left-0 right-0 bg-mar-surface rounded-xl border border-mar-border shadow-lg z-50 overflow-hidden max-h-96 overflow-y-auto">
+            {results.length > 0 && (
+              <div className="py-1">
+                <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Assets</p>
+                {results.map((asset) => (
+                  <button
+                    key={asset.id}
+                    type="button"
+                    onClick={() => handleSelect(asset)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-mar-border transition-colors"
+                  >
+                    <AssetRegistryIcon size={13} className="text-gray-500 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-mar-text truncate">{asset.name}</div>
+                      <div className="text-[10px] text-gray-400">{asset.asset_id}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {docResults.length > 0 && (
+              <div className="py-1 border-t border-mar-border">
+                <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Documentation</p>
+                {docResults.map((doc) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    onClick={() => handleSelectDoc(doc)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-mar-border transition-colors"
+                  >
+                    <DocumentIcon size={13} className="text-gray-500 shrink-0" />
+                    <div className="min-w-0">
+                      <div
+                        className="text-xs font-medium text-mar-text truncate [&_mark]:bg-mar-accent/20 [&_mark]:text-mar-accent [&_mark]:rounded-sm"
+                        // Own search index content (fumadocs' highlighter output), not user input — safe to render.
+                        dangerouslySetInnerHTML={{ __html: doc.content }}
+                      />
+                      <div className="text-[10px] text-gray-400 truncate">{doc.url}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -223,7 +289,7 @@ export default function TopBar() {
           <button
             type="button"
             onClick={() => setAvatarOpen((v) => !v)}
-            className="w-8 h-8 rounded-full bg-mar-accent flex items-center justify-center text-white text-xs font-semibold hover:bg-mar-accent-dark transition-colors focus:outline-none focus:ring-2 focus:ring-mar-accent/40"
+            className="w-8 h-8 rounded-full bg-mar-accent flex items-center justify-center text-white text-xs font-semibold hover:bg-mar-accent-dark transition-colors focus:outline-hidden focus:ring-2 focus:ring-mar-accent/40"
             aria-haspopup="true"
             aria-expanded={avatarOpen}
           >
@@ -237,7 +303,7 @@ export default function TopBar() {
                   {user.name}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{user.email}</p>
-                <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-[10px] font-medium bg-mar-accent/10 text-mar-action dark:text-mar-accent">
+                <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-sm text-[10px] font-medium bg-mar-accent/10 text-mar-action dark:text-mar-accent">
                   {ROLE_LABEL[user.role] ?? user.role}
                 </span>
               </div>

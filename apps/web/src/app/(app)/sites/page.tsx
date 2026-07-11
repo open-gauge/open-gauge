@@ -184,7 +184,7 @@ function formToUpdateBody(form: LocationEditForm): LocationUpdateBody {
 // Inline edit field components
 // ---------------------------------------------------------------------------
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder-gray-300";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder-gray-300";
 const IOK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const IERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
@@ -263,7 +263,7 @@ function FCheckbox({ label, checked, onChange }: {
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded border-mar-border-md accent-mar-accent"
+        className="w-4 h-4 rounded-sm border-mar-border-md accent-mar-accent"
       />
       <span className="text-sm text-mar-text">{label}</span>
     </label>
@@ -305,23 +305,23 @@ function TreeItem({
             : "text-gray-600 dark:text-gray-400 hover:bg-mar-border hover:text-gray-900 dark:hover:text-gray-200"
         }`}
       >
-        <span className="w-3.5 h-3.5 flex-shrink-0 flex items-center justify-center text-gray-400">
+        <span className="w-3.5 h-3.5 shrink-0 flex items-center justify-center text-gray-400">
           {hasChildren
             ? isExpanded ? <ChevronDownIcon size={11} /> : <ChevronRightIcon size={11} />
             : null}
         </span>
-        <span className={`flex-shrink-0 ${isSelected ? "text-mar-accent" : "text-gray-400"}`}>
+        <span className={`shrink-0 ${isSelected ? "text-mar-accent" : "text-gray-400"}`}>
           <TypeIcon type={node.location_type} size={13} />
         </span>
         <span className="flex-1 truncate text-xs">{node.name}</span>
         {node.is_calibration_lab && (
           <span
             title="This is a location where sensors can be calibrated."
-            className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"
+            className="shrink-0 w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"
           />
         )}
         {displayCount > 0 && (
-          <span className={`text-[10px] tabular-nums flex-shrink-0 ${isSelected ? "text-mar-accent/80" : "text-gray-400"}`}>
+          <span className={`text-[10px] tabular-nums shrink-0 ${isSelected ? "text-mar-accent/80" : "text-gray-400"}`}>
             {displayCount}
           </span>
         )}
@@ -382,7 +382,7 @@ function RemoveLocationModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-mar-surface border border-mar-border rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
         <div className="flex items-center gap-3 mb-4">
-          <WarningIcon size={20} className="text-red-500 flex-shrink-0" />
+          <WarningIcon size={20} className="text-red-500 shrink-0" />
           <h2 className="text-base font-semibold text-mar-text">Remove location?</h2>
         </div>
         <p className="text-sm text-gray-500 mb-2">
@@ -541,7 +541,7 @@ function LocationDetail({
       />
     <div className="space-y-4">
       {/* Header card */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
         {editing ? (
           /* Edit header */
           <div className="space-y-3">
@@ -556,7 +556,7 @@ function LocationDetail({
                   error={formError && !form.name.trim() ? formError : undefined}
                 />
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0 pt-5">
+              <div className="flex items-center gap-2 shrink-0 pt-5">
                 <button
                   type="button"
                   onClick={handleCancel}
@@ -585,7 +585,7 @@ function LocationDetail({
           /* View header: [asset count] [name + description] [Edit button] */
           <div className="flex items-center gap-4">
             {/* Left: asset count (uses inherited total from all descendants) */}
-            <div className="w-20 flex-shrink-0 text-left">
+            <div className="w-20 shrink-0 text-left">
               {inheritedCount > 0 ? (
                 <Link
                   href={`/assets?location_id=${location.id}&location_name=${encodeURIComponent(location.name)}&include_descendants=true`}
@@ -612,7 +612,7 @@ function LocationDetail({
               {location.is_calibration_lab && (
                 <div className="flex justify-center mt-1">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 flex-shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 shrink-0" />
                     Calibration location
                     <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/lab:block w-56 bg-gray-900 dark:bg-gray-700 text-white text-[10px] rounded-lg px-3 py-2 z-50 shadow-lg whitespace-normal text-left leading-relaxed">
                       This is a location where sensors can be calibrated.
@@ -626,7 +626,7 @@ function LocationDetail({
             </div>
 
             {/* Right: Edit button */}
-            <div className="w-20 flex-shrink-0 flex justify-end">
+            <div className="w-20 shrink-0 flex justify-end">
               <button
                 type="button"
                 onClick={startEdit}
@@ -642,7 +642,7 @@ function LocationDetail({
 
       {/* Edit form (shown below header when editing) */}
       {editing && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5 space-y-4">
+        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5 space-y-4">
           <FTextArea
             label="Description"
             value={form.description}
@@ -714,7 +714,7 @@ function LocationDetail({
 
       {/* Info grid (view mode only, non-empty fields) */}
       {!editing && infoCards.length > 0 && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
+        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
           <div className="grid grid-cols-2 gap-3">
             {infoCards.map((card) => (
               <InfoCard key={card.label} label={card.label} value={card.value} />
@@ -725,7 +725,7 @@ function LocationDetail({
 
       {/* Map (view mode only) */}
       {!editing && mapSrc && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm overflow-hidden">
+        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
             <div className="flex items-center gap-2 text-sm font-semibold text-mar-text">
               <MapPinIcon size={14} className="text-mar-accent" />
@@ -838,14 +838,14 @@ function NewLocationForm({
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
       {/* Form header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-mar-border">
         <p className="text-sm font-semibold text-mar-text">New Location</p>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors"
+          className="p-1 rounded-sm text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors"
           aria-label="Close"
         >
           <XIcon size={14} />
@@ -1054,7 +1054,7 @@ export default function LocationsPage() {
       {/* Two-panel layout */}
       <div className="flex gap-5 items-start">
         {/* Tree panel — floating card, scrolls independently */}
-        <div className="w-72 flex-shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-sm overflow-y-auto max-h-[calc(100vh-180px)] sticky top-0">
+        <div className="w-72 shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-y-auto max-h-[calc(100vh-180px)] sticky top-0">
 
           <div className="p-2">
             {loading && <p className="text-xs text-gray-400 px-3 py-4">Loading…</p>}
@@ -1089,7 +1089,7 @@ export default function LocationsPage() {
               inheritedCount={inheritedCounts.get(selectedLocation.id) ?? selectedLocation.asset_count}
             />
           ) : (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm flex items-center justify-center py-24">
+            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs flex items-center justify-center py-24">
               <div className="text-center">
                 <LocationOrgIcon size={32} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                 <p className="text-sm text-gray-400">Select a location from the tree to view details.</p>

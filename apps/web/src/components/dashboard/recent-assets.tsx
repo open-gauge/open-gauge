@@ -13,7 +13,7 @@ const ASSET_TYPE_LABEL: Record<string, string> = {
 
 export default function RecentAssets({ data }: { data: RecentAsset[] }) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-mar-text">Recently updated assets</h3>
@@ -31,7 +31,7 @@ export default function RecentAssets({ data }: { data: RecentAsset[] }) {
             <Link
               key={asset.id}
               href={`/assets/${asset.id}`}
-              className="flex-shrink-0 w-52 border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-sm transition-all"
+              className="shrink-0 w-52 border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-xs transition-all"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-mono text-gray-400">{asset.asset_id}</span>

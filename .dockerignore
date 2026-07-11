@@ -1,0 +1,15 @@
+# Used by the `web` service's Docker build, which needs repo-root context to reach
+# apps/docs/content/docs/guide (see infrastructure/docker/docker-compose.yml and
+# apps/web/Dockerfile). Keep this scoped to what actually bloats/pollutes that build context —
+# apps/docs/content itself must NOT be excluded here.
+
+**/node_modules
+**/.next
+**/.source
+**/__pycache__
+**/*.pyc
+.git
+.claude
+screens
+styleguide
+references

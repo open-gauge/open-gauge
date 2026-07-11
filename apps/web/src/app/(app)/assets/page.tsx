@@ -337,7 +337,7 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
             <select
               value={filters.rangeUnit}
               onChange={(e) => onChange({ ...filters, rangeUnit: e.target.value, rangeMin: "", rangeMax: "" })}
-              className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text outline-none"
+              className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text outline-hidden"
             >
               <option value="">Select unit…</option>
               {options.units.map((u) => <option key={u} value={u}>{u}</option>)}
@@ -349,17 +349,17 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
                   placeholder="Min"
                   value={filters.rangeMin}
                   onChange={(e) => onChange({ ...filters, rangeMin: e.target.value })}
-                  className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text placeholder:text-gray-400 outline-none"
+                  className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text placeholder:text-gray-400 outline-hidden"
                 />
-                <span className="text-xs text-gray-400 flex-shrink-0">–</span>
+                <span className="text-xs text-gray-400 shrink-0">–</span>
                 <input
                   type="number"
                   placeholder="Max"
                   value={filters.rangeMax}
                   onChange={(e) => onChange({ ...filters, rangeMax: e.target.value })}
-                  className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text placeholder:text-gray-400 outline-none"
+                  className="w-full text-xs bg-mar-surface-alt border border-mar-border-md rounded-lg px-2.5 py-1.5 text-mar-text placeholder:text-gray-400 outline-hidden"
                 />
-                <span className="text-[10px] text-gray-400 flex-shrink-0">{filters.rangeUnit}</span>
+                <span className="text-[10px] text-gray-400 shrink-0">{filters.rangeUnit}</span>
               </div>
             )}
           </FilterSection>
@@ -425,7 +425,7 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
   const sharedSite = <SiteCell site={asset.site_name} location={asset.location_name} />;
   const sharedChevron = isMulti ? (
     <button type="button" onClick={onToggle}
-      className="p-1 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+      className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
       {expanded ? <ChevronUpIcon size={12} /> : <ChevronRightIcon size={12} />}
     </button>
   ) : null;
@@ -527,7 +527,7 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
   const subtypeLabel = asset.subtype ? (SUBTYPE_LABEL[asset.subtype] ?? asset.subtype) : null;
   const range = isMulti ? null : formatRange(asset.range_min, asset.range_max, asset.range_unit);
   return (
-    <a href={`/assets/${asset.id}`} className="block bg-mar-surface border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-sm transition-all cursor-pointer">
+    <a href={`/assets/${asset.id}`} className="block bg-mar-surface border border-mar-border rounded-xl p-4 hover:border-mar-border-md hover:shadow-xs transition-all cursor-pointer">
       <div className="flex items-start justify-between mb-3">
         <span className="font-mono text-[10px] font-semibold text-mar-accent">{asset.asset_id}</span>
         <StatusBadge status={asset.calibration_status} />
@@ -563,7 +563,7 @@ function suggestNextId(assets: AssetListItem[]): string {
   return `MAR-${String(max + 1).padStart(5, "0")}`;
 }
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
 const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
@@ -821,7 +821,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                                 {a.serial_number && ` · ${a.serial_number}`}
                               </p>
                             </div>
-                            <ChevronRightIcon size={13} className="text-gray-400 flex-shrink-0" />
+                            <ChevronRightIcon size={13} className="text-gray-400 shrink-0" />
                           </button>
                         ))}
                       </div>
@@ -837,7 +837,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                       <p className="text-sm font-semibold text-mar-text">{selectedSource.name}</p>
                       <p className="text-xs font-mono text-gray-400 mt-0.5">{selectedSource.asset_id} · {selectedSource.manufacturer} {selectedSource.model}</p>
                     </div>
-                    <button type="button" onClick={() => setSelectedSource(null)} className="text-xs text-gray-400 hover:text-mar-text transition-colors flex-shrink-0">
+                    <button type="button" onClick={() => setSelectedSource(null)} className="text-xs text-gray-400 hover:text-mar-text transition-colors shrink-0">
                       Change
                     </button>
                   </div>
@@ -1134,14 +1134,14 @@ export default function AssetsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
         <div className="flex items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg">
-            <SearchIcon size={13} className="text-gray-400 flex-shrink-0" />
+            <SearchIcon size={13} className="text-gray-400 shrink-0" />
             <input
               type="text" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, ID, serial, model…"
-              className="flex-1 bg-transparent text-xs text-mar-text placeholder:text-gray-400 outline-none"
+              className="flex-1 bg-transparent text-xs text-mar-text placeholder:text-gray-400 outline-hidden"
             />
           </div>
 
@@ -1232,7 +1232,7 @@ export default function AssetsPage() {
       )}
 
       {!loading && !error && viewMode === "list" && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm overflow-x-auto">
+        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-mar-border">

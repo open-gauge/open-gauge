@@ -27,7 +27,7 @@ import {
 // Shared primitives
 // ---------------------------------------------------------------------------
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
 const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
@@ -119,7 +119,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
   return (
     <div className="space-y-4">
       {/* Display Name */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
         <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
           <p className="text-xs font-semibold text-mar-text">Display Name</p>
           {editName ? (
@@ -155,7 +155,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       </div>
 
       {/* Email */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
         <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
           <p className="text-xs font-semibold text-mar-text">Email Address</p>
           {editEmail ? (
@@ -191,7 +191,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       </div>
 
       {/* Change Password */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
         <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
           <p className="text-xs font-semibold text-mar-text">Change Password</p>
           {pwSave === "saved" && (
@@ -315,7 +315,7 @@ function TeamsSection({ user }: { user: UserProfile }) {
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
       <div className="flex items-center justify-between px-4 py-3 border-b border-mar-border">
         <p className="text-xs font-semibold text-mar-text">Teams</p>
         {canManage && !creating && (
@@ -403,13 +403,13 @@ function TeamsSection({ user }: { user: UserProfile }) {
                 )}
               </div>
               {canManage && (
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => startEdit(team)}
-                    className="p-1.5 text-gray-400 hover:text-mar-text rounded transition-colors">
+                    className="p-1.5 text-gray-400 hover:text-mar-text rounded-sm transition-colors">
                     <EditIcon size={13} />
                   </button>
                   <button onClick={() => handleDelete(team.id, team.name)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors">
+                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors">
                     <TrashIcon size={13} />
                   </button>
                 </div>
@@ -446,13 +446,13 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
   }
 
   return (
-    <div className="bg-mar-surface rounded-xl border border-red-400/30 shadow-sm">
+    <div className="bg-mar-surface rounded-xl border border-red-400/30 shadow-xs">
       <div className="px-4 py-3 border-b border-red-400/20">
         <p className="text-xs font-semibold text-red-500">Delete Account</p>
       </div>
       <div className="p-4 space-y-4">
         <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30">
-          <WarningIcon size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+          <WarningIcon size={14} className="text-red-500 shrink-0 mt-0.5" />
           <div className="text-xs text-red-700 dark:text-red-400 space-y-1">
             <p className="font-semibold">This action is permanent and cannot be undone.</p>
             <p>Your account will be deactivated. All calibration records and data you created will remain for traceability purposes but you will no longer be able to log in.</p>
@@ -517,7 +517,7 @@ export default function SettingsPage() {
 
       <div className="flex gap-5 items-start">
         {/* Sidebar nav */}
-        <div className="w-52 flex-shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-sm sticky top-4">
+        <div className="w-52 shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-xs sticky top-4">
           <div className="px-3 py-3 border-b border-mar-border">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Account</p>
           </div>

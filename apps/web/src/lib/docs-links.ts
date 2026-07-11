@@ -1,12 +1,21 @@
-// Maps tooltip keys to their explanation in the MAR Knowledge Center (apps/docs), so
-// clicking a tooltip can open the full write-up (with math/examples) for that field or
-// metric. Anchor ids match the `[#id]` markers in the corresponding .mdx pages 1:1.
+// Maps tooltip keys to their explanation in the MAR Knowledge Center, so clicking a tooltip
+// can open the full write-up (with math/examples) for that field or metric. Anchor ids match
+// the `[#id]` markers in the corresponding .mdx pages 1:1. The same content is rendered both
+// standalone (apps/docs, paths under /docs/guide/...) and inline inside this app (the
+// /documentation/... route, see src/lib/docs-source.ts) — tooltips link to the in-app route
+// so clicking one never leaves the app.
+
+/** In-app path to a Knowledge Center page, e.g. "/docs/guide/sensors/adding-a-sensor#x" -> "/documentation/sensors/adding-a-sensor#x". */
+export function docsUrl(path: string): string {
+  return path.replace(/^\/docs\/guide/, "/documentation");
+}
 
 function getDocsBaseUrl(): string {
   return process.env.NEXT_PUBLIC_DOCS_URL ?? "http://localhost:3002";
 }
 
-export function docsUrl(path: string): string {
+/** Absolute URL into the standalone apps/docs site (external link, opens in a new tab). */
+export function externalDocsUrl(path: string): string {
   return `${getDocsBaseUrl()}${path}`;
 }
 

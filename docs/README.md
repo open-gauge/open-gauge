@@ -43,8 +43,9 @@ dropdown:
   calibration, the full calibration math with worked examples, health scoring).
 * **API Reference** (`/docs/api`) — generated directly from the API's live OpenAPI schema.
 
-In-app tooltips (the ⓘ icons throughout the UI) link directly into the matching section of
-this site.
+In-app tooltips (the ⓘ icons throughout the UI) link into the Knowledge Center *inside*
+`apps/web` (see below) rather than opening this standalone site, so clicking one never leaves
+the app.
 
 Local development:
 
@@ -57,3 +58,27 @@ API_INTERNAL_URL=http://localhost:8000 npm run dev   # fetches the API Reference
 The API Reference content is regenerated from the live API before every `dev`/`build` (see
 `apps/docs/scripts/`) — the `api` service must be reachable. See `CALIBRATION.md` and
 `CALIBRATION_EXAMPLES.md` for the source material the calibration pages are built from.
+
+## The Knowledge Center, embedded in the app
+
+The Knowledge Center (not the API Reference — see above) also renders *inline inside
+`apps/web`*, at `/documentation`, wrapped in the app's own Sidebar/TopBar and reusing Fumadocs'
+real components — same content, same markup, styled with MAR's own design tokens instead of
+Fumadocs' default theme (see `apps/web/src/app/globals.css`'s `--color-fd-*` remap). This is
+the single source of truth for the content: `apps/web/source.config.ts` reads the exact same
+`apps/docs/content/docs/guide` directory apps/docs does — nothing is duplicated.
+
+* Sidebar — the "Documentation" entry expands into the real Fumadocs page tree, nested under
+  the app's own navigation (`apps/web/src/components/docs-nav-tree.tsx`).
+* Search — the topbar's asset search also searches this content
+  (`apps/web/src/app/api/docs-search/route.ts`), showing a merged results dropdown.
+* Tooltips — `apps/web/src/lib/docs-links.ts`'s `docsUrl()` builds in-app `/documentation/...`
+  links; `externalDocsUrl()` is still used for the one thing that stays external, the API
+  Reference (its interactive "Try it" playground isn't embedded).
+
+Because `apps/web` reads content from outside its own project directory in local dev
+(`../docs/content/docs/guide`), Turbopack needs a widened root — see the `turbopack.root`
+logic in `apps/web/next.config.mjs`. In Docker, the content is copied *inside* the image
+instead (`apps/web/Dockerfile`), and the `web` service's Docker build context is the **repo
+root**, not `apps/web`, specifically so that copy step can reach `apps/docs/content` (see
+`infrastructure/docker/docker-compose.yml`).

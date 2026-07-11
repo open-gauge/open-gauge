@@ -405,7 +405,7 @@ function validateForm(form: EditFormState): Record<string, string> {
 // Edit field components
 // ---------------------------------------------------------------------------
 
-const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
+const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
 const INPUT_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const INPUT_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
@@ -417,7 +417,7 @@ function ELabel({ label, required, tooltip, tooltipDocsHref }: { label: string; 
       </span>
       {tooltip && (
         <Tooltip content={tooltip} docsHref={tooltipDocsHref}>
-          <InfoIcon size={11} className="text-gray-400 cursor-help flex-shrink-0" />
+          <InfoIcon size={11} className="text-gray-400 cursor-help shrink-0" />
         </Tooltip>
       )}
     </span>
@@ -807,11 +807,11 @@ function ChannelEditor({
           type="checkbox"
           checked={ch.calibration_role}
           onChange={(e) => onChange({ ...ch, calibration_role: e.target.checked })}
-          className="rounded border-mar-border-md"
+          className="rounded-sm border-mar-border-md"
         />
         Reference standard
         <Tooltip content={CHAN_TIPS.calibration_role} docsHref={CHAN_DOCS_LINKS.calibration_role}>
-          <InfoIcon size={11} className="text-gray-400 cursor-help flex-shrink-0" />
+          <InfoIcon size={11} className="text-gray-400 cursor-help shrink-0" />
         </Tooltip>
       </label>
     </div>
@@ -841,7 +841,7 @@ function CollapsibleSection({
       >
         <span className="text-sm font-semibold text-mar-text">{title}</span>
         {!forceOpen && (
-          <span className={`transition-transform flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}>
+          <span className={`transition-transform shrink-0 ${isOpen ? "rotate-180" : ""}`}>
             <ChevronDownIcon size={16} />
           </span>
         )}
@@ -879,7 +879,7 @@ function RetireModal({ assetName, onRetire, onClose }: {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-md p-6">
         <div className="flex items-center gap-3 mb-4">
-          <WarningIcon size={20} className="text-red-500 flex-shrink-0" />
+          <WarningIcon size={20} className="text-red-500 shrink-0" />
           <h2 className="text-base font-semibold text-mar-text">Retire asset?</h2>
         </div>
         <p className="text-sm text-gray-500 mb-4">
@@ -893,7 +893,7 @@ function RetireModal({ assetName, onRetire, onClose }: {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Equipment failure, end of life…"
-            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20 placeholder:text-gray-400 dark:placeholder:text-gray-600"
+            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20 placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
         </div>
         <div className="flex items-center justify-end gap-2">
@@ -1460,10 +1460,10 @@ function CalibrationChart({
   return (
     <div className="rounded-xl border border-mar-border bg-mar-surface relative overflow-hidden" style={{ minHeight: 320 }}>
       <div className="absolute bottom-16 right-3 z-20 pointer-events-none">
-        <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-sm">
+        <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-xs">
           <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 rounded-sm" style={{ height: 44, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
+            <div className="w-3 rounded-xs" style={{ height: 44, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
             <div className="flex flex-col justify-between h-11 text-[10px] text-gray-400">
               <span>High</span>
               <span>Low</span>
@@ -1534,7 +1534,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
     const locId = selectedCal?.calibration_location_id;
     if (!locId) { setCalLocation(null); return; }
     getLocation(locId).then(setCalLocation).catch(() => setCalLocation(null));
-  }, [selectedCal?.calibration_location_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedCal?.calibration_location_id]);
 
   function versionOf(cal: CalibrationRecord): number {
     const idx = filteredCals.findIndex((c) => c.id === cal.id);
@@ -1580,7 +1580,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           />
           <div className="relative bg-mar-surface border border-mar-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <div className="shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                 <TrashIcon size={16} className="text-red-600 dark:text-red-400" />
               </div>
               <div>
@@ -1639,7 +1639,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   onClick={() => setActiveChannelId(chId)}
                   className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     isActive
-                      ? "bg-mar-surface text-mar-text shadow-sm border border-mar-border"
+                      ? "bg-mar-surface text-mar-text shadow-xs border border-mar-border"
                       : "text-gray-400 hover:text-mar-text"
                   }`}
                 >
@@ -1747,7 +1747,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         });
                       }}
                       title="Copy"
-                      className="flex-shrink-0 p-1 text-gray-400 hover:text-mar-text rounded transition-colors"
+                      className="shrink-0 p-1 text-gray-400 hover:text-mar-text rounded-sm transition-colors"
                     >
                       {copiedKey === "equation" ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
                     </button>
@@ -1777,7 +1777,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                                 });
                               }}
                               title="Copy"
-                              className="flex-shrink-0 mt-3 p-1 text-gray-400 hover:text-mar-text rounded transition-colors"
+                              className="shrink-0 mt-3 p-1 text-gray-400 hover:text-mar-text rounded-sm transition-colors"
                             >
                               {copiedKey === ck ? <CheckIcon size={11} /> : <CopyIcon size={11} />}
                             </button>
@@ -1794,7 +1794,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           {selectedCal.poly_coefficients ? (
             <div className="flex gap-4 min-h-0">
               {/* Left: stats panel (40%) */}
-              <div className="w-[38%] flex-shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt space-y-0">
+              <div className="w-[38%] shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt space-y-0">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Calibration</p>
                 <StatRow label="Poly degree" value={String(selectedCal.poly_order ?? "—")} />
                 {(selectedCal.valid_range_min != null || selectedCal.range_min != null) && (
@@ -1870,7 +1870,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                       type="button"
                       onClick={() => setRightView(v)}
                       className={`px-4 py-1 rounded text-xs font-medium transition-colors ${
-                        rightView === v ? "bg-mar-surface text-mar-text shadow-sm" : "text-gray-400 hover:text-mar-text"
+                        rightView === v ? "bg-mar-surface text-mar-text shadow-xs" : "text-gray-400 hover:text-mar-text"
                       }`}
                     >
                       {v === "chart" ? "Chart" : "Data Table"}
@@ -2015,7 +2015,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     onClick={() => setSelectedCalId(cal.id)}
                     className="flex items-start gap-4 flex-1 min-w-0 text-left"
                   >
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
+                    <div className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
                       ${isSelected ? "border-mar-accent text-mar-accent" : "border-mar-border bg-mar-surface-alt text-gray-400"}`}>
                       <span className="text-[10px] font-bold">v{versionOf(cal)}</span>
                     </div>
@@ -2040,7 +2040,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                       {cal.notes && <p className="text-xs text-gray-500 mt-1 italic truncate">{cal.notes}</p>}
                     </div>
                     {cal.due_date && (
-                      <div className="flex-shrink-0 text-right hidden sm:block">
+                      <div className="shrink-0 text-right hidden sm:block">
                         <p className="text-[10px] text-gray-400">Due</p>
                         <p className="text-xs text-mar-text font-mono">{fmtDate(cal.due_date)}</p>
                       </div>
@@ -2053,7 +2053,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(cal.id); }}
                       title="Remove calibration"
-                      className="flex-shrink-0 self-center p-1 text-gray-300 hover:text-red-500 transition-colors rounded"
+                      className="shrink-0 self-center p-1 text-gray-300 hover:text-red-500 transition-colors rounded-sm"
                     >
                       <TrashIcon size={13} />
                     </button>
@@ -2190,10 +2190,10 @@ function FilesTab({
                   <img
                     src={f.url}
                     alt={f.original_filename}
-                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0 border border-mar-border"
+                    className="w-9 h-9 rounded-lg object-cover shrink-0 border border-mar-border"
                   />
                 ) : (
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold
                     ${type === "pdf" ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
                       type === "csv" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
                       type === "zip" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30" :
@@ -2212,7 +2212,7 @@ function FilesTab({
                     href={f.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-1.5 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors flex-shrink-0"
+                    className="p-1.5 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors shrink-0"
                     title="Download"
                   >
                     <DownloadIcon size={14} />
@@ -2223,7 +2223,7 @@ function FilesTab({
                   <button
                     type="button"
                     onClick={() => handleDelete(f.id)}
-                    className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    className="p-1.5 rounded-sm hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors shrink-0"
                     title="Remove file"
                   >
                     <TrashIcon size={14} />
@@ -2425,62 +2425,65 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
     } catch { /* ignore */ } finally { setDownloading(null); }
   }
 
-  function StickerRow({
-    size, label, preview, aspect,
-  }: { size: "2x2" | "4x2"; label: string; preview: string | null; aspect: string }) {
-    return (
-      <div className="flex items-center gap-4">
-        <div className={`flex-shrink-0 bg-mar-surface-alt rounded-lg border border-mar-border overflow-hidden flex items-center justify-center ${aspect}`}>
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt={`${label} sticker`} className="w-full h-full object-contain" />
-          ) : loading ? (
-            <span className="w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
-          ) : (
-            <QrCodeIcon size={24} className="text-gray-300" />
-          )}
-        </div>
-        <div className="flex-1">
-          <p className="text-xs text-gray-400 mb-2">{label}</p>
-          <div className="flex gap-2 flex-wrap">
-            {(["pdf", "jpg", "png"] as const).map((fmt) => {
-              const key = `${size}-${fmt}`;
-              return (
-                <button
-                  key={fmt}
-                  type="button"
-                  disabled={downloading === key}
-                  onClick={() => download(size, fmt)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-40"
-                >
-                  <DownloadIcon size={11} />
-                  {downloading === key ? "…" : fmt.toUpperCase()}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       ref={backdropRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
       <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-xl mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-mar-border">
           <h2 className="text-sm font-semibold text-mar-text">Asset Sticker — {assetTag}</h2>
-          <button type="button" onClick={onClose} className="p-1.5 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+          <button type="button" onClick={onClose} className="p-1.5 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
             <XIcon size={15} />
           </button>
         </div>
         <div className="p-5 space-y-5">
-          <StickerRow size="2x2" label="2×2 inches" preview={preview2} aspect="w-28 h-28" />
+          <StickerRow size="2x2" label="2×2 inches" preview={preview2} aspect="w-28 h-28" loading={loading} downloading={downloading} onDownload={download} />
           <div className="border-t border-mar-border" />
-          <StickerRow size="4x2" label="4×2 inches" preview={preview4} aspect="w-56 h-28" />
+          <StickerRow size="4x2" label="4×2 inches" preview={preview4} aspect="w-56 h-28" loading={loading} downloading={downloading} onDownload={download} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StickerRow({
+  size, label, preview, aspect, loading, downloading, onDownload,
+}: {
+  size: "2x2" | "4x2"; label: string; preview: string | null; aspect: string;
+  loading: boolean; downloading: string | null; onDownload: (size: "2x2" | "4x2", fmt: "png" | "jpg" | "pdf") => void;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className={`shrink-0 bg-mar-surface-alt rounded-lg border border-mar-border overflow-hidden flex items-center justify-center ${aspect}`}>
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt={`${label} sticker`} className="w-full h-full object-contain" />
+        ) : loading ? (
+          <span className="w-5 h-5 border-2 border-mar-accent/30 border-t-mar-accent rounded-full animate-spin" />
+        ) : (
+          <QrCodeIcon size={24} className="text-gray-300" />
+        )}
+      </div>
+      <div className="flex-1">
+        <p className="text-xs text-gray-400 mb-2">{label}</p>
+        <div className="flex gap-2 flex-wrap">
+          {(["pdf", "jpg", "png"] as const).map((fmt) => {
+            const key = `${size}-${fmt}`;
+            return (
+              <button
+                key={fmt}
+                type="button"
+                disabled={downloading === key}
+                onClick={() => onDownload(size, fmt)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-mar-border-md rounded-lg hover:bg-mar-surface-alt transition-colors disabled:opacity-40"
+              >
+                <DownloadIcon size={11} />
+                {downloading === key ? "…" : fmt.toUpperCase()}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -2665,7 +2668,7 @@ export default function AssetProfilePage() {
 
       {!profile.is_active && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-5 py-3 flex items-center gap-3">
-          <WarningIcon size={16} className="text-red-500 flex-shrink-0" />
+          <WarningIcon size={16} className="text-red-500 shrink-0" />
           <p className="text-sm text-red-700 dark:text-red-400 font-medium">
             This asset has been retired{profile.retired_reason ? `: ${profile.retired_reason}` : ""} and is read-only.
           </p>
@@ -2711,7 +2714,7 @@ export default function AssetProfilePage() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {!isEditing ? (
               <>
                 <button type="button"

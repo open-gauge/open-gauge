@@ -131,16 +131,16 @@ export default function ActivityPage() {
       )}
 
       {/* Toolbar */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
         <div className="flex items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-2 flex-1 px-3 py-1.5 bg-mar-surface-alt border border-mar-border-md rounded-lg">
-            <SearchIcon size={13} className="text-gray-400 flex-shrink-0" />
+            <SearchIcon size={13} className="text-gray-400 shrink-0" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by user, action, asset ID…"
-              className="flex-1 bg-transparent text-xs text-mar-text placeholder:text-gray-400 outline-none"
+              className="flex-1 bg-transparent text-xs text-mar-text placeholder:text-gray-400 outline-hidden"
             />
           </div>
           <div className="flex items-center gap-1 p-1 bg-mar-surface-alt border border-mar-border rounded-lg">
@@ -151,7 +151,7 @@ export default function ActivityPage() {
                 onClick={() => setEntityType(f.value)}
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                   entityType === f.value
-                    ? "bg-mar-surface text-mar-text shadow-sm border border-mar-border"
+                    ? "bg-mar-surface text-mar-text shadow-xs border border-mar-border"
                     : "text-gray-400 hover:text-mar-text"
                 }`}
               >
@@ -174,7 +174,7 @@ export default function ActivityPage() {
           Loading activity…
         </div>
       ) : (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm overflow-x-auto">
+        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-mar-border">

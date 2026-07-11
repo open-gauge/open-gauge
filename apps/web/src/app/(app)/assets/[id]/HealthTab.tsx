@@ -51,7 +51,7 @@ function fmtUnit(n: number | null | undefined, unit: string, decimals = 4): stri
 
 function Card({ title, tooltip, tooltipDocsHref, children }: { title: string; tooltip?: string; tooltipDocsHref?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
       <div className="flex items-center gap-1.5 px-4 py-3 border-b border-mar-border">
         <p className="text-xs font-semibold text-mar-text">{title}</p>
         {tooltip && (
@@ -71,7 +71,7 @@ function Card({ title, tooltip, tooltipDocsHref, children }: { title: string; to
 
 function HealthEmptyState() {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-12 flex flex-col items-center text-center gap-3">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-12 flex flex-col items-center text-center gap-3">
       <ActivityIcon size={32} className="text-gray-300 dark:text-gray-600" />
       <p className="text-sm text-gray-400 max-w-sm">
         Health insights become available after at least two calibrations.
@@ -82,7 +82,7 @@ function HealthEmptyState() {
 
 function HealthError({ message }: { message: string }) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-8 flex flex-col items-center text-center gap-2">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-8 flex flex-col items-center text-center gap-2">
       <WarningIcon size={24} className="text-red-400" />
       <p className="text-sm text-gray-400">{message}</p>
     </div>
@@ -91,7 +91,7 @@ function HealthError({ message }: { message: string }) {
 
 function HealthLoading() {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-12 flex items-center justify-center">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-12 flex items-center justify-center">
       <p className="text-sm text-gray-400">Loading health data…</p>
     </div>
   );
@@ -403,7 +403,7 @@ function CurveComparisonCard({
           <select
             value={referenceId}
             onChange={(e) => setReferenceId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20"
+            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20"
           >
             {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
@@ -413,7 +413,7 @@ function CurveComparisonCard({
           <select
             value={currentId}
             onChange={(e) => setCurrentId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20"
+            className="w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:border-mar-accent focus:ring-mar-accent/20"
           >
             {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
           </select>
@@ -514,7 +514,7 @@ function PredictionCard({ prediction, unit }: { prediction: PredictionOut; unit:
 
       {prediction.message && (
         <div className="mt-4 flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 rounded-lg px-3 py-2">
-          <WarningIcon size={14} className="text-amber-500 flex-shrink-0" />
+          <WarningIcon size={14} className="text-amber-500 shrink-0" />
           <p className="text-xs text-amber-700 dark:text-amber-400">{prediction.message}</p>
         </div>
       )}

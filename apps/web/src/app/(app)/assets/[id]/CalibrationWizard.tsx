@@ -23,7 +23,7 @@ import {
 // Shared mini-field components (inlined to avoid page.tsx coupling)
 // ---------------------------------------------------------------------------
 
-const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
+const IB = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-600";
 const IB_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
@@ -88,7 +88,7 @@ function WCheckbox({ label, checked, onChange }: { label: string; checked: boole
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded border-mar-border-md accent-mar-accent"
+        className="w-4 h-4 rounded-sm border-mar-border-md accent-mar-accent"
       />
       <span className="text-sm text-mar-text">{label}</span>
     </label>
@@ -110,7 +110,7 @@ function StepIndicator({ step, steps }: { step: number; steps: string[] }) {
         return (
           <div key={n} className="flex items-center">
             <div className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0
                 ${done ? "bg-mar-accent text-white" : active ? "bg-mar-action text-white" : "bg-mar-surface-alt text-gray-400 border border-mar-border-md"}`}>
                 {done ? <CheckIcon size={12} /> : n}
               </div>
@@ -733,7 +733,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       {/* Modal */}
       <div className="relative z-10 w-full max-w-5xl max-h-[92vh] bg-mar-surface border border-mar-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-mar-border flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-mar-border shrink-0">
           <div>
             <h2 className="text-base font-semibold text-mar-text">Add Calibration Record</h2>
             <p className="text-xs text-gray-400 mt-0.5">{profile.name} · {profile.asset_id}</p>
@@ -825,7 +825,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-mar-border flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-mar-border shrink-0">
           <button
             type="button"
             onClick={() => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3)}
@@ -868,7 +868,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             <h3 className="text-sm font-semibold text-mar-text mb-3">Save calibration record?</h3>
             {hasConformityCheck && conformityStatement!.passed && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 mb-3">
-                <CheckIcon size={13} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                <CheckIcon size={13} className="text-emerald-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-emerald-700 dark:text-emerald-400">
                   Conforms to {conformityStatement!.specification} under the {DECISION_RULE_LABEL[conformityStatement!.decision_rule] ?? conformityStatement!.decision_rule} rule. You can safely save this record.
                 </p>
@@ -876,7 +876,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             )}
             {hasConformityCheck && !conformityStatement!.passed && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 mb-3">
-                <WarningIcon size={13} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <WarningIcon size={13} className="text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-400">
                   This calibration does not conform to {conformityStatement!.specification} under the {DECISION_RULE_LABEL[conformityStatement!.decision_rule] ?? conformityStatement!.decision_rule} rule. Do you want to save it anyway?
                 </p>
@@ -1233,7 +1233,7 @@ function Step2({
             type="button"
             onClick={() => onInputModeChange(m)}
             className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-              inputMode === m ? "bg-mar-surface text-mar-text shadow-sm" : "text-gray-400 hover:text-mar-text"
+              inputMode === m ? "bg-mar-surface text-mar-text shadow-xs" : "text-gray-400 hover:text-mar-text"
             }`}
           >
             {m === "manual" ? "Manual entry" : "CSV upload"}
@@ -1287,7 +1287,7 @@ function Step2({
                         type="button"
                         onClick={() => removeRow(i)}
                         disabled={points.length <= 2}
-                        className="p-1 rounded text-gray-400 hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                        className="p-1 rounded-sm text-gray-400 hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                       >
                         <TrashIcon size={13} />
                       </button>
@@ -1337,7 +1337,7 @@ function Step2({
           </div>
           {csvError && (
             <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-900/30">
-              <WarningIcon size={13} className="flex-shrink-0 mt-0.5" />
+              <WarningIcon size={13} className="shrink-0 mt-0.5" />
               {csvError}
             </div>
           )}
@@ -1738,7 +1738,7 @@ function Step3({
                 type="checkbox"
                 checked={includeSensorNominalUncertainty}
                 onChange={(e) => onIncludeSensorNominalUncertaintyChange(e.target.checked)}
-                className="rounded border-mar-border-md"
+                className="rounded-sm border-mar-border-md"
               />
               Incl. in budget
             </label>
@@ -1821,7 +1821,7 @@ function Step3({
       {result && !analyzing && (
         <div className="flex gap-4 min-h-0">
           {/* Left: stats + uncertainty (40%) */}
-          <div className="w-[40%] flex-shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt">
+          <div className="w-[40%] shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt">
             <p className="text-xs font-semibold text-mar-text mb-2">Calibration</p>
             <StatRow label="Valid range" value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
             <StatRow label="Polynomial degree" value={String(result.poly_degree)} />
@@ -1899,7 +1899,7 @@ function Step3({
                   type="button"
                   onClick={() => setRightView(v)}
                   className={`px-4 py-1 rounded text-xs font-medium transition-colors ${
-                    rightView === v ? "bg-mar-surface text-mar-text shadow-sm" : "text-gray-400 hover:text-mar-text"
+                    rightView === v ? "bg-mar-surface text-mar-text shadow-xs" : "text-gray-400 hover:text-mar-text"
                   }`}
                 >
                   {v === "chart" ? "Chart" : "Data Table"}
@@ -1911,10 +1911,10 @@ function Step3({
               <div className="rounded-xl border border-mar-border bg-mar-surface flex-1 relative overflow-hidden" style={{ minHeight: 340 }}>
                 {/* Gradient legend overlay */}
                 <div className="absolute bottom-20 right-3 z-20 pointer-events-none">
-                  <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-sm">
+                  <div className="bg-mar-surface border border-mar-border rounded-lg px-2 py-1.5 shadow-xs">
                     <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-3 rounded-sm" style={{ height: 48, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
+                      <div className="w-3 rounded-xs" style={{ height: 48, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
                       <div className="flex flex-col justify-between h-12 text-[10px] text-gray-400">
                         <span>High</span>
                         <span>Low</span>

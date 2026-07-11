@@ -27,7 +27,7 @@ export default function DistributionChart({ data }: { data: DistributionItem[] }
   }));
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-xs p-5">
       <div className="mb-1">
         <h3 className="text-sm font-semibold text-[#152330]">Asset distribution</h3>
         <p className="text-xs text-gray-400 mt-0.5">By sensor type</p>

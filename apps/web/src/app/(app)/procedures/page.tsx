@@ -53,7 +53,7 @@ function capitalize(s: string): string {
 }
 
 const INPUT_CLS =
-  "w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-none focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors placeholder-gray-400";
+  "w-full px-3 py-2 rounded-lg border border-mar-border-md text-sm text-mar-text bg-mar-surface focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors placeholder-gray-400";
 
 const DURATION_UNITS = ["seconds", "minutes", "hours", "days"] as const;
 type DurationUnit = (typeof DURATION_UNITS)[number];
@@ -159,7 +159,7 @@ function ProcedureListItem({ proc, active, onClick }: { proc: Procedure; active:
       }`}
     >
       <div
-        className={`flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center mt-0.5 ${
+        className={`shrink-0 w-7 h-7 rounded-md flex items-center justify-center mt-0.5 ${
           active ? "bg-mar-accent/20 text-mar-accent" : "bg-mar-border text-gray-400"
         }`}
       >
@@ -208,10 +208,10 @@ function DeleteProcedureModal({ procName, onConfirm, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-sm p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center shrink-0">
             <TrashIcon size={16} className="text-red-500" />
           </div>
           <h2 className="text-sm font-semibold text-mar-text">Remove procedure?</h2>
@@ -285,7 +285,7 @@ function StepFileChip({ file, isEditing, onDelete, onImageClick }: {
   }
   return (
     <div className="group flex items-center gap-1.5 px-2 py-1 bg-mar-surface-alt border border-mar-border rounded-lg text-[11px]">
-      <DocumentIcon size={11} className="text-gray-400 flex-shrink-0" />
+      <DocumentIcon size={11} className="text-gray-400 shrink-0" />
       {file.url ? (
         <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-mar-accent hover:underline truncate max-w-[160px]">{file.original_filename}</a>
       ) : (
@@ -318,12 +318,12 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
     onChange({ ...step, duration_min: mins });
   }
 
-  const LABEL_CLS = "w-24 flex-shrink-0 text-[10px] font-semibold uppercase tracking-widest text-gray-400";
+  const LABEL_CLS = "w-24 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-gray-400";
 
   return (
     <div className="flex items-start gap-3 px-5 py-4 border-b border-mar-border last:border-0">
       {/* Step number */}
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-mar-accent/10 text-mar-accent flex items-center justify-center text-xs font-bold mt-1">
+      <div className="shrink-0 w-7 h-7 rounded-full bg-mar-accent/10 text-mar-accent flex items-center justify-center text-xs font-bold mt-1">
         {String(index + 1).padStart(2, "0")}
       </div>
 
@@ -354,17 +354,17 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col gap-1 flex-shrink-0 mt-1">
+      <div className="flex flex-col gap-1 shrink-0 mt-1">
         <button type="button" onClick={onMoveUp} disabled={index === 0}
-          className="p-1 rounded text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move up">
+          className="p-1 rounded-sm text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move up">
           <ChevronUpIcon size={14} />
         </button>
         <button type="button" onClick={onMoveDown} disabled={index === total - 1}
-          className="p-1 rounded text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move down">
+          className="p-1 rounded-sm text-gray-400 hover:text-mar-text hover:bg-mar-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move down">
           <ChevronDownIcon size={14} />
         </button>
         <button type="button" onClick={onRemove}
-          className="p-1 rounded text-red-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors" title="Remove step">
+          className="p-1 rounded-sm text-red-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors" title="Remove step">
           <TrashIcon size={14} />
         </button>
       </div>
@@ -399,7 +399,7 @@ function TwoColListEditor<T>({ items, col1Label, col2Label, col1Key, col2Key, co
             onChange={(e) => onUpdate(i, { ...item, [col2Key]: e.target.value || (col2Optional ? null : "") })}
             placeholder={col2Optional ? `${col2Label} (opt.)` : col2Label} className={INPUT_CLS} />
           <button type="button" onClick={() => onRemove(i)}
-            className="p-1.5 rounded text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
+            className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
             <TrashIcon size={13} />
           </button>
         </div>
@@ -419,11 +419,11 @@ function SafetyEditor({ notes, onAdd, onUpdate, onRemove }: {
     <div className="space-y-2">
       {notes.map((note, i) => (
         <div key={i} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
           <input type="text" value={note} onChange={(e) => onUpdate(i, e.target.value)}
             placeholder="Safety note" className={`${INPUT_CLS} flex-1`} />
           <button type="button" onClick={() => onRemove(i)}
-            className="p-1.5 rounded text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
+            className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
             <TrashIcon size={13} />
           </button>
         </div>
@@ -649,7 +649,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
       )}
 
       {/* ── Header card ── */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
         {/* Top meta row */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -657,7 +657,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               <input type="text" value={draft.proc_id ?? ""} maxLength={20}
                 onChange={(e) => setDraftField("proc_id", e.target.value || null)}
                 placeholder="PROC-XX-001"
-                className="w-28 px-1.5 py-0.5 text-xs font-mono font-semibold rounded border border-mar-border-md bg-mar-surface text-mar-accent focus:outline-none focus:ring-1 focus:ring-mar-accent/40" />
+                className="w-28 px-1.5 py-0.5 text-xs font-mono font-semibold rounded-sm border border-mar-border-md bg-mar-surface text-mar-accent focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40" />
             ) : (
               <span className="font-mono font-semibold text-mar-accent">{proc.proc_id ?? "—"}</span>
             )}
@@ -666,7 +666,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               <input type="text" value={draft.version}
                 onChange={(e) => setDraftField("version", e.target.value)}
                 placeholder="1.0"
-                className="w-16 px-1.5 py-0.5 text-xs rounded border border-mar-border-md bg-mar-surface text-mar-text focus:outline-none focus:ring-1 focus:ring-mar-accent/40" />
+                className="w-16 px-1.5 py-0.5 text-xs rounded-sm border border-mar-border-md bg-mar-surface text-mar-text focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40" />
             ) : (
               <span>v{draft.version}</span>
             )}
@@ -802,7 +802,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         <div className="grid grid-cols-3 gap-4">
           {/* Equipment */}
           {(isEditing || hasEquipment) && (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-4">
+            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-4">
               <SectionHeader>Equipment</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
@@ -828,7 +828,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
           {/* Materials */}
           {(isEditing || hasMaterials) && (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-4">
+            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-4">
               <SectionHeader>Materials</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
@@ -854,7 +854,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
           {/* Environment */}
           {(isEditing || hasEnvironment) && (
-            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-4">
+            <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-4">
               <SectionHeader>Environment</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
@@ -882,7 +882,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
       {/* ── Safety ── */}
       {(isEditing || hasSafety) && (
-        <div className="bg-mar-surface rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-sm p-4">
+        <div className="bg-mar-surface rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-xs p-4">
           <div className="flex items-center gap-2 mb-3">
             <ShieldIcon size={13} className="text-amber-500" />
             <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">Safety</p>
@@ -898,7 +898,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
             <ul className="space-y-1.5">
               {(draft.safety_notes ?? []).map((note, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-amber-500 flex-shrink-0" />
+                  <span className="mt-1.5 w-1 h-1 rounded-full bg-amber-500 shrink-0" />
                   <p className="text-xs text-mar-text">{note}</p>
                 </li>
               ))}
@@ -908,7 +908,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
       )}
 
       {/* ── Steps ── */}
-      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
+      <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs">
         <div className="flex items-center justify-between px-5 py-3 border-b border-mar-border">
           <p className="text-xs font-semibold text-mar-text uppercase tracking-wide">Procedure</p>
           <span className="text-xs text-gray-400">
@@ -936,7 +936,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                 <StepEditorRow step={step} index={i} total={steps.length}
                   onChange={(s) => updateStep(i, s)} onRemove={() => removeStep(i)}
                   onMoveUp={() => moveStep(i, -1)} onMoveDown={() => moveStep(i, 1)} />
-                <div className="px-5 pb-3 pl-[4.5rem]">
+                <div className="px-5 pb-3 pl-18">
                   {(() => {
                     const filesForStep = stepFiles.filter((f) => f.step_index === i);
                     return (
@@ -972,7 +972,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               const filesForStep = stepFiles.filter((f) => f.step_index === i);
               return (
                 <div key={i} className="flex items-start gap-4 px-5 py-4">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-mar-accent/10 text-mar-accent flex items-center justify-center text-xs font-bold">
+                  <div className="shrink-0 w-7 h-7 rounded-full bg-mar-accent/10 text-mar-accent flex items-center justify-center text-xs font-bold">
                     {String(i + 1).padStart(2, "0")}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -987,7 +987,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                     )}
                   </div>
                   {step.duration_min != null && (
-                    <div className="flex-shrink-0 flex items-center gap-1 text-[11px] text-gray-400">
+                    <div className="shrink-0 flex items-center gap-1 text-[11px] text-gray-400">
                       <ClockIcon size={11} />
                       {formatDuration(step.duration_min) ?? `${step.duration_min} min`}
                     </div>
@@ -1004,7 +1004,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
       {/* ── Acceptance criteria ── */}
       {(isEditing || hasCriteria) && (
-        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm p-5">
+        <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs p-5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Acceptance Criteria</p>
           {isEditing ? (
             <div className="space-y-2">
@@ -1020,7 +1020,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                   <input type="text" value={c.limit} onChange={(e) => updateCriterion(i, { ...c, limit: e.target.value })}
                     placeholder="Acceptance condition" className={INPUT_CLS} />
                   <button type="button" onClick={() => removeCriterion(i)}
-                    className="p-1.5 rounded text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
+                    className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-mar-surface-alt transition-colors">
                     <TrashIcon size={13} />
                   </button>
                 </div>
@@ -1072,7 +1072,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
   const [copyErrors, setCopyErrors] = useState<Record<string, string>>({});
 
   const inputCls = (hasError: boolean) =>
-    `w-full px-3 py-2 text-sm bg-mar-surface border rounded-lg text-mar-text placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors ${
+    `w-full px-3 py-2 text-sm bg-mar-surface border rounded-lg text-mar-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors ${
       hasError ? "border-red-400 dark:border-red-600" : "border-mar-border-md"
     }`;
 
@@ -1116,11 +1116,11 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-mar-border">
           <h2 className="text-sm font-semibold text-mar-text">New procedure</h2>
-          <button type="button" onClick={onClose} className="p-1 rounded hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
+          <button type="button" onClick={onClose} className="p-1 rounded-sm hover:bg-mar-surface-alt text-gray-400 hover:text-mar-text transition-colors">
             <XIcon size={16} />
           </button>
         </div>
@@ -1130,7 +1130,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
             <p className="text-xs text-gray-400 mb-4">How do you want to create the new procedure?</p>
             <button type="button" onClick={() => setMode("new")}
               className="w-full flex items-start gap-4 p-4 border border-mar-border-md rounded-xl hover:bg-mar-surface-alt hover:border-mar-accent/40 transition-colors text-left">
-              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-mar-accent/10 text-mar-accent flex items-center justify-center">
+              <div className="shrink-0 w-9 h-9 rounded-lg bg-mar-accent/10 text-mar-accent flex items-center justify-center">
                 <PlusIcon size={16} />
               </div>
               <div>
@@ -1140,7 +1140,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
             </button>
             <button type="button" onClick={() => setMode("copy")}
               className="w-full flex items-start gap-4 p-4 border border-mar-border-md rounded-xl hover:bg-mar-surface-alt hover:border-mar-accent/40 transition-colors text-left">
-              <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-mar-accent/10 text-mar-accent flex items-center justify-center">
+              <div className="shrink-0 w-9 h-9 rounded-lg bg-mar-accent/10 text-mar-accent flex items-center justify-center">
                 <CopyIcon size={16} />
               </div>
               <div>
@@ -1235,7 +1235,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
 
 function EmptyDetail() {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm flex flex-col items-center justify-center py-24 text-center">
+    <div className="bg-mar-surface rounded-xl border border-mar-border shadow-xs flex flex-col items-center justify-center py-24 text-center">
       <div className="w-10 h-10 rounded-xl bg-mar-border flex items-center justify-center mb-3">
         <ProceduresIcon size={18} className="text-gray-400" />
       </div>
@@ -1313,12 +1313,12 @@ export default function ProceduresPage() {
 
       <div className="flex gap-5 items-start">
         {/* Sidebar */}
-        <div className="w-72 flex-shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-sm overflow-hidden sticky top-0 max-h-[calc(100vh-180px)] flex flex-col">
-          <div className="px-3 py-2.5 border-b border-mar-border flex-shrink-0">
+        <div className="w-72 shrink-0 bg-mar-surface rounded-xl border border-mar-border shadow-xs overflow-hidden sticky top-0 max-h-[calc(100vh-180px)] flex flex-col">
+          <div className="px-3 py-2.5 border-b border-mar-border shrink-0">
             <div className="relative">
               <SearchIcon size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input type="text" placeholder="Search procedures..." value={search} onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 text-xs bg-mar-surface-alt border border-mar-border rounded-md text-mar-text placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors" />
+                className="w-full pl-7 pr-3 py-1.5 text-xs bg-mar-surface-alt border border-mar-border rounded-md text-mar-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-mar-accent/40 focus:border-mar-accent/60 transition-colors" />
             </div>
           </div>
           <div className="overflow-y-auto flex-1 p-2">

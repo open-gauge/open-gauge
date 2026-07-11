@@ -40,7 +40,7 @@ function MiniDonut({ slices, centerLabel }: { slices: Slice[]; centerLabel: stri
     : slices.map((s) => ({ label: s.name, value: s.value, color: s.color }));
 
   return (
-    <div className="flex-shrink-0">
+    <div className="shrink-0">
       <PieChart
         data={data}
         size={120}
@@ -69,17 +69,17 @@ interface CardProps {
 
 function StatCard({ label, centerLabel, icon, iconCls, slices, filterHref }: CardProps) {
   return (
-    <div className="bg-mar-surface rounded-xl border border-mar-border p-4 shadow-sm flex flex-col gap-3">
+    <div className="bg-mar-surface rounded-xl border border-mar-border p-4 shadow-xs flex flex-col gap-3">
       {/* Header: icon + label + optional filter */}
       <div className="flex items-center gap-2">
-        <span className={`${iconCls} flex-shrink-0`}>{icon}</span>
+        <span className={`${iconCls} shrink-0`}>{icon}</span>
         <p className="text-xs font-medium text-gray-500 uppercase tracking-wide leading-none flex-1">
           {label}
         </p>
         {filterHref && (
           <Link
             href={filterHref}
-            className="text-gray-300 hover:text-mar-accent transition-colors flex-shrink-0"
+            className="text-gray-300 hover:text-mar-accent transition-colors shrink-0"
             title="View in asset registry"
           >
             <FilterIcon size={12} />
