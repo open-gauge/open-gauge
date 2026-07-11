@@ -1,0 +1,43 @@
+---
+title: Standards & glossary
+description: The GUM/VIM nomenclature MAR uses, and the standards its calibration engine implements.
+---
+
+## Standards MAR implements
+
+| Standard | Title | Relevance to MAR |
+|---|---|---|
+| **JCGM 100:2008 (GUM)** | Guide to the expression of uncertainty in measurement | The foundational document behind [the uncertainty budget](/docs/guide/calibration/uncertainty-budget) — Type A/B evaluation, combination, expansion, coverage factors. |
+| **JCGM GUM-6:2020** | Developing and using measurement models | The most directly applicable document to MAR's calibration-coefficient data model — coefficient covariance, propagating uncertainty through a fitted curve. |
+| **ISO/IEC 17025:2017** | General requirements for the competence of testing and calibration laboratories | §7.1.3/§7.8.6 require documenting a [decision rule](/docs/guide/calibration/decision-rules) whenever a pass/fail statement is issued; §7.8.4.3 governs what a certificate may state about calibration intervals. |
+| **JCGM GUM-1:2023** | Guide to the expression of uncertainty in measurement — Part 1: Introduction | A roadmap/overview of the reorganized GUM document suite. |
+
+## Core nomenclature (GUM / VIM)
+
+MAR's UI, API field names, and certificate language use these terms precisely — they are not
+interchangeable synonyms.
+
+| Term | Symbol | Definition |
+|---|---|---|
+| Measurand | $Y$ | The particular quantity subject to measurement. |
+| Input quantities | $X_1, \ldots, X_N$ | Quantities the measurand depends on: $Y = f(X_1, \ldots, X_N)$. |
+| Output estimate | $y$ | The computed measurement result, $y = f(x_1, \ldots, x_N)$. |
+| Standard uncertainty | $u(x_i)$ | Uncertainty of a result expressed as one standard deviation. |
+| Type A evaluation | — | Uncertainty evaluated by statistical analysis of a series of observations (e.g. repeatability of calibration-point residuals). |
+| Type B evaluation | — | Uncertainty evaluated by any other means: manufacturer specs, calibration certificates, handbook data, resolution, judgement. Type A/B is a classification of *evaluation method*, not of "random" vs. "systematic" error — GUM explicitly deprecates the term "systematic uncertainty." |
+| Combined standard uncertainty | $u_c(y)$ | Standard uncertainty of a result derived from several other quantities — the positive square root of a sum of variance/covariance terms weighted by sensitivity. |
+| Expanded uncertainty | $U$ | $U = k \cdot u_c(y)$. Defines an interval expected to encompass a stated fraction of values reasonably attributable to the measurand. |
+| Coverage factor | $k$ | Numerical multiplier applied to $u_c(y)$ to obtain $U$. Must always be stated alongside $U$. |
+| Sensitivity coefficient | $c_i = \partial f/\partial x_i$ | Describes how $y$ varies with a small change in $x_i$. |
+| Degrees of freedom | $\nu$ | Reliability indicator of a standard uncertainty estimate (e.g. $\nu = n-1$ for a mean of $n$ observations, $\nu = n-m$ for an $m$-parameter least-squares fit). |
+| Correlation coefficient | $r(x_i, x_j)$ | $r = u(x_i, x_j) / [u(x_i)u(x_j)]$, bounded $[-1, 1]$. |
+| Correction | — | A value added, or factor applied, to compensate a *recognized* systematic effect. GUM assumes all such corrections are applied **before** uncertainty evaluation. |
+
+### Error ≠ Uncertainty
+
+**Error** is an idealized, unknowable quantity (result − true value). **Uncertainty** is a
+*positive* parameter characterizing the dispersion of values reasonably attributable to the
+measurand. MAR's field names (`max_error`, `combined_uncertainty`, `expanded_uncertainty`)
+are chosen to be consistent with this distinction — `max_error` is an assessed error from
+real data, while the uncertainty fields describe the *doubt* around a result, not the result
+itself.

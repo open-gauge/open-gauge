@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+@import "katex/dist/katex.min.css";
+
+/* Nod to MAR's brand accent color, used across apps/web (see AGENTS.md Design System). */
+:root {
+  --color-fd-primary: #2f819b;
+  --color-fd-primary-foreground: #ffffff;
+}
+
+.dark {
+  --color-fd-primary: #3d9ab8;
+  --color-fd-primary-foreground: #08131a;
+}

@@ -1,0 +1,38 @@
+---
+title: Locations
+description: Setting up the location hierarchy, marking calibration labs, and tracking asset movement.
+---
+
+**Locations** in MAR form a hierarchical tree — organization → site → building → laboratory →
+whatever level of detail makes sense for your facilities. Manage them from the
+**Locations** page in the sidebar.
+
+## Creating the hierarchy
+
+Each location has a **name**, an optional **code** (unique per organization, useful for
+short human-readable references), a **type** (e.g. `site` / `building` / `laboratory`), and an
+optional **parent location** — pick a parent to nest it under an existing node, or leave it
+blank to create a new root node. Address and GPS coordinates (latitude/longitude) are optional
+and mostly useful for multi-site organizations.
+
+## Marking a calibration lab
+
+Check **"Calibration lab"** on any location that is a valid place to *perform* a calibration.
+Only locations flagged this way appear in the calibration wizard's "Calibration location"
+picker — this keeps that list focused on actual lab benches or field-cal stations rather than
+every warehouse or office in the tree.
+
+## Assigning assets to a location
+
+An asset's current location is set from the asset detail page. Every time an asset's location
+changes, MAR records a new entry in its location history (with a timestamp, who moved it, and
+an optional reason/notes) rather than silently overwriting the previous location — so "where
+was this instrument on a given date" stays answerable even after it's moved multiple times.
+This mirrors MAR's general approach to history: see
+[Data model & concepts](/docs/guide/concepts/data-model).
+
+## Retiring a location
+
+Locations use the same soft-delete pattern as assets (`is_active` / `archived_at`, see
+[Data model & concepts](/docs/guide/concepts/data-model)) — archiving a location doesn't delete
+the historical record of any asset that was once assigned there.

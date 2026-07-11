@@ -1,0 +1,47 @@
+---
+title: Decision rules & conformity
+description: How MAR decides pass/fail once measurement uncertainty is in the picture — simple acceptance, guard-banding, and shared risk.
+---
+
+ISO/IEC 17025 §7.1.3 and §7.8.6 require that whenever a lab issues a pass/fail statement, it
+documents **which decision rule** was applied — a bare "reading within spec" comparison isn't
+sufficient once measurement uncertainty is accounted for. MAR stores the decision rule and the
+resulting conformity statement on every calibration [#decision-rule].
+
+## The three rules
+
+Let $\text{error}$ be the calibration's [max error](/docs/guide/calibration/curve-fitting#max-error)
+and $\text{tolerance}$ be the channel's accuracy spec (e.g. ±0.5 °C, or ±1% FS converted to an
+absolute value), and $U$ be the [expanded uncertainty](/docs/guide/calibration/uncertainty-budget#expanded-uncertainty).
+
+| Rule | Passes when | Effect | When to use |
+|---|---|---|---|
+| **Simple acceptance** (default) | $\text{error} \le \text{tolerance}$ | Ignores uncertainty entirely. | No formal risk analysis done yet, or the customer hasn't agreed to a different rule. |
+| **Guard band** | $\text{error} + U \le \text{tolerance}$ | The acceptance zone shrinks inward by $U$. | Reduces false-accept risk — use when a false *pass* is costly. |
+| **Shared risk** | $\text{error} - U \le \text{tolerance}$ | The acceptance zone expands outward by $U$. | Reduces false-reject risk, at the cost of some false-accept risk near the boundary — use when a false *fail* is costly. |
+
+Notice these three rules can genuinely disagree on the *same* fit and the *same* spec —
+see [Example 1.3](/docs/guide/calibration/examples/rtd-linear#bonus-check) for a worked case
+where all three rules produce a different verdict from identical input data.
+
+## What gets stored
+
+Every calibration stores a `conformity_statement` carrying the full record: the decision rule
+used, a human-readable rendering of the specification (e.g. `"±0.5% of full scale"`), the
+expanded uncertainty applied (if any), whether it passed, and a reason (populated only when no
+accuracy spec was configured at all, meaning conformity wasn't evaluated).
+
+## Saving a non-conforming calibration
+
+Saving is **never blocked** by a non-conforming result. A failed calibration is itself an
+important record — MAR's [calibration philosophy](/docs/guide/concepts/data-model) treats
+history as immutable and never suppresses a real result just because it's inconvenient. When a
+result doesn't conform, the save-confirmation dialog names the specification and decision rule
+explicitly, and the save button relabels to **"Save anyway."**
+
+## No standalone tolerance preview
+
+There's no separate client-side "what if" tolerance field — an earlier version of the wizard
+had one, disconnected from the channel's real spec and never persisted, which could contradict
+the actual saved conformity result. The conformity statement shown in the wizard's uncertainty
+panel *is* the one that gets saved and printed on the certificate.

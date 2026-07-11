@@ -1,0 +1,61 @@
+---
+title: Units & conversions
+description: Every physical quantity MAR supports, its SI storage unit, and the display-unit conversion factors.
+---
+
+All stored numeric values in MAR's database are in **SI units**. The unit you pick in the UI
+(e.g. °C, kPa, psi) is a *display* unit — MAR converts to/from SI at the boundary, and stores
+the display unit alongside the value so it can round-trip correctly.
+
+| Physical quantity | SI unit | Display units → SI |
+|---|---|---|
+| Temperature | K | °C → `K = °C + 273.15` · °F → `K = (°F − 32) × 5/9 + 273.15` |
+| Pressure | Pa | kPa ×1,000 · MPa ×1,000,000 · bar ×100,000 · psi ×6,894.757 · hPa ×100 · atm ×101,325 · mmHg ×133.322 · inHg ×3,386.389 · inH₂O ×249.0889 |
+| Flow (volumetric) | m³/s | m³/h ÷3,600 · L/min ÷60,000 · gal/min (US) ×6.309×10⁻⁵ |
+| Flow (mass) | kg/s | kg/h ÷3,600 · g/min ÷60,000 · lb/min ×0.00755987 |
+| Level | m | mm ÷1,000 · cm ÷100 · in ×0.0254 · ft ×0.3048 · % (application-dependent) |
+| Humidity | %RH | g/m³ (no universal conversion) · dew point (requires psychrometric calculation) |
+| Force | N | kN ×1,000 · kgf ×9.80665 · lbf ×4.44822 |
+| Torque | N·m | kgf·m ×9.80665 · lbf·ft ×1.35582 |
+| Mass | kg | g ÷1,000 · mg ÷1,000,000 · lb ×0.45359237 |
+| Strain | m/m | µε ×10⁻⁶ |
+| Displacement | m | nm ×10⁻⁹ · µm ×10⁻⁶ · mm ×10⁻³ · cm ×10⁻² · in ×0.0254 · ft ×0.3048 |
+| Angle | rad | ° × π/180 |
+| Angular velocity | rad/s | rpm × 2π/60 · °/s × π/180 |
+| Angular acceleration | rad/s² | °/s² × π/180 |
+| Velocity | m/s | km/h ÷3.6 · mph ×0.44704 · knots ×0.514444 |
+| Acceleration | m/s² | g ×9.80665 |
+| Sound pressure | Pa | dB/dBA/dBC are logarithmic scales — not directly convertible without a reference pressure |
+| Voltage | V | mV ÷1,000 · kV ×1,000 |
+| Current | A | mA ÷1,000 · kA ×1,000 |
+| Resistance | Ω | kΩ ×1,000 · MΩ ×1,000,000 |
+| Power | W | kW ×1,000 · MW ×1,000,000 |
+| Energy | J | Wh ×3,600 · kWh ×3,600,000 · MWh ×3,600,000,000 |
+| Frequency | Hz | kHz ×1,000 · MHz ×1,000,000 · GHz ×1,000,000,000 · bpm ÷60 |
+| Capacitance | F | µF ×10⁻⁶ · nF ×10⁻⁹ · pF ×10⁻¹² |
+| Inductance | H | mH ×10⁻³ · µH ×10⁻⁶ |
+| Impedance | Ω | kΩ ×1,000 · MΩ ×1,000,000 |
+| Magnetic field | T | mT ×10⁻³ · µT ×10⁻⁶ · G ×10⁻⁴ |
+| Electric field | V/m | kV/m ×1,000 |
+| Radiation | Gy (absorbed dose) | Sv is equivalent dose (not directly convertible) · rem → Sv ×0.01 · Bq is activity (a different quantity) |
+| Illuminance | lx | foot-candle ×10.7639 |
+| Luminance | cd/m² | — |
+| Concentration | mol/m³ | ppm, ppb, %, mg/m³ depend on substance — requires molecular weight and conditions |
+| pH | dimensionless | — |
+| Conductivity | S/m | mS/cm ×0.1 · µS/cm ×0.0001 |
+| Salinity | kg/m³ | g/L (numerically identical) |
+| Dissolved oxygen | mg/L | % saturation requires temperature and pressure |
+| Oxidation-reduction potential | V | mV ÷1,000 |
+| Density | kg/m³ | g/cm³ ×1,000 |
+| Viscosity | Pa·s | cP ×0.001 |
+| Moisture | kg/kg | % ÷100 |
+| Particle concentration | particles/m³ | particles/ft³ ×35.3147 |
+| Wind direction | rad | ° × π/180 |
+| Precipitation | m | mm ÷1,000 · in ×0.0254 |
+| Blood oxygen | % | — |
+| Surface roughness | m | µm ×10⁻⁶ |
+
+Some quantities (sound pressure, radiation, concentration) are noted above as **not**
+universally convertible — MAR stores whatever the user entered for these without attempting a
+lossy conversion, since a correct conversion needs additional context (a reference value,
+molecular weight, measurement conditions) that isn't always available.

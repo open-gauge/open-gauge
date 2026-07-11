@@ -1,0 +1,107 @@
+---
+title: "Example 2 — Pressure transducer, quadratic fit (auto degree selection)"
+description: Automatic polynomial-degree selection via AIC, non-linearity detection, and the t-distribution coverage-factor path.
+---
+
+Exercises: automatic polynomial-degree selection (AIC), non-linearity detection, and the
+t-distribution / Welch-Satterthwaite coverage-factor path.
+
+## 2.0 Setup
+
+One asset, one channel:
+
+| Field | Value |
+|---|---|
+| Name | Line Pressure Transmitter |
+| Physical quantity | Pressure |
+| Measurement type | Absolute (either is fine for this example) |
+| Range min / max | 0 / 700 |
+| Unit | kPa |
+| Accuracy value | 1.0 |
+| Accuracy unit | **% FS** — fill in Range min/max first, then pick "% FS" as the first option |
+| Resolution | 0.5 |
+| Resolution unit | kPa |
+
+Leave `measurement_uncertainty` blank (not used in this example).
+
+## 2.1 Calibration wizard settings
+
+Type **external** (no reference asset needed), **Regression degree: Auto** (the point of this
+example), distribution **t-distribution**, confidence **95%** (the t-distribution path derives
+its own coverage factor from the confidence level and the fit's effective degrees of freedom),
+decision rule **Simple acceptance**.
+
+Data points — a transducer with a small but real quadratic non-linearity across its range:
+
+| # | Reference (kPa) | Measured (kPa) |
+|---|---|---|
+| 1 | 0.60 | 0 |
+| 2 | 102.35 | 100 |
+| 3 | 212.62 | 200 |
+| 4 | 330.42 | 300 |
+| 5 | 456.64 | 400 |
+| 6 | 590.40 | 500 |
+| 7 | 732.59 | 600 |
+| 8 | 882.38 | 700 |
+
+## The math
+
+MAR tries degree 1 through 5 and picks the lowest degree whose AIC isn't beaten by more than 2
+points by a higher degree (the parsimony rule). For this data it selects **degree 2**:
+
+$$
+\text{reference} = 0.00040 \cdot \text{measured}^2 + 0.98014 \cdot \text{measured} + 0.50917
+$$
+
+(Try forcing "Regression degree: 2" explicitly — you should get the same coefficients as the
+auto-selected result, confirming AIC picked the same degree you'd pick by eye from the data.)
+
+| Point | Calculated | Residual |
+|---|---|---|
+| 1 | 0.509167 | +0.090833 |
+| 2 | 102.519881 | −0.169881 |
+| 3 | 212.523929 | +0.096071 |
+| 4 | 330.521310 | −0.101310 |
+| 5 | 456.512024 | +0.127976 |
+| 6 | 590.496071 | −0.096071 |
+| 7 | 732.473452 | +0.116548 |
+| 8 | 882.444167 | −0.064167 |
+
+$n = 8$, $k = 3$ (degree 2 → 3 coefficients) → residual dof $= 5$. Max error = **0.169881**
+(point 2); span $= 882.38 - 0.6 = 881.78$ → %FS error $= 0.169881/881.78 \times 100\% =
+\mathbf{0.0193\%}$.
+
+**Non-linearity = 3.17% FS** — the deviation of the quadratic fit from its own best-fit
+straight line. This is the number confirming "yes, a straight line would have been a
+noticeably worse fit" — that degree 2 was the right call, not degree 1.
+
+**Uncertainty budget:**
+
+| Source | u |
+|---|---|
+| fit_residuals (Type A, dof = 5) | 0.119470 |
+| resolution (Type B) = $0.5/\sqrt{12}$ | 0.144338 |
+
+- Combined: $u_c = \sqrt{0.119470^2 + 0.144338^2} = \mathbf{0.187367\ kPa}$.
+- $\nu_{\text{eff}} = u_c^4 / (u_A^4/5) \approx \mathbf{30.2}$ (only `fit_residuals` has finite
+  dof).
+- Expanded (t-distribution): $k = t_{0.975,\,\nu=30.2} \approx 2.042 \Rightarrow U = 0.187367
+  \times 2.042 = 0.382523 \approx \mathbf{0.38\ kPa}$ (2 sig figs).
+
+**Decision rule (simple acceptance, spec = ±1.0% FS = ±8.818 kPa):**
+
+$$
+\text{max error} = 0.169881 \le 8.818 \implies \textbf{CONFORMS}
+$$
+
+(comfortably — this is a "good" calibration example).
+
+## Expected results
+
+| Field | Value |
+|---|---|
+| Polynomial degree | 2 (auto-selected) |
+| Non-linearity | 3.17% |
+| Combined uncertainty | shown rounded: **0.19** |
+| Expanded uncertainty (±) | shown rounded: **0.38** |
+| Statement | CONFORMS to ±1.0% of full scale, decision rule = Simple acceptance |

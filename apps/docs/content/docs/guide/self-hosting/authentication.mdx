@@ -1,0 +1,42 @@
+---
+title: Authentication
+description: Local users, OAuth2/OIDC, enterprise SSO, and role-based access control.
+---
+
+Authentication in MAR is designed to be self-hostable end to end — including in fully
+offline / air-gapped environments — and is never coupled to a cloud-only provider.
+
+## Supported authentication modes
+
+- **Local users and passwords** — the default for small self-hosted installations. Works
+  fully offline; no external dependency.
+- **OAuth2 / OpenID Connect** — for organizations that already run an identity provider.
+- **Enterprise SSO** — via an OIDC-compatible provider. **Keycloak** is the recommended choice
+  for enterprise deployments that want self-hosted SSO without depending on a cloud identity
+  service.
+
+Authentication sits behind a clear abstraction layer in the backend, so a deployment can move
+from local auth to Keycloak (or another OIDC provider) without changing any business logic
+elsewhere in MAR.
+
+## Roles (RBAC)
+
+Every user has exactly one role, which governs what they can see and change:
+
+| Role | Typical use |
+|---|---|
+| `viewer` | Read-only access — browse assets, calibrations, and certificates. |
+| `technician` | Day-to-day operational work: add sensors, run calibrations, update locations. |
+| `admin` | Organization administration: manage users, teams, procedures. |
+| `superadmin` | System-level administration across organizations. |
+
+Protected endpoints reject unauthenticated requests, and role checks are enforced on the
+backend (not just hidden in the UI) — see the [Auth](/docs/api/auth) and
+[Admin](/docs/api/admin) sections of the API Reference for the exact endpoints each role can
+reach.
+
+## Session tokens
+
+Once authenticated, the frontend and any API client carry a session token on subsequent
+requests. See [Auth](/docs/api/auth) in the API Reference for the exact login/refresh/logout
+endpoints and payload shapes.

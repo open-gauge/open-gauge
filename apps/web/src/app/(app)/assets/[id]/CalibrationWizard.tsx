@@ -13,8 +13,10 @@ import { COLORS, DECISION_RULE_LABEL, UNCERTAINTY_SOURCE_LABEL } from "@/lib/tok
 import { roundToSigFigs } from "@/lib/uncertainty-format";
 import { getUnitsForQuantity, getOutputUnits, resolveSpecValue } from "@/lib/sensor-options";
 import { useAuth } from "@/lib/auth-context";
+import { STAT_DOCS_LINKS } from "@/lib/docs-links";
+import { StatRow } from "@/components/stat-row";
 import {
-  CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, WarningIcon, XIcon,
+  CheckIcon, ChevronDownIcon, PlusIcon, TrashIcon, WarningIcon, XIcon,
 } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
@@ -122,30 +124,6 @@ function StepIndicator({ step, steps }: { step: number; steps: string[] }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Stat row (for the summary panel in Step 3)
-// ---------------------------------------------------------------------------
-
-function StatRow({ label, value, tip }: { label: string; value: string | null | undefined; tip?: string }) {
-  if (value == null) return null;
-  return (
-    <div className="flex items-center justify-between gap-2 py-1.5 border-b border-mar-border last:border-b-0">
-      <span className="flex items-center gap-1 text-xs text-gray-400">
-        {label}
-        {tip && (
-          <span className="relative group/t">
-            <InfoIcon size={10} className="cursor-help" />
-            <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover/t:block w-56 bg-gray-900 text-white text-[10px] rounded px-2 py-1.5 z-50 shadow-lg whitespace-normal">
-              {tip}
-            </span>
-          </span>
-        )}
-      </span>
-      <span className="text-xs font-mono text-mar-text">{value}</span>
     </div>
   );
 }
@@ -1679,6 +1657,7 @@ function Step3({
               label="Expanded uncertainty (±)"
               value={`${fmtN(expandedU)} ${referenceUnit}`}
               tip={`As stated on the calibration certificate, k=${fmtN(covFactor, 3)}.`}
+              docsHref="/docs/guide/calibration/coefficients-only"
             />
           )}
         </div>
@@ -1847,16 +1826,16 @@ function Step3({
             <StatRow label="Valid range" value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
             <StatRow label="Polynomial degree" value={String(result.poly_degree)} />
             <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Statistics</p>
-            <StatRow label="R²" value={fmtN(result.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." />
-            <StatRow label="RMSE" value={`${fmtN(result.rmse)} ${referenceUnit}`} tip="Root mean square error — typical magnitude of residuals." />
-            <StatRow label="Max error" value={`${fmtN(result.max_error)} ${referenceUnit}`} tip="Largest absolute residual." />
-            <StatRow label="%FS error" value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip="Max error as % of full measurement span." />
-            <StatRow label="Non-linearity" value={`${fmtN(result.non_linearity_pct, 3)}%`} tip="Max deviation of fitted curve from a straight line, as % FS." />
+            <StatRow label="R²" value={fmtN(result.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." docsHref={STAT_DOCS_LINKS.r_squared} />
+            <StatRow label="RMSE" value={`${fmtN(result.rmse)} ${referenceUnit}`} tip="Root mean square error — typical magnitude of residuals." docsHref={STAT_DOCS_LINKS.rmse} />
+            <StatRow label="Max error" value={`${fmtN(result.max_error)} ${referenceUnit}`} tip="Largest absolute residual." docsHref={STAT_DOCS_LINKS.max_error} />
+            <StatRow label="%FS error" value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip="Max error as % of full measurement span." docsHref={STAT_DOCS_LINKS.full_scale_error} />
+            <StatRow label="Non-linearity" value={`${fmtN(result.non_linearity_pct, 3)}%`} tip="Max deviation of fitted curve from a straight line, as % FS." docsHref={STAT_DOCS_LINKS.non_linearity} />
             {result.repeatability != null && (
-              <StatRow label="Repeatability†" value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip="Std deviation at repeated reference values." />
+              <StatRow label="Repeatability†" value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip="Std deviation at repeated reference values." docsHref={STAT_DOCS_LINKS.repeatability} />
             )}
             {result.hysteresis != null && (
-              <StatRow label="Hysteresis†" value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip="Max difference between ascending and descending sweeps." />
+              <StatRow label="Hysteresis†" value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip="Max difference between ascending and descending sweeps." docsHref={STAT_DOCS_LINKS.hysteresis} />
             )}
             <p className="text-xs font-semibold text-mar-text pt-3 border-t border-mar-border mb-2">Uncertainty budget</p>
             {result.uncertainty_budget.map((c) => (
@@ -1865,12 +1844,14 @@ function Step3({
                 label={UNCERTAINTY_SOURCE_LABEL[c.source] ?? c.source}
                 value={`${fmtN(c.standard_uncertainty)} ${referenceUnit}`}
                 tip={`${c.description} (${c.distribution} distribution, divisor=${fmtN(c.divisor, 3)}).`}
+                docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
               />
             ))}
             <StatRow
               label="Combined (RSS)"
               value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`}
               tip="Root-sum-square of the budget rows above (GUM Eq. 10)."
+              docsHref={STAT_DOCS_LINKS.combined_uncertainty}
             />
             <StatRow
               label="Expanded (±)"
@@ -1881,6 +1862,7 @@ function Step3({
                   : `k=${fmtN(result.coverage_factor, 3)} at ${result.confidence_level}% confidence.`)
                 + " Rounded to 2 significant figures (GUM §7.2.6)."
               }
+              docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
             />
             {result.conformity_statement.specification && (
               <>
@@ -1901,6 +1883,7 @@ function Step3({
                   label="Decision rule"
                   value={DECISION_RULE_LABEL[result.conformity_statement.decision_rule] ?? result.conformity_statement.decision_rule}
                   tip="How measurement uncertainty is factored into this conformity statement, per ISO/IEC 17025 §7.1.3 and §7.8.6. Stored and printed on the certificate."
+                  docsHref={STAT_DOCS_LINKS.decision_rule}
                 />
               </>
             )}

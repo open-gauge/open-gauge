@@ -11,15 +11,19 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DashboardIcon,
+  DocumentIcon,
   MapPinIcon,
   ProceduresIcon,
   SettingsIcon,
 } from "@/components/icons";
+import { docsUrl } from "@/lib/docs-links";
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  /** Opens in a new tab instead of client-side routing — used for links into apps/docs. */
+  external?: boolean;
 }
 
 const WORKSPACE_NAV: NavItem[] = [
@@ -31,8 +35,9 @@ const WORKSPACE_NAV: NavItem[] = [
 ];
 
 const SYSTEM_NAV: NavItem[] = [
-  { href: "/api-explorer", label: "API Explorer", icon: <ApiIcon size={15} /> },
-  { href: "/settings",     label: "Settings",     icon: <SettingsIcon size={15} /> },
+  { href: docsUrl("/docs"),     label: "Documentation", icon: <DocumentIcon size={15} />, external: true },
+  { href: docsUrl("/docs/api"), label: "API Reference", icon: <ApiIcon size={15} />, external: true },
+  { href: "/settings",          label: "Settings",      icon: <SettingsIcon size={15} /> },
 ];
 
 export default function Sidebar() {
@@ -180,18 +185,16 @@ function NavLink({
   active: boolean;
   collapsed: boolean;
 }) {
-  return (
-    <Link
-      href={item.href}
-      title={collapsed ? item.label : undefined}
-      className={`flex items-center rounded-md text-sm transition-colors whitespace-nowrap ${
-        collapsed ? "justify-center px-0 py-2 w-full" : "gap-2.5 px-3 py-2"
-      } ${
-        active
-          ? "bg-mar-accent/10 text-mar-accent font-medium dark:bg-white/10 dark:text-white"
-          : "text-gray-500 hover:text-gray-800 hover:bg-mar-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
-      }`}
-    >
+  const className = `flex items-center rounded-md text-sm transition-colors whitespace-nowrap ${
+    collapsed ? "justify-center px-0 py-2 w-full" : "gap-2.5 px-3 py-2"
+  } ${
+    active
+      ? "bg-mar-accent/10 text-mar-accent font-medium dark:bg-white/10 dark:text-white"
+      : "text-gray-500 hover:text-gray-800 hover:bg-mar-border dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
+  }`;
+
+  const content = (
+    <>
       <span
         className={`flex-shrink-0 ${
           active
@@ -202,6 +205,20 @@ function NavLink({
         {item.icon}
       </span>
       {!collapsed && item.label}
+    </>
+  );
+
+  if (item.external) {
+    return (
+      <a href={item.href} target="_blank" rel="noopener noreferrer" title={collapsed ? item.label : undefined} className={className}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={item.href} title={collapsed ? item.label : undefined} className={className}>
+      {content}
     </Link>
   );
 }

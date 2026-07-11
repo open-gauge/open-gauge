@@ -1,0 +1,37 @@
+---
+title: Coefficients-only calibrations
+description: Recording an external lab certificate that states the calibration polynomial directly, with no raw data points.
+---
+
+Some sensors — mainly ones sent to an outside lab — come back with a calibration certificate
+that states the calibration polynomial's coefficients directly, with no raw reference/measured
+data points included. For these, MAR has a dedicated path so you don't have to fabricate fake
+data points just to record the result.
+
+## Using it
+
+On an **External** calibration, checking **"Coefficients only (no raw data)"** in Step 1
+replaces the wizard's raw-data step with a manual coefficient-entry form:
+
+- **Polynomial order** (1–5) and its **coefficients**, entered in the same descending-power
+  convention MAR's own regression engine uses (highest degree first, constant term last).
+- The **valid range** (min/max) the polynomial applies over.
+- Optionally, **"Uncertainty stated on certificate"** — if the lab's certificate states an
+  expanded uncertainty and coverage factor, enter them here to store them directly (rather
+  than fabricating a fit-derived value), producing a single `external_certificate_stated` row
+  in the [uncertainty budget](/docs/guide/calibration/uncertainty-budget#contributions).
+
+## What's intentionally left blank
+
+Because there's no raw data, MAR doesn't compute (and doesn't display) a fit — this path
+deliberately leaves **R², RMSE**, the `fit_residuals` budget row, and, critically,
+**the decision rule and conformity statement**, all empty.
+
+A conformity (pass/fail) statement requires an *assessed error* to compare against a spec
+(GUM §6.3, ISO/IEC 17025 §7.8.6) — a coefficients-only record has no assessed error, only the
+calibration function itself. So MAR doesn't show or store a fabricated CONFORMS/DOES NOT
+CONFORM badge for these records. If you need a conformity statement, use a regular
+(non-coefficients-only) calibration with the actual raw data instead.
+
+See [Example 4](/docs/guide/calibration/examples/coefficients-only-certificate) for a complete
+worked case, including what gets saved and displayed.

@@ -1,0 +1,38 @@
+{
+  "name": "docs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "node scripts/fetch-openapi.mjs",
+    "dev": "next dev -p 3000",
+    "prebuild": "node scripts/fetch-openapi.mjs && node scripts/generate-openapi.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "fumadocs-core": "16.11.2",
+    "fumadocs-mdx": "15.1.0",
+    "fumadocs-openapi": "11.1.1",
+    "fumadocs-ui": "16.11.2",
+    "katex": "^0.16.11",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "shiki": "^1.24.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "postcss": "^8",
+    "tailwindcss": "4.3.2",
+    "typescript": "^5"
+  }
+}

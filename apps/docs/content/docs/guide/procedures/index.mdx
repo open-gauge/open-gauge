@@ -1,0 +1,46 @@
+---
+title: Procedures
+description: Reusable calibration procedure templates — steps, equipment, materials, and acceptance criteria.
+---
+
+A **procedure** is a reusable calibration procedure template, scoped to a physical quantity
+(e.g. a documented process for calibrating temperature RTDs against a dry-block reference).
+Manage them from the **Procedures** page in the sidebar.
+
+## Why procedures exist
+
+ISO/IEC 17025 requires that a lab document and follow defined procedures for its calibration
+work. MAR's procedure templates capture that documentation once and let you reference it from
+every calibration performed the same way, rather than re-typing methodology notes each time.
+
+## Fields
+
+| Field | Purpose |
+|---|---|
+| Name & physical quantity | What this procedure calibrates, and for which quantity. |
+| Version | Free-text version string (e.g. `"1.0"`) — bump it when the methodology changes. |
+| Difficulty | Informational skill-level guidance for whoever performs it. |
+| Standard reference | Free-text reference to an external standard (an ISO/ASTM number, etc.). |
+| Author, duration | Who wrote it, and roughly how long it takes to perform. |
+| Tags | Free-form labels for search/filtering. |
+| Equipment | Structured list of required equipment. |
+| Materials | Structured list of required materials/consumables. |
+| Environment | Required environmental conditions (temperature, humidity, etc.) to perform the procedure under. |
+| Safety notes | Free-text list of safety considerations. |
+| Steps | The ordered procedure steps themselves. |
+| Acceptance criteria | What counts as a pass for this procedure, documented alongside it. |
+
+## Linking a procedure to a channel
+
+On a sensor channel, set **calibration method** to a saved procedure — this becomes the
+channel's *default* procedure, pre-selected whenever you start a new internal calibration for
+that channel. It's just a default: any calibration can reference a different procedure (or
+none) if the situation calls for it.
+
+## Where procedures show up in a calibration
+
+An **internal** calibration (see
+[Calibration overview](/docs/guide/calibration/overview)) can reference the procedure that was
+followed (`internal_procedure_id`), and that reference is printed on the resulting certificate
+alongside the reference standard used and the environmental conditions recorded — the full
+traceability chain a calibration certificate needs.

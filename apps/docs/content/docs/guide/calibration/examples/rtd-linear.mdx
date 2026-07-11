@@ -1,0 +1,218 @@
+---
+title: "Example 1 — Temperature RTD, linear fit, full uncertainty budget"
+description: A two-calibration example exercising linear regression, all four uncertainty contributions at once, and all three decision rules.
+---
+
+Exercises: linear regression, all four Type A/B budget contributions at once (fit residuals,
+reference standard, resolution, sensor nominal accuracy), the reference-standard-uncertainty
+auto-fetch feature, and the three decision rules diverging on identical data.
+
+Every number below was produced by running MAR's real calculation engine against the input
+data shown, then independently re-derived by hand from the underlying formulas to confirm they
+match. If you enter the same setup and data through the UI, you should see the same numbers (up
+to the [display rounding](/docs/guide/calibration/examples/rounding-and-troubleshooting)
+described at the end).
+
+This example has **two calibrations**: first you calibrate a reference thermometer (so it has
+an expanded uncertainty on file), then you calibrate the working sensor *against* that
+reference — this is what makes MAR auto-populate the "reference standard" budget row.
+
+## 1.0 Setup — two assets
+
+**Asset A — reference standard** (Assets → New Asset):
+
+| Field | Value |
+|---|---|
+| Name | Reference PT100 Standard |
+| Manufacturer / Model | anything, e.g. Fluke / 5628 |
+| Asset type | sensor |
+
+One channel:
+
+| Field | Value |
+|---|---|
+| Channel ID | CH1 |
+| Physical quantity | Temperature |
+| Range min / max | 0 / 100 |
+| Unit | °C |
+| Calibration role | **checked** (reference standard) |
+
+Leave accuracy/resolution/uncertainty blank on this asset — only its *calibration record's*
+expanded uncertainty matters here (computed in 1.1).
+
+**Asset B — working sensor:**
+
+| Field | Value |
+|---|---|
+| Name | Process Line Thermometer |
+| Manufacturer / Model | anything, e.g. Generic / PT100-A |
+| Asset type | sensor |
+
+One channel:
+
+| Field | Value |
+|---|---|
+| Channel ID | CH1 |
+| Physical quantity | Temperature |
+| Range min / max | 0 / 100 |
+| Unit | °C |
+| Accuracy value | 0.5 |
+| Accuracy unit | °C (a real unit means "absolute" — see [The "% FS" convention](/docs/guide/sensors/adding-a-sensor#the-fs-convention)) |
+| Resolution | 0.1 |
+| Resolution unit | °C |
+| Measurement uncertainty | 0.3 |
+| Uncertainty unit | °C |
+| Calibration role | unchecked (not a reference standard) |
+
+Leave "Output signal unit" blank on both channels so the measured-value unit defaults to °C —
+this avoids unit-conversion complexity for this example.
+
+## 1.1 Calibrate the reference standard first
+
+On Asset A, start a calibration: type **internal** (or external — doesn't matter here, no
+reference asset needed), distribution **Normal**, confidence **95%**, no accuracy spec needed
+(skip channel accuracy — it isn't set on this channel).
+
+Data points (reference = a higher-tier standard's value; measured = this reference
+thermometer's reading):
+
+| # | Reference (°C) | Measured (°C) |
+|---|---|---|
+| 1 | 0.000 | 0.010 |
+| 2 | 50.000 | 50.020 |
+| 3 | 100.000 | 99.985 |
+
+### The math
+
+Fitting $\text{reference} = a \cdot \text{measured} + b$ (degree 1) to these 3 points gives
+$a = 1.00025$, $b = -0.01750$.
+
+Residuals (reference − calculated):
+
+| Point | Calculated | Residual |
+|---|---|---|
+| 1 | −0.007498 | **+0.007498** |
+| 2 | 50.015004 | **−0.015004** |
+| 3 | 99.992495 | **+0.007505** |
+
+$n = 3$ points, $k = 2$ parameters → residual degrees of freedom $= 1$.
+
+- **Type A standard uncertainty** = sample std dev of residuals ($\text{ddof}=1$) =
+  **0.012994 °C**.
+- No Type B contributions configured on this channel, so the budget has exactly one row:
+
+| Source | Distribution | u | dof |
+|---|---|---|---|
+| fit_residuals (Type A) | normal | 0.012994 | 1 |
+
+- **Combined uncertainty**: $u_c = \sqrt{0.012994^2} = \mathbf{0.012994\ °C}$.
+- **Coverage factor**: for a normal distribution at 95% confidence,
+  $k = \Phi^{-1}(0.975) \approx \mathbf{1.96}$.
+- **Expanded uncertainty**: $U = k \cdot u_c = 1.96 \times 0.012994 = 0.025467 \approx
+  \mathbf{0.025\ °C}$ (2 sig figs).
+
+### Expected results in the wizard (Step 3)
+
+| Field | Value |
+|---|---|
+| R² | 0.99999993 |
+| RMSE | 0.010609 |
+| Max error | 0.015004 |
+| Combined uncertainty | 0.012994 (shown rounded: **0.013**) |
+| Expanded uncertainty (±) | 0.025467 (shown rounded: **0.025**) |
+
+Save this calibration. **Write down the Expanded uncertainty (0.025 °C)** — Asset B's
+calibration fetches this automatically in the next step.
+
+## 1.2 Calibrate the working sensor against the reference standard
+
+On Asset B, start a calibration: type **internal**, reference asset **Reference PT100
+Standard** (Asset A) — as soon as you pick it, the wizard should show "Ref. standard U: 0.025 °C
+(last calibration of Reference PT100 Standard)." If it shows a manual-entry field instead, the
+fetch didn't find a calibration on Asset A — go back and confirm 1.1 was saved.
+
+Distribution **Normal**, confidence **95%**, decision rule **Guard band (tolerance − U)**, and
+check **"Incl. sensor nominal accuracy"** (folds in the channel's 0.3 °C manufacturer spec).
+
+Data points:
+
+| # | Reference (°C) | Measured (°C) |
+|---|---|---|
+| 1 | 0.00 | 0.05 |
+| 2 | 20.00 | 20.08 |
+| 3 | 40.00 | 39.95 |
+| 4 | 60.00 | 60.12 |
+| 5 | 80.00 | 79.90 |
+| 6 | 100.00 | 100.07 |
+
+### The math
+
+Fit: $a = 1.00038$, $b = -0.04739$.
+
+| Point | Calculated | Residual |
+|---|---|---|
+| 1 | 0.002631 | −0.002631 |
+| 2 | 20.040260 | −0.040260 |
+| 3 | 39.917828 | +0.082172 |
+| 4 | 60.095510 | −0.095510 |
+| 5 | 79.883044 | +0.116956 |
+| 6 | 100.060727 | −0.060727 |
+
+$n = 6$, $k = 2$ → residual dof $= 4$. Max error = **0.116956** (point 5) → %FS error =
+$0.116956/100 \times 100\% = \mathbf{0.117\%}$.
+
+**Uncertainty budget** (four rows this time):
+
+| Source | How it's derived | u |
+|---|---|---|
+| fit_residuals (Type A) | std dev of the 6 residuals, dof = 4 | 0.083509 |
+| reference_standard (Type B) | 0.025467 (Asset A's U) ÷ k=2 | 0.012734 |
+| resolution (Type B) | $0.1/\sqrt{12}$ | 0.028868 |
+| sensor_nominal_accuracy (Type B) | 0.3 ÷ k=2 | 0.150000 |
+
+- **Combined**: $u_c = \sqrt{0.083509^2 + 0.012734^2 + 0.028868^2 + 0.150000^2} =
+  \mathbf{0.174554\ °C}$.
+- **Effective degrees of freedom** (Welch-Satterthwaite — only `fit_residuals` has finite dof;
+  the three Type B rows are exactly-known and drop out of the sum):
+
+  $$
+  \nu_{\text{eff}} = \frac{u_c^4}{u_A^4 / \text{dof}_A} = \frac{0.174554^4}{0.083509^4/4}
+  \approx 76.4
+  $$
+
+- **Expanded** (normal distribution — $\nu_{\text{eff}}$ isn't used for "normal," only for
+  "t"/"chi_squared"): $k = \Phi^{-1}(0.975) \approx 1.96$,
+  $U = 1.96 \times 0.174554 = 0.342120 \approx \mathbf{0.34\ °C}$ (2 sig figs).
+
+**Decision rule (guard band, spec = ±0.5 °C absolute):**
+
+$$
+\text{guard} = U = 0.342120, \quad \text{max error} + \text{guard} = 0.116956 + 0.342120 =
+0.459076 \le 0.5 \implies \textbf{CONFORMS}
+$$
+
+### Expected results
+
+| Field | Value |
+|---|---|
+| Combined uncertainty | shown rounded: **0.17** |
+| Expanded uncertainty (±) | shown rounded: **0.34** |
+| ν_eff (in the Expanded tooltip) | ≈ 76.4 |
+| Statement | **CONFORMS** to ±0.5 (absolute), decision rule = Guard-banded acceptance |
+
+## 1.3 Bonus check — watch the three decision rules disagree [#bonus-check]
+
+Repeat 1.2 with the channel's Accuracy value changed to **0.4** (edit the channel, save, then
+re-run the same 6 points through Step 3 of a new calibration) and try all three
+[decision rules](/docs/guide/calibration/decision-rules) with "Incl. sensor nominal accuracy"
+still checked. Everything above is unchanged (same fit, same budget, same $U = 0.342120$) —
+only the pass/fail flips:
+
+| Decision rule | Check | Result |
+|---|---|---|
+| Simple acceptance | $0.116956 \le 0.4$ | **CONFORMS** |
+| Guard band (− U) | $0.116956 + 0.342120 = 0.459076 \le 0.4$? No | **DOES NOT CONFORM** |
+| Shared risk (+ U) | $0.116956 - 0.342120 = -0.225164 \le 0.4$ | **CONFORMS** |
+
+This is the cleanest way to confirm the decision-rule feature is wired correctly: identical
+data and identical spec, three different verdicts depending only on which rule is selected.

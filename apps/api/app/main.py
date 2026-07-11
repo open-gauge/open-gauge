@@ -29,11 +29,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
+OPENAPI_TAGS = [
+    {"name": "Auth", "description": "Login, session, and token management."},
+    {"name": "Dashboard", "description": "Aggregate KPIs and summaries for the dashboard home screen."},
+    {"name": "Organizations", "description": "Tenant root records."},
+    {"name": "Locations", "description": "Hierarchical site/building/lab location tree."},
+    {"name": "Assets", "description": "The instrumentation asset registry (sensors and DAQs)."},
+    {"name": "Calibrations", "description": "Calibration analysis, records, points, and certificates."},
+    {"name": "Procedures", "description": "Reusable calibration procedure templates."},
+    {"name": "Audit Logs", "description": "Immutable record of significant state changes."},
+    {"name": "Users", "description": "User accounts and profiles."},
+    {"name": "Teams", "description": "Teams within an organization, used for asset ownership."},
+    {"name": "Admin", "description": "Organization- and system-level administration."},
+    {"name": "Health", "description": "Service liveness check."},
+]
+
 app = FastAPI(
     title=settings.app_name,
     description="Measurement Asset Registry API",
     version="0.1.0",
     lifespan=lifespan,
+    openapi_tags=OPENAPI_TAGS,
 )
 
 app.add_middleware(

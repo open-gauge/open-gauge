@@ -1,0 +1,89 @@
+---
+title: Docker Compose deployment
+description: Running the full MAR stack with Docker Compose — services, ports, environment variables, backups, and migrations.
+---
+
+Docker Compose is MAR's primary, first-class deployment target. Every feature is expected to
+work on it — from a Raspberry Pi or Intel N100 mini PC in a lab, to an internal company server.
+Kubernetes support is optional and not required to run MAR.
+
+## Prerequisites
+
+- Docker and Docker Compose installed on the host.
+- Ports `3000`, `3002`, `8000`, `8080`, `9000`, `9001`, and `5432` free (or remapped — see
+  below).
+
+## Bring the stack up
+
+```bash
+cd infrastructure/docker
+docker compose up -d
+```
+
+This builds and starts every service defined in `infrastructure/docker/docker-compose.yml`.
+
+## Services
+
+| Service | Image / build | Port(s) | Purpose |
+|---|---|---|---|
+| `db` | `postgres:15-alpine` | `5432` | The single source of truth for all structured data. |
+| `api` | `apps/api/Dockerfile` | `8000` | FastAPI backend (`/api/v1/...`), OpenAPI schema at `/openapi.json`. |
+| `web` | `apps/web/Dockerfile` | `3000` | The MAR user interface. |
+| `docs` | `apps/docs/Dockerfile` | `3002` | This documentation site (Knowledge Center + API Reference). |
+| `adminer` | `adminer:4` | `8080` | Lightweight web UI for inspecting the Postgres database directly. |
+| `minio` | `minio/minio` | `9000` (S3 API), `9001` (console) | S3-compatible object storage for certificates, datasheets, and images. |
+
+`api`, `web`, and `docs` wait for `db` (and, for `web`/`docs`, `api`) to report healthy before
+starting, via Docker Compose `depends_on: condition: service_healthy` — so a fresh `docker
+compose up -d` comes up in the right order automatically.
+
+## Key environment variables
+
+Set these in `infrastructure/docker/docker-compose.yml` (or an `.env` file it references)
+before deploying anywhere beyond local evaluation:
+
+| Variable | Service | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `api` | Postgres connection string. |
+| `SECRET_KEY` | `api` | Signs session/auth tokens — **change this in production**. |
+| `CORS_ORIGINS` | `api` | JSON array of origins allowed to call the API (must include your `web` URL). |
+| `MINIO_ENDPOINT` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` / `MINIO_BUCKET` | `api` | Object storage credentials. |
+| `MINIO_PUBLIC_URL` | `api` | The externally-reachable MinIO URL used for presigned certificate/file links. |
+| `NEXT_PUBLIC_API_URL` | `web` (build arg) | The browser-reachable API URL, baked in at build time. |
+| `API_INTERNAL_URL` | `web`, `docs` | The container-to-container API URL (e.g. `http://api:8000`), used for server-side requests. |
+| `NEXT_PUBLIC_DOCS_URL` | `web` (build arg) | The browser-reachable docs URL — used by in-app tooltips to deep-link into this documentation. |
+
+## Backups
+
+Two things need backing up:
+
+1. **PostgreSQL** (`postgres_data` volume) — everything structured: assets, calibrations,
+   users, audit logs. Use `pg_dump`/`pg_restore` against the `db` service, or snapshot the
+   named volume.
+2. **MinIO** (`minio_data` volume) — certificates, datasheets, and images. Snapshot the named
+   volume, or use `mc mirror` against the MinIO S3 API.
+
+Losing MinIO data doesn't corrupt calibration records (regenerate certificates on demand via
+`GET /calibrations/{id}/certificate`), but losing PostgreSQL data loses everything — back it up
+on a real schedule, not just the volume snapshot that happens to exist.
+
+## Running database migrations
+
+Migrations use Alembic and live in `apps/api/migrations/versions/`:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml exec api alembic upgrade head
+```
+
+Run this after pulling a new MAR version that includes schema changes, before restarting the
+`api` service on the new image.
+
+## Updating MAR
+
+```bash
+git pull
+docker compose -f infrastructure/docker/docker-compose.yml up -d --build
+docker compose -f infrastructure/docker/docker-compose.yml exec api alembic upgrade head
+```
+
+Rebuilding is safe to run even when nothing changed — Docker will reuse cached layers.

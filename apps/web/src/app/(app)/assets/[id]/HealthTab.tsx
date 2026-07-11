@@ -16,6 +16,7 @@ import type {
 import { getAssetHealth, getCurveComparison } from "@/services/health.service";
 import { COLORS, HEALTH_LABEL_STYLE, HEALTH_METRIC_COLOR, STABILITY_STYLE } from "@/lib/tokens";
 import { Tooltip } from "@/components/tooltip";
+import { CURVE_METRIC_DOCS_LINKS, DETAILED_METRIC_DOCS_LINKS, HEALTH_DOCS_LINKS } from "@/lib/docs-links";
 import { usePlotly, PLOTLY_DARK_LAYOUT_BASE, PLOTLY_AXIS_BASE } from "@/hooks/use-plotly";
 import { ActivityIcon, InfoIcon, TrendingDownIcon, TrendingUpIcon, WarningIcon } from "@/components/icons";
 
@@ -48,13 +49,13 @@ function fmtUnit(n: number | null | undefined, unit: string, decimals = 4): stri
 // Card shell
 // ---------------------------------------------------------------------------
 
-function Card({ title, tooltip, children }: { title: string; tooltip?: string; children: React.ReactNode }) {
+function Card({ title, tooltip, tooltipDocsHref, children }: { title: string; tooltip?: string; tooltipDocsHref?: string; children: React.ReactNode }) {
   return (
     <div className="bg-mar-surface rounded-xl border border-mar-border shadow-sm">
       <div className="flex items-center gap-1.5 px-4 py-3 border-b border-mar-border">
         <p className="text-xs font-semibold text-mar-text">{title}</p>
         {tooltip && (
-          <Tooltip content={tooltip}>
+          <Tooltip content={tooltip} docsHref={tooltipDocsHref}>
             <InfoIcon size={11} className="text-gray-400 cursor-help" />
           </Tooltip>
         )}
@@ -103,12 +104,12 @@ function HealthLoading() {
 const SCORE_TOOLTIP =
   "Weighted composite: Maximum Drift 30%, RMS Drift 20%, RMSE 15%, Uncertainty 10%, Hysteresis 10%, Linearity 10%, Trend 5%.";
 
-function KpiLabel({ text, tooltip }: { text: string; tooltip?: string }) {
+function KpiLabel({ text, tooltip, tooltipDocsHref }: { text: string; tooltip?: string; tooltipDocsHref?: string }) {
   return (
     <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1">
       {text}
       {tooltip && (
-        <Tooltip content={tooltip}>
+        <Tooltip content={tooltip} docsHref={tooltipDocsHref}>
           <InfoIcon size={11} className="text-gray-400 cursor-help" />
         </Tooltip>
       )}
@@ -126,7 +127,7 @@ function HealthOverviewCard({ overview }: { overview: HealthOverview }) {
     <Card title="Health Overview">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div>
-          <KpiLabel text="Health Score" tooltip={SCORE_TOOLTIP} />
+          <KpiLabel text="Health Score" tooltip={SCORE_TOOLTIP} tooltipDocsHref={HEALTH_DOCS_LINKS.score} />
           <p className="text-2xl font-bold text-mar-text tabular-nums">
             {Math.round(overview.health_score)}
             <span className="text-sm text-gray-400 font-normal"> / 100</span>
@@ -143,14 +144,14 @@ function HealthOverviewCard({ overview }: { overview: HealthOverview }) {
         </div>
 
         <div>
-          <KpiLabel text="Stability" tooltip="Classified from the long-term drift rate (relative to the channel's full-scale span) and the drift trend's regression fit quality." />
+          <KpiLabel text="Stability" tooltip="Classified from the long-term drift rate (relative to the channel's full-scale span) and the drift trend's regression fit quality." tooltipDocsHref={HEALTH_DOCS_LINKS.stability} />
           <span className={`inline-flex px-2.5 py-1 rounded-full text-sm font-semibold border ${STABILITY_STYLE[overview.stability] ?? ""}`}>
             {overview.stability}
           </span>
         </div>
 
         <div>
-          <KpiLabel text="Average Drift" tooltip="Long-term drift rate from a linear regression over the full calibration history." />
+          <KpiLabel text="Average Drift" tooltip="Long-term drift rate from a linear regression over the full calibration history." tooltipDocsHref={HEALTH_DOCS_LINKS.average_drift} />
           <p className="text-xl font-bold text-mar-text tabular-nums">
             {fmtNum(overview.average_drift_rate)}
             <span className="text-xs text-gray-400 font-normal ml-1">{overview.drift_rate_unit}</span>
@@ -158,7 +159,7 @@ function HealthOverviewCard({ overview }: { overview: HealthOverview }) {
         </div>
 
         <div>
-          <KpiLabel text="Recommended Interval" tooltip="Heuristic suggestion based on the current stability classification, starting from the sensor's configured calibration interval." />
+          <KpiLabel text="Recommended Interval" tooltip="Heuristic suggestion based on the current stability classification, starting from the sensor's configured calibration interval." tooltipDocsHref={HEALTH_DOCS_LINKS.recommended_interval} />
           <p className="text-xl font-bold text-mar-text tabular-nums">
             {overview.recommended_interval_months}
             <span className="text-xs text-gray-400 font-normal ml-1">months</span>
@@ -216,7 +217,7 @@ function DriftEvolutionCard({ data, unit }: { data: DriftEvolution; unit: string
   );
 
   return (
-    <Card title="Drift Evolution" tooltip="Maximum drift of each calibration vs. the baseline (first) calibration, with a linear trend line. The primary view of sensor ageing.">
+    <Card title="Drift Evolution" tooltip="Maximum drift of each calibration vs. the baseline (first) calibration, with a linear trend line. The primary view of sensor ageing." tooltipDocsHref={HEALTH_DOCS_LINKS.drift_evolution}>
       {data.points.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-8">No comparable calibrations with a fitted curve yet.</p>
       ) : (
@@ -288,7 +289,7 @@ function StabilityCard({ data }: { data: CalibrationStability }) {
   );
 
   return (
-    <Card title="Calibration Stability" tooltip="Historical evolution of RMSE, Maximum Error, Expanded Uncertainty, Hysteresis, and R². Toggle metrics on/off; use the toolbar to zoom and pan.">
+    <Card title="Calibration Stability" tooltip="Historical evolution of RMSE, Maximum Error, Expanded Uncertainty, Hysteresis, and R². Toggle metrics on/off; use the toolbar to zoom and pan." tooltipDocsHref={HEALTH_DOCS_LINKS.calibration_stability}>
       <div className="flex flex-wrap gap-1.5 mb-3">
         {data.series.map((s) => (
           <button
@@ -395,7 +396,7 @@ function CurveComparisonCard({
   }, [result, unit]);
 
   return (
-    <Card title="Calibration Curve Comparison" tooltip="Evaluates the fitted polynomials of two calibrations over ~200 points across their shared operating range, to isolate how the curve itself has changed.">
+    <Card title="Calibration Curve Comparison" tooltip="Evaluates the fitted polynomials of two calibrations over ~200 points across their shared operating range, to isolate how the curve itself has changed." tooltipDocsHref={HEALTH_DOCS_LINKS.curve_comparison}>
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col gap-1">
           <span className="text-xs text-gray-400">Reference calibration</span>
@@ -449,7 +450,7 @@ function CurveComparisonCard({
               <div key={key} className="bg-mar-surface-alt border border-mar-border rounded-lg px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1">
                   {label}
-                  <Tooltip content={CURVE_METRIC_TIPS[key]}>
+                  <Tooltip content={CURVE_METRIC_TIPS[key]} docsHref={CURVE_METRIC_DOCS_LINKS[key]}>
                     <InfoIcon size={10} className="text-gray-400 cursor-help" />
                   </Tooltip>
                 </p>
@@ -473,7 +474,7 @@ function PredictionCard({ prediction, unit }: { prediction: PredictionOut; unit:
     : null;
 
   return (
-    <Card title="Prediction" tooltip="Linear regression on historical maximum drift values, projected forward from today.">
+    <Card title="Prediction" tooltip="Linear regression on historical maximum drift values, projected forward from today." tooltipDocsHref={HEALTH_DOCS_LINKS.prediction}>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {([
           ["1 year", prediction.projected_drift_1y],
@@ -561,7 +562,7 @@ function MetricGroup({ title, items }: { title: string; items: MetricGroupItem[]
           <div key={item.key} className="flex items-center justify-between py-2 border-b border-mar-border last:border-b-0">
             <span className="flex items-center gap-1.5 text-xs text-gray-400">
               {item.label}
-              <Tooltip content={item.tooltip}>
+              <Tooltip content={item.tooltip} docsHref={DETAILED_METRIC_DOCS_LINKS[item.key]}>
                 <InfoIcon size={11} className="text-gray-400 cursor-help" />
               </Tooltip>
             </span>

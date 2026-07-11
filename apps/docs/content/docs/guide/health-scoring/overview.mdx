@@ -1,0 +1,63 @@
+---
+title: Health score & stability
+description: How MAR's 0-100 health score is composed, and what "stability" and "recommended interval" mean.
+---
+
+Every asset with at least two calibrations on a channel gets a computed **health score**
+(0–100), visible on the asset's Health tab. With only one calibration, there isn't yet a
+trend to assess — MAR shows a neutral 100% score, "Stable" stability, and 0 drift rate rather
+than a misleading result computed from a single point.
+
+## Health score [#score]
+
+A weighted composite of six inputs, each individually normalized then combined:
+
+| Input | Weight |
+|---|---|
+| Maximum drift | 30% |
+| RMS drift | 20% |
+| RMSE | 15% |
+| Uncertainty | 10% |
+| Hysteresis | 10% |
+| Linearity | 10% |
+| Trend | 5% |
+
+Maximum and RMS drift dominate the score (50% combined) because they most directly answer the
+question a health score exists to answer: *is this instrument still measuring what it says it
+measures?* See [Drift metrics](/docs/guide/health-scoring/drift-metrics) for what each drift
+term means mathematically.
+
+## Stability [#stability]
+
+A classification (e.g. Stable / Drifting / Unstable) derived from the long-term
+[drift rate](#average-drift) — relative to the channel's full-scale span — and the drift
+trend's regression fit quality. A sensor can have a "good" (high) health score today while
+still being classified as drifting, if the trend is moving in a worrying direction even though
+it hasn't crossed a threshold yet.
+
+## Average drift [#average-drift]
+
+The long-term drift rate from a linear regression over the full calibration history for this
+channel — how fast, on average, this sensor's error is growing over time (independent of any
+single calibration's individual [max error](/docs/guide/calibration/curve-fitting#max-error)).
+
+## Recommended interval [#recommended-interval]
+
+A heuristic suggestion for the next calibration interval, based on the current
+[stability](#stability) classification, starting from the sensor's configured default
+calibration interval. This is a MAR-internal recommendation for planning purposes only — it is
+never printed on the calibration certificate itself; per ISO/IEC 17025 §7.8.4.3, a certificate
+only states an interval recommendation when explicitly agreed with the customer, and MAR
+doesn't have that agreement workflow yet (see
+[Certificate generation](/docs/guide/calibration/certificates#whats-deliberately-not-on-it)).
+
+## The charts
+
+- **Drift Evolution** — maximum drift of each calibration vs. the baseline (first) calibration,
+  with a linear trend line. The primary view of sensor ageing over time.
+- **Calibration Stability** — the historical evolution of RMSE, Maximum Error, Expanded
+  Uncertainty, Hysteresis, and R² across every calibration on this channel, plotted together so
+  you can spot correlated shifts (e.g. uncertainty growing alongside RMSE).
+- **Calibration Curve Comparison** — evaluates the fitted polynomials of two calibrations over
+  roughly 200 points across their shared operating range, isolating how the curve itself has
+  changed shape — independent of any single point's error.

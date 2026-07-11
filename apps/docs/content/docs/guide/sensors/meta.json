@@ -1,0 +1,4 @@
+{
+  "title": "Sensors & assets",
+  "pages": ["asset-registry", "adding-a-sensor", "adding-a-daq"]
+}

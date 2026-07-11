@@ -1,0 +1,31 @@
+---
+title: Adding a DAQ
+description: Registering a data-acquisition device — hardware specification fields.
+---
+
+A **DAQ** (data acquisition device) asset represents a data logger, signal conditioner, or
+gateway — hardware that reads or routes signals from sensors, rather than measuring a physical
+quantity itself. Create one via **Assets → New Asset**, asset type **daq**.
+
+Unlike a sensor, a DAQ has a single hardware specification row instead of measurement
+channels:
+
+| Field | Notes |
+|---|---|
+| DAQ type | `data_logger` / `signal_conditioner` / `gateway` / `other` |
+| Input / output channels | Number of physical channels available. |
+| Input / output signal types | e.g. 4-20mA, 0-10V, thermocouple, RTD. |
+| Sampling rate (Hz) | Aggregate and per-channel. |
+| ADC type & resolution (bits) | The analog-to-digital converter's characteristics. |
+| Input voltage range | Min/max. |
+| Input impedance (Ω) | |
+| Noise floor (µV RMS) | |
+| Dynamic range (dB) | |
+| Synchronization support, clock source, time-sync precision, jitter | Relevant for multi-channel or multi-device synchronized acquisition. |
+| Communication protocol, interface type | e.g. Modbus, Ethernet/IP, RS-485, USB. |
+| Trigger modes | |
+
+A DAQ can be linked from a calibration record (`daq_id`) to document which acquisition
+hardware was used to take the readings for that calibration event — useful when the same
+sensor is read through different DAQs at different times and you want to know which
+combination produced a given data point.

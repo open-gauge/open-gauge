@@ -1,0 +1,115 @@
+---
+title: "Example 3 — Load cell, hysteresis + repeatability"
+description: The up/down sweep hysteresis detector, the triplicate-point repeatability detector, and a simple-acceptance-vs-shared-risk divergence.
+---
+
+Exercises: the up/down sweep [hysteresis](/docs/guide/calibration/curve-fitting#hysteresis)
+detector, the triplicate-point
+[repeatability](/docs/guide/calibration/curve-fitting#repeatability) detector, and another
+simple-acceptance-vs-shared-risk divergence.
+
+## 3.0 Setup
+
+| Field | Value |
+|---|---|
+| Name | Test Bench Load Cell |
+| Physical quantity | Force |
+| Range min / max | 0 / 500 |
+| Unit | N |
+| Accuracy value | 0.15 |
+| Accuracy unit | **% FS** — fill in Range min/max first, then pick "% FS" as the first option |
+| Resolution | 0.2 |
+| Resolution unit | N |
+
+## 3.1 Calibration wizard settings
+
+Type **external**, **Regression degree: 1** (explicit — this example is about
+hysteresis/repeatability, not degree selection), distribution **Normal**, confidence **95%**,
+decision rule **Shared risk (tolerance + U)**.
+
+Data points — an ascending sweep, a descending sweep back down (for hysteresis), and one extra
+reading at 0 N (three total readings at 0 N, for repeatability):
+
+| # | Reference (N) | Measured (N) | Notes |
+|---|---|---|---|
+| 1 | 0 | 0.2 | ascending start |
+| 2 | 0 | 0.3 | repeat at 0 N (#1 of the repeatability triplet) |
+| 3 | 100 | 100.6 | ascending |
+| 4 | 200 | 200.9 | ascending |
+| 5 | 300 | 301.0 | ascending |
+| 6 | 400 | 401.1 | ascending |
+| 7 | 500 | 501.3 | top of sweep |
+| 8 | 400 | 401.6 | descending |
+| 9 | 300 | 301.7 | descending |
+| 10 | 200 | 201.9 | descending |
+| 11 | 100 | 101.8 | descending |
+| 12 | 0 | 1.0 | back to 0 N (repeatability triplet complete) |
+
+## The math
+
+Fit (degree 1, all 12 points): $a = 0.99833$, $b = -0.76668$.
+
+Max error = **0.863215 N**, at point 11 (reference 100 N, measured 101.8 N) → %FS error =
+$0.863215/500 \times 100\% = \mathbf{0.1726\%}$.
+
+**Hysteresis** — MAR groups points by reference value and takes the largest spread of measured
+values within any group where the reference value repeats with both an ascending and
+descending segment present:
+
+| Reference | Measured values at this reference | Span |
+|---|---|---|
+| 0 N | 0.2, 0.3, 1.0 | 0.8 |
+| 100 N | 100.6, 101.8 | 1.2 |
+| 200 N | 200.9, 201.9 | 1.0 |
+| 300 N | 301.0, 301.7 | 0.7 |
+| 400 N | 401.1, 401.6 | 0.5 |
+
+Largest span = **1.2 N** (at 100 N) → **hysteresis = 1.2**.
+
+**Repeatability** — only 0 N has 3+ readings (0.2, 0.3, 1.0):
+
+$$
+\bar{x} = \frac{0.2 + 0.3 + 1.0}{3} = 0.5, \qquad
+s^2 = \frac{(0.2-0.5)^2 + (0.3-0.5)^2 + (1.0-0.5)^2}{3-1} = \frac{0.09+0.04+0.25}{2} = 0.19
+$$
+
+$$
+\text{repeatability} = \sqrt{0.19} = 0.435890\ \text{N}
+$$
+
+**Uncertainty budget:**
+
+| Source | u |
+|---|---|
+| fit_residuals (Type A, dof = 10) | 0.487526 |
+| resolution (Type B) = $0.2/\sqrt{12}$ | 0.057735 |
+
+- Combined: $u_c = \sqrt{0.487526^2 + 0.057735^2} = \mathbf{0.490933\ N}$.
+- $\nu_{\text{eff}} \approx \mathbf{10.3}$.
+- Coverage factor $k = \Phi^{-1}(0.975) \approx 1.96$ (from Confidence 95%, not entered).
+- Expanded: $U = 0.490933 \times 1.96 = 0.962211 \approx \mathbf{0.96\ N}$ (2 sig figs).
+
+**Decision rule — try both and compare.** The accuracy spec is ±0.15% FS, so the tolerance is
+flat across the range: $\text{tolerance} = 0.0015 \times 500\ \text{N} = 0.75\ \text{N}$. The
+sweep's largest error (0.863215 N, at reference 100 N) exceeds that:
+
+| Decision rule | Check (max error = 0.863215, tolerance = 0.75) | Result |
+|---|---|---|
+| Simple acceptance | $0.863215 \le 0.75$? No | **DOES NOT CONFORM** |
+| Shared risk (+U) | $0.863215 - 0.962211 = -0.098996 \le 0.75$ | **CONFORMS** |
+
+This is a genuinely realistic case: a load cell whose raw error exceeds its tight ±0.15% FS
+spec, but whose overall measurement uncertainty is large enough that, under a shared-risk rule,
+the lab and customer agree it's still acceptable. A good test of both "real fails happen" and
+"the rule you pick changes the outcome."
+
+## Expected results
+
+| Field | Value |
+|---|---|
+| Hysteresis | 1.2 |
+| Repeatability | 0.435890 raw; displayed as **0.43589** in the wizard, **0.4359** in the history view (different fixed-decimal display precision — see [Rounding](/docs/guide/calibration/examples/rounding-and-troubleshooting)) |
+| Combined uncertainty | shown rounded: **0.49** |
+| Expanded uncertainty (±) | shown rounded: **0.96** |
+| Statement (simple acceptance) | DOES NOT CONFORM to ±0.15% of full scale |
+| Statement (shared risk) | CONFORMS to ±0.15% of full scale |

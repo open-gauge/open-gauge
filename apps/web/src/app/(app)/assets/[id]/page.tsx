@@ -71,6 +71,8 @@ import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
 import { UserMention } from "@/components/user-mention";
 import { Tooltip } from "@/components/tooltip";
+import { StatRow } from "@/components/stat-row";
+import { CHAN_DOCS_LINKS, STAT_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
 
 // ---------------------------------------------------------------------------
@@ -407,14 +409,14 @@ const INPUT_BASE = "w-full px-3 py-2 rounded-lg border text-sm text-mar-text bg-
 const INPUT_OK = "border-mar-border-md focus:border-mar-accent focus:ring-mar-accent/20";
 const INPUT_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
-function ELabel({ label, required, tooltip }: { label: string; required?: boolean; tooltip?: string }) {
+function ELabel({ label, required, tooltip, tooltipDocsHref }: { label: string; required?: boolean; tooltip?: string; tooltipDocsHref?: string }) {
   return (
     <span className="flex items-center gap-1">
       <span className="text-xs text-gray-400">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </span>
       {tooltip && (
-        <Tooltip content={tooltip}>
+        <Tooltip content={tooltip} docsHref={tooltipDocsHref}>
           <InfoIcon size={11} className="text-gray-400 cursor-help flex-shrink-0" />
         </Tooltip>
       )}
@@ -428,14 +430,14 @@ function EError({ msg }: { msg?: string }) {
 }
 
 function EditInput({
-  label, value, onChange, error, required, placeholder, type = "text", readOnly, tooltip,
+  label, value, onChange, error, required, placeholder, type = "text", readOnly, tooltip, tooltipDocsHref,
 }: {
   label: string; value: string; onChange: (v: string) => void;
-  error?: string; required?: boolean; placeholder?: string; type?: string; readOnly?: boolean; tooltip?: string;
+  error?: string; required?: boolean; placeholder?: string; type?: string; readOnly?: boolean; tooltip?: string; tooltipDocsHref?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <ELabel label={label} required={required} tooltip={tooltip} />
+      <ELabel label={label} required={required} tooltip={tooltip} tooltipDocsHref={tooltipDocsHref} />
       <input
         type={type}
         value={value}
@@ -471,15 +473,15 @@ function EditTextArea({
 }
 
 function EditSelect({
-  label, value, onChange, options, error, required, placeholder, tooltip,
+  label, value, onChange, options, error, required, placeholder, tooltip, tooltipDocsHref,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  error?: string; required?: boolean; placeholder?: string; tooltip?: string;
+  error?: string; required?: boolean; placeholder?: string; tooltip?: string; tooltipDocsHref?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <ELabel label={label} required={required} tooltip={tooltip} />
+      <ELabel label={label} required={required} tooltip={tooltip} tooltipDocsHref={tooltipDocsHref} />
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -601,6 +603,7 @@ function PhysicalQuantityCascade({
           error={errors[`${prefix}physical_quantity`]}
           required
           tooltip={CHAN_TIPS.physical_quantity}
+          tooltipDocsHref={CHAN_DOCS_LINKS.physical_quantity}
         />
         {quantityDef && (
           <EditSelectWithOther
@@ -620,6 +623,7 @@ function PhysicalQuantityCascade({
               onChange={onMeasurementTypeChange}
               options={typeOptions}
               tooltip={CHAN_TIPS.measurement_type}
+              tooltipDocsHref={CHAN_DOCS_LINKS.measurement_type}
             />
           ) : <div />}
           {selectedFamily?.subtypes && techFamily !== "__other__" && (
@@ -769,32 +773,32 @@ function ChannelEditor({
 
       {/* Accuracy */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" tooltip={CHAN_TIPS.accuracy_value} />
+        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" tooltip={CHAN_TIPS.accuracy_value} tooltipDocsHref={CHAN_DOCS_LINKS.accuracy_value} />
         <EditSelect label="Accuracy unit" value={ch.accuracy_unit} onChange={setAccuracyUnit} options={specUnitOptions} />
       </div>
 
       {/* Resolution */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" tooltip={CHAN_TIPS.resolution} />
+        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" tooltip={CHAN_TIPS.resolution} tooltipDocsHref={CHAN_DOCS_LINKS.resolution} />
         <EditSelect label="Resolution unit" value={ch.resolution_unit} onChange={set("resolution_unit")} options={specUnitOptions} />
       </div>
 
       {/* Uncertainty */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" tooltip={CHAN_TIPS.measurement_uncertainty} />
+        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" tooltip={CHAN_TIPS.measurement_uncertainty} tooltipDocsHref={CHAN_DOCS_LINKS.measurement_uncertainty} />
         <EditSelect label="Uncertainty unit" value={ch.uncertainty_unit} onChange={set("uncertainty_unit")} options={specUnitOptions} />
       </div>
 
       {/* Drift */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" tooltip={CHAN_TIPS.drift_rate} />
+        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" tooltip={CHAN_TIPS.drift_rate} tooltipDocsHref={CHAN_DOCS_LINKS.drift_rate} />
         <EditInput label="Drift unit" value={ch.drift_unit} onChange={set("drift_unit")} placeholder="e.g. °C/year" />
       </div>
 
       {/* Dynamic */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" tooltip={CHAN_TIPS.response_time_ms} />
-        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" tooltip={CHAN_TIPS.bandwidth_hz} />
+        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" tooltip={CHAN_TIPS.response_time_ms} tooltipDocsHref={CHAN_DOCS_LINKS.response_time_ms} />
+        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" tooltip={CHAN_TIPS.bandwidth_hz} tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />
       </div>
 
       {/* Calibration role */}
@@ -806,7 +810,7 @@ function ChannelEditor({
           className="rounded border-mar-border-md"
         />
         Reference standard
-        <Tooltip content={CHAN_TIPS.calibration_role}>
+        <Tooltip content={CHAN_TIPS.calibration_role} docsHref={CHAN_DOCS_LINKS.calibration_role}>
           <InfoIcon size={11} className="text-gray-400 cursor-help flex-shrink-0" />
         </Tooltip>
       </label>
@@ -1307,27 +1311,6 @@ interface CalibrationTabProps {
   isAdmin: boolean;
 }
 
-// Stat row used in the calibration detail panel
-function CalStatRow({ label, value, tip }: { label: string; value: string | null | undefined; tip?: string }) {
-  if (value == null) return null;
-  return (
-    <div className="flex items-center justify-between gap-2 py-1.5 border-b border-mar-border last:border-b-0">
-      <span className="flex items-center gap-1 text-xs text-gray-400">
-        {label}
-        {tip && (
-          <span className="relative group/t">
-            <InfoIcon size={10} className="cursor-help" />
-            <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover/t:block w-56 bg-gray-900 text-white text-[10px] rounded px-2 py-1.5 z-50 shadow-lg whitespace-normal">
-              {tip}
-            </span>
-          </span>
-        )}
-      </span>
-      <span className="text-xs font-mono text-mar-text">{value}</span>
-    </div>
-  );
-}
-
 // Format polynomial equation — coefficients are highest-degree first (numpy convention)
 function formatCalEquation(coefficients: number[], degree: number): string {
   const SUPERS: Record<number, string> = { 2: "²", 3: "³", 4: "⁴", 5: "⁵" };
@@ -1813,36 +1796,37 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               {/* Left: stats panel (40%) */}
               <div className="w-[38%] flex-shrink-0 rounded-xl border border-mar-border p-4 bg-mar-surface-alt space-y-0">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Calibration</p>
-                <CalStatRow label="Poly degree" value={String(selectedCal.poly_order ?? "—")} />
+                <StatRow label="Poly degree" value={String(selectedCal.poly_order ?? "—")} />
                 {(selectedCal.valid_range_min != null || selectedCal.range_min != null) && (
-                  <CalStatRow
+                  <StatRow
                     label="Valid range"
                     value={`${fmtNum(selectedCal.valid_range_min ?? selectedCal.range_min)} – ${fmtNum(selectedCal.valid_range_max ?? selectedCal.range_max)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
                   />
                 )}
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Statistics</p>
-                <CalStatRow label="R²" value={fmtNum(selectedCal.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." />
-                <CalStatRow label="RMSE" value={selectedCal.rmse != null ? `${fmtNum(selectedCal.rmse)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root mean square error." />
-                <CalStatRow label="Max error" value={selectedCal.max_error != null ? `${fmtNum(selectedCal.max_error)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Largest absolute residual." />
-                <CalStatRow label="%FS error" value={selectedCal.full_scale_error != null ? `${fmtNum(selectedCal.full_scale_error, 3)}%` : null} tip="Max error as % of full measurement span." />
-                <CalStatRow label="Non-linearity" value={selectedCal.non_linearity != null ? `${fmtNum(selectedCal.non_linearity, 3)}%` : null} tip="Max deviation from ideal line, as %FS." />
+                <StatRow label="R²" value={fmtNum(selectedCal.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." docsHref={STAT_DOCS_LINKS.r_squared} />
+                <StatRow label="RMSE" value={selectedCal.rmse != null ? `${fmtNum(selectedCal.rmse)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root mean square error." docsHref={STAT_DOCS_LINKS.rmse} />
+                <StatRow label="Max error" value={selectedCal.max_error != null ? `${fmtNum(selectedCal.max_error)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Largest absolute residual." docsHref={STAT_DOCS_LINKS.max_error} />
+                <StatRow label="%FS error" value={selectedCal.full_scale_error != null ? `${fmtNum(selectedCal.full_scale_error, 3)}%` : null} tip="Max error as % of full measurement span." docsHref={STAT_DOCS_LINKS.full_scale_error} />
+                <StatRow label="Non-linearity" value={selectedCal.non_linearity != null ? `${fmtNum(selectedCal.non_linearity, 3)}%` : null} tip="Max deviation from ideal line, as %FS." docsHref={STAT_DOCS_LINKS.non_linearity} />
                 {selectedCal.repeatability != null && (
-                  <CalStatRow label="Repeatability†" value={`${fmtNum(selectedCal.repeatability)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Std deviation at repeated reference values." />
+                  <StatRow label="Repeatability†" value={`${fmtNum(selectedCal.repeatability)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Std deviation at repeated reference values." docsHref={STAT_DOCS_LINKS.repeatability} />
                 )}
                 {selectedCal.hysteresis != null && (
-                  <CalStatRow label="Hysteresis†" value={`${fmtNum(selectedCal.hysteresis)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Max difference ascending vs. descending." />
+                  <StatRow label="Hysteresis†" value={`${fmtNum(selectedCal.hysteresis)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Max difference ascending vs. descending." docsHref={STAT_DOCS_LINKS.hysteresis} />
                 )}
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-mar-border mb-2 mt-2">Uncertainty budget</p>
                 {selectedCal.uncertainty_budget?.map((c) => (
-                  <CalStatRow
+                  <StatRow
                     key={c.source}
                     label={UNCERTAINTY_SOURCE_LABEL[c.source] ?? c.source}
                     value={`${fmtNum(c.standard_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
                     tip={`${c.description} (${c.distribution} distribution, divisor=${fmtNum(c.divisor, 3)}).`}
+                    docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
                   />
                 ))}
-                <CalStatRow label="Combined (RSS)" value={selectedCal.combined_uncertainty != null ? `${fmtNum(selectedCal.combined_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root-sum-square of the budget rows above (GUM Eq. 10)." />
-                <CalStatRow
+                <StatRow label="Combined (RSS)" value={selectedCal.combined_uncertainty != null ? `${fmtNum(selectedCal.combined_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root-sum-square of the budget rows above (GUM Eq. 10)." docsHref={STAT_DOCS_LINKS.combined_uncertainty} />
+                <StatRow
                   label="Expanded (±)"
                   value={selectedCal.expanded_uncertainty != null ? `${fmtNum(roundToSigFigs(selectedCal.expanded_uncertainty, 2))}${referenceUnit ? ` ${referenceUnit}` : ""}` : null}
                   tip={
@@ -1851,6 +1835,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                       : `k=${selectedCal.coverage_factor ?? "?"} at ${selectedCal.confidence_level ?? "?"}% confidence.`)
                     + " Rounded to 2 significant figures (GUM §7.2.6)."
                   }
+                  docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
                 />
                 {selectedCal.conformity_statement?.specification && (
                   <>
@@ -1865,11 +1850,12 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         {selectedCal.conformity_statement.passed ? "CONFORMS" : "DOES NOT CONFORM"}
                       </span>
                     </div>
-                    <CalStatRow label="Specification" value={selectedCal.conformity_statement.specification} />
-                    <CalStatRow
+                    <StatRow label="Specification" value={selectedCal.conformity_statement.specification} />
+                    <StatRow
                       label="Decision rule"
                       value={DECISION_RULE_LABEL[selectedCal.conformity_statement.decision_rule] ?? selectedCal.conformity_statement.decision_rule}
                       tip="How measurement uncertainty is factored into this conformity statement, per ISO/IEC 17025 §7.1.3 and §7.8.6."
+                      docsHref={STAT_DOCS_LINKS.decision_rule}
                     />
                   </>
                 )}

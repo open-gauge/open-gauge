@@ -1,0 +1,40 @@
+---
+title: Asset registry basics
+description: What an asset is, sensors vs. DAQs, and the asset lifecycle.
+---
+
+Every physical instrument MAR tracks — a sensor, a transmitter, a data logger — is an
+**asset**. Assets live under **Assets → New Asset** in the UI, and each one gets a
+human-readable ID (e.g. `MAR-00042`) in addition to its internal database ID.
+
+## Sensor vs. DAQ
+
+An asset's type is one of:
+
+- **sensor** — a measuring instrument. Has one or more **channels**, each representing a
+  single measured physical quantity (temperature, pressure, flow, ...). See
+  [Adding a sensor](/docs/guide/sensors/adding-a-sensor).
+- **daq** — a data acquisition device: a data logger, signal conditioner, or gateway. Has a
+  single hardware specification instead of measurement channels. See
+  [Adding a DAQ](/docs/guide/sensors/adding-a-daq).
+
+## Common fields
+
+Regardless of type, every asset carries manufacturer/model/serial information, an optional
+datasheet file, a current location, an owning team, physical specs (dimensions, weight, power,
+mounting, connection type, IP rating, hazardous-area rating), operating temperature/humidity
+range, purchase/warranty dates, and a computed **health score** (0–100) — see
+[Health scoring](/docs/guide/health-scoring).
+
+## Lifecycle
+
+Assets are never hard-deleted while a deployment is active. Retiring an asset:
+
+- Sets `is_active = false` and records `retired_at`, `retired_by`, and `retired_reason`.
+- Preserves the asset's full calibration history — a retired asset's past calibrations remain
+  visible and auditable.
+
+This matches MAR's general database philosophy (see
+[Data model & concepts](/docs/guide/concepts/data-model)): traceability takes priority over
+tidiness. If you need an asset gone from daily views but its history intact, retire it —
+don't delete it.

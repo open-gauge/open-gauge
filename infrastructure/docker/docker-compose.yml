@@ -50,8 +50,22 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_DOCS_URL: http://localhost:3002
     ports:
       - "3000:3000"
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  docs:
+    build:
+      context: ../../apps/docs
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
     environment:
       API_INTERNAL_URL: http://api:8000
     depends_on:

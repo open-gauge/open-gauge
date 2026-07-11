@@ -1,0 +1,66 @@
+---
+title: Calibration overview
+description: The end-to-end calibration workflow — the wizard, analyze vs. save, and where each result lives.
+---
+
+Calibration is the core of what MAR does: comparing a sensor's readings against a trusted
+reference, fitting a correction curve, evaluating measurement uncertainty, and issuing a
+pass/fail statement — all following [JCGM 100:2008 (GUM)](/docs/guide/reference/standards-glossary)
+and [ISO/IEC 17025:2017](/docs/guide/reference/standards-glossary).
+
+## Two backend touchpoints
+
+A calibration event involves two API calls:
+
+1. **`POST /calibrations/analyze`** — ephemeral. Takes raw (reference, measured) point pairs
+   plus fitting/uncertainty parameters, runs the full analysis, and returns the result.
+   **Nothing is persisted.** The calibration wizard calls this on every input change
+   (debounced) to give live feedback as you enter data.
+2. **`POST /calibrations`** — atomic create. Takes the already-computed result (the wizard
+   forwards whatever `/analyze` returned) plus metadata, and writes one `calibrations` row and
+   its data-point rows in a single transaction. A certificate PDF is generated best-effort in
+   the same request.
+
+This split exists so you can freely explore different polynomial degrees, distributions, and
+decision rules before committing — the expensive, persisted step only happens once, when you
+save.
+
+## The calibration wizard
+
+Start a calibration from an asset's channel. The wizard has three steps:
+
+1. **General info** — calibration type (**internal**, against a reference asset you own, or
+   **external**, from an outside lab), calibration date, who performed it, environmental
+   conditions, and (for internal calibrations) the reference standard used and procedure
+   followed. This step also has a **"Coefficients only (no raw data)"** checkbox for
+   externally-issued certificates that state a polynomial directly — see
+   [Coefficients-only calibrations](/docs/guide/calibration/coefficients-only).
+2. **Raw data** — enter (reference, measured) point pairs. See
+   [Curve fitting](/docs/guide/calibration/curve-fitting) for what MAR does with them.
+3. **Analysis / review** — the live-computed fit, uncertainty budget, and conformity
+   statement. See [The uncertainty budget](/docs/guide/calibration/uncertainty-budget) and
+   [Decision rules](/docs/guide/calibration/decision-rules).
+
+Saving is never blocked by a failed (non-conforming) result — a failed calibration is still an
+important, real record. If the result doesn't conform to the channel's spec, the save
+confirmation shows an explicit warning naming the specification and decision rule, and the
+save button relabels to **"Save anyway."**
+
+## Internal vs. external calibrations
+
+- **Internal** — performed in-house, against one of your own assets flagged as a
+  [reference standard](/docs/guide/sensors/adding-a-sensor#calibration-role). When you pick a
+  reference asset, MAR automatically fetches that asset's own most recent calibration's
+  expanded uncertainty and folds it into this calibration's uncertainty budget as a
+  `reference_standard` contribution — see
+  [The uncertainty budget](/docs/guide/calibration/uncertainty-budget#contributions).
+- **External** — performed by an outside calibration lab. You record the lab's name and
+  certificate number; if the lab's certificate states a polynomial directly rather than raw
+  data, use the coefficients-only path instead of re-deriving a fit from scratch.
+
+## Where results end up
+
+Historical calibrations are viewable from the asset's detail page — every past calibration for
+every channel, most recent first, each with its full analysis, uncertainty budget, and
+certificate. Nothing is ever edited in place; a re-calibration is a new row, not a correction
+to an old one.

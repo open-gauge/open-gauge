@@ -1,0 +1,23 @@
+{
+  "title": "Documentation",
+  "description": "Knowledge center: how MAR works, self-hosting, and operational workflows.",
+  "root": true,
+  "pages": [
+    "index",
+    "---Overview---",
+    "overview",
+    "---Self-hosting---",
+    "self-hosting",
+    "---Concepts---",
+    "concepts",
+    "---Operating MAR---",
+    "sensors",
+    "locations",
+    "procedures",
+    "---Calibration---",
+    "calibration",
+    "health-scoring",
+    "---Reference---",
+    "reference"
+  ]
+}

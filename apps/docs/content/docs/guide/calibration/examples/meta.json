@@ -1,0 +1,11 @@
+{
+  "title": "Worked examples",
+  "pages": [
+    "index",
+    "rtd-linear",
+    "pressure-quadratic",
+    "load-cell-hysteresis",
+    "coefficients-only-certificate",
+    "rounding-and-troubleshooting"
+  ]
+}

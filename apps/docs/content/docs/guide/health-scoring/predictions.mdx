@@ -1,0 +1,27 @@
+---
+title: Predictions
+description: How MAR projects future drift, and what that has (and hasn't) got to do with calibration due dates.
+---
+
+## Drift prediction [#prediction]
+
+MAR runs a linear regression on a channel's historical
+[maximum drift](/docs/guide/health-scoring/drift-metrics#max-drift) values, projected forward
+from today. This gives a rough answer to "if this trend continues, when might this sensor's
+drift become a problem?" — useful for planning, not a certified forecast.
+
+## Recommended interval vs. the certificate
+
+The [recommended interval](/docs/guide/health-scoring/overview#recommended-interval) shown on
+the Health tab is a MAR-internal planning heuristic. It is **never** printed on a calibration
+certificate — see
+[Certificate generation](/docs/guide/calibration/certificates#whats-deliberately-not-on-it) for
+why ISO/IEC 17025 requires an explicit customer agreement before a certificate can state an
+interval recommendation.
+
+## Requires at least two calibrations
+
+Every prediction and drift metric on this page needs at least two calibrations on a channel to
+compute anything meaningful — a single calibration has no history to fit a trend against.
+Until then, MAR shows a neutral 100% health score, "Stable" stability, and 0 drift rate rather
+than a number computed from insufficient data.

@@ -1,0 +1,38 @@
+---
+title: Certificate generation
+description: What's on a MAR calibration certificate, and how to fetch it.
+---
+
+Saving a calibration best-effort generates an A4 PDF certificate in the same request — if
+generation fails for some reason, the calibration record is still saved; you can regenerate
+the certificate later.
+
+## Contents
+
+- **Header** — QR code and certificate number.
+- **Asset info** — the asset and channel calibrated.
+- **Traceability** — the procedure followed, the reference standard used (internal
+  calibrations), and the recorded environmental conditions.
+- **Results** — the fitted coefficients and equation, the regression statistics table (see
+  [Curve fitting](/docs/guide/calibration/curve-fitting)), the itemized uncertainty budget
+  table (see [The uncertainty budget](/docs/guide/calibration/uncertainty-budget)), and the
+  statement of conformity (see [Decision rules](/docs/guide/calibration/decision-rules)).
+- **Dataset** — the raw point table and a fit chart.
+
+The uncertainty section prints a full-sentence GUM §7.2.4-style statement — value, coverage
+factor, basis (normal vs. t-distribution), confidence level, and the valid range the
+uncertainty applies over — adapted for a calibration *function* rather than a single
+measurement result, since that's what MAR certifies.
+
+## What's deliberately not on it
+
+Per ISO/IEC 17025 §7.8.4.3, the certificate **never** prints a calibration-interval
+recommendation unless explicitly agreed with the customer. MAR doesn't have that agreement
+flow yet, so no interval or "due date" language appears on the certificate at all — even
+though MAR computes a recommended interval for its own
+[health scoring](/docs/guide/health-scoring/predictions) internally.
+
+## Fetching a certificate
+
+`GET /calibrations/{id}/certificate` returns a 1-hour presigned MinIO URL, generating the PDF
+on demand if it's missing. See [Calibrations](/docs/api/calibrations) in the API Reference.

@@ -1,0 +1,57 @@
+---
+title: Drift metrics
+description: How MAR compares two calibration curves — max/mean/RMS drift, offset, gain, and residual drift.
+---
+
+To measure how much a sensor has drifted, MAR compares two of its calibration curves — a
+reference calibration (typically the baseline/first one) and a current one — by evaluating
+both fitted polynomials across their **shared operating range** and looking at the difference
+curve between them, $d(x) = f_{\text{current}}(x) - f_{\text{reference}}(x)$.
+
+## Max drift [#max-drift]
+
+The largest absolute difference between the reference and current curves across the shared
+operating range:
+
+$$
+\text{max drift} = \max_x \left| d(x) \right|
+$$
+
+The single biggest weight in the [health score](/docs/guide/health-scoring/overview#score)
+(30%) — it answers "at its worst point, how far has this sensor's calibration moved?"
+
+## Mean drift [#mean-drift]
+
+The average absolute difference between the two curves across the shared range:
+
+$$
+\text{mean drift} = \frac{1}{n}\sum_{i=1}^n \left| d(x_i) \right|
+$$
+
+## RMS drift [#rms-drift]
+
+The root-mean-square difference between the two curves — penalizes larger deviations more
+heavily than mean drift does, the same way [RMSE](/docs/guide/calibration/curve-fitting#rmse)
+penalizes large residuals more than a simple average would:
+
+$$
+\text{RMS drift} = \sqrt{\frac{1}{n}\sum_{i=1}^n d(x_i)^2}
+$$
+
+## Offset [#offset]
+
+The difference between the curves at the *start* of the shared range — a constant (zero-point)
+shift. A sensor that has drifted by a roughly constant amount across its whole range, rather
+than growing worse toward one end, shows up mostly as offset.
+
+## Gain [#gain]
+
+The slope of the difference curve $d(x)$ — a change in *sensitivity* (span) between the two
+calibrations, as opposed to a constant offset. A sensor whose span has stretched or compressed
+(e.g. from a reference-junction or amplifier gain shift) shows up mostly as gain, not offset.
+
+## Residual drift [#residual-drift]
+
+The difference between the curves at the *end* of the range minus the difference at the
+*start* — i.e. drift that isn't explained by a constant offset alone. Combined with
+[gain](#gain), this separates "the whole curve shifted uniformly" from "the curve tilted."

@@ -1,0 +1,79 @@
+---
+title: Data model & concepts
+description: Organizations, teams, locations, and assets — how MAR's core entities relate.
+---
+
+This page gives the high-level shape of MAR's data model. For the full column-level schema,
+see `DATABASE.md` in the repository root.
+
+## The hierarchy
+
+```
+Organization                    tenant root
+ ├─ Teams                       groups within the org, used for asset ownership
+ ├─ Locations                   hierarchical tree: site → building → laboratory → ...
+ │   └─ (asset_locations)       every assignment of an asset to a location, over time
+ └─ Assets                      the instrumentation registry: sensors and DAQs
+     ├─ Sensor channels         one per measured physical quantity (an asset can have several)
+     │   └─ Calibrations        immutable history, one row per calibration event
+     │       └─ Calibration data  the raw reference/measured points behind each calibration
+     └─ DAQ specification       hardware spec, for asset_type = "daq"
+```
+
+## Organizations & teams
+
+An **organization** is the tenant root — everything else in a MAR deployment ultimately
+belongs to one. **Teams** group users within an organization and are used for asset
+ownership (an asset's `owner` field points at a team, not an individual user), so
+responsibility for an instrument survives staff changes.
+
+## Locations
+
+**Locations** form a tree (`parent_location_id` is self-referential): organization → site →
+building → laboratory, or whatever hierarchy makes sense for your facilities. A location can
+be flagged `is_calibration_lab`, which marks it as a valid place to *perform* a calibration
+(selectable as the calibration location in the calibration wizard). See
+[Locations](/docs/guide/locations) for the operational workflow.
+
+Every time an asset moves, MAR records a new `asset_locations` row rather than just updating
+the asset's current location in place — so "where was this sensor on a given date" is always
+answerable, not just "where is it now."
+
+## Assets
+
+An **asset** is the central registry entity — a physical instrument. Its `asset_type` is
+either `sensor` or `daq`:
+
+- A **sensor** asset has one or more **channels** (the `sensors` table, despite the name, is
+  really "one row per measurement channel on an asset"), each with its own physical quantity,
+  measurement range, accuracy/resolution/uncertainty spec, and calibration history. See
+  [Sensors & assets](/docs/guide/sensors).
+- A **DAQ** (data acquisition device) asset has a single hardware specification row (input/
+  output channel counts, sampling rate, ADC resolution, communication protocol, etc.) instead
+  of measurement channels.
+
+Assets are never hard-deleted from an active deployment — retiring one sets `is_active = false`
+plus `retired_at`/`retired_by`/`retired_reason`, preserving its full calibration history for
+audit purposes.
+
+## Calibrations
+
+A **calibration** is one immutable row per calibration event, linked to the specific sensor
+channel it calibrated. New calibrations always create new rows — MAR never edits or overwrites
+a past calibration record, the same way you wouldn't rewrite a Git commit. See
+[Calibration](/docs/guide/calibration) for the full workflow and the math behind every number
+MAR computes.
+
+## Procedures
+
+A **procedure** is a reusable calibration procedure template scoped to a physical quantity
+(steps, required equipment, materials, environmental conditions, acceptance criteria). A
+sensor channel can reference a default procedure via `calibration_method_id`. See
+[Procedures](/docs/guide/procedures).
+
+## Audit logs
+
+Every significant state change in MAR — creating a sensor, editing a channel, saving a
+calibration, retiring an asset — is recorded in an immutable `audit_logs` table capturing the
+actor, the before/after state, and a timestamp. Nothing in MAR silently overwrites history
+without leaving a trace.
