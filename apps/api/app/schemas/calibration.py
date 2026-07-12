@@ -128,7 +128,6 @@ class CalibrationCreate(BaseModel):
     # Metadata
     sensor_id: uuid.UUID | None = None
     calibration_type: str = "external"
-    calibration_version: int = 1
     calibration_interval: int | None = None
     tolerance_criteria: str | None = None
 
@@ -248,5 +247,11 @@ class CalibrationResponse(BaseModel):
     # Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
     decision_rule: str | None = None
     conformity_statement: Any | None = None
+
+    # Soft-void state
+    is_active: bool = True
+    voided_at: datetime | None = None
+    voided_by: uuid.UUID | None = None
+    void_reason: str | None = None
 
     model_config = {"from_attributes": True}

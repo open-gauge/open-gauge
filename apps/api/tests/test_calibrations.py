@@ -4,14 +4,32 @@ Tests for calibration records.
 Covers: create calibration, list calibrations for asset, calibration date
 ordering (most recent first), analyze endpoint (ephemeral), atomic create
 with embedded polynomial/regression fields + points, GET /{id}/points,
-authentication guards, version auto-increment.
+authentication guards, version auto-increment/renumbering, and the
+void/restore soft-delete flow.
 """
 import uuid
 
 import pytest
+from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
+from app.core.security import create_access_token, hash_password
+from app.models.user import User, UserRole
 from tests.conftest import make_asset_id
+
+
+def _viewer_headers(db: Session) -> dict:
+    viewer = User(
+        id=uuid.uuid4(),
+        email=f"viewer_{uuid.uuid4().hex[:8]}@opengauge.test",
+        name="Viewer",
+        hashed_password=hash_password("Testpass123!"),
+        role=UserRole.viewer,
+        is_active=True,
+    )
+    db.add(viewer)
+    db.flush()
+    return {"Authorization": f"Bearer {create_access_token({'sub': str(viewer.id)})}"}
 
 
 # ---------------------------------------------------------------------------
@@ -428,3 +446,216 @@ class TestGetCalibrationPoints:
     ) -> None:
         r = client.get(f"/api/v1/calibrations/{calibration['id']}/points")
         assert r.status_code == 403  # HTTPBearer returns 403 when missing
+
+
+# ---------------------------------------------------------------------------
+# calibration_version renumbering (chronological, not insertion order)
+# ---------------------------------------------------------------------------
+
+class TestVersionRenumbering:
+    def test_backfilled_earlier_date_becomes_version_one(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        first = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset["id"],
+                "calibration_date": "2024-06-01",
+                "due_date": "2025-06-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        ).json()
+        assert first["calibration_version"] == 1
+
+        # Backfill an earlier calibration_date after the fact.
+        backfilled = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset["id"],
+                "calibration_date": "2023-01-01",
+                "due_date": "2024-01-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        ).json()
+        assert backfilled["calibration_version"] == 1
+
+        # The originally-first record must have shifted up to make room.
+        refetched_first = client.get(
+            f"/api/v1/calibrations/{first['id']}", headers=auth_headers
+        ).json()
+        assert refetched_first["calibration_version"] == 2
+
+    def test_renumbering_is_scoped_per_asset(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        other_payload = {
+            "asset_id": make_asset_id(),
+            "asset_type": "sensor",
+            "name": "Other Asset",
+            "manufacturer": "Fluke",
+            "model": "724",
+        }
+        other_asset = client.post("/api/v1/assets", json=other_payload, headers=auth_headers).json()
+
+        client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset["id"],
+                "calibration_date": "2025-01-01",
+                "due_date": "2026-01-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        )
+        # A backfill on a *different* asset must not renumber this asset's history.
+        first_on_other_asset = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": other_asset["id"],
+                "calibration_date": "2020-01-01",
+                "due_date": "2021-01-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        ).json()
+        assert first_on_other_asset["calibration_version"] == 1
+
+        this_asset_cals = client.get(
+            f"/api/v1/assets/{asset['id']}/calibrations", headers=auth_headers
+        ).json()
+        assert all(c["calibration_version"] == 1 for c in this_asset_cals)
+
+
+# ---------------------------------------------------------------------------
+# DELETE /calibrations/{id} — soft void (not a hard delete)
+# ---------------------------------------------------------------------------
+
+class TestVoidCalibration:
+    def test_void_hides_calibration_from_default_list(
+        self, client: TestClient, auth_headers: dict, asset: dict, calibration: dict
+    ) -> None:
+        r = client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        assert r.status_code == 204
+
+        listed = client.get(
+            f"/api/v1/assets/{asset['id']}/calibrations", headers=auth_headers
+        ).json()
+        assert all(c["id"] != calibration["id"] for c in listed)
+
+    def test_voided_calibration_still_visible_with_include_voided(
+        self, client: TestClient, auth_headers: dict, asset: dict, calibration: dict
+    ) -> None:
+        client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        listed = client.get(
+            f"/api/v1/assets/{asset['id']}/calibrations?include_voided=true",
+            headers=auth_headers,
+        ).json()
+        voided = next(c for c in listed if c["id"] == calibration["id"])
+        assert voided["is_active"] is False
+        assert voided["voided_at"] is not None
+        assert voided["voided_by"] is not None
+
+    def test_void_reason_is_recorded(
+        self, client: TestClient, auth_headers: dict, asset: dict, calibration: dict
+    ) -> None:
+        r = client.delete(
+            f"/api/v1/calibrations/{calibration['id']}",
+            params={"reason": "entered against the wrong sensor"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 204
+        listed = client.get(
+            f"/api/v1/assets/{asset['id']}/calibrations?include_voided=true",
+            headers=auth_headers,
+        ).json()
+        voided = next(c for c in listed if c["id"] == calibration["id"])
+        assert voided["void_reason"] == "entered against the wrong sensor"
+
+    def test_record_and_certificate_are_preserved_not_deleted(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        # The row itself must still exist and be fetchable by id — this is a
+        # soft void, not a hard delete.
+        r = client.get(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["is_active"] is False
+
+    def test_voiding_twice_is_rejected(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        r = client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_unknown_calibration_returns_404(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        r = client.delete(f"/api/v1/calibrations/{uuid.uuid4()}", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_non_admin_is_forbidden(
+        self, client: TestClient, db: Session, calibration: dict
+    ) -> None:
+        headers = _viewer_headers(db)
+        r = client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=headers)
+        assert r.status_code == 403
+
+    def test_requires_authentication(
+        self, client: TestClient, calibration: dict
+    ) -> None:
+        r = client.delete(f"/api/v1/calibrations/{calibration['id']}")
+        assert r.status_code == 403  # HTTPBearer returns 403 when missing
+
+
+# ---------------------------------------------------------------------------
+# POST /calibrations/{id}/restore
+# ---------------------------------------------------------------------------
+
+class TestRestoreCalibration:
+    def test_restore_reinstates_a_voided_calibration(
+        self, client: TestClient, auth_headers: dict, asset: dict, calibration: dict
+    ) -> None:
+        client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+
+        r = client.post(f"/api/v1/calibrations/{calibration['id']}/restore", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["is_active"] is True
+        assert body["voided_at"] is None
+        assert body["void_reason"] is None
+
+        listed = client.get(
+            f"/api/v1/assets/{asset['id']}/calibrations", headers=auth_headers
+        ).json()
+        assert any(c["id"] == calibration["id"] for c in listed)
+
+    def test_restoring_an_active_calibration_is_rejected(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.post(f"/api/v1/calibrations/{calibration['id']}/restore", headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_unknown_calibration_returns_404(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        r = client.post(f"/api/v1/calibrations/{uuid.uuid4()}/restore", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_non_admin_is_forbidden(
+        self, client: TestClient, auth_headers: dict, db: Session, calibration: dict
+    ) -> None:
+        client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        headers = _viewer_headers(db)
+        r = client.post(f"/api/v1/calibrations/{calibration['id']}/restore", headers=headers)
+        assert r.status_code == 403
+
+    def test_requires_authentication(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        client.delete(f"/api/v1/calibrations/{calibration['id']}", headers=auth_headers)
+        r = client.post(f"/api/v1/calibrations/{calibration['id']}/restore")
+        assert r.status_code == 403  # HTTPBearer returns 403 when missing
+

@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   deleteAssetFile,
-  deleteCalibration,
   fetchAssetLabelBlob,
   getAssetAuditLogs,
   getAssetCalibrations,
@@ -15,12 +14,14 @@ import {
   getCalibrationPoints,
   listLocations,
   listTeams,
+  restoreCalibration,
   retireAsset,
   updateAsset,
   deleteAssetPicture,
   fetchAssetExportBlob,
   uploadAssetFile,
   uploadAssetPicture,
+  voidCalibration,
 } from "@/services/asset.service";
 import { useAuth } from "@/lib/auth-context";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
@@ -67,6 +68,7 @@ import {
   MapPinIcon,
   PlusIcon,
   QrCodeIcon,
+  RestoreIcon,
   TrashIcon,
   UploadCloudIcon,
   WarningIcon,
@@ -1515,13 +1517,25 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const [calLocation, setCalLocation] = useState<LocationItem | null>(null);
   const [deletingCalId, setDeletingCalId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [showVoided, setShowVoided] = useState(false);
+  const [allCals, setAllCals] = useState<CalibrationRecord[] | null>(null);
+  const [restoringCalId, setRestoringCalId] = useState<string | null>(null);
 
+  const sourceCals = showVoided && allCals ? allCals : calibrations;
   const filteredCals = hasChannelTabs && activeChannelId
-    ? calibrations.filter((c) => c.sensor_id === activeChannelId)
-    : calibrations;
+    ? sourceCals.filter((c) => c.sensor_id === activeChannelId)
+    : sourceCals;
 
   const selectedCal = filteredCals.find((c) => c.id === selectedCalId) ?? filteredCals[0] ?? null;
-  const total = filteredCals.length;
+
+  function refetchVoided() {
+    getAssetCalibrations(profile.id, true).then(setAllCals).catch(() => {});
+  }
+
+  useEffect(() => {
+    if (showVoided) refetchVoided();
+  }, [showVoided]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setSelectedCalId(null);
@@ -1543,22 +1557,32 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
     getLocation(locId).then(setCalLocation).catch(() => setCalLocation(null));
   }, [selectedCal?.calibration_location_id]);
 
-  function versionOf(cal: CalibrationRecord): number {
-    const idx = filteredCals.findIndex((c) => c.id === cal.id);
-    return total - idx;
-  }
-
-  async function handleDeleteCal(calId: string) {
+  async function handleVoidCal(calId: string) {
     setDeletingCalId(calId);
     try {
-      await deleteCalibration(calId);
+      await voidCalibration(calId, voidReason.trim() || undefined);
       setDeleteConfirmId(null);
+      setVoidReason("");
       if (selectedCalId === calId) setSelectedCalId(null);
       onCalibrationDeleted();
+      if (showVoided) refetchVoided();
     } catch {
       // leave modal open so user sees error feedback via disabled state
     } finally {
       setDeletingCalId(null);
+    }
+  }
+
+  async function handleRestoreCal(calId: string) {
+    setRestoringCalId(calId);
+    try {
+      await restoreCalibration(calId);
+      onCalibrationDeleted();
+      if (showVoided) refetchVoided();
+    } catch {
+      // no-op — row stays as-is, admin can retry
+    } finally {
+      setRestoringCalId(null);
     }
   }
 
@@ -1583,7 +1607,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => { if (!isDeleting) setDeleteConfirmId(null); }}
+            onClick={() => { if (!isDeleting) { setDeleteConfirmId(null); setVoidReason(""); } }}
           />
           <div className="relative bg-og-surface border border-og-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
             <div className="flex items-center gap-3">
@@ -1591,7 +1615,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 <TrashIcon size={16} className="text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-og-text">Remove calibration</h3>
+                <h3 className="text-sm font-semibold text-og-text">Void calibration</h3>
                 {calToDelete && (
                   <p className="text-xs text-gray-400">
                     Version {calToDelete.calibration_version} · {fmtDate(calToDelete.calibration_date)}
@@ -1600,12 +1624,24 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               </div>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              This will permanently delete the calibration record and its certificate. This action cannot be undone.
+              This marks the calibration as invalid. It&apos;s hidden from the calibration history and
+              excluded from due-date and drift calculations, but the record and its certificate are
+              preserved and can be restored later.
             </p>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">Reason (optional)</label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                rows={2}
+                placeholder="e.g. entered against the wrong sensor"
+                className="w-full px-3 py-2 text-sm border border-og-border-md bg-og-surface rounded-lg outline-hidden focus:border-og-accent focus:ring-2 focus:ring-og-accent/20 transition-all placeholder:text-gray-400 text-og-text"
+              />
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setDeleteConfirmId(null)}
+                onClick={() => { setDeleteConfirmId(null); setVoidReason(""); }}
                 disabled={isDeleting}
                 className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
               >
@@ -1613,16 +1649,16 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               </button>
               <button
                 type="button"
-                onClick={() => handleDeleteCal(deleteConfirmId)}
+                onClick={() => handleVoidCal(deleteConfirmId)}
                 disabled={isDeleting}
                 className="px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-60 flex items-center gap-1.5"
               >
                 {isDeleting ? (
                   <>
                     <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Removing…
+                    Voiding…
                   </>
-                ) : "Remove permanently"}
+                ) : "Void calibration"}
               </button>
             </div>
           </div>
@@ -1699,7 +1735,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           <div className="flex items-start gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-mono font-bold text-og-accent">v{versionOf(selectedCal)}</span>
+                <span className="text-xs font-mono font-bold text-og-accent">v{selectedCal.calibration_version}</span>
                 <span className="text-sm font-semibold text-og-text">{fmtDate(selectedCal.calibration_date)}</span>
                 <span className="text-xs text-gray-400">by {selectedCal.performed_by_name}{selectedCal.external_lab_name ? ` · ${selectedCal.external_lab_name}` : ""}</span>
               </div>
@@ -2001,19 +2037,34 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       )}
 
       {/* Calibration history */}
-      {filteredCals.length > 0 && (
+      {(filteredCals.length > 0 || showVoided) && (
         <div className="bg-og-surface border border-og-border rounded-xl">
           <div className="flex items-center justify-between px-5 py-3 border-b border-og-border">
             <p className="text-xs font-semibold text-og-text">Calibration history</p>
-            <p className="text-xs text-gray-400">{filteredCals.length} record{filteredCals.length !== 1 ? "s" : ""}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-gray-400">{filteredCals.length} record{filteredCals.length !== 1 ? "s" : ""}</p>
+              {isAdmin && (
+                <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showVoided}
+                    onChange={(e) => setShowVoided(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded accent-og-accent"
+                  />
+                  Show voided
+                </label>
+              )}
+            </div>
           </div>
           <div className="divide-y divide-og-border">
             {filteredCals.map((cal) => {
               const isSelected = cal.id === (selectedCal?.id ?? null);
+              const isVoided = !cal.is_active;
               return (
                 <div
                   key={cal.id}
                   className={`flex items-start gap-4 px-5 py-3 transition-colors
+                    ${isVoided ? "opacity-60" : ""}
                     ${isSelected ? "bg-og-surface-alt" : "hover:bg-og-surface-alt/50"}`}
                 >
                   {/* Clickable row content */}
@@ -2024,11 +2075,19 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   >
                     <div className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
                       ${isSelected ? "border-og-accent text-og-accent" : "border-og-border bg-og-surface-alt text-gray-400"}`}>
-                      <span className="text-[10px] font-bold">v{versionOf(cal)}</span>
+                      <span className="text-[10px] font-bold">v{cal.calibration_version}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-og-text">{fmtDate(cal.calibration_date)}</span>
+                        {isVoided && (
+                          <span
+                            className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                            title={cal.void_reason ?? undefined}
+                          >
+                            Voided
+                          </span>
+                        )}
                         {cal.r_squared != null && (
                           <span className="text-[10px] font-mono text-gray-400">R²={fmtNum(cal.r_squared, 4)}</span>
                         )}
@@ -2045,6 +2104,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         {cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
                       </p>
                       {cal.notes && <p className="text-xs text-gray-500 mt-1 italic truncate">{cal.notes}</p>}
+                      {isVoided && cal.void_reason && (
+                        <p className="text-xs text-red-500 mt-1 italic truncate">Reason: {cal.void_reason}</p>
+                      )}
                     </div>
                     {cal.due_date && (
                       <div className="shrink-0 text-right hidden sm:block">
@@ -2054,16 +2116,28 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     )}
                   </button>
 
-                  {/* Admin delete */}
+                  {/* Admin void / restore */}
                   {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(cal.id); }}
-                      title="Remove calibration"
-                      className="shrink-0 self-center p-1 text-gray-300 hover:text-red-500 transition-colors rounded-sm"
-                    >
-                      <TrashIcon size={13} />
-                    </button>
+                    isVoided ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleRestoreCal(cal.id); }}
+                        disabled={restoringCalId === cal.id}
+                        title="Restore calibration"
+                        className="shrink-0 self-center p-1 text-gray-300 hover:text-emerald-500 transition-colors rounded-sm disabled:opacity-50"
+                      >
+                        <RestoreIcon size={13} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(cal.id); }}
+                        title="Void calibration"
+                        className="shrink-0 self-center p-1 text-gray-300 hover:text-red-500 transition-colors rounded-sm"
+                      >
+                        <TrashIcon size={13} />
+                      </button>
+                    )
                   )}
                 </div>
               );

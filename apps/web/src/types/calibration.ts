@@ -76,6 +76,12 @@ export interface CalibrationRecord {
   // Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
   decision_rule: string | null;
   conformity_statement: ConformityStatement | null;
+
+  // Soft-void state
+  is_active: boolean;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
 }
 
 export interface CalibrationPoint {
@@ -230,7 +236,6 @@ export interface CalibrationCreateBody {
 
   // Metadata
   calibration_type: string;
-  calibration_version: number;
   calibration_interval?: number | null;
   tolerance_criteria?: string | null;
 

@@ -74,10 +74,11 @@ def _clean(value: Any) -> Any:
 
 
 def _sorted_calibrations(db: Session, asset_pk: uuid.UUID) -> list[Calibration]:
-    """Calibrations oldest -> newest. Shared by the yaml builder and the zip
-    writer so `calibrations[i]` in the yaml always matches
+    """Calibrations oldest -> newest, including voided ones — an export is a full
+    historical backup, not a default list view. Shared by the yaml builder and the
+    zip writer so `calibrations[i]` in the yaml always matches
     `media/calibrations/{i+1:03d}/` in the zip."""
-    cals = cal_repo.list_by_asset(db, asset_pk, skip=0, limit=100_000)
+    cals = cal_repo.list_by_asset(db, asset_pk, skip=0, limit=100_000, include_voided=True)
     return sorted(cals, key=lambda c: (c.calibration_date, c.created_at))
 
 
@@ -235,6 +236,8 @@ def build_asset_yaml(db: Session, asset: Asset) -> dict:
             "channel_id": sensor_id_to_channel.get(cal.sensor_id),
             "calibration_type": cal.calibration_type,
             "calibration_version": cal.calibration_version,
+            "is_active": cal.is_active,
+            "void_reason": cal.void_reason,
             "calibration_interval": cal.calibration_interval,
             "tolerance_criteria": cal.tolerance_criteria,
             "external_lab_certificate_number": cal.external_lab_certificate_number,

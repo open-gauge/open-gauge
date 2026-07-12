@@ -696,7 +696,6 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         due_date: dueDate.toISOString().slice(0, 10),
         performed_by_name: step1.performed_by_name,
         calibration_type: step1.calibration_type,
-        calibration_version: 1,
         external_lab_name: step1.external_lab_name || null,
         external_lab_certificate_number: step1.external_lab_certificate_number || null,
         internal_procedure_id: step1.internal_procedure_id || null,

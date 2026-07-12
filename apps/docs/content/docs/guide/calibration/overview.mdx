@@ -64,3 +64,32 @@ Historical calibrations are viewable from the asset's detail page — every past
 every channel, most recent first, each with its full analysis, uncertainty budget, and
 certificate. Nothing is ever edited in place; a re-calibration is a new row, not a correction
 to an old one.
+
+## Version numbers
+
+Each calibration's **version** (`v1`, `v2`, …) is its chronological position — by
+`calibration_date`, not by when it was entered — among that asset's (or asset channel's)
+calibration history. Versions are recomputed on every new save, so backfilling an older
+calibration you forgot to enter earlier slots it into the correct position and shifts later
+records up, rather than always appending at the end. A calibration's version is otherwise
+stable: voiding a record (below) never renumbers anything.
+
+## Voiding a calibration
+
+Calibration history is never destroyed — there is no delete button, only **void**, restricted to
+`admin`/`superadmin`. Voiding an entry (from the trash icon on its row in the Calibration tab):
+
+- Marks it invalid and, optionally, records why.
+- Hides it from the calibration history list and asset overview by default (an admin can check
+  **Show voided** to see it again).
+- Excludes it from due-date/status calculations, so an invalid entry can't make an asset look
+  calibrated when it isn't.
+- Excludes it from Health tab drift/stability analysis and the curve-comparison dropdown.
+
+The record, its data points, and its certificate are all preserved untouched — voiding only flips
+a flag. An admin can **restore** a voided calibration at any time from the same row, which
+reverses all of the above. See [Calibrations](/docs/api/calibrations) in the API Reference for
+the exact `DELETE /calibrations/{id}` and `POST /calibrations/{id}/restore` payloads.
+
+A full asset export (the Export action on the asset page) always includes voided calibrations —
+it's a complete historical backup, not a filtered view.

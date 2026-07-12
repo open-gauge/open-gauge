@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -85,3 +85,11 @@ class Calibration(Base):
     # sent for this calibration cycle, so the daily sweep never sends duplicates.
     due_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     overdue_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Soft-void state. Calibration history is never destroyed (see AGENTS.md's
+    # calibration philosophy) — an admin can only mark a record invalid, which hides
+    # it from listings/due-date calculations/drift analysis and can be reversed.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    voided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    void_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -35,7 +35,7 @@ def get_summary(db: Session) -> dict:
     active_ids = {r[0] for r in db.query(Asset.id).filter(Asset.is_active.is_(True)).all()}
     latest_dues = dict(
         db.query(Calibration.asset_id, func.max(Calibration.due_date))
-        .filter(Calibration.asset_id.in_(active_ids))
+        .filter(Calibration.asset_id.in_(active_ids), Calibration.is_active.is_(True))
         .group_by(Calibration.asset_id)
         .all()
     )
@@ -157,6 +157,7 @@ def get_calibration_events(db: Session, months_past: int = 3, months_ahead: int 
             Calibration.asset_id,
             func.max(Calibration.created_at).label("max_ts"),
         )
+        .filter(Calibration.is_active.is_(True))
         .group_by(Calibration.asset_id)
         .subquery()
     )
@@ -198,13 +199,21 @@ def get_calendar_events(db: Session, year: int) -> list[dict]:
     performed = (
         db.query(Calibration, Asset)
         .join(Asset, Calibration.asset_id == Asset.id)
-        .filter(Calibration.calibration_date >= start, Calibration.calibration_date <= end)
+        .filter(
+            Calibration.is_active.is_(True),
+            Calibration.calibration_date >= start,
+            Calibration.calibration_date <= end,
+        )
         .all()
     )
     due = (
         db.query(Calibration, Asset)
         .join(Asset, Calibration.asset_id == Asset.id)
-        .filter(Calibration.due_date >= start, Calibration.due_date <= end)
+        .filter(
+            Calibration.is_active.is_(True),
+            Calibration.due_date >= start,
+            Calibration.due_date <= end,
+        )
         .all()
     )
 

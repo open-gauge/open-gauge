@@ -60,7 +60,7 @@ def get_admin_stats(
     return AdminStatsResponse(
         assets=count(Asset, Asset.is_active.is_(True)),
         procedures=count(Procedure, Procedure.is_active.is_(True)),
-        calibrations=count(Calibration),
+        calibrations=count(Calibration, Calibration.is_active.is_(True)),
         users=count(User, User.is_active.is_(True)),
         organizations=count(Organization, Organization.is_active.is_(True)),
         teams=count(Team, Team.is_active.is_(True)),

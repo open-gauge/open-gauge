@@ -281,6 +281,8 @@ def import_asset_from_folder(
             sensor_id=channel_to_sensor_id.get(cal.channel_id) if cal.channel_id else None,
             calibration_type=cal.calibration_type,
             calibration_version=cal.calibration_version,
+            is_active=cal.is_active,
+            void_reason=cal.void_reason,
             calibration_interval=cal.calibration_interval,
             tolerance_criteria=cal.tolerance_criteria,
             internal_reference_asset_id=None,

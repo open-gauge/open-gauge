@@ -22,10 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 def _latest_calibrations(db, asset_ids: list) -> dict:
-    """Latest (max due_date) calibration id per asset, as {asset_id: Calibration}."""
+    """Latest (max due_date) calibration id per asset, as {asset_id: Calibration}.
+    Voided calibrations are not valid and never trigger a reminder."""
     latest_due = dict(
         db.query(Calibration.asset_id, func.max(Calibration.due_date))
-        .filter(Calibration.asset_id.in_(asset_ids))
+        .filter(Calibration.asset_id.in_(asset_ids), Calibration.is_active.is_(True))
         .group_by(Calibration.asset_id)
         .all()
     )
@@ -33,7 +34,7 @@ def _latest_calibrations(db, asset_ids: list) -> dict:
         return {}
     rows = (
         db.query(Calibration)
-        .filter(Calibration.asset_id.in_(asset_ids))
+        .filter(Calibration.asset_id.in_(asset_ids), Calibration.is_active.is_(True))
         .order_by(Calibration.asset_id, Calibration.due_date.desc(), Calibration.created_at.desc())
         .all()
     )

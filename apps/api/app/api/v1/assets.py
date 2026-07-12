@@ -353,13 +353,16 @@ def list_asset_calibrations(
     asset_pk: uuid.UUID,
     skip: int = 0,
     limit: int = 50,
+    include_voided: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[CalibrationResponse]:
+    """List calibration records for this asset, newest first. Voided calibrations
+    are excluded unless include_voided=true."""
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return cal_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit)
+    return cal_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit, include_voided=include_voided)
 
 
 @router.get("/{asset_pk}/health", response_model=AssetHealthResponse)

@@ -33,8 +33,10 @@ export async function getAssetProfile(id: string): Promise<AssetProfile> {
   });
 }
 
-export async function getAssetCalibrations(id: string): Promise<CalibrationRecord[]> {
-  return apiFetch<CalibrationRecord[]>(`/api/v1/assets/${id}/calibrations?limit=50`, {
+export async function getAssetCalibrations(id: string, includeVoided = false): Promise<CalibrationRecord[]> {
+  const qs = new URLSearchParams({ limit: "50" });
+  if (includeVoided) qs.set("include_voided", "true");
+  return apiFetch<CalibrationRecord[]>(`/api/v1/assets/${id}/calibrations?${qs}`, {
     headers: tokenHeader(),
   });
 }
@@ -209,20 +211,19 @@ export async function createCalibration(body: CalibrationCreateBody): Promise<Ca
   });
 }
 
-export async function deleteCalibration(calId: string): Promise<void> {
-  await apiFetch<void>(`/api/v1/calibrations/${calId}`, {
+export async function voidCalibration(calId: string, reason?: string): Promise<void> {
+  const qs = reason ? `?${new URLSearchParams({ reason })}` : "";
+  await apiFetch<void>(`/api/v1/calibrations/${calId}${qs}`, {
     method: "DELETE",
     headers: tokenHeader(),
   });
 }
 
-export async function getNextCalibrationVersion(assetId: string, sensorId?: string): Promise<number> {
-  const qs = new URLSearchParams({ count: "true" });
-  if (sensorId) qs.set("sensor_id", sensorId);
-  const cals = await apiFetch<CalibrationRecord[]>(`/api/v1/assets/${assetId}/calibrations?${qs}`, {
+export async function restoreCalibration(calId: string): Promise<CalibrationRecord> {
+  return apiFetch<CalibrationRecord>(`/api/v1/calibrations/${calId}/restore`, {
+    method: "POST",
     headers: tokenHeader(),
   });
-  return cals.length + 1;
 }
 
 export interface ProcedureDetail {

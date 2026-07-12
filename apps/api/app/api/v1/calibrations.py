@@ -127,10 +127,13 @@ def analyze_calibration(
 def list_calibrations(
     skip: int = 0,
     limit: int = 50,
+    include_voided: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[CalibrationResponse]:
-    return cal_repo.list_calibrations(db, skip=skip, limit=limit)
+    """List calibration records across all assets. Voided calibrations are
+    excluded unless include_voided=true."""
+    return cal_repo.list_calibrations(db, skip=skip, limit=limit, include_voided=include_voided)
 
 
 @router.post("", response_model=CalibrationResponse, status_code=status.HTTP_201_CREATED)
@@ -141,16 +144,23 @@ def create_calibration(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CalibrationResponse:
+    """Record a new calibration. calibration_version is assigned automatically as
+    the record's chronological position (by calibration_date) among this asset's
+    (or asset/sensor's) history — not by insertion order — so backfilling an
+    older date correctly renumbers later records rather than always ranking last."""
     asset = asset_repo.get_by_id(db, body.asset_id)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
-    if body.calibration_version == 1:
-        body = body.model_copy(
-            update={"calibration_version": cal_repo.get_next_version(db, body.asset_id, body.sensor_id)}
-        )
-
     cal = cal_repo.create_atomic(db, created_by=current_user.id, body=body)
+
+    # calibration_version is entirely server-computed: it's the chronological rank
+    # (by calibration_date) of every calibration in this asset/sensor's history, not
+    # an insertion-order counter — so a backfilled older date correctly slots in and
+    # shifts later records up, rather than always landing on the highest number.
+    cal_repo.renumber_versions(db, cal.asset_id, cal.sensor_id)
+    db.commit()
+    db.refresh(cal)
 
     # Generate and store the certificate (best-effort; never fail the creation)
     try:
@@ -205,57 +215,87 @@ def list_points(
     return cal_repo.list_points(db, cal_id)
 
 
+def _require_admin(current_user: User) -> None:
+    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+
 @router.delete("/{cal_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_calibration(
+def void_calibration(
     cal_id: uuid.UUID,
     request: Request,
+    reason: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Permanently remove a calibration record. Restricted to admin and superadmin."""
-    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    """Mark a calibration invalid rather than deleting it. Calibration history is
+    never destroyed (see AGENTS.md's calibration philosophy): the record, its data
+    points, and its certificate are all preserved. A voided calibration is hidden
+    from listings by default, excluded from due-date/status calculations, and
+    excluded from drift/health analysis, until an admin restores it.
+    Restricted to admin and superadmin."""
+    _require_admin(current_user)
 
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    if not cal.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration is already voided")
 
     asset = asset_repo.get_by_id(db, cal.asset_id)
 
-    # Delete certificate file from storage if present.
-    # Must null out the FK on cal first; otherwise deleting the files row
-    # while calibrations.calibration_file_id still references it raises a FK violation.
-    if cal.calibration_file_id:
-        try:
-            file_id_to_delete = cal.calibration_file_id
-            file_rec = sf_repo.get_by_id(db, file_id_to_delete)
-            if file_rec:
-                delete_file(file_rec.storage_path, file_rec.bucket)
-            cal.calibration_file_id = None
-            db.flush()
-            if file_rec:
-                sf_repo.delete(db, file_id_to_delete)
-        except Exception:
-            logger.warning("Could not delete certificate file for calibration %s", cal_id, exc_info=True)
+    cal_repo.void_calibration(db, cal, voided_by=current_user.id, reason=reason)
 
     audit_log_repo.create(
         db,
         actor_id=current_user.id,
         actor_email=current_user.email,
-        action="calibration.deleted",
+        action="calibration.voided",
         entity_type="calibration",
         entity_id=cal_id,
         entity_asset_id=asset.asset_id if asset else None,
-        before_state={
-            "calibration_version": cal.calibration_version,
-            "calibration_date": str(cal.calibration_date),
-            "due_date": str(cal.due_date),
-        },
+        before_state={"is_active": True},
+        after_state={"is_active": False, "void_reason": reason},
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
 
-    cal_repo.delete_calibration(db, cal)
+
+@router.post("/{cal_id}/restore", response_model=CalibrationResponse)
+def restore_calibration(
+    cal_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CalibrationResponse:
+    """Reinstate a previously voided calibration. Restricted to admin and superadmin."""
+    _require_admin(current_user)
+
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    if cal.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration is not voided")
+
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+
+    cal_repo.restore_calibration(db, cal)
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="calibration.restored",
+        entity_type="calibration",
+        entity_id=cal_id,
+        entity_asset_id=asset.asset_id if asset else None,
+        before_state={"is_active": False},
+        after_state={"is_active": True},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return cal
 
 
 @router.get("/{cal_id}/certificate")
@@ -328,10 +368,9 @@ def _generate_and_store_certificate(db: Session, cal: "object", uploaded_by: uui
         from ...models.sensor import Sensor
         sensor = db.query(Sensor).filter(Sensor.id == cal.sensor_id).first()
 
-    # Count versions for this asset/sensor to derive the version number
-    version = cal_repo.get_next_version(db, cal.asset_id, cal.sensor_id) - 1
-    if version < 1:
-        version = cal.calibration_version
+    # calibration_version is already the correct chronological position by the time
+    # the certificate is generated (create_calibration renumbers before calling this).
+    version = cal.calibration_version
 
     pdf_bytes = generate_certificate(
         asset=asset,

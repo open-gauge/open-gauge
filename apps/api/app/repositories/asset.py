@@ -96,7 +96,7 @@ def list_assets(
     # ------------------------------------------------------------------
     cal_rows = (
         db.query(Calibration.asset_id, func.max(Calibration.due_date))
-        .filter(Calibration.asset_id.in_(asset_uuids))
+        .filter(Calibration.asset_id.in_(asset_uuids), Calibration.is_active.is_(True))
         .group_by(Calibration.asset_id)
         .all()
     )
@@ -349,10 +349,10 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
         if team:
             owner_name = team.name
 
-    # Calibration summary
+    # Calibration summary (voided calibrations are not valid history — excluded)
     cals = (
         db.query(Calibration)
-        .filter(Calibration.asset_id == asset_pk)
+        .filter(Calibration.asset_id == asset_pk, Calibration.is_active.is_(True))
         .order_by(Calibration.calibration_date.desc())
         .all()
     )

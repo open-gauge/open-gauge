@@ -163,6 +163,8 @@ class ImportedCalibration(BaseModel):
     channel_id: str | None = None
     calibration_type: str = "external"
     calibration_version: int = 1
+    is_active: bool = True
+    void_reason: str | None = None
     calibration_interval: int | None = None
     tolerance_criteria: str | None = None
     external_lab_certificate_number: str | None = None
