@@ -3,28 +3,35 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import type { UserProfile } from "@/types/user";
+import type { UserProfile, UserSignature } from "@/types/user";
 import {
   CameraIcon,
   CheckIcon,
   EditIcon,
   PlusIcon,
+  SignatureIcon,
   TrashIcon,
   WarningIcon,
   XIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/avatar";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
+import { SignaturePad } from "@/components/signature-pad";
 import {
   changePassword,
   createTeam,
   deleteMe,
   deleteMyPicture,
+  deleteMySignature,
   deleteTeam,
+  getMySignature,
   listTeams,
   updateMe,
   updateTeam,
   uploadMyPicture,
+  uploadMySignature,
+  verifyUserSignature,
+  type SignatureVerifyResult,
   type Team,
 } from "@/services/user.service";
 
@@ -146,6 +153,187 @@ function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh:
 }
 
 // ---------------------------------------------------------------------------
+// Signature card
+// ---------------------------------------------------------------------------
+
+function SignatureCard({ user }: { user: UserProfile }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [signature, setSignature] = useState<UserSignature | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [drawing, setDrawing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<SignatureVerifyResult | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    getMySignature()
+      .then(setSignature)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load signature"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      setSignature(await uploadMySignature(file, "upload"));
+      setVerifyResult(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to upload signature");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDrawSave(blob: Blob) {
+    setUploading(true);
+    setError("");
+    try {
+      setSignature(await uploadMySignature(blob, "drawn"));
+      setVerifyResult(null);
+      setDrawing(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save signature");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRemove() {
+    setUploading(true);
+    setError("");
+    try {
+      await deleteMySignature();
+      setSignature(null);
+      setVerifyResult(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to remove signature");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleVerify() {
+    setVerifying(true);
+    setError("");
+    try {
+      setVerifyResult(await verifyUserSignature(user.id));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to verify signature");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  if (user.role === "viewer") return null;
+
+  return (
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="px-4 py-3 border-b border-og-border">
+        <p className="text-xs font-semibold text-og-text">Signature</p>
+      </div>
+      <div className="p-4 space-y-3">
+        {loading ? (
+          <p className="text-xs text-gray-400">Loading…</p>
+        ) : drawing ? (
+          <SignaturePad onSave={handleDrawSave} onCancel={() => setDrawing(false)} />
+        ) : (
+          <>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => signature?.image_url && setPreviewOpen(true)}
+                disabled={!signature?.image_url}
+                className="w-32 h-16 rounded-lg border border-og-border-md bg-og-surface-alt flex items-center justify-center overflow-hidden shrink-0 disabled:cursor-default"
+              >
+                {signature?.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={signature.image_url} alt="Signature" className="max-w-full max-h-full object-contain" />
+                ) : (
+                  <SignatureIcon size={20} className="text-gray-300" />
+                )}
+              </button>
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+                  >
+                    <CameraIcon size={12} /> {uploading ? "Saving…" : signature ? "Replace" : "Upload image"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDrawing(true)}
+                    disabled={uploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+                  >
+                    <EditIcon size={12} /> Draw
+                  </button>
+                  {signature && (
+                    <button
+                      type="button"
+                      onClick={handleRemove}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+                    >
+                      <TrashIcon size={12} /> Remove
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-400">
+                  PNG with a transparent background. Cryptographically signed and used to sign certificates you perform.
+                </p>
+                {error && <p className="text-xs text-red-500">{error}</p>}
+              </div>
+            </div>
+
+            {signature && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-og-surface-alt border border-og-border">
+                <span
+                  className="text-xs text-gray-400 font-mono truncate"
+                  title={`Ed25519 public key fingerprint: ${signature.fingerprint_sha256}`}
+                >
+                  {signature.fingerprint_sha256.slice(0, 4)}…{signature.fingerprint_sha256.slice(-4)}
+                </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {verifyResult && (
+                    <span
+                      className={`flex items-center gap-1 text-xs ${verifyResult.verified ? "text-emerald-500" : "text-red-500"}`}
+                    >
+                      <CheckIcon size={11} /> {verifyResult.verified ? "Verified" : "Not verified"}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleVerify}
+                    disabled={verifying}
+                    className="text-xs font-medium text-og-accent hover:underline disabled:opacity-60"
+                  >
+                    {verifying ? "Verifying…" : "Verify"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/png" className="hidden" onChange={handleFileChange} />
+      </div>
+
+      {previewOpen && signature?.image_url && (
+        <ImagePreviewModal src={signature.image_url} alt="Signature" title="Signature" onClose={() => setPreviewOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Profile section
 // ---------------------------------------------------------------------------
 
@@ -222,6 +410,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
   return (
     <div className="space-y-4">
       <ProfilePictureCard user={user} onRefresh={onRefresh} />
+      <SignatureCard user={user} />
 
       {/* Display Name */}
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">

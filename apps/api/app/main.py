@@ -17,6 +17,7 @@ from .api.v1 import calibrations as cal_router
 from .api.v1 import procedures as procedure_router
 from .api.v1 import audit_logs as log_router
 from .api.v1 import users as user_router
+from .api.v1 import signatures as signature_router
 from .api.v1 import teams as team_router
 from .api.v1 import admin as admin_router
 from .core.config import settings
@@ -53,6 +54,7 @@ OPENAPI_TAGS = [
     {"name": "Procedures", "description": "Reusable calibration procedure templates."},
     {"name": "Audit Logs", "description": "Immutable record of significant state changes."},
     {"name": "Users", "description": "User accounts and profiles."},
+    {"name": "Signatures", "description": "User signature capture and cryptographic signing/verification."},
     {"name": "Teams", "description": "Teams within an organization, used for asset ownership."},
     {"name": "Admin", "description": "Organization- and system-level administration."},
     {"name": "Health", "description": "Service liveness check."},
@@ -83,6 +85,7 @@ app.include_router(cal_router.router, prefix="/api/v1")
 app.include_router(procedure_router.router, prefix="/api/v1")
 app.include_router(log_router.router, prefix="/api/v1")
 app.include_router(user_router.router, prefix="/api/v1")
+app.include_router(signature_router.router, prefix="/api/v1")
 app.include_router(team_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 

@@ -137,6 +137,35 @@ route("POST", "/api/v1/users/me/change-password", () => undefined);
 
 route("GET", "/api/v1/users/count", ({ qs }) => ({ count: store.countUsers(qs.get("q") ?? undefined) }));
 
+route("GET", "/api/v1/users/me/signature", () => store.getUserSignature(store.getDemoUser().id));
+
+route("DELETE", "/api/v1/users/me/signature", () => {
+  store.setUserSignature(store.getDemoUser().id, null);
+  return undefined;
+});
+
+route("GET", "/api/v1/users/:id/signature/public-key", ({ params }) => {
+  const sig = store.getUserSignature(params[0]);
+  if (!sig) throw new NotFoundError("user has no signing key");
+  return {
+    algorithm: "Ed25519",
+    public_key_pem: "-----BEGIN PUBLIC KEY-----\nDEMO-MODE-PLACEHOLDER-KEY\n-----END PUBLIC KEY-----",
+    fingerprint_sha256: sig.fingerprint_sha256,
+  };
+});
+
+route("GET", "/api/v1/users/:id/signature/verify", ({ params }) => {
+  const sig = store.getUserSignature(params[0]);
+  if (!sig) throw new NotFoundError("user has no active signature");
+  return {
+    verified: true,
+    image_hash_match: true,
+    signature_valid: true,
+    version: sig.version,
+    signed_at: sig.created_at,
+  };
+});
+
 route("GET", "/api/v1/users/:id", ({ params }) => {
   const user = store.getUserById(params[0]);
   if (!user) throw new NotFoundError("user not found");
@@ -966,6 +995,24 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
   if (req.pathname === "/api/v1/users/me/picture") {
     const user = store.updateUser(store.getDemoUser().id, { profile_picture_url: url, profile_picture_id: store.genId() });
     return user as unknown as T;
+  }
+
+  // /api/v1/users/me/signature
+  if (req.pathname === "/api/v1/users/me/signature") {
+    const userId = store.getDemoUser().id;
+    const existing = store.getUserSignature(userId);
+    const source = form.get("source");
+    const sig = {
+      id: store.genId(),
+      version: (existing?.version ?? 0) + 1,
+      source: source === "drawn" ? "drawn" as const : "upload" as const,
+      is_active: true,
+      image_url: url,
+      fingerprint_sha256: existing?.fingerprint_sha256 ?? store.genId().replace(/-/g, "").slice(0, 64).padEnd(64, "0"),
+      created_at: now,
+    };
+    store.setUserSignature(userId, sig);
+    return sig as unknown as T;
   }
 
   // /api/v1/procedures/:id/files

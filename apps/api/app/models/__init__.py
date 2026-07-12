@@ -13,4 +13,6 @@ from . import (  # noqa: F401
     stored_file,
     team,
     user,
+    user_signature,
+    user_signing_key,
 )

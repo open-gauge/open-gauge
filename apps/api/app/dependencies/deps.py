@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..core.database import get_db
 from ..core.security import decode_token
-from ..models.user import User
+from ..models.user import User, UserRole
 from ..repositories import user as user_repo
 
 _bearer = HTTPBearer()
@@ -30,3 +30,10 @@ def get_current_user(
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     return user
+
+
+def require_not_viewer(current_user: User = Depends(get_current_user)) -> User:
+    """Gate for actions viewers cannot perform (e.g. managing a signature)."""
+    if current_user.role == UserRole.viewer and not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Viewers cannot perform this action")
+    return current_user

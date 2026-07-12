@@ -732,6 +732,15 @@ export function CameraIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+export function SignatureIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 12.5c1.5-4.5 2.5-8 3.5-8s.5 5 1.5 5 1.5-3 2.5-3 .5 3.5 1.5 3.5 1-1.5 2-1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 14h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** Generic picture placeholder — shown when no profile/asset picture is set. */
 export function ImageIcon({ size = 16, className }: IconProps = {}) {
   return (

@@ -45,6 +45,35 @@ clicking a name anywhere it's mentioned — audit logs, activity, etc.). Users w
 fall back to their initials. Uploads are limited to image files under 5MB and are stored in
 MinIO like any other attached file (see [Data model & concepts](../concepts/data-model.mdx)).
 
+## Signatures
+
+Every user with a role other than `viewer` can set a signature from **Settings → Profile**,
+either by uploading a transparent-background PNG or by drawing it directly with the mouse
+(or touch/pen) on a canvas — either way, the result is stored as a transparent PNG.
+
+Unlike a profile picture, a signature is cryptographically bound to the account:
+
+1. The first time a user sets a signature, Open Gauge generates an **Ed25519 keypair** for
+   them. The private key is encrypted at rest (AES-256-GCM, keyed from the app's `SECRET_KEY`)
+   before it's stored — this protects against a database-only leak (a dump or backup theft),
+   though it does not protect against compromise of the running app process itself, which is
+   the practical ceiling for a self-hosted deployment with no external key-management service.
+2. Open Gauge signs a canonical envelope — the user's ID, the SHA-256 hash of the exact image
+   bytes, and a timestamp — with that private key. Both the signature image and the resulting
+   signature bytes are stored.
+3. The **public key never changes** once generated (replacing the signature image reuses the
+   same keypair) and is available to any authenticated user via
+   `GET /users/{id}/signature/public-key`, so a certificate — or any other consumer — can
+   independently re-verify that a signature image is authentic and unmodified.
+
+Replacing a signature does not delete the previous one — it's revoked (kept, marked inactive)
+so historical certificates that reference an older signature version remain independently
+verifiable. This mirrors how [calibration history](../concepts/data-model.mdx) is never
+overwritten, only superseded.
+
+A signature set this way is what certificates will use to visually and cryptographically
+attest to who performed a calibration.
+
 ## Session tokens
 
 Once authenticated, the frontend and any API client carry a session token on subsequent

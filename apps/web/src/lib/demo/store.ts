@@ -23,7 +23,7 @@ import type { AssetHealthResponse } from "@/types/health";
 import type { LocationItem } from "@/types/location";
 import type { Procedure } from "@/types/procedure";
 import type { StoredFile } from "@/types/stored_file";
-import type { UserProfile } from "@/types/user";
+import type { UserProfile, UserSignature } from "@/types/user";
 import type { EmailSettings, Organization } from "@/services/admin.service";
 import type { Team } from "@/services/user.service";
 
@@ -51,6 +51,9 @@ interface DemoState {
   storedFiles: StoredFile[];
   healthSnapshots: Record<string, AssetHealthResponse>;
   emailSettings: EmailSettings;
+  // Optional: absent in the committed fixture (added after it was generated), so every
+  // accessor below must tolerate `signatures` being undefined at runtime.
+  signatures?: Record<string, UserSignature>;
 }
 
 const FIXTURE = rawFixture as unknown as DemoState;
@@ -504,6 +507,21 @@ export function updateUser(id: string, patch: Partial<UserProfile>): UserProfile
   Object.assign(user, patch, { updated_at: nowIso() });
   persist();
   return user;
+}
+
+export function getUserSignature(userId: string): UserSignature | null {
+  return getState().signatures?.[userId] ?? null;
+}
+
+export function setUserSignature(userId: string, signature: UserSignature | null): void {
+  const state = getState();
+  if (!state.signatures) state.signatures = {};
+  if (signature) {
+    state.signatures[userId] = signature;
+  } else {
+    delete state.signatures[userId];
+  }
+  persist();
 }
 
 // ---------------------------------------------------------------------------

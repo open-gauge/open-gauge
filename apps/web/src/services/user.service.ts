@@ -1,6 +1,6 @@
 import { apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
-import type { UserProfile } from "@/types/user";
+import type { UserProfile, UserSignature } from "@/types/user";
 
 function tokenHeader(): Record<string, string> {
   const token = getToken();
@@ -33,6 +33,54 @@ export async function uploadMyPicture(file: File): Promise<UserProfile> {
 export async function deleteMyPicture(): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/v1/users/me/picture", {
     method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+export async function getMySignature(): Promise<UserSignature | null> {
+  return apiFetch<UserSignature | null>("/api/v1/users/me/signature", {
+    headers: tokenHeader(),
+  });
+}
+
+export async function uploadMySignature(file: File | Blob, source: "upload" | "drawn"): Promise<UserSignature> {
+  const form = new FormData();
+  form.append("file", file, file instanceof File ? file.name : "signature.png");
+  form.append("source", source);
+  return apiUpload<UserSignature>("/api/v1/users/me/signature", form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteMySignature(): Promise<void> {
+  return apiFetch<void>("/api/v1/users/me/signature", {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+export interface SignaturePublicKey {
+  algorithm: string;
+  public_key_pem: string;
+  fingerprint_sha256: string;
+}
+
+export async function getUserPublicKey(userId: string): Promise<SignaturePublicKey> {
+  return apiFetch<SignaturePublicKey>(`/api/v1/users/${userId}/signature/public-key`, {
+    headers: tokenHeader(),
+  });
+}
+
+export interface SignatureVerifyResult {
+  verified: boolean;
+  image_hash_match: boolean;
+  signature_valid: boolean;
+  version: number;
+  signed_at: string;
+}
+
+export async function verifyUserSignature(userId: string): Promise<SignatureVerifyResult> {
+  return apiFetch<SignatureVerifyResult>(`/api/v1/users/${userId}/signature/verify`, {
     headers: tokenHeader(),
   });
 }
