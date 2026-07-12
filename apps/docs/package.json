@@ -7,7 +7,7 @@
     "dev": "next dev -p 3000",
     "prebuild": "node scripts/fetch-openapi.mjs && node scripts/generate-openapi.mjs",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/serve-static.mjs",
     "lint": "eslint ."
   },
   "dependencies": {
