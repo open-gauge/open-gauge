@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 
+// Next.js route segment config (`dynamic`) must be a static string literal — it cannot be a
+// computed/conditional expression (confirmed via Next's own static AST analysis in
+// build/analysis/extract-const-value.js), so this can't simply be a ternary on
+// NEXT_PUBLIC_DEMO_MODE. Demo mode's static export instead patches this literal at build time —
+// see apps/web/scripts/build-demo.mjs — then restores this exact line afterward. This is the
+// unmodified, production (self-hosted) literal; do not change it here.
 export const dynamic = "force-dynamic";
 import ActivityFeed from "@/components/dashboard/activity-feed";
 import CalibrationCalendar from "@/components/dashboard/calibration-calendar";

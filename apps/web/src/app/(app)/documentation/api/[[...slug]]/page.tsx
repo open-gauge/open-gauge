@@ -5,18 +5,39 @@ import { DocsBody } from "fumadocs-ui/layouts/docs/page";
 import { getApiNavGroups, getApiSource } from "@/lib/api-docs-source";
 import { OpenAPIPage } from "@/components/api-openapi-page";
 import { HTTP_METHOD_STYLE } from "@/lib/tokens";
+import { isDemoMode } from "@/lib/demo/is-demo-mode";
 
 // Resolved per-request against the live api service, never at build time — see
 // api-docs-source.ts. Static generation would need the api reachable during `docker build`,
 // which Docker Compose can't guarantee (the api container is only up once containers are
 // *running*), so this route is intentionally left fully dynamic.
+//
+// This must stay a literal string — Next's route segment config is parsed from the AST at
+// build time and can't be a computed/conditional expression, even one keyed off
+// NEXT_PUBLIC_DEMO_MODE. Demo mode's static export (which drops this page in favor of a static
+// notice below, since the interactive reference isn't included — see ApiReferenceDemoNotice)
+// instead patches this literal at build time and restores it afterward — see
+// apps/web/scripts/build-demo.mjs. Do not change this line to a ternary.
 export const dynamic = "force-dynamic";
 
 interface PageParams {
   params: Promise<{ slug?: string[] }>;
 }
 
+// Static export can't enumerate every possible OpenAPI slug (there is no live schema at build
+// time in demo mode), so only the index path is prerendered; it renders ApiReferenceDemoNotice
+// below regardless of slug. Outside demo mode this returns [] and has no effect — the route
+// stays fully dynamic via `dynamic` above, exactly as before.
+export function generateStaticParams() {
+  if (!isDemoMode()) return [];
+  return [{ slug: [] }];
+}
+
 export default async function ApiReferencePage({ params }: PageParams) {
+  if (isDemoMode()) {
+    return <ApiReferenceDemoNotice />;
+  }
+
   const { slug } = await params;
 
   if (!slug || slug.length === 0) {
@@ -113,6 +134,28 @@ async function ApiOverview() {
   );
 }
 
+function ApiReferenceDemoNotice() {
+  return (
+    <div className="p-6">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-sm p-6 text-center">
+        <h1 className="text-sm font-semibold text-og-text">API Reference</h1>
+        <p className="text-xs text-gray-400 mt-1">
+          The interactive API Reference isn&apos;t included in this demo — see the full API reference at{" "}
+          <a
+            href="https://docs.opengauge.org"
+            target="_blank"
+            rel="noreferrer"
+            className="text-og-accent hover:underline"
+          >
+            docs.opengauge.org
+          </a>
+          .
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ApiUnavailable({ error }: { error: unknown }) {
   console.error("[documentation/api] could not load the OpenAPI schema", error);
   return (
@@ -129,6 +172,8 @@ function ApiUnavailable({ error }: { error: unknown }) {
 }
 
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
+  if (isDemoMode()) return { title: "API Reference" };
+
   const { slug } = await params;
   if (!slug || slug.length === 0) return { title: "API Reference" };
 

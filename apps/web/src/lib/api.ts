@@ -1,3 +1,6 @@
+import { isDemoMode } from "@/lib/demo/is-demo-mode";
+import { demoBlob, demoBlobPost, demoFetch, demoUpload } from "@/lib/demo/router";
+
 interface ApiError {
   detail: string;
 }
@@ -11,6 +14,8 @@ export function getBaseUrl(): string {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (isDemoMode()) return demoFetch<T>(path, options);
+
   const res = await fetch(`${getBaseUrl()}${path}`, {
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
@@ -30,12 +35,16 @@ export function authHeader(token: string): Record<string, string> {
 }
 
 export async function apiBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+  if (isDemoMode()) return demoBlob(path, options);
+
   const res = await fetch(`${getBaseUrl()}${path}`, options);
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
   return res.blob();
 }
 
 export async function apiBlobPost(path: string, body: unknown, options: RequestInit = {}): Promise<Blob> {
+  if (isDemoMode()) return demoBlobPost(path, body, options);
+
   const res = await fetch(`${getBaseUrl()}${path}`, {
     ...options,
     method: "POST",
@@ -47,6 +56,8 @@ export async function apiBlobPost(path: string, body: unknown, options: RequestI
 }
 
 export async function apiUpload<T>(path: string, form: FormData, options: RequestInit = {}): Promise<T> {
+  if (isDemoMode()) return demoUpload<T>(path, form, options);
+
   const res = await fetch(`${getBaseUrl()}${path}`, {
     method: "POST",
     ...options,

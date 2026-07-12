@@ -1,4 +1,6 @@
 import { apiFetch } from "@/lib/api";
+import { isDemoMode } from "@/lib/demo/is-demo-mode";
+import { DEMO_TOKEN } from "@/lib/demo/router";
 
 interface TokenResponse {
   access_token: string;
@@ -58,6 +60,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 }
 
 export function getToken(): string | null {
+  if (isDemoMode()) return DEMO_TOKEN;
   if (typeof window === "undefined") return null;
   return localStorage.getItem("og_token");
 }

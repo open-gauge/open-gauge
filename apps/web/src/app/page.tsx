@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import AuthCard from "@/components/auth-card";
 import ParticleBackground from "@/components/particle-background";
 import ThemeToggle from "@/components/theme-toggle";
+import { isDemoMode } from "@/lib/demo/is-demo-mode";
 import {
   ActivityIcon,
   GitBranchIcon,
@@ -16,6 +18,10 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
+  // Demo mode skips the login step entirely — visitors land straight on the
+  // dashboard as a fixed demo user (see lib/demo/router.ts).
+  if (isDemoMode()) redirect("/dashboard");
+
   return (
     <div className="relative min-h-screen bg-[#dce8ec] dark:bg-og-bg og-grid-bg">
       <ParticleBackground />

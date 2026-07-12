@@ -17,6 +17,7 @@ import {
 } from "@/components/icons";
 import { DocsNavTree } from "@/components/docs-nav-tree";
 import { ApiNavTree } from "@/components/api-nav-tree";
+import { isDemoMode } from "@/lib/demo/is-demo-mode";
 
 interface NavItem {
   href: string;
@@ -137,9 +138,14 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
             <li>
               <DocsNavTree tree={docsTree} collapsed={collapsed} />
             </li>
-            <li>
-              <ApiNavTree collapsed={collapsed} />
-            </li>
+            {/* API Reference depends on a live OpenAPI schema fetch — not available in demo
+                mode's static export, so the entry is hidden there. See
+                documentation/api/[[...slug]]/page.tsx for the corresponding page-level change. */}
+            {!isDemoMode() && (
+              <li>
+                <ApiNavTree collapsed={collapsed} />
+              </li>
+            )}
             {SYSTEM_NAV.map((item) => (
               <li key={item.href}>
                 <NavLink

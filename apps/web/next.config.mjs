@@ -14,9 +14,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const siblingDocsContent = path.join(__dirname, "..", "docs", "content", "docs", "guide");
 const needsWidenedRoot = !process.env.DOCS_CONTENT_DIR && existsSync(siblingDocsContent);
 
+// Demo mode builds a fully static export (no backend, no Node server) so it can be hosted as
+// static files — see apps/web/src/lib/demo/. Every other build (Docker/self-hosted) keeps the
+// existing "standalone" output untouched.
+const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  output: isDemoMode ? "export" : "standalone",
+  ...(isDemoMode ? { images: { unoptimized: true } } : {}),
   ...(needsWidenedRoot ? { turbopack: { root: path.join(__dirname, "..") } } : {}),
 };
 
