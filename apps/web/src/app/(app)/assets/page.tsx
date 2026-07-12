@@ -34,9 +34,11 @@ import {
   ListViewIcon,
   PlusIcon,
   SearchIcon,
+  ShieldCheckIcon,
   WarningIcon,
   XIcon,
 } from "@/components/icons";
+import { Tooltip } from "@/components/tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -420,6 +422,7 @@ interface RowProps {
 function AssetRow({ asset, expanded, onToggle }: RowProps) {
   const isMulti = asset.asset_type === "sensor" && asset.channels.length > 1;
   const rowCount = expanded && isMulti ? asset.channels.length : 1;
+  const isReferenceStandard = asset.channels.some((ch) => ch.calibration_role === "reference");
 
   // Shared cell content
   const sharedId = (
@@ -428,7 +431,16 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
       {asset.asset_id}
     </a>
   );
-  const sharedName = <p className="text-sm font-medium text-og-text leading-snug">{asset.name}</p>;
+  const sharedName = (
+    <p className="text-sm font-medium text-og-text leading-snug flex items-center gap-1.5">
+      <span className="truncate">{asset.name}</span>
+      {isReferenceStandard && (
+        <Tooltip content="Reference Standard">
+          <ShieldCheckIcon size={13} className="text-og-accent shrink-0" />
+        </Tooltip>
+      )}
+    </p>
+  );
   const sharedMfr = (
     <div>
       <p className="text-sm text-og-text leading-snug">{asset.manufacturer}</p>

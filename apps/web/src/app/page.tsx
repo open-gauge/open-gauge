@@ -103,7 +103,11 @@ export default function LoginPage() {
         {/* Footer */}
         <footer className="flex items-center justify-between px-8 py-4 text-xs text-gray-400">
           <span>© 2026 Open Gauge · self-hosted edition</span>
-          <span>build c8f1e2a · region eu-west</span>
+          <div className="flex items-center gap-4">
+            <a href="/terms" className="hover:text-og-accent transition-colors">Terms of Service</a>
+            <a href="/privacy" className="hover:text-og-accent transition-colors">Privacy Policy</a>
+            <span>build c8f1e2a · region eu-west</span>
+          </div>
         </footer>
       </div>
     </div>

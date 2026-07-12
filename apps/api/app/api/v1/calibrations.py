@@ -145,20 +145,18 @@ def create_calibration(
     current_user: User = Depends(get_current_user),
 ) -> CalibrationResponse:
     """Record a new calibration. calibration_version is assigned automatically as
-    the record's chronological position (by calibration_date) among this asset's
-    (or asset/sensor's) history — not by insertion order — so backfilling an
-    older date correctly renumbers later records rather than always ranking last."""
+    the next integer for this asset (or asset/sensor) — always increasing and
+    unique, regardless of calibration_date."""
     asset = asset_repo.get_by_id(db, body.asset_id)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
+    # Computed before the insert — MAX(existing versions) + 1 — so the new row
+    # isn't counted against itself.
+    next_version = cal_repo.get_next_version(db, body.asset_id, body.sensor_id)
     cal = cal_repo.create_atomic(db, created_by=current_user.id, body=body)
 
-    # calibration_version is entirely server-computed: it's the chronological rank
-    # (by calibration_date) of every calibration in this asset/sensor's history, not
-    # an insertion-order counter — so a backfilled older date correctly slots in and
-    # shifts later records up, rather than always landing on the highest number.
-    cal_repo.renumber_versions(db, cal.asset_id, cal.sensor_id)
+    cal.calibration_version = next_version
     db.commit()
     db.refresh(cal)
 

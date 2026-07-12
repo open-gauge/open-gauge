@@ -14,6 +14,10 @@ def get_by_verification_token(db: Session, token: str) -> User | None:
     return db.query(User).filter(User.verification_token == token).first()
 
 
+def get_by_password_reset_token(db: Session, token: str) -> User | None:
+    return db.query(User).filter(User.password_reset_token == token).first()
+
+
 def get_by_id(db: Session, user_id: uuid.UUID) -> User | None:
     return db.query(User).filter(User.id == user_id).first()
 
@@ -111,6 +115,23 @@ def mark_verified(db: Session, user: User) -> User:
 def set_verification_token(db: Session, user: User, token: str, expires_at) -> User:
     user.verification_token = token
     user.verification_token_expires_at = expires_at
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def set_password_reset_token(db: Session, user: User, token: str, expires_at) -> User:
+    user.password_reset_token = token
+    user.password_reset_token_expires_at = expires_at
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def reset_password(db: Session, user: User, hashed_password: str) -> User:
+    user.hashed_password = hashed_password
+    user.password_reset_token = None
+    user.password_reset_token_expires_at = None
     db.commit()
     db.refresh(user)
     return user

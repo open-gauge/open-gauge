@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models.calibration import Calibration
@@ -39,25 +40,19 @@ def list_calibrations(
     return q.order_by(Calibration.created_at.desc()).offset(skip).limit(limit).all()
 
 
-def renumber_versions(db: Session, asset_id: uuid.UUID, sensor_id: uuid.UUID | None) -> None:
-    """Reassign calibration_version for every calibration in this (asset[, sensor])
-    scope so it strictly reflects chronological order by calibration_date (1 = earliest).
+def get_next_version(db: Session, asset_id: uuid.UUID, sensor_id: uuid.UUID | None) -> int:
+    """Next calibration_version for this (asset[, sensor]) scope: MAX+1.
 
-    Runs after every create, since a backfilled (older) calibration_date can shift
-    every later record's number up by one — versions are a chronological position,
-    not an insertion-order counter. Voided calibrations are included: voiding doesn't
-    rewrite where a record sits in history, only whether it's currently valid.
+    Versions are an always-increasing, unique, insertion-order counter — not tied
+    to calibration_date — so backfilling an older-dated calibration never renumbers
+    any existing record. Includes voided calibrations, so a voided version number
+    is never reissued to a new record.
     """
-    q = db.query(Calibration).filter(Calibration.asset_id == asset_id)
+    q = db.query(func.max(Calibration.calibration_version)).filter(Calibration.asset_id == asset_id)
     if sensor_id is not None:
         q = q.filter(Calibration.sensor_id == sensor_id)
-    rows = q.order_by(
-        Calibration.calibration_date.asc(), Calibration.created_at.asc(), Calibration.id.asc()
-    ).all()
-    for i, row in enumerate(rows, start=1):
-        if row.calibration_version != i:
-            row.calibration_version = i
-    db.flush()
+    current_max = q.scalar()
+    return (current_max or 0) + 1
 
 
 def void_calibration(

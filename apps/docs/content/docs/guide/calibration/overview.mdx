@@ -67,12 +67,12 @@ to an old one.
 
 ## Version numbers
 
-Each calibration's **version** (`v1`, `v2`, …) is its chronological position — by
-`calibration_date`, not by when it was entered — among that asset's (or asset channel's)
-calibration history. Versions are recomputed on every new save, so backfilling an older
-calibration you forgot to enter earlier slots it into the correct position and shifts later
-records up, rather than always appending at the end. A calibration's version is otherwise
-stable: voiding a record (below) never renumbers anything.
+Each calibration's **version** (`v1`, `v2`, …) is an always-increasing, unique counter per
+asset (or asset channel) — the next integer, starting from 1, assigned when the record is
+saved. It is **not** based on `calibration_date`: backfilling a calibration you forgot to enter
+earlier still gets the next available number, not a number reflecting where it falls
+chronologically. A version, once assigned, is permanent — it's never reused (not even a voided
+one, below) and never renumbered.
 
 ## Voiding a calibration
 

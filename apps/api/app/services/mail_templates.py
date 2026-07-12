@@ -42,6 +42,27 @@ def render_verification_email(name: str, verify_url: str) -> tuple[str, str, str
     return subject, _wrap(body), text
 
 
+def render_password_reset_email(name: str, reset_url: str) -> tuple[str, str, str]:
+    subject = "Reset your Open Gauge password"
+    body = f"""
+    <h1 style="font-size:18px;color:{_TEXT};margin:0 0 12px;">Hi {name}</h1>
+    <p style="font-size:14px;color:{_TEXT};line-height:1.5;">
+      We received a request to reset your Open Gauge password. Click below to choose a new one.
+    </p>
+    <p style="margin:20px 0;">
+      <a href="{reset_url}" style="background:{_ACCENT};color:#fff;text-decoration:none;
+        padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;">Reset password</a>
+    </p>
+    <p style="font-size:12px;color:#9ca3af;">This link expires in 1 hour. If you didn't request this, you can ignore this email — your password won't change.</p>
+    """
+    text = (
+        f"Hi {name}\n\n"
+        f"We received a request to reset your Open Gauge password. Use this link to choose a new one:\n{reset_url}\n\n"
+        "This link expires in 1 hour. If you didn't request this, you can ignore this email — your password won't change."
+    )
+    return subject, _wrap(body), text
+
+
 def render_calibration_created_email(asset_name: str, asset_id: str, due_date: date, performed_by: str) -> tuple[str, str, str]:
     subject = f"New calibration recorded for {asset_name} ({asset_id})"
     body = f"""

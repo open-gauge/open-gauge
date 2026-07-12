@@ -3,13 +3,24 @@ from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...schemas.auth import (
+    ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
     ResendVerificationRequest,
+    ResetPasswordRequest,
     TokenResponse,
 )
-from ...services.auth import AuthError, login, register, resend_verification, verify_email
+from ...services import mail as mail_svc
+from ...services.auth import (
+    AuthError,
+    forgot_password,
+    login,
+    register,
+    resend_verification,
+    reset_password,
+    verify_email,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -25,22 +36,21 @@ def login_endpoint(body: LoginRequest, db: Session = Depends(get_db)) -> TokenRe
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register_endpoint(body: RegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
-    """Create a local account. If an admin has configured and enabled SMTP
-    (see /admin/email-settings), the account starts unverified and a
-    verification email is sent — sign-in is blocked until it's confirmed via
-    /auth/verify-email. Otherwise the account is verified immediately and an
-    access token is returned right away, same as before this existed."""
+    """Create a local account. Every new account requires activation before it can
+    sign in. If an admin has configured and enabled SMTP (see /admin/email-settings),
+    activation is self-service via an emailed verification link (/auth/verify-email).
+    Otherwise an admin must activate the account manually from Admin -> Users."""
     try:
-        token, verification_required = register(db, body.email, body.name, body.password)
+        _, verification_required = register(db, body.email, body.name, body.password)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    if verification_required:
-        return RegisterResponse(
-            verification_required=True,
-            message="Account created. Check your email to verify your address before signing in.",
-        )
-    return RegisterResponse(access_token=token, verification_required=False, message="Account created.")
+    message = (
+        "Account created. Check your email to verify your address before signing in."
+        if mail_svc.is_enabled(db)
+        else "Account created. An administrator needs to activate your account before you can sign in."
+    )
+    return RegisterResponse(verification_required=verification_required, message=message)
 
 
 @router.get("/verify-email", response_model=TokenResponse)
@@ -60,3 +70,23 @@ def resend_verification_endpoint(body: ResendVerificationRequest, db: Session = 
     """Re-send the verification email. Always responds 204 regardless of whether
     the address exists or is already verified, to avoid leaking account existence."""
     resend_verification(db, body.email)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+def forgot_password_endpoint(body: ForgotPasswordRequest, db: Session = Depends(get_db)) -> None:
+    """Send a password reset link if email is configured and the address matches an
+    account. Always responds 204 regardless of outcome, to avoid leaking account
+    existence — the frontend shows a generic message either way. Without SMTP
+    configured there is no self-service reset path at all; contact your administrator."""
+    forgot_password(db, body.email)
+
+
+@router.post("/reset-password", response_model=TokenResponse)
+def reset_password_endpoint(body: ResetPasswordRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    """Complete a password reset from the emailed link and sign the user in.
+    Tokens expire 1 hour after being requested."""
+    try:
+        access_token = reset_password(db, body.token, body.new_password)
+    except AuthError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return TokenResponse(access_token=access_token)

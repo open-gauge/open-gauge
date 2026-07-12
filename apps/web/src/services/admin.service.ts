@@ -64,7 +64,7 @@ export async function getUserById(id: string): Promise<UserProfile> {
 
 export async function updateAdminUser(
   userId: string,
-  body: { role?: string; organization_id?: string | null; is_active?: boolean },
+  body: { role?: string; organization_id?: string | null; is_active?: boolean; is_verified?: boolean },
 ): Promise<UserProfile> {
   return apiFetch<UserProfile>(`/api/v1/users/${userId}`, {
     method: "PUT",

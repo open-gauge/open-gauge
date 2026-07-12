@@ -1,11 +1,11 @@
 ---
 title: Email notifications
-description: SMTP configuration for account verification and calibration reminders, managed entirely by an admin.
+description: SMTP configuration for account verification, password reset, and calibration reminders, managed entirely by an admin.
 ---
 
-Open Gauge can send email for two things: confirming new accounts, and keeping a calibration's
-owning team aware of its status. Like Gogs/Gitea, SMTP is a single, admin-managed configuration
-rather than something every user touches.
+Open Gauge can send email for three things: confirming new accounts, resetting a forgotten
+password, and keeping a calibration's owning team aware of its status. Like Gogs/Gitea, SMTP is a
+single, admin-managed configuration rather than something every user touches.
 
 ## Configuration
 
@@ -26,17 +26,26 @@ endpoints.
 
 Open Gauge must keep working out of the box in Docker Compose (see [Self-hosting: Deployment](./deployment.mdx))
 even though no self-hosted install has SMTP configured by default. So every email-sending code
-path checks whether mail is enabled first, and degrades gracefully:
+path checks whether mail is enabled first, and degrades to a manual, admin-mediated fallback
+instead of failing outright:
 
-- **Registration** proceeds exactly as it did before this feature existed — the account is
-  created active and the user is signed in immediately.
+- **Registration** still creates the account, but it starts unverified — since there's no way to
+  email a verification link, an `admin`/`superadmin` must activate it manually from **Admin →
+  Users** (a "Pending activation" badge and **Activate** button appear there).
+- **Forgot password** has no self-service path at all without SMTP — the sign-in screen tells the
+  user to contact their administrator, who can be asked to help them regain access.
 - **Calibration notifications and reminders** are simply skipped.
 
-Nothing about account creation or calibration workflows depends on mail being configured.
+Nothing about account creation or calibration workflows is blocked by mail being unconfigured —
+only the automated, self-service parts of it are.
 
 ## Account verification
 
-When mail is enabled, `POST /auth/register` no longer signs the user in directly. Instead:
+Every self-registered account (`POST /auth/register`) starts unverified and cannot sign in until
+activated — there is no path where self-registration grants instant access, regardless of mail
+configuration. What activation looks like depends on whether mail is enabled:
+
+**With mail enabled:**
 
 1. The account is created with `is_verified = false` and a random verification token
    (24-hour expiry).
@@ -49,8 +58,25 @@ If the email never arrives (e.g. the admin hasn't finished the SMTP setup), the 
 another one from the sign-in screen (`POST /auth/resend-verification`), which always responds
 successfully without revealing whether the address exists.
 
-Accounts created directly by an admin (`POST /users`) are unaffected — they're verified
-immediately, since an admin already vouched for them.
+**Without mail enabled:** the account is created unverified with no token issued (there's nowhere
+to send it). An `admin`/`superadmin` activates it directly from **Admin → Users** — this sets
+`is_verified = true` with no email round-trip.
+
+Accounts created directly by an admin (`POST /users`) are unaffected by any of this — they're
+verified immediately, since an admin already vouched for them when creating the account.
+
+## Forgot password
+
+`POST /auth/forgot-password` always responds successfully regardless of whether the address
+exists, to avoid leaking account existence — the frontend shows one generic message either way.
+
+**With mail enabled:** if the address matches an account, a reset token (1-hour expiry) is
+generated and emailed with a link to `/auth/reset-password?token=...`. Submitting a new password
+there (`POST /auth/reset-password`) clears the token, updates the password, and signs the user in.
+
+**Without mail enabled:** no token is ever generated — there is no self-service reset path.
+The sign-in screen's messaging says so explicitly, directing the user to their administrator, who
+can reset the password by re-creating credentials or otherwise assisting them out-of-band.
 
 ## Calibration notifications
 

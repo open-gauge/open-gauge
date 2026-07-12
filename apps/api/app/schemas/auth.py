@@ -38,9 +38,10 @@ class TokenResponse(BaseModel):
 
 
 class RegisterResponse(BaseModel):
-    """access_token is set only when email verification isn't required (mail not
-    configured) — in that case registration behaves like before: the user is
-    logged in immediately. Otherwise the caller must verify their email first."""
+    """access_token is always unset on a fresh registration: every new self-registered
+    account requires activation before it can sign in — either by verifying via the
+    emailed link (mail configured) or by an admin manually activating it in the Users
+    panel (mail not configured)."""
     access_token: str | None = None
     token_type: str = "bearer"
     verification_required: bool
@@ -54,6 +55,20 @@ class ResendVerificationRequest(BaseModel):
     @classmethod
     def check_email(cls, v: str) -> str:
         return _validate_email(v)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(min_length=3)
+
+    @field_validator("email")
+    @classmethod
+    def check_email(cls, v: str) -> str:
+        return _validate_email(v)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class UserResponse(BaseModel):

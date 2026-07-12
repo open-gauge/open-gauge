@@ -31,6 +31,8 @@ class User(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     verification_token: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     verification_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_reset_token: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    password_reset_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     profile_picture_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

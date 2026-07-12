@@ -219,8 +219,11 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    if current_user.id != user_id and not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    """Admin-only: role, organization, team, is_active, and is_verified are all
+    privilege-bearing fields. Self-service updates go through PATCH /users/me
+    (UserSelfUpdate) instead, which only allows name/email/team."""
+    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     user = user_repo.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

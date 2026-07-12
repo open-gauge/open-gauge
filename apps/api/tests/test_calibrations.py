@@ -452,8 +452,12 @@ class TestGetCalibrationPoints:
 # calibration_version renumbering (chronological, not insertion order)
 # ---------------------------------------------------------------------------
 
-class TestVersionRenumbering:
-    def test_backfilled_earlier_date_becomes_version_one(
+class TestVersionNumbering:
+    """calibration_version is an always-increasing, unique insertion-order
+    counter per (asset[, sensor]) — never renumbered, never tied to
+    calibration_date (backfilling an older date must not shift anything)."""
+
+    def test_versions_increase_in_creation_order_starting_from_one(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
         first = client.post(
@@ -468,7 +472,36 @@ class TestVersionRenumbering:
         ).json()
         assert first["calibration_version"] == 1
 
-        # Backfill an earlier calibration_date after the fact.
+        second = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset["id"],
+                "calibration_date": "2025-06-01",
+                "due_date": "2026-06-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        ).json()
+        assert second["calibration_version"] == 2
+
+    def test_backfilling_an_earlier_date_does_not_renumber_existing_records(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        first = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset["id"],
+                "calibration_date": "2024-06-01",
+                "due_date": "2025-06-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        ).json()
+        assert first["calibration_version"] == 1
+
+        # Backfill an earlier calibration_date after the fact — this must land
+        # as the *next* version number (3rd overall counting the fixture's own
+        # calibration), not renumber anything, and must not collide with v1.
         backfilled = client.post(
             "/api/v1/calibrations",
             json={
@@ -479,15 +512,15 @@ class TestVersionRenumbering:
             },
             headers=auth_headers,
         ).json()
-        assert backfilled["calibration_version"] == 1
+        assert backfilled["calibration_version"] == 2
 
-        # The originally-first record must have shifted up to make room.
+        # The earlier record's version must be unchanged.
         refetched_first = client.get(
             f"/api/v1/calibrations/{first['id']}", headers=auth_headers
         ).json()
-        assert refetched_first["calibration_version"] == 2
+        assert refetched_first["calibration_version"] == 1
 
-    def test_renumbering_is_scoped_per_asset(
+    def test_versions_are_scoped_per_asset(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
         other_payload = {
@@ -509,7 +542,7 @@ class TestVersionRenumbering:
             },
             headers=auth_headers,
         )
-        # A backfill on a *different* asset must not renumber this asset's history.
+        # A separate asset's numbering starts fresh at 1, independent of the first asset.
         first_on_other_asset = client.post(
             "/api/v1/calibrations",
             json={
@@ -522,10 +555,34 @@ class TestVersionRenumbering:
         ).json()
         assert first_on_other_asset["calibration_version"] == 1
 
-        this_asset_cals = client.get(
-            f"/api/v1/assets/{asset['id']}/calibrations", headers=auth_headers
+    def test_voided_versions_are_never_reused(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        first = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset["id"],
+                "calibration_date": "2024-06-01",
+                "due_date": "2025-06-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
         ).json()
-        assert all(c["calibration_version"] == 1 for c in this_asset_cals)
+        assert first["calibration_version"] == 1
+
+        client.delete(f"/api/v1/calibrations/{first['id']}", headers=auth_headers)
+
+        second = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset["id"],
+                "calibration_date": "2025-06-01",
+                "due_date": "2026-06-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        ).json()
+        assert second["calibration_version"] == 2
 
 
 # ---------------------------------------------------------------------------

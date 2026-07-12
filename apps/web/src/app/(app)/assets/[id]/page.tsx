@@ -69,6 +69,7 @@ import {
   PlusIcon,
   QrCodeIcon,
   RestoreIcon,
+  ShieldCheckIcon,
   TrashIcon,
   UploadCloudIcon,
   WarningIcon,
@@ -2885,6 +2886,11 @@ export default function AssetProfilePage() {
               <h1 className="text-2xl font-bold text-og-text">
                 {isEditing && editForm ? (editForm.name || profile.name) : profile.name}
               </h1>
+              {profile.sensor_channels.some((ch) => ch.calibration_role === "reference") && (
+                <Tooltip content="Reference Standard">
+                  <ShieldCheckIcon size={16} className="text-og-accent shrink-0" />
+                </Tooltip>
+              )}
               <StatusBadge status={profile.calibration_status} />
             </div>
             <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-sm text-gray-400">

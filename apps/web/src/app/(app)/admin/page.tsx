@@ -216,6 +216,7 @@ function UserRow({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [toggling, setToggling] = useState(false);
+  const [activating, setActivating] = useState(false);
 
   function startEdit() {
     setRole(user.role);
@@ -250,6 +251,18 @@ function UserRow({
       // silent — could add toast here
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function activate() {
+    setActivating(true);
+    try {
+      const updated = await updateAdminUser(user.id, { is_verified: true });
+      onUpdated(updated);
+    } catch {
+      // silent — could add toast here
+    } finally {
+      setActivating(false);
     }
   }
 
@@ -328,10 +341,28 @@ function UserRow({
                   Disabled
                 </span>
               )}
+              {!user.is_verified && (
+                <span
+                  title="Self-registered without email verification available — needs manual activation before they can sign in."
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                >
+                  Pending activation
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-400 truncate">{user.email}{orgName ? ` · ${orgName}` : ""}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {!user.is_verified && (
+              <button
+                onClick={activate}
+                disabled={activating}
+                title="Activate account"
+                className="px-2 py-1 text-[10px] font-medium rounded transition-colors disabled:opacity-50 text-emerald-600 border border-emerald-400/40 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+              >
+                {activating ? "Activating…" : "Activate"}
+              </button>
+            )}
             <button
               onClick={toggleActive}
               disabled={toggling}

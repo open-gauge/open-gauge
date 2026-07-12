@@ -21,6 +21,7 @@ class UserUpdate(BaseModel):
     organization_id: uuid.UUID | None = None
     team: str | None = None
     is_active: bool | None = None
+    is_verified: bool | None = None
 
 
 class UserSelfUpdate(BaseModel):
@@ -43,6 +44,7 @@ class UserResponse(BaseModel):
     organization_id: uuid.UUID | None
     is_active: bool
     is_superuser: bool
+    is_verified: bool
     profile_picture_id: uuid.UUID | None = None
     profile_picture_url: str | None = None
     last_login_at: datetime | None
