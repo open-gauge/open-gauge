@@ -75,14 +75,18 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
             />
           ) : (
             <>
-              {/* Light mode: use dark logo (dark text on light bg) */}
+              {/* Light mode: use dark logo (dark text on light bg).
+                  Fixed pixel size (168x56, matching the 1500x500 source's 3:1 ratio) —
+                  not a width:100% + sizes hack — because the wrapping <Link> is an
+                  auto/shrink-to-fit flex item: a percentage width on a replaced element
+                  inside an indefinite-width container resolves to the element's
+                  intrinsic size per spec, so the logo rendered at its raw 1500x500
+                  natural size instead of scaling down. */}
               <Image
                 src="/assets/Logo dark.png"
                 alt="Open Gauge"
-                width={0}
-                height={0}
-                sizes="168px"
-                style={{ width: "100%", height: "auto" }}
+                width={168}
+                height={56}
                 priority
                 className="block dark:hidden"
               />
@@ -90,10 +94,8 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
               <Image
                 src="/assets/Logo light.png"
                 alt="Open Gauge"
-                width={0}
-                height={0}
-                sizes="168px"
-                style={{ width: "100%", height: "auto" }}
+                width={168}
+                height={56}
                 priority
                 className="hidden dark:block"
               />
