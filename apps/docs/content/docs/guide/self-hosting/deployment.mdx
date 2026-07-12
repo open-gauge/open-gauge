@@ -37,6 +37,12 @@ This builds and starts every service defined in `infrastructure/docker/docker-co
 starting, via Docker Compose `depends_on: condition: service_healthy` — so a fresh `docker
 compose up -d` comes up in the right order automatically.
 
+The `api` image bakes in [Tectonic](https://tectonic-typesetting.github.io/) (a small
+self-contained LaTeX engine, ~20MB) to compile [certificate templates](../calibration/certificate-templates.mdx)
+to PDF. Its LaTeX package bundle is pre-fetched and cached into the image at build time, so
+certificate generation works fully offline at runtime — no network access needed, including in
+air-gapped deployments.
+
 ## Key environment variables
 
 Set these in `infrastructure/docker/docker-compose.yml` (or an `.env` file it references)

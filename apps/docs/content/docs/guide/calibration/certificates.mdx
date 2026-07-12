@@ -7,8 +7,17 @@ Saving a calibration best-effort generates an A4 PDF certificate in the same req
 generation fails for some reason, the calibration record is still saved; you can regenerate
 the certificate later.
 
+Certificates are **not** hand-built PDFs — they're rendered from a LaTeX template (a `.tex`
+file with placeholders) compiled to PDF by [Tectonic](https://tectonic-typesetting.github.io/),
+a small self-contained LaTeX engine. Every organization gets a working certificate with zero
+configuration (the built-in default template), and an admin can upload a custom template to
+change the layout, wording, or branding without any code changes — see
+[Certificate templates](./certificate-templates.mdx).
+
 ## Contents
 
+- **Letterhead** — the organization's logo (if set, see
+  [Data model & concepts](../concepts/data-model.mdx)) and name.
 - **Header** — QR code and certificate number.
 - **Asset info** — the asset and channel calibrated.
 - **Traceability** — the procedure followed, the reference standard used (internal
@@ -18,6 +27,9 @@ the certificate later.
   table (see [The uncertainty budget](./uncertainty-budget.mdx)), and the
   statement of conformity (see [Decision rules](./decision-rules.mdx)).
 - **Dataset** — the raw point table and a fit chart.
+- **Signature** — the performing user's signature image, if they've set one (see
+  [Signatures](../self-hosting/authentication.mdx#signatures)), cryptographically bound to
+  their account and independently verifiable.
 
 The uncertainty section prints a full-sentence GUM §7.2.4-style statement — value, coverage
 factor, basis (normal vs. t-distribution), confidence level, and the valid range the
@@ -31,6 +43,16 @@ recommendation unless explicitly agreed with the customer. Open Gauge doesn't ha
 flow yet, so no interval or "due date" language appears on the certificate at all — even
 though Open Gauge computes a recommended interval for its own
 [health scoring](../health-scoring/predictions.mdx) internally.
+
+## Which template is used
+
+Resolution order, first match wins:
+
+1. The calibrated asset's organization's active default template (via the asset's location —
+   see [Data model & concepts](../concepts/data-model.mdx)).
+2. The performing user's organization's active default template, if the asset has no location.
+3. The global default template, if one has been uploaded.
+4. The built-in template shipped with Open Gauge — always available, no configuration needed.
 
 ## Fetching a certificate
 

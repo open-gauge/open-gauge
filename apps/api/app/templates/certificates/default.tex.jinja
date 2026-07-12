@@ -1,0 +1,254 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=18mm,top=18mm,bottom=20mm]{geometry}
+% Tectonic runs on XeTeX, which is Unicode-native — fontspec + a real Unicode
+% font (DejaVu Sans, already installed via fonts-dejavu-core) handles any
+% free-text content correctly (accented names, degree signs, superscripts,
+% etc.), unlike the classic 8-bit T1/inputenc pipeline.
+\usepackage{fontspec}
+\setmainfont{DejaVu Sans}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{ogdark}{HTML}{1B4F64}
+\definecolor{ogmid}{HTML}{2F819B}
+\definecolor{oggray}{HTML}{6B7280}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\fancyfoot[L]{\footnotesize\color{oggray}\BLOCK{if lab_footer}Laboratory: \VAR{lab_footer|latex}\BLOCK{endif}}
+\fancyfoot[C]{\footnotesize\color{oggray}\BLOCK{if performer_name}Performed by: \VAR{performer_name|latex}\BLOCK{endif}}
+\fancyfoot[R]{\footnotesize\color{oggray}Page \thepage\ of \pageref{LastPage}}
+
+\newcommand{\sectionbar}[1]{%
+\vspace{4mm}
+\noindent\colorbox{ogdark}{\begin{minipage}{\dimexpr\linewidth-2\fboxsep\relax}\color{white}\bfseries\small #1\end{minipage}}
+\vspace{2mm}
+}
+
+\begin{document}
+
+% ---- Letterhead ----
+\BLOCK{if org_logo_path}
+\noindent
+\begin{minipage}[c]{16mm}
+\includegraphics[width=15mm]{\VAR{org_logo_path}}
+\end{minipage}%
+\hfill
+\begin{minipage}[c]{\dimexpr\linewidth-20mm\relax}
+\raggedleft{\bfseries\large\color{ogdark}\VAR{org_name|latex}}
+\end{minipage}
+\BLOCK{else}
+{\bfseries\large\color{ogdark}\VAR{org_name|latex}}
+\BLOCK{endif}
+
+\vspace{2mm}
+\noindent\textcolor{ogdark}{\rule{\linewidth}{0.8pt}}
+\vspace{3mm}
+
+% ---- Header ----
+\noindent
+\begin{minipage}[t]{\dimexpr\linewidth-24mm\relax}
+{\Large\bfseries\color{ogdark}CERTIFICATE OF CALIBRATION}\\[1mm]
+{\small\ttfamily\color{ogmid}\VAR{certificate_number|latex}}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{20mm}
+\BLOCK{if qr_path}
+\includegraphics[width=20mm]{\VAR{qr_path}}
+\BLOCK{endif}
+\end{minipage}
+
+\vspace{3mm}
+\begin{tabular}{@{}p{28mm}p{55mm}p{28mm}p{\dimexpr\linewidth-111mm\relax}@{}}
+\textbf{\color{oggray}Asset ID} & \VAR{asset_id|latex} & \textbf{\color{oggray}Calibration Date} & \VAR{calibration_date|latex}\\
+\textbf{\color{oggray}Asset Name} & \VAR{asset_name|latex} & \textbf{\color{oggray}Due Date} & \VAR{due_date|latex}\\
+\textbf{\color{oggray}Type} & \VAR{asset_type_label|latex} & \textbf{\color{oggray}Version} & v\VAR{version|latex}\\
+\textbf{\color{oggray}Performed by} & \VAR{performer_name|latex} & \textbf{\color{oggray}Cal. Type} & \VAR{calibration_type|latex}\\
+\end{tabular}
+
+\vspace{2mm}
+\noindent\textcolor{ogdark}{\rule{\linewidth}{1.2pt}}
+
+% ---- Section 1: Asset information ----
+\sectionbar{1. ASSET INFORMATION}
+
+\begin{tabular}{@{}p{28mm}p{55mm}p{28mm}p{\dimexpr\linewidth-111mm\relax}@{}}
+\textbf{\color{oggray}Asset ID} & \VAR{asset_id|latex} & \textbf{\color{oggray}Asset Name} & \VAR{asset_name|latex}\\
+\textbf{\color{oggray}Manufacturer} & \VAR{asset_manufacturer|latex} & \textbf{\color{oggray}Model} & \VAR{asset_model|latex}\\
+\textbf{\color{oggray}Serial Number} & \VAR{asset_serial|latex} & \textbf{\color{oggray}Part Number} & \VAR{asset_part_number|latex}\\
+\end{tabular}
+\BLOCK{if asset_notes}
+
+\small\textbf{\color{oggray}Notes:} \VAR{asset_notes|latex}\normalsize
+\BLOCK{endif}
+
+\BLOCK{if channel}
+\vspace{3mm}
+{\small\bfseries\color{ogdark}Channel Specification}\\[1mm]
+\begin{tabular}{@{}p{18mm}p{28mm}p{14mm}p{18mm}p{18mm}p{\dimexpr\linewidth-96mm\relax}@{}}
+\toprule
+\textbf{Channel} & \textbf{Quantity} & \textbf{Unit} & \textbf{Min} & \textbf{Max} & \textbf{Accuracy}\\
+\midrule
+\VAR{channel.id|latex} & \VAR{channel.quantity|latex} & \VAR{channel.unit|latex} & \VAR{channel.min|latex} & \VAR{channel.max|latex} & \VAR{channel.accuracy|latex}\\
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+
+% ---- Section 2: Traceability ----
+\sectionbar{2. TRACEABILITY \& PROCEDURE}
+
+\begin{tabular}{@{}p{32mm}p{58mm}p{32mm}p{\dimexpr\linewidth-122mm\relax}@{}}
+\textbf{\color{oggray}Calibration Type} & \VAR{calibration_type|latex} & \textbf{\color{oggray}External Lab} & \VAR{external_lab_name|latex}\\
+\textbf{\color{oggray}Certificate No.} & \VAR{external_lab_certificate_number|latex} & \textbf{\color{oggray}Performed by} & \VAR{performer_name|latex}\\
+\BLOCK{if procedure}
+\textbf{\color{oggray}Procedure ID} & \VAR{procedure.id|latex} & \textbf{\color{oggray}Procedure Name} & \VAR{procedure.name|latex}\\
+\textbf{\color{oggray}Procedure Version} & \VAR{procedure.version|latex} & \textbf{\color{oggray}Standard Ref.} & \VAR{procedure.standard_ref|latex}\\
+\BLOCK{endif}
+\end{tabular}
+
+\BLOCK{if reference_asset}
+\vspace{3mm}
+{\small\bfseries\color{ogdark}Reference Standard}\\[1mm]
+\begin{tabular}{@{}p{22mm}p{45mm}p{32mm}p{32mm}p{\dimexpr\linewidth-131mm\relax}@{}}
+\toprule
+\textbf{Asset ID} & \textbf{Name} & \textbf{Manufacturer} & \textbf{Model} & \textbf{Serial No.}\\
+\midrule
+\VAR{reference_asset.id|latex} & \VAR{reference_asset.name|latex} & \VAR{reference_asset.manufacturer|latex} & \VAR{reference_asset.model|latex} & \VAR{reference_asset.serial|latex}\\
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+
+\BLOCK{if temperature or humidity or pressure}
+\vspace{2mm}
+\small\color{oggray}Environmental Conditions:\ %
+\BLOCK{if temperature}Temperature: \VAR{temperature|latex}~\textdegree C\BLOCK{endif}
+\BLOCK{if humidity}\ \textbullet\ Humidity: \VAR{humidity|latex}~\%RH\BLOCK{endif}
+\BLOCK{if pressure}\ \textbullet\ Pressure: \VAR{pressure|latex}~Pa\BLOCK{endif}
+\normalsize\color{black}
+\BLOCK{endif}
+
+% ---- Section 3: Results ----
+\sectionbar{3. CALIBRATION RESULTS}
+
+\BLOCK{if coefficient_rows}
+{\small\bfseries\color{ogdark}Polynomial Coefficients}\\[1mm]
+\begin{tabular}{@{}p{20mm}p{20mm}p{60mm}@{}}
+\toprule
+\textbf{Coefficient} & \textbf{Term} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.term|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+
+\BLOCK{if equation}
+\vspace{2mm}
+\texttt{\small Equation: \VAR{equation|latex}}
+\BLOCK{endif}
+\BLOCK{endif}
+
+\BLOCK{if stat_rows}
+\vspace{3mm}
+{\small\bfseries\color{ogdark}Statistical Analysis}\\[1mm]
+\begin{tabular}{@{}p{55mm}p{55mm}@{}}
+\toprule
+\textbf{Metric} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in stat_rows}
+\VAR{row.label|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+
+\BLOCK{if uncertainty_budget_rows}
+\vspace{3mm}
+{\small\bfseries\color{ogdark}Uncertainty Budget}\\[1mm]
+\begin{tabular}{@{}p{48mm}p{28mm}p{45mm}p{20mm}@{}}
+\toprule
+\textbf{Source} & \textbf{Distribution} & \textbf{Std. Uncertainty (u)} & \textbf{dof}\\
+\midrule
+\BLOCK{for row in uncertainty_budget_rows}
+\VAR{row.source|latex} & \VAR{row.distribution|latex} & \VAR{row.standard_uncertainty|latex} & \VAR{row.dof|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{if effective_dof_note}
+
+\small\color{oggray}\VAR{effective_dof_note|latex}\normalsize\color{black}
+\BLOCK{endif}
+\BLOCK{endif}
+
+\BLOCK{if uncertainty_statement}
+\vspace{2mm}
+\small \VAR{uncertainty_statement|latex}\normalsize
+\BLOCK{endif}
+
+\BLOCK{if conformity}
+\vspace{3mm}
+{\small\bfseries\color{ogdark}Statement of Conformity}\\[1mm]
+\small
+Statement of Conformity: \textbf{\VAR{conformity.result_label|latex}} to specification \VAR{conformity.specification|latex}.\\
+Decision rule applied: \VAR{conformity.decision_rule_label|latex}.\\
+\BLOCK{if conformity.expanded_uncertainty_line}
+\VAR{conformity.expanded_uncertainty_line|latex}\\
+\BLOCK{endif}
+\normalsize
+\BLOCK{endif}
+
+\BLOCK{if valid_range}
+\vspace{2mm}
+\small\color{oggray}Valid Range: \VAR{valid_range|latex}\normalsize\color{black}
+\BLOCK{endif}
+
+\BLOCK{if notes}
+\vspace{1mm}
+\small\color{oggray}Notes: \VAR{notes|latex}\normalsize\color{black}
+\BLOCK{endif}
+
+% ---- Section 4: Dataset ----
+\BLOCK{if dataset_rows}
+\sectionbar{4. DATASET}
+
+\begin{longtable}{@{}p{8mm}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}@{}}
+\toprule
+\textbf{\#} & \textbf{Measured (\VAR{measured_unit|latex})} & \textbf{Reference (\VAR{reference_unit|latex})} & \textbf{Fit Value} & \textbf{Residual (abs)} & \textbf{Residual (\%)}\\
+\midrule
+\endhead
+\BLOCK{for row in dataset_rows}
+\VAR{row.index|latex} & \VAR{row.measured|latex} & \VAR{row.reference|latex} & \VAR{row.fit|latex} & \VAR{row.residual_abs|latex} & \VAR{row.residual_pct|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{longtable}
+
+\BLOCK{if chart_path}
+\begin{center}
+\includegraphics[width=0.95\linewidth]{\VAR{chart_path}}
+\end{center}
+\BLOCK{endif}
+\BLOCK{endif}
+
+% ---- Signature ----
+\BLOCK{if performer_signature_path}
+\vspace{6mm}
+\noindent
+\begin{minipage}[t]{50mm}
+\includegraphics[width=40mm]{\VAR{performer_signature_path}}\\[-1mm]
+\rule{40mm}{0.4pt}\\
+\footnotesize\color{oggray}\VAR{performer_name|latex}\normalsize\color{black}
+\end{minipage}
+\BLOCK{endif}
+
+\end{document}

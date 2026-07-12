@@ -29,6 +29,12 @@ belongs to one. **Teams** group users within an organization and are used for as
 ownership (an asset's `owner` field points at a team, not an individual user), so
 responsibility for an instrument survives staff changes.
 
+An organization can have a **logo**, set by an admin from the Organizations panel under
+**Admin → Organizations** (upload an image, same 5MB/image-only validation and MinIO storage
+as a [user's profile picture](../self-hosting/authentication.mdx#profile-picture) or
+[signature](../self-hosting/authentication.mdx#signatures)). The logo is intended for use on
+generated certificates alongside the organization's name.
+
 ## Locations
 
 **Locations** form a tree (`parent_location_id` is self-referential): organization → site →

@@ -215,6 +215,20 @@ route("POST", "/api/v1/organizations", ({ body }) =>
 route("PUT", "/api/v1/organizations/:id", ({ body }) =>
   store.updateOrganization(body as Partial<Organization>));
 route("DELETE", "/api/v1/organizations/:id", () => undefined);
+route("DELETE", "/api/v1/organizations/:id/logo", () =>
+  store.updateOrganization({ logo_file_id: null, logo_url: null }));
+
+// ---------------------------------------------------------------------------
+// Certificate templates — LaTeX template management isn't simulated in demo
+// mode (it requires a real Tectonic compile); listing returns empty (the
+// built-in default is always used) and mutations report unavailability.
+// ---------------------------------------------------------------------------
+
+route("GET", "/api/v1/certificate-templates", () => []);
+route("PUT", "/api/v1/certificate-templates/:id", () => {
+  throw new NotFoundError("certificate templates aren't available in this demo");
+});
+route("DELETE", "/api/v1/certificate-templates/:id", () => undefined);
 
 // ---------------------------------------------------------------------------
 // Teams (shared by admin.service, user.service, asset.service)
@@ -991,6 +1005,13 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
     return asset as unknown as T;
   }
 
+  // /api/v1/organizations/:id/logo
+  m = /^\/api\/v1\/organizations\/([^/]+)\/logo$/.exec(req.pathname);
+  if (m) {
+    const org = store.updateOrganization({ logo_url: url, logo_file_id: store.genId() });
+    return org as unknown as T;
+  }
+
   // /api/v1/users/me/picture
   if (req.pathname === "/api/v1/users/me/picture") {
     const user = store.updateUser(store.getDemoUser().id, { profile_picture_url: url, profile_picture_id: store.genId() });
@@ -1021,6 +1042,11 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
     const stepIndex = num(req.qs.get("step_index")) ?? null;
     const stored = store.addStoredFile(makeStoredFile("procedure", m[1], stepIndex));
     return stored as unknown as T;
+  }
+
+  // /api/v1/certificate-templates
+  if (req.pathname === "/api/v1/certificate-templates") {
+    throw new Error("Certificate template upload isn't available in this demo — it requires a real LaTeX compile.");
   }
 
   throw new Error(`Demo upload: no handler for ${req.pathname}`);

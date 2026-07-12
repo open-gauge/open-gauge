@@ -371,6 +371,7 @@ def _generate_and_store_certificate(db: Session, cal: "object", uploaded_by: uui
     version = cal.calibration_version
 
     pdf_bytes = generate_certificate(
+        db=db,
         asset=asset,
         calibration=cal,
         points=points,

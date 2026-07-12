@@ -19,6 +19,8 @@ class OrganizationResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
+    logo_file_id: uuid.UUID | None = None
+    logo_url: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime

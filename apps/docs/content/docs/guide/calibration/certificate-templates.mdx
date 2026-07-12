@@ -1,0 +1,109 @@
+---
+title: Certificate templates
+description: Uploading and authoring custom LaTeX templates for calibration certificates.
+---
+
+An admin can replace the built-in certificate design with a custom `.tex` template — for
+localization, a different layout, or matching an existing accredited-lab certificate format —
+without touching any code. Templates are managed from **Admin Panel → Certificate Templates**.
+
+## How rendering works
+
+A template is a `.tex` file using [Jinja](https://jinja.palletsprojects.com/) placeholders with
+LaTeX-safe delimiters (Jinja's default `{{ }}`/`{% %}` collide with LaTeX's own `{}` group
+syntax):
+
+| Jinja construct | LaTeX-safe spelling |
+|---|---|
+| Variable | `\VAR{asset_name}` |
+| Block (`if`/`for`) | `\BLOCK{if asset_notes} ... \BLOCK{endif}` |
+| Comment | `\#{ a comment }` |
+
+Every free-text placeholder must go through the `latex` filter — `\VAR{asset_name\|latex}` — which
+escapes characters LaTeX treats specially (`\ { } $ & # ^ _ % ~`). Numeric/pre-formatted fields
+are safe either way; image paths (see below) must **not** be filtered, since they're plain
+filenames, not text to render.
+
+The rendered `.tex` is compiled to PDF by [Tectonic](https://tectonic-typesetting.github.io/), a
+small self-contained LaTeX engine (not a full TeX Live install) — see
+[Deployment](../self-hosting/deployment.mdx) for the Docker image details. Tectonic runs on
+XeTeX, which is Unicode-native; the built-in template uses `fontspec` with DejaVu Sans (bundled
+with the app image) so accented names, degree signs, ±, etc. all render correctly without any
+special escaping beyond the `latex` filter.
+
+## Uploading a template
+
+From **Admin Panel → Certificate Templates**, choose a scope (a specific organization, or
+*Global* for the fallback used by any organization without its own default — global templates
+require a superadmin, since they affect every organization), upload the `.tex` file, give it a
+name, and optionally mark it as that scope's default.
+
+**Every upload is validated with a dry-run compile** (dummy data) before being saved — a
+template with a LaTeX syntax error or a typo'd placeholder is rejected immediately, with the
+compiler's error message, rather than only failing the next time a real certificate is
+generated. Use the **Preview** button (on an uploaded template, or **Preview built-in**) to see
+a rendered PDF with dummy data at any time.
+
+Replacing a template's content isn't an in-place edit — upload it again as a new template and
+promote it to default. The old version stays around (soft-deleted, not default) so past
+certificates that reference it conceptually remain traceable to what generated them.
+
+## Placeholder reference
+
+### Identity / header
+
+| Placeholder | Type | Notes |
+|---|---|---|
+| `certificate_number` | text | e.g. `OG-CAL-OG-00001-v3` |
+| `org_name` | text | Falls back to `"Open Gauge"` if unresolved |
+| `org_logo_path` | image path, optional | `\BLOCK{if org_logo_path}\includegraphics{\VAR{org_logo_path}}\BLOCK{endif}` |
+| `performer_name` | text | |
+| `performer_signature_path` | image path, optional | The performing user's signature, if set |
+| `calibration_date`, `due_date` | text | Pre-formatted date strings |
+| `version` | integer | |
+| `calibration_type` | text | |
+
+### Asset / channel
+
+| Placeholder | Type |
+|---|---|
+| `asset_id`, `asset_name`, `asset_manufacturer`, `asset_model`, `asset_serial`, `asset_part_number`, `asset_type_label` | text |
+| `asset_notes` | text, optional |
+| `channel` | object, optional — `channel.id`, `.quantity`, `.unit`, `.min`, `.max`, `.accuracy` |
+
+### Traceability
+
+| Placeholder | Type |
+|---|---|
+| `external_lab_name`, `external_lab_certificate_number` | text, optional |
+| `procedure` | object, optional — `.id`, `.name`, `.version`, `.standard_ref` |
+| `reference_asset` | object, optional — `.id`, `.name`, `.manufacturer`, `.model`, `.serial` |
+| `temperature`, `humidity`, `pressure` | text, optional (°C / %RH / Pa) |
+
+### Results
+
+| Placeholder | Type |
+|---|---|
+| `coefficient_rows` | list of `{coefficient, term, value}` |
+| `equation` | text, optional |
+| `stat_rows` | list of `{label, value}` (R², RMSE, uncertainty, etc.) |
+| `uncertainty_budget_rows` | list of `{source, distribution, standard_uncertainty, dof}` |
+| `effective_dof_note` | text, optional |
+| `uncertainty_statement` | text, optional — full GUM §7.2.4-style sentence |
+| `conformity` | object, optional — `.result_label`, `.specification`, `.decision_rule_label`, `.expanded_uncertainty_line` |
+| `valid_range` | text, optional |
+| `notes` | text, optional |
+
+### Dataset
+
+| Placeholder | Type |
+|---|---|
+| `dataset_rows` | list of `{index, measured, reference, fit, residual_abs, residual_pct}` |
+| `measured_unit`, `reference_unit` | text |
+| `chart_path` | image path, optional — scatter + fit-curve chart |
+| `qr_path` | image path, optional — links to the asset |
+| `lab_footer` | text, optional — printed in the page footer |
+
+The built-in template (`apps/api/app/templates/certificates/default.tex.jinja` in the repo) is
+the canonical, always-up-to-date example of every placeholder in use — copy it as a starting
+point for a custom template.

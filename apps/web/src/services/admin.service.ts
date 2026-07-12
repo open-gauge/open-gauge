@@ -1,4 +1,4 @@
-import { apiFetch, authHeader } from "@/lib/api";
+import { apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { UserProfile } from "@/types/user";
 
@@ -27,6 +27,8 @@ export interface Organization {
   id: string;
   name: string;
   description: string | null;
+  logo_file_id: string | null;
+  logo_url: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -101,6 +103,82 @@ export async function deleteOrganization(orgId: string): Promise<void> {
     method: "DELETE",
     headers: tokenHeader(),
   });
+}
+
+export async function uploadOrgLogo(orgId: string, file: File): Promise<Organization> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<Organization>(`/api/v1/organizations/${orgId}/logo`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteOrgLogo(orgId: string): Promise<Organization> {
+  return apiFetch<Organization>(`/api/v1/organizations/${orgId}/logo`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+export interface CertificateTemplate {
+  id: string;
+  organization_id: string | null;
+  name: string;
+  description: string | null;
+  is_default: boolean;
+  is_active: boolean;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listCertificateTemplates(organizationId?: string): Promise<CertificateTemplate[]> {
+  const qs = organizationId ? `?organization_id=${organizationId}` : "";
+  return apiFetch<CertificateTemplate[]>(`/api/v1/certificate-templates${qs}`, { headers: tokenHeader() });
+}
+
+export async function uploadCertificateTemplate(body: {
+  file: File;
+  name: string;
+  description?: string;
+  organizationId?: string | null;
+  isDefault?: boolean;
+}): Promise<CertificateTemplate> {
+  const form = new FormData();
+  form.append("file", body.file);
+  form.append("name", body.name);
+  if (body.description) form.append("description", body.description);
+  if (body.organizationId) form.append("organization_id", body.organizationId);
+  form.append("is_default", String(body.isDefault ?? false));
+  return apiUpload<CertificateTemplate>("/api/v1/certificate-templates", form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function updateCertificateTemplate(
+  templateId: string,
+  body: { name?: string; description?: string; is_default?: boolean; is_active?: boolean },
+): Promise<CertificateTemplate> {
+  return apiFetch<CertificateTemplate>(`/api/v1/certificate-templates/${templateId}`, {
+    method: "PUT",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteCertificateTemplate(templateId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/certificate-templates/${templateId}`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+export async function previewCertificateTemplate(templateId: string): Promise<Blob> {
+  return apiBlobPost(`/api/v1/certificate-templates/${templateId}/preview`, {}, { headers: tokenHeader() });
+}
+
+export async function previewBuiltinCertificateTemplate(): Promise<Blob> {
+  return apiBlobPost("/api/v1/certificate-templates/preview-builtin", {}, { headers: tokenHeader() });
 }
 
 export interface AdminTeam {

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import type { UserProfile } from "@/types/user";
 import {
+  CameraIcon,
   CheckIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -18,6 +19,8 @@ import {
   DashboardIcon,
   AssetRegistryIcon,
   DocumentIcon,
+  DownloadIcon,
+  UploadCloudIcon,
   ActivityIcon,
   WarningIcon,
   XIcon,
@@ -28,22 +31,31 @@ import {
   countAdminUsers,
   createOrganization,
   createOrgTeam,
+  deleteCertificateTemplate,
+  deleteOrgLogo,
   deleteOrganization,
   deleteOrgTeam,
   getAdminStats,
   getAdminSystem,
   getEmailSettings,
   listAdminUsers,
+  listCertificateTemplates,
   listOrganizations,
   listOrgTeams,
+  previewBuiltinCertificateTemplate,
+  previewCertificateTemplate,
   sendTestEmail,
   updateAdminUser,
+  updateCertificateTemplate,
   updateEmailSettings,
   updateOrganization,
   updateOrgTeam,
+  uploadCertificateTemplate,
+  uploadOrgLogo,
   type AdminStats,
   type AdminSystem,
   type AdminTeam,
+  type CertificateTemplate,
   type EmailSettings,
   type EmailSettingsUpdate,
   type Organization,
@@ -673,6 +685,10 @@ function OrgRow({
   const [err, setErr] = useState("");
   const [expanded, setExpanded] = useState(false);
 
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoErr, setLogoErr] = useState("");
+
   async function handleSave() {
     if (!name.trim()) return;
     setSaving(true);
@@ -695,6 +711,33 @@ function OrgRow({
       onDeleted(org.id);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Failed to delete");
+    }
+  }
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoUploading(true);
+    setLogoErr("");
+    try {
+      onUpdated(await uploadOrgLogo(org.id, file));
+    } catch (err: unknown) {
+      setLogoErr(err instanceof Error ? err.message : "Failed to upload logo");
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  async function handleLogoRemove() {
+    setLogoUploading(true);
+    setLogoErr("");
+    try {
+      onUpdated(await deleteOrgLogo(org.id));
+    } catch (err: unknown) {
+      setLogoErr(err instanceof Error ? err.message : "Failed to remove logo");
+    } finally {
+      setLogoUploading(false);
     }
   }
 
@@ -734,6 +777,14 @@ function OrgRow({
               ) : (
                 <ChevronRightIcon size={13} className="text-gray-400 shrink-0" />
               )}
+              <div className="w-7 h-7 rounded-md border border-og-border-md bg-og-surface-alt flex items-center justify-center overflow-hidden shrink-0">
+                {org.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain" />
+                ) : (
+                  <BuildingIcon size={13} className="text-gray-300" />
+                )}
+              </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-og-text group-hover:text-og-accent transition-colors truncate">{org.name}</p>
                 {org.description && <p className="text-xs text-gray-400 truncate">{org.description}</p>}
@@ -752,7 +803,47 @@ function OrgRow({
           </div>
 
           {expanded && (
-            <div className="mt-3">
+            <div className="mt-3 space-y-3">
+              <div className="flex items-center gap-3 bg-og-surface-alt border border-og-border rounded-lg px-3 py-2.5">
+                <div className="w-10 h-10 rounded-lg border border-og-border-md bg-og-surface flex items-center justify-center overflow-hidden shrink-0">
+                  {org.logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <BuildingIcon size={16} className="text-gray-300" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoUploading}
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-sm hover:bg-og-surface transition-colors disabled:opacity-60"
+                    >
+                      <CameraIcon size={10} /> {logoUploading ? "Saving…" : org.logo_url ? "Change logo" : "Upload logo"}
+                    </button>
+                    {org.logo_url && (
+                      <button
+                        type="button"
+                        onClick={handleLogoRemove}
+                        disabled={logoUploading}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-red-500 border border-og-border-md rounded-sm hover:bg-og-surface transition-colors disabled:opacity-60"
+                      >
+                        <TrashIcon size={10} /> Remove
+                      </button>
+                    )}
+                  </div>
+                  {logoErr && <p className="text-[10px] text-red-500">{logoErr}</p>}
+                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoChange}
+                />
+              </div>
               <OrgTeamsPanel orgId={org.id} />
             </div>
           )}
@@ -852,6 +943,246 @@ function OrgsSection() {
           org={org}
           onUpdated={(updated) => setOrgs((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))}
           onDeleted={(id) => setOrgs((prev) => prev.filter((o) => o.id !== id))}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Certificate templates section
+// ---------------------------------------------------------------------------
+
+function openPdfBlob(blob: Blob): void {
+  window.open(URL.createObjectURL(blob), "_blank");
+}
+
+function CertificateTemplateRow({
+  template,
+  onUpdated,
+  onDeleted,
+}: {
+  template: CertificateTemplate;
+  onUpdated: (updated: CertificateTemplate) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(template.name);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [previewing, setPreviewing] = useState(false);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    setSaving(true);
+    setErr("");
+    try {
+      onUpdated(await updateCertificateTemplate(template.id, { name: name.trim() }));
+      setEditing(false);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSetDefault() {
+    try {
+      onUpdated(await updateCertificateTemplate(template.id, { is_default: true }));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to set default");
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Delete template "${template.name}"?`)) return;
+    try {
+      await deleteCertificateTemplate(template.id);
+      onDeleted(template.id);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to delete");
+    }
+  }
+
+  async function handlePreview() {
+    setPreviewing(true);
+    try {
+      openPdfBlob(await previewCertificateTemplate(template.id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to render preview");
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="px-4 py-4 space-y-3 bg-og-surface-alt border-b border-og-border">
+        <input value={name} onChange={(e) => setName(e.target.value)} className={`${IB} ${IB_OK}`} autoFocus />
+        {err && <p className="text-xs text-red-500">{err}</p>}
+        <div className="flex gap-2">
+          <button onClick={() => { setEditing(false); setName(template.name); setErr(""); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+            <XIcon size={12} /> Cancel
+          </button>
+          <button onClick={handleSave} disabled={!name.trim() || saving}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+            <CheckIcon size={12} /> {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <DocumentIcon size={14} className="text-gray-400 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-og-text truncate">{template.name}</p>
+          {template.description && <p className="text-xs text-gray-400 truncate">{template.description}</p>}
+        </div>
+        {template.is_default && (
+          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-accent/10 text-og-accent">
+            Default
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={handlePreview} disabled={previewing}
+          className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-60" title="Preview">
+          <DownloadIcon size={13} />
+        </button>
+        {!template.is_default && (
+          <button onClick={handleSetDefault} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title="Set as default">
+            <CheckIcon size={13} />
+          </button>
+        )}
+        <button onClick={() => setEditing(true)} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title="Rename">
+          <EditIcon size={13} />
+        </button>
+        <button onClick={handleDelete} className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors" title="Delete">
+          <TrashIcon size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CertificateTemplatesSection({ orgs }: { orgs: Organization[] }) {
+  const [scope, setScope] = useState<string>("global");
+  const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadName, setUploadName] = useState("");
+  const [uploadDefault, setUploadDefault] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState("");
+  const [previewingBuiltin, setPreviewingBuiltin] = useState(false);
+
+  const organizationId = scope === "global" ? undefined : scope;
+
+  useEffect(() => {
+    listCertificateTemplates(organizationId)
+      .then((all) => setTemplates(all.filter((t) => (organizationId ? t.organization_id === organizationId : t.organization_id === null))))
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Failed to load templates"))
+      .finally(() => setLoading(false));
+  }, [organizationId]);
+
+  async function handleUpload() {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file || !uploadName.trim()) return;
+    setUploading(true);
+    setUploadErr("");
+    try {
+      const created = await uploadCertificateTemplate({
+        file, name: uploadName.trim(), organizationId, isDefault: uploadDefault,
+      });
+      setTemplates((prev) => (uploadDefault ? prev.map((t) => ({ ...t, is_default: false })) : prev).concat(created));
+      setUploadName("");
+      setUploadDefault(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (e: unknown) {
+      setUploadErr(e instanceof Error ? e.message : "Failed to upload template");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handlePreviewBuiltin() {
+    setPreviewingBuiltin(true);
+    try {
+      openPdfBlob(await previewBuiltinCertificateTemplate());
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Failed to render preview");
+    } finally {
+      setPreviewingBuiltin(false);
+    }
+  }
+
+  return (
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
+        <p className="text-xs font-semibold text-og-text">Certificate Templates</p>
+        <div className="flex items-center gap-2">
+          <select value={scope} onChange={(e) => setScope(e.target.value)}
+            className="px-2 py-1.5 text-xs rounded-lg border border-og-border-md bg-og-surface text-og-text">
+            <option value="global">Global (all organizations)</option>
+            {orgs.map((org) => (
+              <option key={org.id} value={org.id}>{org.name}</option>
+            ))}
+          </select>
+          <button onClick={handlePreviewBuiltin} disabled={previewingBuiltin}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60">
+            <DownloadIcon size={12} /> {previewingBuiltin ? "Rendering…" : "Preview built-in"}
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 py-4 border-b border-og-border bg-og-surface-alt space-y-3">
+        <p className="text-xs font-semibold text-og-text">
+          Upload template {scope === "global" ? "(global default, requires superadmin)" : `for ${orgs.find((o) => o.id === scope)?.name ?? ""}`}
+        </p>
+        <div className="space-y-1">
+          <label className="text-xs text-gray-400">.tex file <span className="text-red-400">*</span></label>
+          <input ref={fileInputRef} type="file" accept=".tex" className={`${IB} ${IB_OK} py-1.5!`} />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-gray-400">Name <span className="text-red-400">*</span></label>
+          <input value={uploadName} onChange={(e) => setUploadName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
+            placeholder="e.g. ISO 17025 Certificate" />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-gray-400">
+          <input type="checkbox" checked={uploadDefault} onChange={(e) => setUploadDefault(e.target.checked)} />
+          Set as default for this scope
+        </label>
+        {uploadErr && <p className="text-xs text-red-500">{uploadErr}</p>}
+        <button onClick={handleUpload} disabled={!uploadName.trim() || uploading}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+          <UploadCloudIcon size={12} /> {uploading ? "Uploading…" : "Upload"}
+        </button>
+      </div>
+
+      {loading && (
+        <div className="flex items-center justify-center py-10 gap-2 text-xs text-gray-400">
+          <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+          Loading…
+        </div>
+      )}
+      {!loading && err && <div className="px-4 py-4 text-sm text-red-500">{err}</div>}
+      {!loading && !err && templates.length === 0 && (
+        <p className="px-4 py-8 text-sm text-gray-400 text-center">
+          No templates in this scope yet — the built-in default is used until one is uploaded.
+        </p>
+      )}
+      {!loading && !err && templates.map((t) => (
+        <CertificateTemplateRow
+          key={t.id}
+          template={t}
+          onUpdated={(updated) => setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : (updated.is_default ? { ...x, is_default: false } : x))))}
+          onDeleted={(id) => setTemplates((prev) => prev.filter((x) => x.id !== id))}
         />
       ))}
     </div>
@@ -1128,12 +1459,13 @@ function EmailSettingsSection() {
 // Page
 // ---------------------------------------------------------------------------
 
-type Section = "dashboard" | "users" | "organizations" | "email";
+type Section = "dashboard" | "users" | "organizations" | "certificates" | "email";
 
 const NAV: { id: Section; label: string }[] = [
   { id: "dashboard",     label: "Dashboard" },
   { id: "users",         label: "Users" },
   { id: "organizations", label: "Organizations" },
+  { id: "certificates",  label: "Certificate Templates" },
   { id: "email",         label: "Email" },
 ];
 
@@ -1197,6 +1529,7 @@ export default function AdminPage() {
           {section === "dashboard" && <DashboardSection />}
           {section === "users" && <UsersSection orgs={orgs} />}
           {section === "organizations" && <OrgsSection />}
+          {section === "certificates" && <CertificateTemplatesSection orgs={orgs} />}
           {section === "email" && <EmailSettingsSection />}
         </div>
       </div>

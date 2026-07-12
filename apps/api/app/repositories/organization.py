@@ -38,3 +38,10 @@ def deactivate(db: Session, org: Organization) -> Organization:
     db.commit()
     db.refresh(org)
     return org
+
+
+def set_logo(db: Session, org: Organization, file_id: uuid.UUID | None) -> Organization:
+    org.logo_file_id = file_id
+    db.commit()
+    db.refresh(org)
+    return org

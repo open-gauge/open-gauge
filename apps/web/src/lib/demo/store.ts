@@ -550,6 +550,8 @@ export function createOrganization(input: { name: string; description?: string }
     id: genId(),
     name: input.name,
     description: input.description ?? null,
+    logo_file_id: null,
+    logo_url: null,
     is_active: true,
     created_at: nowIso(),
     updated_at: nowIso(),

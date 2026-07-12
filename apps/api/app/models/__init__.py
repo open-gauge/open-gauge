@@ -5,6 +5,7 @@ from . import (  # noqa: F401
     calibration,
     calibration_method,
     calibration_point,
+    certificate_template,
     daq,
     email_settings,
     location,
