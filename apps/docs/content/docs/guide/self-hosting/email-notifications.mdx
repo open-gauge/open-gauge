@@ -1,0 +1,68 @@
+---
+title: Email notifications
+description: SMTP configuration for account verification and calibration reminders, managed entirely by an admin.
+---
+
+Open Gauge can send email for two things: confirming new accounts, and keeping a calibration's
+owning team aware of its status. Like Gogs/Gitea, SMTP is a single, admin-managed configuration
+rather than something every user touches.
+
+## Configuration
+
+SMTP settings live in the database, not environment variables — they're edited from
+**Admin → Email** by any `admin` or `superadmin` user, and take effect immediately (no restart
+required). This keeps mail configurable at runtime in a self-hosted deployment without rebuilding
+or redeploying the container.
+
+For the step-by-step walkthrough (which fields to fill in, provider-specific settings for Gmail /
+Office 365 / SendGrid / Mailgun, and troubleshooting), see
+[Configuring email (SMTP)](./email-configuration.mdx). The short version: host, port, optional
+username/password, a from address/name, an enabled toggle, and a reminder lead time in days — plus
+a **Send test email** action to validate the configuration before turning it on. See
+[Admin](/docs/api/admin) in the API Reference for the underlying `/admin/email-settings`
+endpoints.
+
+### Behavior when mail isn't configured
+
+Open Gauge must keep working out of the box in Docker Compose (see [Self-hosting: Deployment](./deployment.mdx))
+even though no self-hosted install has SMTP configured by default. So every email-sending code
+path checks whether mail is enabled first, and degrades gracefully:
+
+- **Registration** proceeds exactly as it did before this feature existed — the account is
+  created active and the user is signed in immediately.
+- **Calibration notifications and reminders** are simply skipped.
+
+Nothing about account creation or calibration workflows depends on mail being configured.
+
+## Account verification
+
+When mail is enabled, `POST /auth/register` no longer signs the user in directly. Instead:
+
+1. The account is created with `is_verified = false` and a random verification token
+   (24-hour expiry).
+2. A verification email is sent with a link to `/auth/verify-email?token=...`.
+3. `POST /auth/login` rejects unverified accounts until the link is clicked.
+4. Clicking the link calls `GET /auth/verify-email`, which marks the account verified and returns
+   an access token — the user lands signed in.
+
+If the email never arrives (e.g. the admin hasn't finished the SMTP setup), the user can request
+another one from the sign-in screen (`POST /auth/resend-verification`), which always responds
+successfully without revealing whether the address exists.
+
+Accounts created directly by an admin (`POST /users`) are unaffected — they're verified
+immediately, since an admin already vouched for them.
+
+## Calibration notifications
+
+Two events trigger an email to everyone on an asset's owning team (see
+[Data model & concepts](../concepts/data-model.mdx) for how assets, teams, and users relate):
+
+- **New calibration recorded** — as soon as `POST /calibrations` succeeds, the team is notified
+  (except the person who just logged it).
+- **Due soon / overdue** — a daily sweep (07:00 server time) checks every active asset's latest
+  calibration. Each calibration is reminded at most once per threshold: once when it enters the
+  configured reminder window, and once more if it lapses into overdue. A calibration with no
+  successful delivery is retried on the next day's sweep rather than marked as sent.
+
+Both notification paths are best-effort: a failed send is logged and never blocks the calibration
+being recorded, and the daily sweep as a whole never raises past its own log entry.

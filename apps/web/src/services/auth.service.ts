@@ -5,6 +5,12 @@ interface TokenResponse {
   token_type: string;
 }
 
+export interface RegisterResult {
+  access_token: string | null;
+  verification_required: boolean;
+  message: string;
+}
+
 export async function login(email: string, password: string): Promise<string> {
   const data = await apiFetch<TokenResponse>("/api/v1/auth/login", {
     method: "POST",
@@ -17,12 +23,23 @@ export async function register(
   email: string,
   name: string,
   password: string
-): Promise<string> {
-  const data = await apiFetch<TokenResponse>("/api/v1/auth/register", {
+): Promise<RegisterResult> {
+  return apiFetch<RegisterResult>("/api/v1/auth/register", {
     method: "POST",
     body: JSON.stringify({ email, name, password }),
   });
+}
+
+export async function verifyEmail(token: string): Promise<string> {
+  const data = await apiFetch<TokenResponse>(`/api/v1/auth/verify-email?token=${encodeURIComponent(token)}`);
   return data.access_token;
+}
+
+export async function resendVerification(email: string): Promise<void> {
+  return apiFetch<void>("/api/v1/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
 }
 
 export function getToken(): string | null {

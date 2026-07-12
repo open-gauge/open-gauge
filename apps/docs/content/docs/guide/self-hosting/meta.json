@@ -1,4 +1,4 @@
 {
   "title": "Self-hosting",
-  "pages": ["deployment", "authentication"]
+  "pages": ["deployment", "authentication", "email-notifications", "email-configuration"]
 }

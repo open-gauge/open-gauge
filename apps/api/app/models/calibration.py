@@ -80,3 +80,8 @@ class Calibration(Base):
     # (ISO/IEC 17025 §7.1.3, §7.8.6 — the rule must be documented, not just implied).
     decision_rule: Mapped[str] = mapped_column(String(30), nullable=False, server_default="simple_acceptance")
     conformity_statement: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Reminder tracking: set once a "due soon" / "overdue" notification email has been
+    # sent for this calibration cycle, so the daily sweep never sends duplicates.
+    due_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    overdue_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -10,6 +10,7 @@ import {
   ClockIcon,
   DatabaseIcon,
   EditIcon,
+  MailIcon,
   PlusIcon,
   TrashIcon,
   UsersIcon,
@@ -31,15 +32,20 @@ import {
   deleteOrgTeam,
   getAdminStats,
   getAdminSystem,
+  getEmailSettings,
   listAdminUsers,
   listOrganizations,
   listOrgTeams,
+  sendTestEmail,
   updateAdminUser,
+  updateEmailSettings,
   updateOrganization,
   updateOrgTeam,
   type AdminStats,
   type AdminSystem,
   type AdminTeam,
+  type EmailSettings,
+  type EmailSettingsUpdate,
   type Organization,
 } from "@/services/admin.service";
 
@@ -822,15 +828,282 @@ function OrgsSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Email settings section
+// ---------------------------------------------------------------------------
+
+const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
+
+const EMPTY_SETTINGS_FORM = {
+  smtp_host: "",
+  smtp_port: 587,
+  smtp_username: "",
+  smtp_password: "",
+  smtp_use_tls: true,
+  from_email: "",
+  from_name: "Open Gauge",
+  enabled: false,
+  calibration_reminder_days: 14,
+};
+
+function EmailSettingsSection() {
+  const [settings, setSettings] = useState<EmailSettings | null>(null);
+  const [form, setForm] = useState(EMPTY_SETTINGS_FORM);
+  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveErr, setSaveErr] = useState("");
+
+  const [testEmail, setTestEmail] = useState("");
+  const [testState, setTestState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [testErr, setTestErr] = useState("");
+
+  useEffect(() => {
+    getEmailSettings()
+      .then((s) => {
+        setSettings(s);
+        setForm({
+          smtp_host: s.smtp_host ?? "",
+          smtp_port: s.smtp_port,
+          smtp_username: s.smtp_username ?? "",
+          smtp_password: "",
+          smtp_use_tls: s.smtp_use_tls,
+          from_email: s.from_email ?? "",
+          from_name: s.from_name,
+          enabled: s.enabled,
+          calibration_reminder_days: s.calibration_reminder_days,
+        });
+      })
+      .catch((e: unknown) => setLoadErr(e instanceof Error ? e.message : "Failed to load email settings"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    setSaveState("saving");
+    setSaveErr("");
+    try {
+      const body: EmailSettingsUpdate = {
+        smtp_host: form.smtp_host,
+        smtp_port: form.smtp_port,
+        smtp_username: form.smtp_username,
+        smtp_use_tls: form.smtp_use_tls,
+        from_email: form.from_email,
+        from_name: form.from_name,
+        enabled: form.enabled,
+        calibration_reminder_days: form.calibration_reminder_days,
+      };
+      // Only send the password field if the admin actually typed something —
+      // omitting it leaves the stored password untouched.
+      if (form.smtp_password) body.smtp_password = form.smtp_password;
+
+      const updated = await updateEmailSettings(body);
+      setSettings(updated);
+      setForm((f) => ({ ...f, smtp_password: "" }));
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 2000);
+    } catch (e: unknown) {
+      setSaveErr(e instanceof Error ? e.message : "Failed to save email settings");
+      setSaveState("error");
+    }
+  }
+
+  async function handleTest() {
+    if (!testEmail.trim()) return;
+    setTestState("sending");
+    setTestErr("");
+    try {
+      await sendTestEmail(testEmail.trim());
+      setTestState("sent");
+      setTimeout(() => setTestState("idle"), 3000);
+    } catch (e: unknown) {
+      setTestErr(e instanceof Error ? e.message : "Failed to send test email");
+      setTestState("error");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-10 flex items-center justify-center gap-2 text-xs text-gray-400">
+        <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+        Loading…
+      </div>
+    );
+  }
+
+  if (loadErr || !settings) {
+    return (
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-6 text-sm text-red-500">
+        {loadErr || "Failed to load email settings"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+          <div className="flex items-center gap-2">
+            <MailIcon size={14} className="text-og-accent" />
+            <div>
+              <p className="text-xs font-semibold text-og-text">SMTP configuration</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                Used for account verification and calibration notification emails.
+              </p>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-xs font-medium text-og-text cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.enabled}
+              onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
+              className="w-4 h-4 rounded accent-og-accent"
+            />
+            Enabled
+          </label>
+        </div>
+
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2 space-y-1">
+              <label className="text-xs text-gray-400">SMTP host</label>
+              <input
+                value={form.smtp_host}
+                onChange={(e) => setForm((f) => ({ ...f, smtp_host: e.target.value }))}
+                placeholder="smtp.example.com"
+                className={`${IB} ${IB_OK}`}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">Port</label>
+              <input
+                type="number"
+                value={form.smtp_port}
+                onChange={(e) => setForm((f) => ({ ...f, smtp_port: Number(e.target.value) }))}
+                className={`${IB} ${IB_OK}`}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">SMTP username</label>
+              <input
+                value={form.smtp_username}
+                onChange={(e) => setForm((f) => ({ ...f, smtp_username: e.target.value }))}
+                placeholder="Optional"
+                className={`${IB} ${IB_OK}`}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">SMTP password</label>
+              <input
+                type="password"
+                value={form.smtp_password}
+                onChange={(e) => setForm((f) => ({ ...f, smtp_password: e.target.value }))}
+                placeholder={settings.has_smtp_password ? "•••••••• (unchanged)" : "Not set"}
+                className={`${IB} ${IB_OK}`}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">From address</label>
+              <input
+                type="email"
+                value={form.from_email}
+                onChange={(e) => setForm((f) => ({ ...f, from_email: e.target.value }))}
+                placeholder="noreply@example.com"
+                className={`${IB} ${IB_OK}`}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">From name</label>
+              <input
+                value={form.from_name}
+                onChange={(e) => setForm((f) => ({ ...f, from_name: e.target.value }))}
+                className={`${IB} ${IB_OK}`}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 items-end">
+            <label className="flex items-center gap-2 text-xs font-medium text-og-text cursor-pointer pb-2">
+              <input
+                type="checkbox"
+                checked={form.smtp_use_tls}
+                onChange={(e) => setForm((f) => ({ ...f, smtp_use_tls: e.target.checked }))}
+                className="w-4 h-4 rounded accent-og-accent"
+              />
+              Use STARTTLS (uncheck for implicit SSL)
+            </label>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">Calibration reminder lead time (days)</label>
+              <input
+                type="number"
+                min={1}
+                max={90}
+                value={form.calibration_reminder_days}
+                onChange={(e) => setForm((f) => ({ ...f, calibration_reminder_days: Number(e.target.value) }))}
+                className={`${IB} ${IB_OK}`}
+              />
+            </div>
+          </div>
+
+          {saveErr && <p className="text-xs text-red-500">{saveErr}</p>}
+
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={handleSave}
+              disabled={saveState === "saving"}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
+            >
+              <CheckIcon size={12} />
+              {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+        <div className="px-4 py-3 border-b border-og-border">
+          <p className="text-xs font-semibold text-og-text">Send test email</p>
+        </div>
+        <div className="p-4 flex items-end gap-3">
+          <div className="flex-1 space-y-1">
+            <label className="text-xs text-gray-400">Recipient</label>
+            <input
+              type="email"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              placeholder="you@example.com"
+              className={`${IB} ${testState === "error" ? IB_ERR : IB_OK}`}
+            />
+          </div>
+          <button
+            onClick={handleTest}
+            disabled={!testEmail.trim() || testState === "sending"}
+            className="flex items-center gap-1.5 px-4 py-2 border border-og-border-md rounded-lg text-xs font-medium text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+          >
+            {testState === "sending" ? "Sending…" : testState === "sent" ? "Sent ✓" : "Send test email"}
+          </button>
+        </div>
+        {testErr && <p className="px-4 pb-3 text-xs text-red-500">{testErr}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
-type Section = "dashboard" | "users" | "organizations";
+type Section = "dashboard" | "users" | "organizations" | "email";
 
 const NAV: { id: Section; label: string }[] = [
   { id: "dashboard",     label: "Dashboard" },
   { id: "users",         label: "Users" },
   { id: "organizations", label: "Organizations" },
+  { id: "email",         label: "Email" },
 ];
 
 export default function AdminPage() {
@@ -893,6 +1166,7 @@ export default function AdminPage() {
           {section === "dashboard" && <DashboardSection />}
           {section === "users" && <UsersSection orgs={orgs} />}
           {section === "organizations" && <OrgsSection />}
+          {section === "email" && <EmailSettingsSection />}
         </div>
       </div>
     </div>

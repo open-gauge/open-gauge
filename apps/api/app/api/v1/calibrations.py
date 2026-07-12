@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from ...schemas.calibration import (
     CalibrationPointResponse,
     CalibrationResponse,
 )
+from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
 from ...services.storage import delete_file, get_presigned_url, sha256_hex, upload_file
 
@@ -136,6 +137,7 @@ def list_calibrations(
 def create_calibration(
     body: CalibrationCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CalibrationResponse:
@@ -173,6 +175,8 @@ def create_calibration(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+
+    background_tasks.add_task(notification_svc.notify_new_calibration, cal.id, current_user.id)
 
     return cal
 

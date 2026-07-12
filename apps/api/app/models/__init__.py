@@ -6,6 +6,7 @@ from . import (  # noqa: F401
     calibration_method,
     calibration_point,
     daq,
+    email_settings,
     location,
     organization,
     sensor,

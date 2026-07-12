@@ -37,6 +37,25 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class RegisterResponse(BaseModel):
+    """access_token is set only when email verification isn't required (mail not
+    configured) — in that case registration behaves like before: the user is
+    logged in immediately. Otherwise the caller must verify their email first."""
+    access_token: str | None = None
+    token_type: str = "bearer"
+    verification_required: bool
+    message: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str = Field(min_length=3)
+
+    @field_validator("email")
+    @classmethod
+    def check_email(cls, v: str) -> str:
+        return _validate_email(v)
+
+
 class UserResponse(BaseModel):
     id: str
     email: str

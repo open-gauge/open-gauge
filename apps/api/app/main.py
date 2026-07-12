@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,13 +22,25 @@ from .api.v1 import admin as admin_router
 from .core.config import settings
 from .core.database import SessionLocal
 from .seeds.seed import seed_database
+from .services.calibration_reminders import run_reminder_sweep
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     with SessionLocal() as db:
         seed_database(db)
+
+    # BackgroundScheduler (thread-based) rather than AsyncIOScheduler: the sweep does
+    # blocking DB/SMTP I/O and must not run on — and block — the request event loop.
+    scheduler = BackgroundScheduler()
+    # Once a day: email a calibration's owning team when it's due soon or overdue.
+    # A no-op if email notifications aren't configured (see /admin/email-settings).
+    scheduler.add_job(run_reminder_sweep, CronTrigger(hour=7, minute=0))
+    scheduler.start()
+
     yield
+
+    scheduler.shutdown(wait=False)
 
 
 OPENAPI_TAGS = [

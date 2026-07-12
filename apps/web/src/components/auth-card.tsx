@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { login, register } from "@/services/auth.service";
-import { GitHubIcon, SSOIcon } from "@/components/icons";
+import { login, register, resendVerification } from "@/services/auth.service";
+import { GitHubIcon, MailIcon, SSOIcon } from "@/components/icons";
 
 type Tab = "signin" | "register";
 
@@ -15,18 +15,27 @@ export default function AuthCard() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const token =
-        tab === "signin"
-          ? await login(email, password)
-          : await register(email, name, password);
-      localStorage.setItem("og_token", token);
-      router.push("/dashboard");
+      if (tab === "signin") {
+        const token = await login(email, password);
+        localStorage.setItem("og_token", token);
+        router.push("/dashboard");
+        return;
+      }
+      const result = await register(email, name, password);
+      if (result.access_token) {
+        localStorage.setItem("og_token", result.access_token);
+        router.push("/dashboard");
+        return;
+      }
+      setPendingVerification(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
@@ -34,7 +43,37 @@ export default function AuthCard() {
     }
   };
 
-  const switchTab = (t: Tab) => { setTab(t); setError(null); };
+  async function handleResend() {
+    setResendState("sending");
+    try {
+      await resendVerification(email);
+    } finally {
+      setResendState("sent");
+    }
+  }
+
+  const switchTab = (t: Tab) => { setTab(t); setError(null); setPendingVerification(false); };
+
+  if (pendingVerification) {
+    return (
+      <div className="bg-og-surface rounded-2xl shadow-xl border border-og-border p-8 w-full text-center">
+        <MailIcon size={28} className="text-og-accent mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-og-text">Check your email</h2>
+        <p className="text-sm text-gray-500 mt-2">
+          We sent a verification link to <span className="font-medium text-og-text">{email}</span>.
+          Click it to activate your account.
+        </p>
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={resendState !== "idle"}
+          className="mt-6 text-sm text-og-accent hover:underline disabled:opacity-60 disabled:no-underline"
+        >
+          {resendState === "sent" ? "Verification email resent" : resendState === "sending" ? "Sending…" : "Resend verification email"}
+        </button>
+      </div>
+    );
+  }
 
   const inputClass =
     "w-full px-3 py-2 text-sm border border-og-border-md dark:border-og-border bg-og-surface rounded-lg outline-hidden focus:border-og-accent focus:ring-2 focus:ring-og-accent/20 transition-all placeholder:text-gray-400 text-og-text";

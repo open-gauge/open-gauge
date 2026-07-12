@@ -138,3 +138,52 @@ export async function deleteOrgTeam(teamId: string): Promise<void> {
     headers: tokenHeader(),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Email settings
+// ---------------------------------------------------------------------------
+
+export interface EmailSettings {
+  smtp_host: string | null;
+  smtp_port: number;
+  smtp_username: string | null;
+  has_smtp_password: boolean;
+  smtp_use_tls: boolean;
+  from_email: string | null;
+  from_name: string;
+  enabled: boolean;
+  calibration_reminder_days: number;
+  updated_at: string;
+}
+
+export interface EmailSettingsUpdate {
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_username?: string;
+  smtp_password?: string;
+  smtp_use_tls?: boolean;
+  from_email?: string;
+  from_name?: string;
+  enabled?: boolean;
+  calibration_reminder_days?: number;
+}
+
+export async function getEmailSettings(): Promise<EmailSettings> {
+  return apiFetch<EmailSettings>("/api/v1/admin/email-settings", { headers: tokenHeader() });
+}
+
+export async function updateEmailSettings(body: EmailSettingsUpdate): Promise<EmailSettings> {
+  return apiFetch<EmailSettings>("/api/v1/admin/email-settings", {
+    method: "PUT",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function sendTestEmail(toEmail: string): Promise<void> {
+  return apiFetch<void>("/api/v1/admin/email-settings/test", {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ to_email: toEmail }),
+  });
+}

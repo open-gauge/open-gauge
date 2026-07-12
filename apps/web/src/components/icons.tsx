@@ -106,6 +106,15 @@ export function BellIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+export function MailIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M2 4.5 8 9l6-4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function MoonIcon({ size = 16, className }: IconProps = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>

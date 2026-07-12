@@ -10,6 +10,10 @@ def get_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(User.email == email).first()
 
 
+def get_by_verification_token(db: Session, token: str) -> User | None:
+    return db.query(User).filter(User.verification_token == token).first()
+
+
 def get_by_id(db: Session, user_id: uuid.UUID) -> User | None:
     return db.query(User).filter(User.id == user_id).first()
 
@@ -57,6 +61,9 @@ def create(
     organization_id: uuid.UUID | None = None,
     team: str | None = None,
     is_superuser: bool = False,
+    is_verified: bool = True,
+    verification_token: str | None = None,
+    verification_token_expires_at=None,
 ) -> User:
     user = User(
         email=email,
@@ -66,6 +73,9 @@ def create(
         organization_id=organization_id,
         team=team,
         is_superuser=is_superuser,
+        is_verified=is_verified,
+        verification_token=verification_token,
+        verification_token_expires_at=verification_token_expires_at,
     )
     db.add(user)
     db.commit()
@@ -84,6 +94,23 @@ def update(db: Session, user: User, **kwargs) -> User:
 
 def set_profile_picture(db: Session, user: User, file_id: uuid.UUID | None) -> User:
     user.profile_picture_id = file_id
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def mark_verified(db: Session, user: User) -> User:
+    user.is_verified = True
+    user.verification_token = None
+    user.verification_token_expires_at = None
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def set_verification_token(db: Session, user: User, token: str, expires_at) -> User:
+    user.verification_token = token
+    user.verification_token_expires_at = expires_at
     db.commit()
     db.refresh(user)
     return user

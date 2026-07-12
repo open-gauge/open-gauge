@@ -1,0 +1,93 @@
+---
+title: Configuring email (SMTP)
+description: Step-by-step setup of SMTP in Admin → Email, provider settings, and troubleshooting.
+---
+
+This page is the practical walkthrough for turning email on. For what email is used for
+(account verification, calibration notifications) and how it behaves when unconfigured, see
+[Email notifications](./email-notifications.mdx).
+
+## Prerequisites
+
+- You must be signed in as a user with the `admin` or `superadmin` role.
+- An SMTP account to send through: your own mail server, your organization's mail server, or a
+  transactional email provider (Gmail, Office 365, SendGrid, Mailgun, Postmark, etc. all work —
+  Open Gauge speaks plain SMTP, nothing provider-specific).
+
+## Step 1 — Open Admin → Email
+
+Sign in, go to **Admin** in the sidebar, then select **Email** from the administration menu.
+This page is only visible to admins; everyone else is redirected away from `/admin` entirely.
+
+## Step 2 — Fill in the SMTP fields
+
+| Field | What to enter |
+|---|---|
+| SMTP host | Your mail server's hostname, e.g. `smtp.gmail.com`, `smtp.office365.com`, `mail.yourcompany.com`. |
+| Port | `587` for STARTTLS (most common), or `465` for implicit SSL. |
+| Use STARTTLS | Leave **checked** for port 587. **Uncheck** it if you're using port 465 (implicit SSL) — the two are mutually exclusive. |
+| SMTP username | Usually the full mailbox address you're sending from. Some providers use a different value — see the provider table below. |
+| SMTP password | The account's password, or an app-specific password (see Gmail/Office 365 notes below). This field is write-only: once saved, the API only reports whether a password is set, never its value. |
+| From address | The address recipients will see as the sender, e.g. `noreply@yourcompany.com`. Many providers require this to match (or be verified against) the authenticated account. |
+| From name | Display name on outgoing mail, e.g. `Open Gauge` or `Acme Metrology Lab`. |
+| Calibration reminder lead time (days) | How many days before a calibration's due date the "due soon" reminder email fires. Default 14. |
+
+Leave **Enabled** off until you've verified the test email works (next step) — this avoids
+sending broken emails to real users while you're dialing in the configuration.
+
+## Step 3 — Send a test email
+
+Use the **Send test email** box at the bottom of the panel: enter any address you can check
+(e.g. your own inbox) and click **Send test email**. This uses whatever is currently saved,
+regardless of the **Enabled** toggle, so you can validate the configuration before turning it on
+for real users.
+
+- **Success** → you'll receive "Open Gauge test email" within a few seconds. Move to Step 4.
+- **Failure** → the panel shows the underlying SMTP error. See Troubleshooting below.
+
+## Step 4 — Turn it on
+
+Once the test email arrives, check **Enabled** and save. From this point on:
+
+- New registrations require email verification (see [Email notifications](./email-notifications.mdx#account-verification)).
+- Logging a new calibration emails the asset's owning team.
+- A daily sweep (07:00 server time) emails teams about due-soon/overdue calibrations.
+
+Turning **Enabled** back off at any time immediately reverts to today's behavior everywhere
+(instant registration, no notification emails) — nothing is destructive or hard to undo.
+
+## Provider quick reference
+
+| Provider | Host | Port | STARTTLS | Username | Notes |
+|---|---|---|---|---|---|
+| Gmail / Google Workspace | `smtp.gmail.com` | 587 | Yes | Full Gmail address | Requires an **App Password** (Google Account → Security → 2-Step Verification → App passwords) if 2FA is on — Google blocks the account's normal password for SMTP. |
+| Microsoft 365 / Outlook | `smtp.office365.com` | 587 | Yes | Full mailbox address | Same idea as Gmail if the tenant enforces MFA — use an app password or a dedicated mail-enabled service account. |
+| SendGrid | `smtp.sendgrid.net` | 587 | Yes | literal `apikey` | Password is your SendGrid API key, not an account password. |
+| Mailgun | `smtp.mailgun.org` | 587 | Yes | Mailgun SMTP login (from the domain's dashboard) | — |
+| Self-hosted (Postfix/Exim) | your server's hostname | 587 or 25 | Depends on setup | Depends on setup | If your relay doesn't require auth, leave username/password blank. |
+
+## Troubleshooting
+
+**"Connection refused" / connection timeout**
+The host/port is unreachable from the machine running the `api` container — check firewall
+rules, and that outbound SMTP isn't blocked by your hosting provider (many block port 25 by
+default; 587 is usually fine).
+
+**Authentication failed**
+Wrong username/password, or the provider needs an app-specific password instead of your normal
+account password (Gmail and Office 365 both do this when 2FA is enabled — see the provider
+table above).
+
+**TLS / SSL errors**
+Port and the STARTTLS toggle disagree. Port 587 almost always wants STARTTLS **checked**; port
+465 wants it **unchecked** (implicit TLS from the first byte). Mixing them up produces a TLS
+handshake error.
+
+**Test email works but real emails never arrive**
+Check the recipient's spam folder first. If the from address's domain has no SPF/DKIM record
+authorizing your SMTP provider, receiving mail servers may silently drop or spam-box the
+message — this is a DNS configuration issue with your sending domain, not an Open Gauge setting.
+
+**Nothing happens and no error is shown**
+Confirm **Enabled** is checked and saved — the test-email button works regardless of the toggle,
+but registration/notification emails only fire when it's on.
