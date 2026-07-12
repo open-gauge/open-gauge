@@ -7,9 +7,34 @@
 :root {
   --color-fd-primary: #2f819b;
   --color-fd-primary-foreground: #ffffff;
+  --og-grid-color: rgba(47, 129, 155, 0.1);
+  --og-glow-color: rgba(47, 129, 155, 0.16);
+  --og-page-bg: #f5f5f5;
 }
 
 .dark {
   --color-fd-primary: #3d9ab8;
   --color-fd-primary-foreground: #08131a;
+  --og-grid-color: rgba(61, 154, 184, 0.3);
+  --og-glow-color: rgba(61, 154, 184, 0.15);
+  --og-page-bg: #121212;
+}
+
+/* Same grid-plus-center-glow backdrop used across the rest of Open Gauge
+   (see apps/web's `og-grid-bg` utility). --color-fd-background is made
+   transparent so it reveals this fixed backdrop instead of papering over it —
+   opaque surface tokens (card/popover/secondary/muted) are untouched, so
+   panels, code blocks, and callouts keep full contrast. */
+:root, .dark {
+  --color-fd-background: transparent;
+}
+
+body {
+  background-color: var(--og-page-bg);
+  background-image:
+    radial-gradient(ellipse 1000px 1000px at 50% 50%, var(--og-glow-color), transparent 65%),
+    linear-gradient(var(--og-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--og-grid-color) 1px, transparent 1px);
+  background-size: 100% 100%, 1cm 1cm, 1cm 1cm;
+  background-attachment: fixed;
 }

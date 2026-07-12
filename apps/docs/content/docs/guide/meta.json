@@ -1,6 +1,6 @@
 {
   "title": "Documentation",
-  "description": "Knowledge center: how Open Gauge works, self-hosting, and operational workflows.",
+  "description": "Guides and references",
   "root": true,
   "pages": [
     "index",

@@ -69,6 +69,7 @@ async function markAsRoot() {
   const metaPath = `${OUTPUT_DIR}/meta.json`;
   const meta = JSON.parse(await readFile(metaPath, "utf-8"));
   meta.title = "API Reference";
+  meta.description = "REST API endpoints";
   meta.root = true;
   meta.pages = ["index", "---Endpoints---", ...(meta.pages ?? [])];
   await writeFile(metaPath, JSON.stringify(meta, null, 2));
