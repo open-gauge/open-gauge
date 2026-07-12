@@ -20,11 +20,79 @@ An asset's type is one of:
 
 ## Common fields
 
-Regardless of type, every asset carries manufacturer/model/serial information, an optional
-datasheet file, a current location, an owning team, physical specs (dimensions, weight, power,
-mounting, connection type, IP rating, hazardous-area rating), operating temperature/humidity
-range, purchase/warranty dates, and a computed **health score** (0–100) — see
-[Health scoring](../health-scoring/overview.mdx).
+Regardless of type, every asset carries the fields below, plus a computed **health score**
+(0–100) — see [Health scoring](../health-scoring/overview.mdx). Every field here is also
+explained by an info tooltip (ⓘ) directly in the UI — clicking a tooltip brings you back to
+the matching section on this page.
+
+### Asset ID [#asset-id]
+
+An auto-generated, unique human-readable identifier (e.g. `OG-00042`), separate from the
+asset's internal database id. Used throughout the UI, on QR/sticker labels, and in exported
+bundles.
+
+### Name, manufacturer, model & serial number [#identity]
+
+Free-text identity fields. Name is what shows in lists and headers; manufacturer, model, and
+serial number identify the physical unit.
+
+### Part number [#part-number]
+
+The manufacturer's own part/catalog number, distinct from the asset's serial number — useful
+when ordering spares or looking up a datasheet.
+
+### Description [#description]
+
+Free-text notes on the asset's purpose or context, shown under its identity fields.
+
+### Owner [#owner]
+
+The team responsible for this asset, selected from the organization's teams — see
+[Data model & concepts](../concepts/data-model.mdx#organizations-teams).
+
+### Location [#location]
+
+Where the asset currently is, picked from the organization's location tree — see
+[Locations](../locations/index.mdx). Moving an asset records an audit-logged location-history
+entry rather than overwriting the prior location silently.
+
+### Dimensions & weight [#dimensions-weight]
+
+Physical size (free text, e.g. `150×30×30 mm`) and weight in kilograms — purely informational.
+
+### Mounting type [#mounting-type]
+
+How the asset is physically installed (e.g. wall, ceiling, pole, DIN rail).
+
+### Connection type [#connection-type]
+
+The physical connector or wiring interface (e.g. `M12 4-pin`).
+
+### IP rating [#ip-rating]
+
+Ingress Protection rating (e.g. IP65) describing dust/water resistance.
+
+### Hazardous area rating [#hazardous-area-rating]
+
+The ATEX/hazardous-location zone the asset is rated for (or "non-hazardous").
+
+### Operating temperature & humidity [#operating-range]
+
+The environmental range the asset itself is rated to operate within — distinct from a
+channel's *measurement* range, which is what it measures rather than what it tolerates.
+
+### Power supply & consumption [#power]
+
+Supply voltage/type (e.g. `24 VDC`) and power draw in watts.
+
+### Firmware version [#firmware-version]
+
+The version string of the asset's onboard firmware, where applicable.
+
+### Purchase date, price & warranty [#commercial]
+
+Procurement bookkeeping: when the asset was bought, what it cost, and when its warranty
+expires.
 
 ## Asset picture
 

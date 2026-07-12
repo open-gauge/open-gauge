@@ -37,15 +37,18 @@ pressure (relative to atmospheric pressure). Where a physical quantity has defin
 a **Type** dropdown appears under Physical quantity; where it doesn't need one (e.g.
 temperature), the field is hidden entirely.
 
-### Measurable range, unit & technology
+### Measurement range & unit [#measurement-range]
 
 Enter the channel's **measurement range** (min/max) and display **unit**. Once a range is set,
 every "% FS" (percent of full scale) option below becomes available, since a percentage needs
-a span to convert against. **Technology** (e.g. RTD, thermocouple, strain gauge) sits to the
-right of physical quantity, and the physical quantity's unit sits to the right of the range —
-purely descriptive fields with no effect on calculations.
+a span to convert against.
 
-### Output signal
+### Technology [#technology]
+
+The sensing technology (e.g. RTD, thermocouple, strain gauge) sits to the right of physical
+quantity — a purely descriptive field with no effect on calculations.
+
+### Output signal [#output-signal]
 
 The sensor's raw output — type (analog / digital / frequency / resistance / capacitance),
 value range, and unit — sits directly under the measurable range, in the same min–max/unit
@@ -90,6 +93,12 @@ change.
 ### Bandwidth (Hz) [#bandwidth-hz]
 
 Maximum frequency of input changes the sensor can accurately follow.
+
+### Calibration method [#calibration-method]
+
+The [procedure](../procedures/index.mdx) used to calibrate this channel — linking one here
+lets the calibration wizard pre-fill the right steps, equipment, and acceptance criteria for
+this specific channel.
 
 ### Calibration role [#calibration-role]
 

@@ -357,9 +357,9 @@ def get_asset_health(
     detailed_metrics = DetailedMetrics(
         drift_group=[
             MetricGroupItem(key="max_drift", label="Maximum Drift", value=max_drift_value, unit=channel_unit, tooltip="Largest absolute deviation observed between any calibration and the baseline (first) calibration, evaluated across the shared operating range."),
-            MetricGroupItem(key="rms_drift", label="RMS Drift", value=rms_drift_value, unit=channel_unit, tooltip="Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."),
+            MetricGroupItem(key="rms_drift", label="RMS Drift", value=rms_drift_value, unit=channel_unit, tooltip="Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."),
             MetricGroupItem(key="drift_rate", label="Drift Rate", value=average_drift_rate, unit=f"{channel_unit}/year" if channel_unit else "/year", tooltip="Long-term rate of change of drift over the full calibration history, from a linear regression."),
-            MetricGroupItem(key="regression_slope", label="Regression Slope", value=average_drift_rate, unit=f"{channel_unit}/year" if channel_unit else "/year", tooltip="Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."),
+            MetricGroupItem(key="regression_slope", label="Regression Slope", value=average_drift_rate, unit=f"{channel_unit}/year" if channel_unit else "/year", tooltip="Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."),
             MetricGroupItem(key="regression_r2", label="Regression R²", value=regression_r_squared, unit="", tooltip="Goodness of fit (0-1) of the drift trend line. Values near 1 indicate a consistent, predictable drift pattern."),
         ],
         statistics_group=[

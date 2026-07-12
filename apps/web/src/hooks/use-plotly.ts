@@ -20,6 +20,18 @@ export const PLOTLY_AXIS_BASE: Partial<Plotly.LayoutAxis> = {
   automargin: true,
 };
 
+/**
+ * Axis title with the same muted color as `PLOTLY_AXIS_BASE`'s tick labels
+ * (matching the calibration-points chart in asset-detail-client.tsx). Use
+ * this instead of a bare `{ text }` object — spreading `PLOTLY_AXIS_BASE`
+ * into an axis and then setting `title` replaces the whole title object
+ * rather than merging into it, so an untinted `{ text }` falls back to
+ * Plotly's default (dark, unreadable in dark mode) title color.
+ */
+export function axisTitle(text: string): Partial<Plotly.DataTitle> {
+  return { text, font: { size: 10, color: "#9ca3af" } };
+}
+
 export const PLOTLY_CONFIG_BASE: Partial<Plotly.Config> = {
   responsive: true,
   displaylogo: false,

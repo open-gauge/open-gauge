@@ -14,13 +14,36 @@ export function docsUrl(path: string): string {
 export const CHAN_DOCS_LINKS: Record<string, string> = {
   physical_quantity: "/docs/guide/sensors/adding-a-sensor#physical-quantity",
   measurement_type: "/docs/guide/sensors/adding-a-sensor#measurement-type",
+  measurement_range: "/docs/guide/sensors/adding-a-sensor#measurement-range",
+  technology: "/docs/guide/sensors/adding-a-sensor#technology",
   accuracy_value: "/docs/guide/sensors/adding-a-sensor#accuracy-value",
   resolution: "/docs/guide/sensors/adding-a-sensor#resolution",
   measurement_uncertainty: "/docs/guide/sensors/adding-a-sensor#measurement-uncertainty",
   drift_rate: "/docs/guide/sensors/adding-a-sensor#drift-rate",
   response_time_ms: "/docs/guide/sensors/adding-a-sensor#response-time-ms",
   bandwidth_hz: "/docs/guide/sensors/adding-a-sensor#bandwidth-hz",
+  output_signal: "/docs/guide/sensors/adding-a-sensor#output-signal",
+  calibration_method: "/docs/guide/sensors/adding-a-sensor#calibration-method",
   calibration_role: "/docs/guide/sensors/adding-a-sensor#calibration-role",
+};
+
+// General asset fields — apps/docs/content/docs/guide/sensors/asset-registry.mdx
+export const ASSET_DOCS_LINKS: Record<string, string> = {
+  asset_id: "/docs/guide/sensors/asset-registry#asset-id",
+  identity: "/docs/guide/sensors/asset-registry#identity",
+  part_number: "/docs/guide/sensors/asset-registry#part-number",
+  description: "/docs/guide/sensors/asset-registry#description",
+  owner: "/docs/guide/sensors/asset-registry#owner",
+  location: "/docs/guide/sensors/asset-registry#location",
+  dimensions_weight: "/docs/guide/sensors/asset-registry#dimensions-weight",
+  mounting_type: "/docs/guide/sensors/asset-registry#mounting-type",
+  connection_type: "/docs/guide/sensors/asset-registry#connection-type",
+  ip_rating: "/docs/guide/sensors/asset-registry#ip-rating",
+  hazardous_area_rating: "/docs/guide/sensors/asset-registry#hazardous-area-rating",
+  operating_range: "/docs/guide/sensors/asset-registry#operating-range",
+  power: "/docs/guide/sensors/asset-registry#power",
+  firmware_version: "/docs/guide/sensors/asset-registry#firmware-version",
+  commercial: "/docs/guide/sensors/asset-registry#commercial",
 };
 
 // Health-tab drift/curve-comparison metrics — apps/docs/content/docs/guide/health-scoring/drift-metrics.mdx

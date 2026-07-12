@@ -5,6 +5,7 @@
 
 **/node_modules
 **/.next
+**/out
 **/.source
 **/__pycache__
 **/*.pyc

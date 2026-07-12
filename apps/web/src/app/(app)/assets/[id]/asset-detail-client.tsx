@@ -82,7 +82,7 @@ import { UserMention } from "@/components/user-mention";
 import { Tooltip } from "@/components/tooltip";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { StatRow } from "@/components/stat-row";
-import { CHAN_DOCS_LINKS, STAT_DOCS_LINKS } from "@/lib/docs-links";
+import { ASSET_DOCS_LINKS, CHAN_DOCS_LINKS, STAT_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
 
 // ---------------------------------------------------------------------------
@@ -145,11 +145,26 @@ function StatusBadge({ status }: { status: string }) {
 // Spec row (display mode)
 // ---------------------------------------------------------------------------
 
-function SpecRow({ label, value, accent }: { label: string; value: string | null | undefined; accent?: boolean }) {
+function SpecRow({
+  label, value, accent, tooltip, tooltipDocsHref,
+}: {
+  label: string;
+  value: string | null | undefined;
+  accent?: boolean;
+  tooltip?: string;
+  tooltipDocsHref?: string;
+}) {
   if (!value) return null;
   return (
     <div className="flex flex-col gap-0.5 py-3 border-b border-og-border last:border-b-0">
-      <span className="text-xs text-gray-400">{label}</span>
+      <span className="flex items-center gap-1 text-xs text-gray-400">
+        {label}
+        {tooltip && (
+          <Tooltip content={tooltip} docsHref={tooltipDocsHref}>
+            <InfoIcon size={10} className="text-gray-400 cursor-help" />
+          </Tooltip>
+        )}
+      </span>
       <span className={`text-sm ${accent ? "text-og-accent font-medium" : "text-og-text"}`}>{value}</span>
     </div>
   );
@@ -1134,38 +1149,38 @@ function OverviewTab({
         <div className="bg-og-surface border border-og-border rounded-xl p-5">
           <h3 className="text-sm font-semibold text-og-text mb-3">General</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
-            <SpecRow label="Asset ID" value={profile.asset_id} accent />
-            <SpecRow label="Name" value={profile.name} />
-            <SpecRow label="Manufacturer" value={profile.manufacturer} />
-            <SpecRow label="Model" value={profile.model} />
-            <SpecRow label="Serial number" value={profile.serial_number} />
-            <SpecRow label="Part number" value={profile.manufacturer_part_number} />
-            <SpecRow label="Description" value={profile.description} />
+            <SpecRow label="Asset ID" value={profile.asset_id} accent tooltip="Auto-generated, unique human-readable identifier, separate from the asset's internal database id." tooltipDocsHref={ASSET_DOCS_LINKS.asset_id} />
+            <SpecRow label="Name" value={profile.name} tooltip="What this asset shows as in lists and headers." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label="Manufacturer" value={profile.manufacturer} tooltip="The company that made the physical unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label="Model" value={profile.model} tooltip="The manufacturer's model designation for the physical unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label="Serial number" value={profile.serial_number} tooltip="The manufacturer's serial number for this specific unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label="Part number" value={profile.manufacturer_part_number} tooltip="The manufacturer's part/catalog number, distinct from the serial number — useful for ordering spares." tooltipDocsHref={ASSET_DOCS_LINKS.part_number} />
+            <SpecRow label="Description" value={profile.description} tooltip="Free-text notes on the asset's purpose or context." tooltipDocsHref={ASSET_DOCS_LINKS.description} />
           </div>
         </div>
 
         <CollapsibleSection title="Location">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-            <SpecRow label="Owner" value={profile.owner_name} />
-            <SpecRow label="Site" value={profile.site_name} />
-            <SpecRow label="Location" value={profile.location_name} />
-            <SpecRow label="Location code" value={profile.location_code} />
-            <SpecRow label="Description" value={profile.location_description} />
-            {locationCoords && <SpecRow label="Coordinates" value={locationCoords} />}
+            <SpecRow label="Owner" value={profile.owner_name} tooltip="The team responsible for this asset." tooltipDocsHref={ASSET_DOCS_LINKS.owner} />
+            <SpecRow label="Site" value={profile.site_name} tooltip="The top-level site this asset's location belongs to." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            <SpecRow label="Location" value={profile.location_name} tooltip="Where the asset currently is, picked from the organization's location tree." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            <SpecRow label="Location code" value={profile.location_code} tooltip="The location's short internal code." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            <SpecRow label="Description" value={profile.location_description} tooltip="Free-text notes on the location itself." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            {locationCoords && <SpecRow label="Coordinates" value={locationCoords} tooltip="Latitude and longitude recorded for the location." tooltipDocsHref={ASSET_DOCS_LINKS.location} />}
           </div>
         </CollapsibleSection>
 
         {hasAny(profile.dimensions, profile.weight_kg, profile.mounting_type, profile.connection_type, profile.ip_rating, profile.hazardous_area_rating, operatingTemp, operatingHumidity) && (
           <CollapsibleSection title="Mechanical">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-              <SpecRow label="Dimensions" value={profile.dimensions} />
-              {profile.weight_kg != null && <SpecRow label="Weight" value={`${profile.weight_kg} kg`} />}
-              <SpecRow label="Mounting type" value={profile.mounting_type} />
-              <SpecRow label="Connection type" value={profile.connection_type} />
-              <SpecRow label="IP rating" value={profile.ip_rating} />
-              <SpecRow label="Hazardous area" value={profile.hazardous_area_rating} />
-              {operatingTemp && <SpecRow label="Operating temperature" value={operatingTemp} />}
-              {operatingHumidity && <SpecRow label="Operating humidity" value={operatingHumidity} />}
+              <SpecRow label="Dimensions" value={profile.dimensions} tooltip="Physical size of the asset — purely informational." tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />
+              {profile.weight_kg != null && <SpecRow label="Weight" value={`${profile.weight_kg} kg`} tooltip="Physical weight of the asset — purely informational." tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />}
+              <SpecRow label="Mounting type" value={profile.mounting_type} tooltip="How the asset is physically installed." tooltipDocsHref={ASSET_DOCS_LINKS.mounting_type} />
+              <SpecRow label="Connection type" value={profile.connection_type} tooltip="The physical connector or wiring interface." tooltipDocsHref={ASSET_DOCS_LINKS.connection_type} />
+              <SpecRow label="IP rating" value={profile.ip_rating} tooltip="Ingress Protection rating describing dust/water resistance." tooltipDocsHref={ASSET_DOCS_LINKS.ip_rating} />
+              <SpecRow label="Hazardous area" value={profile.hazardous_area_rating} tooltip="The ATEX/hazardous-location zone the asset is rated for." tooltipDocsHref={ASSET_DOCS_LINKS.hazardous_area_rating} />
+              {operatingTemp && <SpecRow label="Operating temperature" value={operatingTemp} tooltip="The environmental range the asset itself is rated to operate within — distinct from a channel's measurement range." tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
+              {operatingHumidity && <SpecRow label="Operating humidity" value={operatingHumidity} tooltip="The environmental humidity range the asset itself is rated to operate within." tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
             </div>
           </CollapsibleSection>
         )}
@@ -1173,11 +1188,11 @@ function OverviewTab({
         {hasAny(profile.power_supply, profile.power_consumption_w, profile.firmware_version, profile.pinout_table?.length) && (
           <CollapsibleSection title="Electrical">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-              <SpecRow label="Power supply" value={profile.power_supply} />
+              <SpecRow label="Power supply" value={profile.power_supply} tooltip="Supply voltage/type, e.g. 24 VDC." tooltipDocsHref={ASSET_DOCS_LINKS.power} />
               {profile.power_consumption_w != null && (
-                <SpecRow label="Power consumption" value={`${profile.power_consumption_w} W`} />
+                <SpecRow label="Power consumption" value={`${profile.power_consumption_w} W`} tooltip="Power draw in watts." tooltipDocsHref={ASSET_DOCS_LINKS.power} />
               )}
-              <SpecRow label="Firmware" value={profile.firmware_version} />
+              <SpecRow label="Firmware" value={profile.firmware_version} tooltip="Version string of the asset's onboard firmware." tooltipDocsHref={ASSET_DOCS_LINKS.firmware_version} />
             </div>
             {profile.pinout_table && profile.pinout_table.length > 0 && (
               <div className="mt-4">
@@ -1210,9 +1225,9 @@ function OverviewTab({
         {hasAny(profile.purchase_date, profile.price_eur, profile.warranty_expiry_date) && (
           <CollapsibleSection title="Commercial">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-              {profile.purchase_date && <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} />}
-              {profile.price_eur != null && <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} />}
-              {profile.warranty_expiry_date && <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} />}
+              {profile.purchase_date && <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} tooltip="When the asset was bought." tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
+              {profile.price_eur != null && <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} tooltip="What the asset cost." tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
+              {profile.warranty_expiry_date && <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} tooltip="When the asset's warranty expires." tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
             </div>
           </CollapsibleSection>
         )}
@@ -1237,35 +1252,37 @@ function OverviewTab({
                     <p className="text-[11px] font-semibold text-og-accent uppercase tracking-wide mb-1">
                       {ch.channel_id}
                     </p>
-                    <SpecRow label="Physical quantity" value={SUBTYPE_LABEL[ch.physical_quantity] ?? ch.physical_quantity} />
+                    <SpecRow label="Physical quantity" value={SUBTYPE_LABEL[ch.physical_quantity] ?? ch.physical_quantity} tooltip="The type of measurement this channel takes — determines its applicable units and calibration procedures." tooltipDocsHref={CHAN_DOCS_LINKS.physical_quantity} />
                     <SpecRow
                       label="Measurement type"
                       value={getTypesForQuantity(ch.physical_quantity).find((t) => t.value === ch.measurement_type)?.label ?? ch.measurement_type}
+                      tooltip="The measurement mode, for physical quantities that have more than one — e.g. absolute vs. gauge pressure."
+                      tooltipDocsHref={CHAN_DOCS_LINKS.measurement_type}
                     />
-                    <SpecRow label="Technology" value={ch.technology} />
+                    <SpecRow label="Technology" value={ch.technology} tooltip="The sensing technology, e.g. RTD, thermocouple, strain gauge — purely descriptive." tooltipDocsHref={CHAN_DOCS_LINKS.technology} />
                     {(ch.measurement_min != null || ch.measurement_max != null) && (
-                      <SpecRow label="Range" value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} />
+                      <SpecRow label="Range" value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} tooltip="The channel's measurement range — enables % of full scale (% FS) options wherever a value/unit is set." tooltipDocsHref={CHAN_DOCS_LINKS.measurement_range} />
                     )}
                     {ch.accuracy_value != null && (
-                      <SpecRow label="Accuracy" value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}`} />
+                      <SpecRow label="Accuracy" value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}`} tooltip="Maximum deviation between the sensor output and the true value — the manufacturer/nominal accuracy spec." tooltipDocsHref={CHAN_DOCS_LINKS.accuracy_value} />
                     )}
                     {ch.resolution != null && (
-                      <SpecRow label="Resolution" value={`${ch.resolution}${ch.resolution_unit ? " " + ch.resolution_unit : ""}`} />
+                      <SpecRow label="Resolution" value={`${ch.resolution}${ch.resolution_unit ? " " + ch.resolution_unit : ""}`} tooltip="Smallest change in input the sensor can detect and represent in its output." tooltipDocsHref={CHAN_DOCS_LINKS.resolution} />
                     )}
                     {ch.measurement_uncertainty != null && (
-                      <SpecRow label="Uncertainty" value={`±${ch.measurement_uncertainty}${ch.uncertainty_unit ? " " + ch.uncertainty_unit : ""}`} />
+                      <SpecRow label="Uncertainty" value={`±${ch.measurement_uncertainty}${ch.uncertainty_unit ? " " + ch.uncertainty_unit : ""}`} tooltip="Quantifies doubt about the measurement result — the manufacturer's nominal/expanded uncertainty spec." tooltipDocsHref={CHAN_DOCS_LINKS.measurement_uncertainty} />
                     )}
                     {ch.drift_rate != null && (
-                      <SpecRow label="Drift rate" value={`${ch.drift_rate}${ch.drift_unit ? " " + ch.drift_unit : ""}`} />
+                      <SpecRow label="Drift rate" value={`${ch.drift_rate}${ch.drift_unit ? " " + ch.drift_unit : ""}`} tooltip="Rate at which the sensor output shifts over time without any change in the measured quantity — purely informational." tooltipDocsHref={CHAN_DOCS_LINKS.drift_rate} />
                     )}
-                    {ch.response_time_ms != null && <SpecRow label="Response time" value={`${ch.response_time_ms} ms`} />}
-                    {ch.bandwidth_hz != null && <SpecRow label="Bandwidth" value={`${ch.bandwidth_hz.toLocaleString()} Hz`} />}
-                    <SpecRow label="Output type" value={ch.output_type} />
+                    {ch.response_time_ms != null && <SpecRow label="Response time" value={`${ch.response_time_ms} ms`} tooltip="Time for the sensor output to reach a defined percentage of its final value after a step input change." tooltipDocsHref={CHAN_DOCS_LINKS.response_time_ms} />}
+                    {ch.bandwidth_hz != null && <SpecRow label="Bandwidth" value={`${ch.bandwidth_hz.toLocaleString()} Hz`} tooltip="Maximum frequency of input changes the sensor can accurately follow." tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />}
+                    <SpecRow label="Output type" value={ch.output_type} tooltip="The sensor's raw electrical output type — may differ from the physical unit it measures." tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
                     {(ch.output_signal_min != null || ch.output_signal_max != null) && (
-                      <SpecRow label="Output range" value={`${ch.output_signal_min ?? "—"} – ${ch.output_signal_max ?? "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`} />
+                      <SpecRow label="Output range" value={`${ch.output_signal_min ?? "—"} – ${ch.output_signal_max ?? "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`} tooltip="The sensor's raw output value range, e.g. a 4–20 mA current loop." tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
                     )}
-                    <SpecRow label="Cal. method" value={ch.calibration_method_name} />
-                    <SpecRow label="Cal. role" value={ch.calibration_role === "reference" ? "Reference standard" : null} />
+                    <SpecRow label="Cal. method" value={ch.calibration_method_name} tooltip="The procedure used to calibrate this channel." tooltipDocsHref={CHAN_DOCS_LINKS.calibration_method} />
+                    <SpecRow label="Cal. role" value={ch.calibration_role === "reference" ? "Reference standard" : null} tooltip="Marks this channel as a reference standard, selectable as the traceability reference when calibrating other assets." tooltipDocsHref={CHAN_DOCS_LINKS.calibration_role} />
                   </div>
                 ))}
               </div>
@@ -2887,7 +2904,7 @@ export default function AssetDetailClient() {
                 {isEditing && editForm ? (editForm.name || profile.name) : profile.name}
               </h1>
               {profile.sensor_channels.some((ch) => ch.calibration_role === "reference") && (
-                <Tooltip content="Reference Standard">
+                <Tooltip content="Reference standard">
                   <ShieldCheckIcon size={16} className="text-og-accent shrink-0" />
                 </Tooltip>
               )}
@@ -3051,16 +3068,19 @@ export default function AssetDetailClient() {
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Latest coefficients</p>
                 <table className="w-full text-xs">
                   <tbody>
-                    {calibrations[0].poly_coefficients.map((v, i) => (
-                      <tr key={i} className="border-b border-og-border last:border-b-0">
-                        <td className="py-0.5 pr-2 text-gray-400 whitespace-nowrap">
-                          {COEFF_DESC[i] ?? `Order-${i} term`}
-                        </td>
-                        <td className="py-0.5 text-og-text font-mono tabular-nums text-right whitespace-nowrap">
-                          {fmtNum(v)}
-                        </td>
-                      </tr>
-                    ))}
+                    {calibrations[0].poly_coefficients
+                      .map((v, i) => ({ exp: calibrations[0].poly_order! - i, val: v }))
+                      .reverse()
+                      .map(({ exp, val }) => (
+                        <tr key={exp} className="border-b border-og-border last:border-b-0">
+                          <td className="py-0.5 pr-2 text-gray-400 whitespace-nowrap">
+                            {COEFF_DESC[exp] ?? `Order-${exp} term`}
+                          </td>
+                          <td className="py-0.5 text-og-text font-mono tabular-nums text-right whitespace-nowrap">
+                            {fmtNum(val)}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>

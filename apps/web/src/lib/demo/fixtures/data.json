@@ -50252,7 +50252,7 @@
             "label": "RMS Drift",
             "value": 4.686032402791141,
             "unit": "°C",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -50266,7 +50266,7 @@
             "label": "Regression Slope",
             "value": 2.786782405067069,
             "unit": "°C/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -50598,7 +50598,7 @@
             "label": "RMS Drift",
             "value": 17.45184114432499,
             "unit": "°C",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -50612,7 +50612,7 @@
             "label": "Regression Slope",
             "value": 6.679963788113983,
             "unit": "°C/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -50944,7 +50944,7 @@
             "label": "RMS Drift",
             "value": 21.036321371319936,
             "unit": "°C",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -50958,7 +50958,7 @@
             "label": "Regression Slope",
             "value": 9.422798349859212,
             "unit": "°C/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -51290,7 +51290,7 @@
             "label": "RMS Drift",
             "value": 24.032928499539924,
             "unit": "°C",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -51304,7 +51304,7 @@
             "label": "Regression Slope",
             "value": 10.258962308546678,
             "unit": "°C/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -51592,7 +51592,7 @@
             "label": "RMS Drift",
             "value": 1.0607311676081739,
             "unit": "°C",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -51606,7 +51606,7 @@
             "label": "Regression Slope",
             "value": 0.8885535067334472,
             "unit": "°C/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -51995,7 +51995,7 @@
             "label": "RMS Drift",
             "value": 0.07108778423950529,
             "unit": "bar",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -52009,7 +52009,7 @@
             "label": "Regression Slope",
             "value": 0.048650887494547185,
             "unit": "bar/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -52341,7 +52341,7 @@
             "label": "RMS Drift",
             "value": 0.8364763461069039,
             "unit": "bar",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -52355,7 +52355,7 @@
             "label": "Regression Slope",
             "value": 0.33547759939651806,
             "unit": "bar/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -52687,7 +52687,7 @@
             "label": "RMS Drift",
             "value": 0.007132397509338883,
             "unit": "bar",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -52701,7 +52701,7 @@
             "label": "Regression Slope",
             "value": 0.0022709122766054126,
             "unit": "bar/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -52989,7 +52989,7 @@
             "label": "RMS Drift",
             "value": 0.02028254405823969,
             "unit": "bar",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -53003,7 +53003,7 @@
             "label": "Regression Slope",
             "value": 0.014624726544644489,
             "unit": "bar/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -53392,7 +53392,7 @@
             "label": "RMS Drift",
             "value": 0.08761879593495461,
             "unit": "bar",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -53406,7 +53406,7 @@
             "label": "Regression Slope",
             "value": 0.028535296519526458,
             "unit": "bar/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -53738,7 +53738,7 @@
             "label": "RMS Drift",
             "value": 12.19763641257357,
             "unit": "m³/h",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -53752,7 +53752,7 @@
             "label": "Regression Slope",
             "value": 5.437767893695215,
             "unit": "m³/h/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -54084,7 +54084,7 @@
             "label": "RMS Drift",
             "value": 14.170641700104278,
             "unit": "m³/h",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -54098,7 +54098,7 @@
             "label": "Regression Slope",
             "value": 6.165518399846011,
             "unit": "m³/h/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -54430,7 +54430,7 @@
             "label": "RMS Drift",
             "value": 5.90844621375806,
             "unit": "m³/h",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -54444,7 +54444,7 @@
             "label": "Regression Slope",
             "value": 2.3870280373334527,
             "unit": "m³/h/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -54776,7 +54776,7 @@
             "label": "RMS Drift",
             "value": 6.871498864547474,
             "unit": "%RH",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -54790,7 +54790,7 @@
             "label": "Regression Slope",
             "value": 2.868933444948473,
             "unit": "%RH/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -55179,7 +55179,7 @@
             "label": "RMS Drift",
             "value": 0.7854096003307022,
             "unit": "%RH",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -55193,7 +55193,7 @@
             "label": "Regression Slope",
             "value": 0.24068650014539392,
             "unit": "%RH/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -55582,7 +55582,7 @@
             "label": "RMS Drift",
             "value": 0.8030932006204192,
             "unit": "%RH",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -55596,7 +55596,7 @@
             "label": "Regression Slope",
             "value": 0.26281219032953856,
             "unit": "%RH/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -55985,7 +55985,7 @@
             "label": "RMS Drift",
             "value": 0.0011495247949116461,
             "unit": "m",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -55999,7 +55999,7 @@
             "label": "Regression Slope",
             "value": 0.0002905953051747157,
             "unit": "m/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -56287,7 +56287,7 @@
             "label": "RMS Drift",
             "value": 0.07325709655666428,
             "unit": "m",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -56301,7 +56301,7 @@
             "label": "Regression Slope",
             "value": 0.06011725269132645,
             "unit": "m/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -56633,7 +56633,7 @@
             "label": "RMS Drift",
             "value": 0.00387216583051912,
             "unit": "m",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -56647,7 +56647,7 @@
             "label": "Regression Slope",
             "value": 0.0015187891246416065,
             "unit": "m/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -56979,7 +56979,7 @@
             "label": "RMS Drift",
             "value": 21244.576334686837,
             "unit": "N",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -56993,7 +56993,7 @@
             "label": "Regression Slope",
             "value": 8596.57377966053,
             "unit": "N/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -57382,7 +57382,7 @@
             "label": "RMS Drift",
             "value": 1574.5121986025486,
             "unit": "N",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -57396,7 +57396,7 @@
             "label": "Regression Slope",
             "value": 538.1920585829516,
             "unit": "N/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -57785,7 +57785,7 @@
             "label": "RMS Drift",
             "value": 22688.962146120328,
             "unit": "N",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -57799,7 +57799,7 @@
             "label": "Regression Slope",
             "value": 7271.5214979914535,
             "unit": "N/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -58087,7 +58087,7 @@
             "label": "RMS Drift",
             "value": 0.37187989912015557,
             "unit": "Nm",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -58101,7 +58101,7 @@
             "label": "Regression Slope",
             "value": 0.2592730189947027,
             "unit": "Nm/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -58433,7 +58433,7 @@
             "label": "RMS Drift",
             "value": 1.0407923754668622,
             "unit": "Nm",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -58447,7 +58447,7 @@
             "label": "Regression Slope",
             "value": 0.38228551132734256,
             "unit": "Nm/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -58779,7 +58779,7 @@
             "label": "RMS Drift",
             "value": 15.15180686097136,
             "unit": "kg",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -58793,7 +58793,7 @@
             "label": "Regression Slope",
             "value": 5.377414030354007,
             "unit": "kg/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -59182,7 +59182,7 @@
             "label": "RMS Drift",
             "value": 1.2418636521311501,
             "unit": "kg",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -59196,7 +59196,7 @@
             "label": "Regression Slope",
             "value": 0.3774043807249211,
             "unit": "kg/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -59585,7 +59585,7 @@
             "label": "RMS Drift",
             "value": 0.001969713438510464,
             "unit": "V",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -59599,7 +59599,7 @@
             "label": "Regression Slope",
             "value": 0.0009961481071063295,
             "unit": "V/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -59931,7 +59931,7 @@
             "label": "RMS Drift",
             "value": 0.23896847549676656,
             "unit": "V",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -59945,7 +59945,7 @@
             "label": "Regression Slope",
             "value": 0.08015561406568106,
             "unit": "V/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -60233,7 +60233,7 @@
             "label": "RMS Drift",
             "value": 0.03785235229296503,
             "unit": "A",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -60247,7 +60247,7 @@
             "label": "Regression Slope",
             "value": 0.030788586134886144,
             "unit": "A/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -60636,7 +60636,7 @@
             "label": "RMS Drift",
             "value": 2.8774635230681507,
             "unit": "A",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -60650,7 +60650,7 @@
             "label": "Regression Slope",
             "value": 0.5711887657895308,
             "unit": "A/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -60982,7 +60982,7 @@
             "label": "RMS Drift",
             "value": 11.2474336640739,
             "unit": "Ω",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -60996,7 +60996,7 @@
             "label": "Regression Slope",
             "value": 4.599757039218307,
             "unit": "Ω/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -61328,7 +61328,7 @@
             "label": "RMS Drift",
             "value": 0.3625161667177672,
             "unit": "Ω",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -61342,7 +61342,7 @@
             "label": "Regression Slope",
             "value": 0.13162124299799244,
             "unit": "Ω/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -61731,7 +61731,7 @@
             "label": "RMS Drift",
             "value": 0.11152345261938994,
             "unit": "mm",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -61745,7 +61745,7 @@
             "label": "Regression Slope",
             "value": 0.03398561196233586,
             "unit": "mm/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -62077,7 +62077,7 @@
             "label": "RMS Drift",
             "value": 0.32723083076905657,
             "unit": "mm",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -62091,7 +62091,7 @@
             "label": "Regression Slope",
             "value": 0.11369801113090573,
             "unit": "mm/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -62423,7 +62423,7 @@
             "label": "RMS Drift",
             "value": 0.4602476653720907,
             "unit": "mm",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -62437,7 +62437,7 @@
             "label": "Regression Slope",
             "value": 0.16949317659913782,
             "unit": "mm/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -62769,7 +62769,7 @@
             "label": "RMS Drift",
             "value": 0.26848924208364344,
             "unit": "°",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -62783,7 +62783,7 @@
             "label": "Regression Slope",
             "value": 0.09882054378109838,
             "unit": "°/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -63172,7 +63172,7 @@
             "label": "RMS Drift",
             "value": 0.12265236342547482,
             "unit": "°",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -63186,7 +63186,7 @@
             "label": "Regression Slope",
             "value": 0.0371593096483431,
             "unit": "°/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -63474,7 +63474,7 @@
             "label": "RMS Drift",
             "value": 3.4147135865798712,
             "unit": "rpm",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -63488,7 +63488,7 @@
             "label": "Regression Slope",
             "value": 1.8971706955646725,
             "unit": "rpm/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -63820,7 +63820,7 @@
             "label": "RMS Drift",
             "value": 8.680055016848936,
             "unit": "rpm",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -63834,7 +63834,7 @@
             "label": "Regression Slope",
             "value": 3.134780083363538,
             "unit": "rpm/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -64166,7 +64166,7 @@
             "label": "RMS Drift",
             "value": 11.115977704643237,
             "unit": "m/s²",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -64180,7 +64180,7 @@
             "label": "Regression Slope",
             "value": 4.250814209979796,
             "unit": "m/s²/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -64468,7 +64468,7 @@
             "label": "RMS Drift",
             "value": 0.03836196596912546,
             "unit": "m/s²",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -64482,7 +64482,7 @@
             "label": "Regression Slope",
             "value": 0.02388903311045078,
             "unit": "m/s²/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -64871,7 +64871,7 @@
             "label": "RMS Drift",
             "value": 10.661609201817503,
             "unit": "m/s²",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -64885,7 +64885,7 @@
             "label": "Regression Slope",
             "value": 1.8491669430897095,
             "unit": "m/s²/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -65178,7 +65178,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -65192,7 +65192,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -65536,7 +65536,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -65550,7 +65550,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -65843,7 +65843,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -65857,7 +65857,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -66201,7 +66201,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -66215,7 +66215,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -66559,7 +66559,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -66573,7 +66573,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -66866,7 +66866,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -66880,7 +66880,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -67141,7 +67141,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -67155,7 +67155,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",
@@ -67499,7 +67499,7 @@
             "label": "RMS Drift",
             "value": 0,
             "unit": "",
-            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift."
+            "tooltip": "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift."
           },
           {
             "key": "drift_rate",
@@ -67513,7 +67513,7 @@
             "label": "Regression Slope",
             "value": 0,
             "unit": "/year",
-            "tooltip": "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart."
+            "tooltip": "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart."
           },
           {
             "key": "regression_r2",

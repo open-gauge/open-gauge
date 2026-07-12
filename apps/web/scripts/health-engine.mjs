@@ -424,9 +424,9 @@ export function computeAssetHealth(chronological, channelUnit, span, accuracyVal
   const detailedMetrics = {
     drift_group: [
       { key: "max_drift", label: "Maximum Drift", value: maxDriftValue, unit: channelUnit, tooltip: "Largest absolute deviation observed between any calibration and the baseline (first) calibration, evaluated across the shared operating range." },
-      { key: "rms_drift", label: "RMS Drift", value: rmsDriftValue, unit: channelUnit, tooltip: "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than Maximum Drift." },
+      { key: "rms_drift", label: "RMS Drift", value: rmsDriftValue, unit: channelUnit, tooltip: "Root-mean-square of the per-calibration maximum drift values — a measure of overall drift dispersion, less sensitive to a single outlier than maximum drift." },
       { key: "drift_rate", label: "Drift Rate", value: averageDriftRate, unit: channelUnit ? `${channelUnit}/year` : "/year", tooltip: "Long-term rate of change of drift over the full calibration history, from a linear regression." },
-      { key: "regression_slope", label: "Regression Slope", value: averageDriftRate, unit: channelUnit ? `${channelUnit}/year` : "/year", tooltip: "Slope of the drift-evolution trend line — identical to Drift Rate, shown here for traceability with the chart." },
+      { key: "regression_slope", label: "Regression Slope", value: averageDriftRate, unit: channelUnit ? `${channelUnit}/year` : "/year", tooltip: "Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart." },
       { key: "regression_r2", label: "Regression R²", value: regressionRSquared, unit: "", tooltip: "Goodness of fit (0-1) of the drift trend line. Values near 1 indicate a consistent, predictable drift pattern." },
     ],
     statistics_group: [
