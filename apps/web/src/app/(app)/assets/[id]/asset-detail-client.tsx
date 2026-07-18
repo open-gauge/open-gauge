@@ -84,6 +84,7 @@ import type { LocationItem } from "@/types/location";
 import { UserMention } from "@/components/user-mention";
 import { Tooltip } from "@/components/tooltip";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
+import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { StatRow } from "@/components/stat-row";
 import { ASSET_DOCS_LINKS, CHAN_DOCS_LINKS, STAT_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
@@ -2239,7 +2240,7 @@ function CertificateDownloadButton({
           <button
             type="button"
             onClick={() => { setSelectedTemplateId(null); setMenuOpen(false); }}
-            className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left hover:bg-og-surface-alt transition-colors"
+            className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
           >
             Default template
             {selectedTemplateId === null && <CheckIcon size={12} className="text-og-accent shrink-0" />}
@@ -2250,7 +2251,7 @@ function CertificateDownloadButton({
               key={t.id}
               type="button"
               onClick={() => { setSelectedTemplateId(t.id); setMenuOpen(false); }}
-              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left hover:bg-og-surface-alt transition-colors"
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
             >
               <span className="truncate">{t.name}</span>
               {selectedTemplateId === t.id && <CheckIcon size={12} className="text-og-accent shrink-0" />}
@@ -2388,10 +2389,14 @@ function FilesTab({
                     alt={f.original_filename}
                     className="w-9 h-9 rounded-lg object-cover shrink-0 border border-og-border"
                   />
+                ) : type === "pdf" && f.url ? (
+                  <PdfThumbnail
+                    fetchPdf={() => fetch(f.url!).then((r) => r.blob())}
+                    title={f.original_filename}
+                  />
                 ) : (
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold
-                    ${type === "pdf" ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
-                      type === "csv" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
+                    ${type === "csv" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
                       type === "zip" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30" :
                       "bg-og-surface-alt text-gray-400"}`}>
                     {typeLabel[type]}

@@ -659,6 +659,7 @@ export const OUTPUT_TYPE_OPTIONS = [
   { value: "frequency", label: "Frequency" },
   { value: "resistance", label: "Resistance" },
   { value: "capacitance", label: "Capacitance" },
+  { value: "ratiometric", label: "Ratiometric" },
 ];
 
 export const ACCURACY_TYPE_OPTIONS = [
@@ -701,6 +702,11 @@ export const CAPACITANCE_OUTPUT_UNITS: UnitOption[] = [
   { value: "pF", label: "pF" },
 ];
 
+export const RATIOMETRIC_OUTPUT_UNITS: UnitOption[] = [
+  { value: "mV/V", label: "mV/V" },
+  { value: "V/V", label: "V/V" },
+];
+
 export function getOutputUnits(outputType: string, physicalQuantity: string): UnitOption[] | null {
   switch (outputType) {
     case "analog":
@@ -715,6 +721,8 @@ export function getOutputUnits(outputType: string, physicalQuantity: string): Un
       return RESISTANCE_OUTPUT_UNITS;
     case "capacitance":
       return CAPACITANCE_OUTPUT_UNITS;
+    case "ratiometric":
+      return RATIOMETRIC_OUTPUT_UNITS;
     default:
       return null;
   }

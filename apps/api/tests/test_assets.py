@@ -392,6 +392,38 @@ class TestAssetPicture:
         )
         assert response.status_code == 403
 
+
+# ---------------------------------------------------------------------------
+# Asset files
+# ---------------------------------------------------------------------------
+
+class TestAssetFiles:
+    """Regression: the asset picture is uploaded through the same StoredFile
+    table (entity_id=asset id, entity_type="asset_picture") as regular
+    attachments (entity_type="asset") — the Files list must only ever return
+    the latter, since the picture is managed from the Image section instead."""
+
+    def test_list_files_excludes_the_asset_picture(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        client.post(
+            f"/api/v1/assets/{asset_id}/files",
+            files={"file": ("datasheet.pdf", b"%PDF-1.4 fake", "application/pdf")},
+            headers=auth_headers,
+        )
+        client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=auth_headers,
+        )
+
+        response = client.get(f"/api/v1/assets/{asset_id}/files", headers=auth_headers)
+        assert response.status_code == 200, response.text
+        names = [f["original_filename"] for f in response.json()]
+        assert names == ["datasheet.pdf"]
+        assert "photo.png" not in names
+
     def test_delete_picture_clears_it(
         self, client: TestClient, auth_headers: dict, created_asset: dict
     ) -> None:

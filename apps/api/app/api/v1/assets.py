@@ -431,7 +431,11 @@ def list_asset_files(
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return _enrich_files(file_repo.list_by_entity(db, asset_pk))
+    # entity_id is shared with the asset picture (entity_type="asset_picture") — that's
+    # managed from the Image section, not the general Files list. See asset_export.py's
+    # equivalent filter.
+    files = [f for f in file_repo.list_by_entity(db, asset_pk) if f.entity_type == "asset"]
+    return _enrich_files(files)
 
 
 @router.post("/{asset_pk}/files", response_model=StoredFileResponse, status_code=status.HTTP_201_CREATED)

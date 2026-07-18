@@ -9,6 +9,23 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 1.2.0 — 2026-07-21
+
+### Added
+
+- **Ratiometric** output signal type for sensor channels (e.g. bridge-type load cells), with
+  `mV/V` and `V/V` units.
+- PDF preview for PDF files in the asset **Files** section — click a file's thumbnail to preview
+  it before downloading, using the same previewer as calibration certificates.
+- Reference tables in the "Adding a sensor" documentation covering every supported physical
+  quantity (with technology, type, and units) and every output signal type (with units).
+
+### Fixed
+
+- The certificate template dropdown menu text is now visible in dark mode.
+- The asset's profile picture no longer appears in the asset's Files list — it's managed only
+  from the Image section, avoiding duplication.
+
 ## 1.1.0 — 2026-06-21
 
 ### Added

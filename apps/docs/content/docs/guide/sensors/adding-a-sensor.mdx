@@ -29,6 +29,60 @@ determines the applicable units and calibration procedures. Choose the one that 
 the sensor's primary measurement — this drives which units appear in every unit dropdown
 below.
 
+Every physical quantity Open Gauge supports, with its available sensing technologies, its
+**Type** dropdown options (only pressure has one today — see [Measurement
+type](#measurement-type) below), and its selectable display units:
+
+| Physical quantity | Technology | Type (if applicable) | Units |
+|---|---|---|---|
+| Temperature | Thermocouple (J, K, T, E, N, R, S, B), RTD (PT100, PT1000, Other), Thermistor (NTC, PTC, Other), Infrared, Fiber Optic, Semiconductor, Bimetallic | — | °C, °F, K |
+| Pressure | Strain Gauge, Piezoresistive, Piezoelectric, Capacitive, Inductive, Resonant, Optical, MEMS | Absolute, Gauge (relative) | Pa, kPa, MPa, bar, psi, hPa, atm, mmHg, inHg, inH₂O |
+| Flow | Differential Pressure, Orifice Plate, Venturi, Turbine, Positive Displacement, Electromagnetic, Vortex, Coriolis, Ultrasonic, Thermal Mass | — | m³/h, L/min, gal/min, kg/h, g/min, lb/min |
+| Level | Float, Hydrostatic, Capacitive, Conductive, Ultrasonic, Radar, Laser, Optical | — | mm, cm, m, in, ft, % |
+| Humidity | Capacitive, Resistive, Thermal Conductivity, Chilled Mirror | — | %RH, g/m³, Dew Point °C, Dew Point °F |
+| Force | Strain Gauge, Piezoelectric, Hydraulic, Pneumatic, Optical | — | N, kN, kgf, lbf |
+| Torque | Strain Gauge, Magnetoelastic, Optical, Piezoelectric | — | N·m, kN·m, lbf·ft |
+| Mass | Strain Gauge, Electromagnetic Force Restoration, Vibrating Tube, Piezoelectric | — | kg, g, mg, lb |
+| Strain | Foil Strain Gauge, Semiconductor Strain Gauge, Fiber Bragg Grating, Capacitive | — | µε, m/m |
+| Displacement | Potentiometric, LVDT, Inductive, Capacitive, Eddy Current, Laser, Optical Encoder, Magnetostrictive | — | nm, µm, mm, cm, m, in, ft |
+| Angle | Potentiometer, Optical Encoder, Magnetic Encoder, Resolver, Inclinometer, MEMS | — | °, rad |
+| Angular Velocity | Optical Encoder, Hall Effect, Magnetoresistive, Tachometer, MEMS Gyroscope | — | rpm, °/s, rad/s |
+| Angular Acceleration | MEMS Gyroscope, Optical Encoder (derivative) | — | °/s², rad/s² |
+| Velocity | Doppler Radar, Laser Doppler, Encoder Based, Pitot Tube, Ultrasonic | — | mm/s, m/s, km/h, mph, knots |
+| Acceleration | MEMS, Piezoelectric, Piezoresistive, Capacitive, Servo Accelerometer | — | m/s², g |
+| Sound Pressure | Condenser Microphone, Piezoelectric Microphone, MEMS Microphone | — | Pa, dB, dB(A), dB(C) |
+| Voltage | Resistive Divider, Capacitive Divider, Hall Effect, Isolation Amplifier | — | V, mV, kV |
+| Current | Shunt Resistor, Hall Effect, Current Transformer, Rogowski Coil | — | A, mA, kA |
+| Resistance | 2-Wire, 3-Wire, 4-Wire, Bridge Measurement | — | Ω, kΩ, MΩ |
+| Power | Wattmeter, Power Analyzer, Calculated (V×I) | — | W, kW, MW |
+| Energy | Energy Meter, Smart Meter | — | Wh, kWh, MWh |
+| Frequency | Crystal Counter, Reciprocal Counter, Optical, Magnetic Pickup | — | Hz, kHz, MHz, GHz, bpm |
+| Capacitance | Bridge, Charge/Discharge, Resonant | — | F, µF, nF, pF |
+| Inductance | Bridge, Resonant, Impedance Based | — | H, mH, µH |
+| Impedance | Impedance Analyzer, LCR Meter | — | Ω, kΩ, MΩ |
+| Magnetic Field | Hall Effect, Fluxgate, Magnetoresistive, NMR, SQUID | — | T, mT, µT, G |
+| Electric Field | Field Mill, Electrostatic Probe, Capacitive Probe | — | V/m, kV/m |
+| Radiation | Geiger-Müller, Scintillation, Semiconductor, Ionization Chamber, Proportional Counter | — | Gy, Sv, rem, Bq |
+| Illuminance | Photodiode, Photoresistor, Lux Meter | — | lx, fc |
+| Luminance | Imaging Photometer, Spot Photometer | — | cd/m² |
+| Concentration | Electrochemical, NDIR, PID, MOS, Catalytic Bead, Zirconia, Mass Spectrometer | — | ppm, ppb, %, mg/m³ |
+| pH | Glass Electrode, ISFET, Optical | — | pH |
+| Conductivity | Contacting, Inductive, Toroidal | — | S/m, mS/cm, µS/cm |
+| Salinity | Conductivity Based, Refractometer | — | ppt, PSU, g/L |
+| Dissolved Oxygen | Galvanic, Polarographic, Optical / Luminescent | — | mg/L, % sat |
+| ORP / Redox Potential | Platinum Electrode, Gold Electrode | — | mV |
+| Density | Vibrating Tube, Hydrostatic, Coriolis, Pycnometer | — | kg/m³, g/cm³ |
+| Viscosity | Rotational, Vibrational, Capillary, Falling Ball | — | Pa·s, cP |
+| Moisture | Capacitive, Microwave, Infrared, Gravimetric | — | %RH, %, g/g |
+| Particle Concentration | Optical Particle Counter, Laser Scattering, Condensation Particle Counter | — | particles/m³, particles/ft³ |
+| Wind Direction | Vane, Ultrasonic | — | ° |
+| Precipitation | Tipping Bucket, Weighing, Optical | — | mm, in |
+| Blood Oxygen | Pulse Oximetry | — | % SpO₂ |
+| Surface Roughness | Contact Profilometer, Optical Profilometer, Laser Scanning | — | Ra (µm), Rz (µm), Rt (µm), µm |
+
+*Keep this table in sync with `PHYSICAL_QUANTITIES` in `apps/web/src/lib/sensor-options.ts` —
+update it whenever a new physical quantity, technology, or unit is added there.*
+
 ### Measurement type [#measurement-type]
 
 Some physical quantities have more than one measurement *mode*. The clearest example is
@@ -50,10 +104,23 @@ quantity — a purely descriptive field with no effect on calculations.
 
 ### Output signal [#output-signal]
 
-The sensor's raw output — type (analog / digital / frequency / resistance / capacitance),
-value range, and unit — sits directly under the measurable range, in the same min–max/unit
-column layout. This is what the sensor actually outputs electrically, which may differ from
-the physical unit (e.g. a 4–20 mA current loop representing 0–100 °C).
+The sensor's raw output — type, value range, and unit — sits directly under the measurable
+range, in the same min–max/unit column layout. This is what the sensor actually outputs
+electrically, which may differ from the physical unit (e.g. a 4–20 mA current loop representing
+0–100 °C).
+
+| Output signal type | Description | Units |
+|---|---|---|
+| Analog | A continuous electrical signal proportional to the measured value (e.g. a 4–20 mA current loop). | mA, A, V, mV, kV |
+| Digital | An encoded/discrete output; unit options match the channel's own physical quantity rather than a fixed electrical unit. | Same units as the channel's physical quantity |
+| Frequency | The measured value is encoded as a signal frequency. | Hz, kHz, MHz, GHz |
+| Resistance | Output is a variable resistance proportional to the measured value (e.g. a platinum RTD element). | Ω, kΩ, MΩ |
+| Capacitance | Output is a variable capacitance proportional to the measured value. | F, µF, nF, pF |
+| Ratiometric | Output expressed as a ratio of the sensor's excitation voltage rather than an absolute value (e.g. a bridge-type load cell's mV/V output). | mV/V, V/V |
+
+*Keep this table in sync with `OUTPUT_TYPE_OPTIONS`/`getOutputUnits` in
+`apps/web/src/lib/sensor-options.ts` — update it whenever a new output signal type is added
+there.*
 
 ### Accuracy value [#accuracy-value]
 
