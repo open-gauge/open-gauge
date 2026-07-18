@@ -8,4 +8,3 @@ screens/
 references/
 
 .claude/
-infrastructure/docker/.env

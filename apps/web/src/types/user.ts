@@ -1,9 +1,14 @@
+export interface TeamSummary {
+  id: string;
+  name: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
   role: "superadmin" | "admin" | "technician" | "viewer";
-  team: string | null;
+  teams: TeamSummary[];
   is_active: boolean;
   is_superuser: boolean;
   is_verified: boolean;

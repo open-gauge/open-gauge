@@ -1,4 +1,13 @@
-version: '3.8'
+# Pins the Compose project name regardless of the working directory or how
+# `docker compose` is invoked from (Compose otherwise derives it from the
+# current directory name, e.g. "docker" if you `cd` into this folder first vs.
+# something else if you run it from the repo root or a script) — without this,
+# switching how you invoke Compose creates a *second*, differently-named stack
+# with its own fresh `postgres_data`/`minio_data` volumes, making uploaded
+# files (profile pictures, signatures, PDFs, certificate templates) and
+# database rows appear to "disappear" after a rebuild when they're actually
+# just sitting in the old stack's volumes.
+name: opengauge
 
 services:
   db:

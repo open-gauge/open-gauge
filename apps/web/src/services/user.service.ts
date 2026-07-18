@@ -12,6 +12,7 @@ export interface Team {
   id: string;
   name: string;
   description: string | null;
+  is_member: boolean;
 }
 
 export async function updateMe(body: { name?: string; email?: string }): Promise<UserProfile> {
@@ -104,24 +105,15 @@ export async function listTeams(): Promise<Team[]> {
   return apiFetch<Team[]>("/api/v1/teams", { headers: tokenHeader() });
 }
 
-export async function createTeam(body: { name: string; description?: string }): Promise<Team> {
-  return apiFetch<Team>("/api/v1/teams", {
+export async function joinTeam(teamId: string): Promise<Team> {
+  return apiFetch<Team>(`/api/v1/teams/${teamId}/join`, {
     method: "POST",
-    headers: { ...tokenHeader(), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: tokenHeader(),
   });
 }
 
-export async function updateTeam(teamId: string, body: { name?: string; description?: string }): Promise<Team> {
-  return apiFetch<Team>(`/api/v1/teams/${teamId}`, {
-    method: "PUT",
-    headers: { ...tokenHeader(), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-export async function deleteTeam(teamId: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/teams/${teamId}`, {
+export async function leaveTeam(teamId: string): Promise<Team> {
+  return apiFetch<Team>(`/api/v1/teams/${teamId}/leave`, {
     method: "DELETE",
     headers: tokenHeader(),
   });

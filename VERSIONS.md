@@ -9,7 +9,110 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
-## 1.2.0 — 2026-07-21
+## 2.3.0
+
+### Changed
+
+- Changelog entries (here and in the docs site) now show only the version number, not a date —
+  git history is already the record of when something shipped, and the two dates could drift.
+
+### Fixed
+
+- The calibration reminder sweep could send real emails during local development and test runs.
+  `email_settings` was documented as a singleton but never enforced as one at the database level;
+  code that queried it with an unordered `.first()` could silently pick up whatever row existed,
+  including a real, already-configured SMTP row, so a test exercising the reminder sweep could end
+  up delivering a genuine email instead of a no-op. A unique index now makes a second row
+  impossible to create, the same technique already used for `certificate_templates`.
+- The **Dangerous zone**'s **Clear database** action could delete the account that triggered it.
+  The access check accepts either the `is_superuser` flag or `role == "superadmin"`, but the reset
+  only preserved `is_superuser` accounts — a `role == "superadmin"` user without that flag could
+  reach the action and then be wiped by it. The calling user is now always preserved regardless of
+  role or flag.
+
+## 2.2.0
+
+### Changed
+
+- **Correction to 2.1.0:** the landing/marketing page content (features, comparison table, FAQ,
+  contact form) never belonged in this repository — it's the public `opengauge.org` site, which
+  lives in a separate `landing` repository. Reverted `apps/web/src/app/page.tsx` and removed the
+  `apps/web/src/components/landing/` and `apps/web/functions/` directories added in 2.1.0; that
+  content was rebuilt in the `landing` repo instead, matching its plain HTML/CSS/JS stack.
+- Simplified the admin **Dangerous zone**: removed the "clear selected tables" action added in
+  2.1.0 (an admin-only endpoint with no UI to grant its own precondition wasn't worth the
+  complexity) and fixed the panel's styling to match the rest of Admin → Dashboard — Import now
+  sits in the same red "Dangerous zone" card as Clear (both genuinely destructive), while the
+  non-destructive Export stays in its own neutral Backup card.
+
+### Fixed
+
+- `POST /admin/database/import` failed with `pg_restore: error: could not execute query: ERROR:
+  unrecognized configuration parameter "transaction_timeout"`. Debian's default `postgresql-client`
+  package is newer (17) than the `db` service's `postgres:15-alpine` server, and pg_restore
+  synthesizes session-setup statements based on its own client version — v17's aren't understood
+  by a v15 server. The API image now pins `postgresql-client-15` via the official PGDG apt
+  repository, matching the server exactly.
+- Uploaded files (profile pictures, signatures, PDFs, certificate templates) and database rows
+  could appear to be wiped after `docker compose up --build`. Docker Compose derives its project
+  name — and therefore its volume names — from the current directory by default, so invoking
+  `docker compose` from a different location (or a different way) than usual silently creates a
+  *second*, differently-named stack with fresh, empty volumes. `docker-compose.yml` now pins an
+  explicit project `name`, so the same volumes are always used regardless of how Compose is
+  invoked.
+
+## 2.1.0
+
+### Added
+
+- The landing page (`opengauge.org`) is now a full marketing page: a refreshed features
+  section, a feature comparison against legacy on-premise calibration software / spreadsheets /
+  generic cloud CMMS, an FAQ, and a contact form to `hello@opengauge.com`.
+- A Cloudflare Pages Function (`apps/web/functions/api/contact.ts`) handles the contact form's
+  submissions via Cloudflare's own Email Routing "send email" binding — no third-party email
+  API or extra dependency. Only active on the Cloudflare Pages deployment; see
+  `apps/web/functions/README.md` for the one-time Cloudflare-side setup. Everywhere else
+  (self-hosted Docker, local dev) the form falls back to a `mailto:` link.
+
+### Fixed
+
+- The admin **Dangerous zone** (database export/import/reset) was invisible to any account
+  promoted to the `superadmin` role after the initial install, because the check required the
+  separate `is_superuser` flag — which no admin-panel UI can ever set on another account. It now
+  also accepts `role == "superadmin"`, matching the same convention already used everywhere else
+  in the API for this privilege tier.
+
+## 2.0.0
+
+### Changed
+
+- **Breaking:** Team membership is now opt-in. Previously the `User.team` field was a single
+  free-text string with no real membership model behind it; it's replaced by a `team_members`
+  join table, so a user can belong to any number of teams and starts in none. The
+  `team`/`teams` field changed shape on the user API (`UserResponse.team: string | null` →
+  `UserResponse.teams: {id, name}[]`), and `UserCreate`/`UserUpdate`/`UserSelfUpdate.team` were
+  removed — join/leave a team via `POST`/`DELETE /teams/{id}/join|leave` instead. Existing
+  `users.team` values are carried over into real membership rows by the migration wherever the
+  text matched a team in the user's own organization.
+- Creating, renaming, and deleting teams is now only possible from Admin → Organizations. The
+  user's own Settings → Teams tab is self-service only: pick which of your organization's teams
+  to join or leave.
+
+### Added
+
+- **Dangerous zone** moved into Admin → Dashboard (superadmin only): alongside the existing
+  export/import/reset actions, a new **Clear selected tables** action lets you pick exactly
+  which database tables to empty, rather than only an all-or-nothing reset.
+- The PDF preview thumbnail (asset Files section, certificate templates) now shows an eye icon
+  and shadow on hover, to signal it's clickable.
+
+### Fixed
+
+- The signature drawing pad's background no longer goes near-black in dark mode, which
+  previously made the dark-ink signature invisible while drawing (and in the saved-signature
+  preview).
+
+## 1.2.0
 
 ### Added
 
@@ -26,7 +129,7 @@ fixes and incremental additions that landed between each minor version.
 - The asset's profile picture no longer appears in the asset's Files list — it's managed only
   from the Image section, avoiding duplication.
 
-## 1.1.0 — 2026-06-21
+## 1.1.0
 
 ### Added
 
@@ -49,20 +152,20 @@ fixes and incremental additions that landed between each minor version.
 - The sidebar's "Documentation" section no longer auto-expands when viewing an API Reference
   page — only clicking "Documentation" itself expands it.
 
-## 1.0.13 — 2026-06-20
+## 1.0.13
 
 ### Added
 
 - PDF handling and download for generated calibration certificates.
 
-## 1.0.12 — 2026-06-17
+## 1.0.12
 
 ### Added
 
 - User signature management: upload, retrieval, and cryptographic verification.
 - LaTeX rendering service and certificate template management.
 
-## 1.0.11 — 2026-06-10
+## 1.0.11
 
 ### Fixed
 
@@ -72,7 +175,7 @@ fixes and incremental additions that landed between each minor version.
 
 - Additional documentation links for sensor attributes and asset registry fields.
 
-## 1.0.10 — 2026-06-03
+## 1.0.10
 
 ### Added
 
@@ -83,7 +186,7 @@ fixes and incremental additions that landed between each minor version.
 
 - General functionality and performance improvements across the app.
 
-## 1.0.9 — 2026-05-27
+## 1.0.9
 
 ### Added
 
@@ -93,7 +196,7 @@ fixes and incremental additions that landed between each minor version.
 
 - Cleaned up `package-lock.json`, removing unnecessary peer dependencies.
 
-## 1.0.8 — 2026-05-20
+## 1.0.8
 
 ### Added
 
@@ -101,7 +204,7 @@ fixes and incremental additions that landed between each minor version.
   dark/light theme toggle.
 - Radial-gradient backdrop treatment for the dashboard grid background.
 
-## 1.0.7 — 2026-05-13
+## 1.0.7
 
 ### Added
 
@@ -111,46 +214,46 @@ fixes and incremental additions that landed between each minor version.
 
 - Production start script switched to a custom static server for the Next.js export build.
 
-## 1.0.6 — 2026-05-06
+## 1.0.6
 
 ### Added
 
 - Email notifications feature, with SMTP configuration in the admin panel.
 
-## 1.0.5 — 2026-04-27
+## 1.0.5
 
 ### Changed
 
 - Broader code-structure refactor for readability and maintainability.
 - Removed unnecessary peer dependencies; added `@emnapi/core`/`@emnapi/runtime`.
 
-## 1.0.4 — 2026-04-18
+## 1.0.4
 
 ### Added
 
 - Asset import via ZIP upload.
 
-## 1.0.3 — 2026-04-09
+## 1.0.3
 
 ### Changed
 
 - Removed outdated standalone `ARCHITECTURE.md`, `DATABASE.md`, and `UNITS.md` now that the
   documentation site is the source of truth.
 
-## 1.0.2 — 2026-03-31
+## 1.0.2
 
 ### Added
 
 - Profile and asset picture uploads.
 
-## 1.0.1 — 2026-03-21
+## 1.0.1
 
 ### Changed
 
 - Dashboard component styling and functionality improvements.
 - Housekeeping: compiled Python artifacts for storage/utility modules.
 
-## 1.0.0 — 2026-03-14
+## 1.0.0
 
 The first release considered production-ready: licensed, documented, and covering the full
 calibration-to-certificate workflow.
@@ -161,58 +264,58 @@ calibration-to-certificate workflow.
   generating the API Reference straight from the FastAPI schema.
 - AGPL-3.0 license, and an expanded `README.md`/`CONTRIBUTING.md`.
 
-## 0.5.8 — 2026-02-20
+## 0.5.8
 
 ### Added
 
 - Support for coefficients-only external calibrations (record a calibration without raw point
   data, using previously-derived coefficients).
 
-## 0.5.7 — 2026-02-02
+## 0.5.7
 
 ### Added
 
 - `measurement_type` field on sensors, with related UI updates.
 
-## 0.5.6 — 2026-01-12
+## 0.5.6
 
 ### Added
 
 - Calibration worked examples, an uncertainty-budget breakdown, and reporting utilities.
 
-## 0.5.5 — 2025-12-19
+## 0.5.5
 
 ### Added
 
 - Health scoring: health service, scoring tests, and the asset Health tab.
 - Health overview display and an enhanced calibration ring card visualization.
 
-## 0.5.4 — 2025-12-10
+## 0.5.4
 
 ### Added
 
 - Calibration deletion, restricted to admins.
 
-## 0.5.3 — 2025-12-01
+## 0.5.3
 
 ### Changed
 
 - Asset and audit log handling enhanced with actor-based filtering; sensor update fixes.
 
-## 0.5.2 — 2025-11-21
+## 0.5.2
 
 ### Changed
 
 - User and audit log detail views now surface actor information (who performed the action), with
   general UI component improvements.
 
-## 0.5.1 — 2025-11-14
+## 0.5.1
 
 ### Added
 
 - Procedures and procedure-distribution summary on the dashboard.
 
-## 0.5.0 — 2025-11-07
+## 0.5.0
 
 ### Added
 
@@ -223,13 +326,13 @@ calibration-to-certificate workflow.
 - Calibration lab location retrieval integrated into the Calibration tab, with UI updates for
   calibration lab display.
 
-## 0.4.4 — 2025-11-05
+## 0.4.4
 
 ### Changed
 
 - Dashboard types and API extended with calibration status and recent-assets data.
 
-## 0.4.3 — 2025-10-31
+## 0.4.3
 
 ### Added
 
@@ -239,33 +342,33 @@ calibration-to-certificate workflow.
 
 - Color definitions reorganized; label generation logic cleaned up.
 
-## 0.4.2 — 2025-10-24
+## 0.4.2
 
 ### Added
 
 - `is_calibration_lab` flag on locations and a `calibration_location_id` link on calibrations.
 
-## 0.4.1 — 2025-10-17
+## 0.4.1
 
 ### Changed
 
 - Asset and procedure schemas refactored; improved form validation and error handling.
 
-## 0.4.0 — 2025-10-10
+## 0.4.0
 
 ### Added
 
 - Label/sticker generation service.
 - Activity log.
 
-## 0.3.7 — 2025-10-09
+## 0.3.7
 
 ### Added
 
 - Admin panel.
 - Calibration report PDF generation.
 
-## 0.3.6 — 2025-10-07
+## 0.3.6
 
 ### Added
 
@@ -275,14 +378,14 @@ calibration-to-certificate workflow.
 
 - Small issues in the calibration wizard and calibration view.
 
-## 0.3.5 — 2025-10-05
+## 0.3.5
 
 ### Added
 
 - Procedures page, with file uploads.
 - Procedure editing.
 
-## 0.3.4 — 2025-10-03
+## 0.3.4
 
 ### Added
 
@@ -292,14 +395,14 @@ calibration-to-certificate workflow.
 
 - Asset editing behavior.
 
-## 0.3.3 — 2025-10-01
+## 0.3.3
 
 ### Changed
 
 - Calibration chart replaced with Plotly.
 - Calibration view updated to support the new calibration graph/table layout.
 
-## 0.3.2 — 2025-09-28
+## 0.3.2
 
 ### Added
 
@@ -309,14 +412,14 @@ calibration-to-certificate workflow.
 
 - Further location editing refinements.
 
-## 0.3.1 — 2025-09-25
+## 0.3.1
 
 ### Added
 
 - Add/edit workflows for locations.
 - Asset details edition improvements.
 
-## 0.3.0 — 2025-09-23
+## 0.3.0
 
 ### Added
 
@@ -326,7 +429,7 @@ calibration-to-certificate workflow.
 
 - Sidebar/topbar background graph styling.
 
-## 0.2.3 — 2025-09-14
+## 0.2.3
 
 ### Changed
 
@@ -336,19 +439,19 @@ calibration-to-certificate workflow.
 
 - Edit asset overview feature, with initial tests.
 
-## 0.2.2 — 2025-09-05
+## 0.2.2
 
 ### Added
 
 - Asset profile page.
 
-## 0.2.1 — 2025-08-27
+## 0.2.1
 
 ### Changed
 
 - Assets registry table updated.
 
-## 0.2.0 — 2025-08-16
+## 0.2.0
 
 ### Added
 
@@ -358,26 +461,26 @@ calibration-to-certificate workflow.
 
 - Dashboard rebuilt against the new database schema, with new panels.
 
-## 0.1.2 — 2025-08-03
+## 0.1.2
 
 ### Changed
 
 - UI elements harmonized across early screens.
 
-## 0.1.1 — 2025-07-22
+## 0.1.1
 
 ### Added
 
 - Profile loading on authentication.
 
-## 0.1.0 — 2025-07-09
+## 0.1.0
 
 ### Added
 
 - Authentication page and login logic.
 - Dashboard screen.
 
-## 0.0.0 — 2025-06-02
+## 0.0.0
 
 - Initial commit: monorepo scaffolding and base architecture (Next.js frontend, FastAPI
   backend, Docker Compose infrastructure).

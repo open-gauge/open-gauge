@@ -13,6 +13,7 @@ from . import (  # noqa: F401
     sensor,
     stored_file,
     team,
+    team_member,
     user,
     user_signature,
     user_signing_key,

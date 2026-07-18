@@ -12,14 +12,12 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     role: UserRole = UserRole.viewer
     organization_id: uuid.UUID | None = None
-    team: str | None = None
 
 
 class UserUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     role: UserRole | None = None
     organization_id: uuid.UUID | None = None
-    team: str | None = None
     is_active: bool | None = None
     is_verified: bool | None = None
 
@@ -27,7 +25,6 @@ class UserUpdate(BaseModel):
 class UserSelfUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     email: str | None = Field(None, min_length=3, max_length=255)
-    team: str | None = None  # empty string clears the team
 
 
 class ChangePasswordRequest(BaseModel):
@@ -35,12 +32,19 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class TeamSummary(BaseModel):
+    id: uuid.UUID
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     name: str
     role: UserRole
-    team: str | None
+    teams: list[TeamSummary] = []
     organization_id: uuid.UUID | None
     is_active: bool
     is_superuser: bool

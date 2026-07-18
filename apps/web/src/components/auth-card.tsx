@@ -95,7 +95,7 @@ export default function AuthCard() {
           <div className="text-center py-4">
             <MailIcon size={28} className="text-og-accent mx-auto mb-4" />
             <p className="text-sm text-gray-500">
-              If an account exists for <span className="font-medium text-og-text">{email}</span> and email
+              If an account exists for <span className="font-medium text-og-text">{email}</span>  and email
               notifications are configured, a reset link is on its way. If your administrator hasn&apos;t
               configured email, contact them directly to reset your password.
             </p>

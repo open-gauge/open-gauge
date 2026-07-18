@@ -100,6 +100,7 @@ function formatUptime(seconds: number): string {
 // ---------------------------------------------------------------------------
 
 function DashboardSection() {
+  const { user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [sys, setSys] = useState<AdminSystem | null>(null);
   const [loadErr, setLoadErr] = useState("");
@@ -205,6 +206,8 @@ function DashboardSection() {
           )}
         </div>
       </div>
+
+      {(user.is_superuser || user.role === "superadmin") && <DangerZone />}
     </div>
   );
 }
@@ -1427,10 +1430,11 @@ function EmailSettingsSection() {
 }
 
 // ---------------------------------------------------------------------------
-// Database section
+// Dangerous zone — export/import/reset/clear the database. Lives at the
+// bottom of the admin Dashboard, superadmin only.
 // ---------------------------------------------------------------------------
 
-function DatabaseSection() {
+function DangerZone() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const [exporting, setExporting] = useState(false);
@@ -1519,30 +1523,41 @@ function DatabaseSection() {
           <div>
             <p className="text-xs font-semibold text-og-text">Backup</p>
             <p className="text-[10px] text-gray-400 mt-0.5">
-              Download a full database dump, or restore one taken earlier.
+              Download a full database dump to restore later.
             </p>
           </div>
         </div>
-        <div className="p-4 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-og-text">Export database</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                Downloads a complete PostgreSQL dump of every organization, asset, and record.
-              </p>
-            </div>
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-1.5 border border-og-border-md rounded-lg text-xs font-medium text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-60"
-            >
-              {exporting ? "Exporting…" : "Download backup"}
-            </button>
+        <div className="p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-og-text">Export database</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              Downloads a complete PostgreSQL dump of every organization, asset, and record.
+            </p>
           </div>
-          {exportErr && <p className="text-xs text-red-500">{exportErr}</p>}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="shrink-0 flex items-center gap-1.5 px-4 py-1.5 border border-og-border-md rounded-lg text-xs font-medium text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+          >
+            {exporting ? "Exporting…" : "Download backup"}
+          </button>
+        </div>
+        {exportErr && <p className="px-4 pb-4 text-xs text-red-500">{exportErr}</p>}
+      </div>
 
-          <div className="border-t border-og-border pt-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
+      <div className="bg-og-surface rounded-xl border border-red-200 dark:border-red-900/40 shadow-xs">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-900/10">
+          <WarningIcon size={14} className="text-red-600 dark:text-red-400" />
+          <div>
+            <p className="text-xs font-semibold text-red-700 dark:text-red-400">Dangerous zone</p>
+            <p className="text-[10px] text-red-600/80 dark:text-red-400/70 mt-0.5">
+              Irreversible actions. Superadmin only.
+            </p>
+          </div>
+        </div>
+        <div className="p-4 space-y-5">
+          <div className="space-y-3">
+            <div>
               <p className="text-xs font-medium text-og-text">Import database</p>
               <p className="text-[10px] text-gray-400 mt-0.5">
                 Restores a backup file, replacing everything currently in the database.
@@ -1558,57 +1573,44 @@ function DatabaseSection() {
             <button
               onClick={handleImport}
               disabled={!importFile || importing}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-1.5 border border-red-300 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors disabled:opacity-60"
+              className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               {importing ? "Restoring…" : "Restore backup"}
             </button>
+            {importOk && <p className="text-xs text-emerald-600 dark:text-emerald-400">Database restored.</p>}
+            {importErr && <p className="text-xs text-red-500">{importErr}</p>}
           </div>
-          {importOk && <p className="text-xs text-emerald-600 dark:text-emerald-400">Database restored.</p>}
-          {importErr && <p className="text-xs text-red-500">{importErr}</p>}
-        </div>
-      </div>
 
-      <div className="bg-og-surface rounded-xl border border-red-200 dark:border-red-900/40 shadow-xs">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-900/10">
-          <WarningIcon size={14} className="text-red-600 dark:text-red-400" />
-          <div>
-            <p className="text-xs font-semibold text-red-700 dark:text-red-400">Dangerous</p>
-            <p className="text-[10px] text-red-600/80 dark:text-red-400/70 mt-0.5">
-              Irreversible actions. Superadmin only.
-            </p>
+          <div className="border-t border-og-border pt-5 space-y-3">
+            <div>
+              <p className="text-xs font-medium text-og-text">Clear database</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                Deletes every organization, asset, location, procedure, and calibration, and every
+                non-superadmin user. File storage is emptied. Superadmin accounts (including yours)
+                are kept, so this is the way to take a populated demo/trial install back to the
+                empty state a fresh deployment starts in.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder='Type "RESET" to confirm'
+                className={`${IB} border-red-300 dark:border-red-900/50 focus:border-red-500 focus:ring-red-500/20 max-w-xs`}
+              />
+              <button
+                onClick={handleReset}
+                disabled={resetConfirmText !== "RESET" || resetting}
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {resetting ? "Clearing…" : "Clear database"}
+              </button>
+            </div>
+            {resetOk && (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">Database cleared.</p>
+            )}
+            {resetErr && <p className="text-xs text-red-500">{resetErr}</p>}
           </div>
-        </div>
-        <div className="p-4 space-y-3">
-          <div>
-            <p className="text-xs font-medium text-og-text">Reset to clean state</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
-              Deletes every organization, asset, location, procedure, and calibration, and every
-              non-superadmin user. File storage is emptied. Superadmin accounts (including yours)
-              are kept, so this is the way to take a populated demo/trial install back to the
-              empty state a fresh deployment starts in.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={resetConfirmText}
-              onChange={(e) => setResetConfirmText(e.target.value)}
-              placeholder='Type "RESET" to confirm'
-              className={`${IB} border-red-300 dark:border-red-900/50 focus:border-red-500 focus:ring-red-500/20 max-w-xs`}
-            />
-            <button
-              onClick={handleReset}
-              disabled={resetConfirmText !== "RESET" || resetting}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
-              {resetting ? "Resetting…" : "Reset database"}
-            </button>
-          </div>
-          {resetOk && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">
-              Database reset to a clean state.
-            </p>
-          )}
-          {resetErr && <p className="text-xs text-red-500">{resetErr}</p>}
         </div>
       </div>
     </div>
@@ -1619,7 +1621,7 @@ function DatabaseSection() {
 // Page
 // ---------------------------------------------------------------------------
 
-type Section = "dashboard" | "users" | "organizations" | "certificates" | "email" | "database";
+type Section = "dashboard" | "users" | "organizations" | "certificates" | "email";
 
 const NAV: { id: Section; label: string }[] = [
   { id: "dashboard",     label: "Dashboard" },
@@ -1627,7 +1629,6 @@ const NAV: { id: Section; label: string }[] = [
   { id: "organizations", label: "Organizations" },
   { id: "certificates",  label: "Certificate Templates" },
   { id: "email",         label: "Email" },
-  { id: "database",      label: "Database" },
 ];
 
 export default function AdminPage() {
@@ -1639,7 +1640,6 @@ export default function AdminPage() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
 
   const isAdmin = user.is_superuser || user.role === "superadmin" || user.role === "admin";
-  const nav = user.is_superuser ? NAV : NAV.filter((item) => item.id !== "database");
 
   useEffect(() => {
     if (!isAdmin) {
@@ -1669,7 +1669,7 @@ export default function AdminPage() {
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Administration</p>
           </div>
           <div className="p-2">
-            {nav.map((item) => (
+            {NAV.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -1693,7 +1693,6 @@ export default function AdminPage() {
           {section === "organizations" && <OrgsSection />}
           {section === "certificates" && <CertificateTemplatesSection orgs={orgs} />}
           {section === "email" && <EmailSettingsSection />}
-          {section === "database" && user.is_superuser && <DatabaseSection />}
         </div>
       </div>
     </div>

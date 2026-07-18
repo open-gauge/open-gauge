@@ -114,7 +114,9 @@ export default function UserDetailClient() {
                 {ROLE_LABELS[user.role] ?? user.role}
               </span>
             } />
-            {user.team && <InfoRow label="Team" value={user.team} />}
+            {user.teams.length > 0 && (
+              <InfoRow label="Teams" value={user.teams.map((t) => t.name).join(", ")} />
+            )}
             <InfoRow label="Status" value={
               user.is_active
                 ? <span className="text-emerald-600 dark:text-emerald-400">Active</span>

@@ -256,6 +256,18 @@ route("DELETE", "/api/v1/teams/:id", ({ params }) => {
   return undefined;
 });
 
+route("POST", "/api/v1/teams/:id/join", ({ params }) => {
+  const team = store.joinTeam(params[0]);
+  if (!team) throw new NotFoundError("team not found");
+  return team;
+});
+
+route("DELETE", "/api/v1/teams/:id/leave", ({ params }) => {
+  const team = store.leaveTeam(params[0]);
+  if (!team) throw new NotFoundError("team not found");
+  return team;
+});
+
 // ---------------------------------------------------------------------------
 // Locations
 // ---------------------------------------------------------------------------

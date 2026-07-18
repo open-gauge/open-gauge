@@ -68,10 +68,11 @@ single file, [`infrastructure/docker/.env`](https://github.com/open-gauge/open-g
 Two things need backing up:
 
 1. **PostgreSQL** (`postgres_data` volume) — everything structured: assets, calibrations,
-   users, audit logs. The easiest path is **Admin → Database → Export database** in the app
-   (superadmin only) — it streams a `pg_dump` custom-format archive of the whole database, which
-   the same page's **Import database** button restores. Equivalently, run `pg_dump`/`pg_restore`
-   against the `db` service directly, or snapshot the named volume.
+   users, audit logs. The easiest path is the **Dangerous zone** at the bottom of
+   **Admin → Dashboard** (superadmin only) — **Export database** streams a `pg_dump`
+   custom-format archive of the whole database, which the same panel's **Import database**
+   button restores. Equivalently, run `pg_dump`/`pg_restore` against the `db` service directly,
+   or snapshot the named volume.
 2. **MinIO** (`minio_data` volume) — certificates, datasheets, and images. Snapshot the named
    volume, or use `mc mirror` against the MinIO S3 API.
 
@@ -79,11 +80,24 @@ Losing MinIO data doesn't corrupt calibration records (regenerate certificates o
 `GET /calibrations/{id}/certificate`), but losing PostgreSQL data loses everything — back it up
 on a real schedule, not just the volume snapshot that happens to exist.
 
-**Admin → Database** also has a **Reset to clean state** action, which deletes every
-organization, asset, location, procedure, and calibration, and every non-superadmin user, and
-empties file storage — keeping only superadmin accounts. It's the way to take a populated
-demo/trial install back to the empty state a fresh deployment starts in, without reinstalling.
-It requires typing `RESET` to confirm and cannot be undone.
+If you run `pg_dump`/`pg_restore` yourself instead of using the in-app Export/Import, use a
+client version matching the `db` service's Postgres major version (15 — see the `image:` tag in
+`docker-compose.yml`). A newer client's `pg_restore` emits session-setup statements the server
+doesn't recognize (e.g. `transaction_timeout`, introduced in Postgres 17), which breaks the
+restore. The `api` image itself always ships the matching client version, so Export/Import from
+the UI is unaffected regardless of what's installed on your own machine.
+
+Whichever `docker compose` invocation you use for day-to-day operation, use the *same* one
+consistently — Compose derives its project name (and therefore its volume names) from the
+current directory unless overridden, and this repo's `docker-compose.yml` pins an explicit
+`name: opengauge` specifically so this can't silently drift and point at a different, empty set
+of volumes.
+
+The **Dangerous zone**'s **Clear database** action deletes every organization, asset, location,
+procedure, and calibration, and every non-superadmin user, and empties file storage — keeping
+only superadmin accounts. It's the way to take a populated demo/trial install back to the empty
+state a fresh deployment starts in, without reinstalling. Requires typing `RESET` to confirm and
+cannot be undone.
 
 ## Running database migrations
 

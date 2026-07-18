@@ -29,6 +29,12 @@ belongs to one. **Teams** group users within an organization and are used for as
 ownership (an asset's `owner` field points at a team, not an individual user), so
 responsibility for an instrument survives staff changes.
 
+Team **membership is opt-in**: it's a many-to-many `team_members` join table, not implied by
+organization membership. A user joins or leaves teams themselves from **Settings → Teams**;
+creating, renaming, or deleting a team is restricted to **Admin → Organizations**. Membership
+also determines who receives calibration due/overdue reminder emails for a team-owned asset —
+see [Email notifications](../self-hosting/email-notifications.mdx).
+
 An organization can have a **logo**, set by an admin from the Organizations panel under
 **Admin → Organizations** (upload an image, same 5MB/image-only validation and MinIO storage
 as a [user's profile picture](../self-hosting/authentication.mdx#profile-picture) or

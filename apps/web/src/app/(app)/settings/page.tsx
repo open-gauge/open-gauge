@@ -8,7 +8,6 @@ import {
   CameraIcon,
   CheckIcon,
   EditIcon,
-  PlusIcon,
   SignatureIcon,
   TrashIcon,
   WarningIcon,
@@ -19,15 +18,14 @@ import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { SignaturePad } from "@/components/signature-pad";
 import {
   changePassword,
-  createTeam,
   deleteMe,
   deleteMyPicture,
   deleteMySignature,
-  deleteTeam,
   getMySignature,
+  joinTeam,
+  leaveTeam,
   listTeams,
   updateMe,
-  updateTeam,
   uploadMyPicture,
   uploadMySignature,
   verifyUserSignature,
@@ -249,7 +247,10 @@ function SignatureCard({ user }: { user: UserProfile }) {
                 type="button"
                 onClick={() => signature?.image_url && setPreviewOpen(true)}
                 disabled={!signature?.image_url}
-                className="w-32 h-16 rounded-lg border border-og-border-md bg-og-surface-alt flex items-center justify-center overflow-hidden shrink-0 disabled:cursor-default"
+                // Fixed white, not bg-og-surface-alt — signatures are dark ink on a
+                // transparent PNG, so they need a fixed light backdrop to stay
+                // visible in dark mode.
+                className="w-32 h-16 rounded-lg border border-og-border-md bg-white flex items-center justify-center overflow-hidden shrink-0 disabled:cursor-default"
               >
                 {signature?.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -526,26 +527,12 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
 // Teams section
 // ---------------------------------------------------------------------------
 
-function TeamsSection({ user }: { user: UserProfile }) {
-  const canManage = user.is_superuser || user.role === "superadmin" || user.role === "admin";
-
+function TeamsSection() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState("");
-
-  // Edit state per team
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editDesc, setEditDesc] = useState("");
-  const [editSaving, setEditSaving] = useState(false);
-  const [editErr, setEditErr] = useState("");
-
-  // New team form
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [createSaving, setCreateSaving] = useState(false);
-  const [createErr, setCreateErr] = useState("");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [actionErr, setActionErr] = useState("");
 
   useEffect(() => {
     listTeams()
@@ -554,99 +541,31 @@ function TeamsSection({ user }: { user: UserProfile }) {
       .finally(() => setLoading(false));
   }, []);
 
-  function startEdit(team: Team) {
-    setEditId(team.id);
-    setEditName(team.name);
-    setEditDesc(team.description ?? "");
-    setEditErr("");
-  }
-
-  function cancelEdit() {
-    setEditId(null);
-    setEditErr("");
-  }
-
-  async function saveEdit(teamId: string) {
-    if (!editName.trim()) return;
-    setEditSaving(true);
-    setEditErr("");
+  async function toggleMembership(team: Team) {
+    setPendingId(team.id);
+    setActionErr("");
     try {
-      const updated = await updateTeam(teamId, { name: editName.trim(), description: editDesc.trim() || undefined });
-      setTeams((prev) => prev.map((t) => (t.id === teamId ? updated : t)));
-      setEditId(null);
+      const updated = team.is_member ? await leaveTeam(team.id) : await joinTeam(team.id);
+      setTeams((prev) => prev.map((t) => (t.id === team.id ? updated : t)));
     } catch (e: unknown) {
-      setEditErr(e instanceof Error ? e.message : "Failed to save");
+      setActionErr(e instanceof Error ? e.message : "Failed to update team membership");
     } finally {
-      setEditSaving(false);
-    }
-  }
-
-  async function handleDelete(teamId: string, teamName: string) {
-    if (!confirm(`Delete team "${teamName}"? This cannot be undone.`)) return;
-    try {
-      await deleteTeam(teamId);
-      setTeams((prev) => prev.filter((t) => t.id !== teamId));
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed to delete team");
-    }
-  }
-
-  async function handleCreate() {
-    if (!newName.trim()) return;
-    setCreateSaving(true);
-    setCreateErr("");
-    try {
-      const team = await createTeam({ name: newName.trim(), description: newDesc.trim() || undefined });
-      setTeams((prev) => [...prev, team].sort((a, b) => a.name.localeCompare(b.name)));
-      setNewName("");
-      setNewDesc("");
-      setCreating(false);
-    } catch (e: unknown) {
-      setCreateErr(e instanceof Error ? e.message : "Failed to create team");
-    } finally {
-      setCreateSaving(false);
+      setPendingId(null);
     }
   }
 
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+      <div className="px-4 py-3 border-b border-og-border">
         <p className="text-xs font-semibold text-og-text">Teams</p>
-        {canManage && !creating && (
-          <button onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-            <PlusIcon size={12} /> New Team
-          </button>
-        )}
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          Choose which of your organization&apos;s teams to join — membership is opt-in and
+          determines who gets calibration reminder emails for a team-owned asset. Creating,
+          renaming, or deleting teams is done from Admin → Organizations.
+        </p>
       </div>
 
-      {/* New team form */}
-      {creating && (
-        <div className="px-4 py-4 border-b border-og-border bg-og-surface-alt space-y-3">
-          <p className="text-xs font-semibold text-og-text">New Team</p>
-          <div className="space-y-1">
-            <label className="text-xs text-gray-400">Team name <span className="text-red-400">*</span></label>
-            <input value={newName} onChange={(e) => setNewName(e.target.value)}
-              className={`${IB} ${IB_OK}`} placeholder="e.g. Calibration Lab" autoFocus />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-gray-400">Description</label>
-            <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-              className={`${IB} ${IB_OK}`} placeholder="Optional description" />
-          </div>
-          {createErr && <p className="text-xs text-red-500">{createErr}</p>}
-          <div className="flex gap-2">
-            <button onClick={() => { setCreating(false); setNewName(""); setNewDesc(""); setCreateErr(""); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-              <XIcon size={12} /> Cancel
-            </button>
-            <button onClick={handleCreate} disabled={!newName.trim() || createSaving}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-              <CheckIcon size={12} /> {createSaving ? "Creating…" : "Create"}
-            </button>
-          </div>
-        </div>
-      )}
+      {actionErr && <p className="px-4 pt-3 text-xs text-red-500">{actionErr}</p>}
 
       <div className="divide-y divide-og-border">
         {loading && (
@@ -659,58 +578,29 @@ function TeamsSection({ user }: { user: UserProfile }) {
           <div className="px-4 py-4 text-sm text-red-500">{loadErr}</div>
         )}
         {!loading && !loadErr && teams.length === 0 && (
-          <p className="px-4 py-6 text-sm text-gray-400">
-            {canManage ? "No teams yet. Create the first one above." : "No teams found."}
-          </p>
+          <p className="px-4 py-6 text-sm text-gray-400">No teams in your organization yet.</p>
         )}
-        {teams.map((team) =>
-          editId === team.id ? (
-            <div key={team.id} className="px-4 py-4 space-y-3 bg-og-surface-alt">
-              <div className="space-y-1">
-                <label className="text-xs text-gray-400">Team name <span className="text-red-400">*</span></label>
-                <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                  className={`${IB} ${IB_OK}`} autoFocus />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-gray-400">Description</label>
-                <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
-                  className={`${IB} ${IB_OK}`} placeholder="Optional description" />
-              </div>
-              {editErr && <p className="text-xs text-red-500">{editErr}</p>}
-              <div className="flex gap-2">
-                <button onClick={cancelEdit}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-                  <XIcon size={12} /> Cancel
-                </button>
-                <button onClick={() => saveEdit(team.id)} disabled={!editName.trim() || editSaving}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-                  <CheckIcon size={12} /> {editSaving ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div key={team.id} className="flex items-start justify-between px-4 py-3 gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-og-text">{team.name}</p>
-                {team.description && (
-                  <p className="text-xs text-gray-400 mt-0.5">{team.description}</p>
-                )}
-              </div>
-              {canManage && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => startEdit(team)}
-                    className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors">
-                    <EditIcon size={13} />
-                  </button>
-                  <button onClick={() => handleDelete(team.id, team.name)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors">
-                    <TrashIcon size={13} />
-                  </button>
-                </div>
+        {teams.map((team) => (
+          <div key={team.id} className="flex items-start justify-between px-4 py-3 gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-og-text">{team.name}</p>
+              {team.description && (
+                <p className="text-xs text-gray-400 mt-0.5">{team.description}</p>
               )}
             </div>
-          )
-        )}
+            <button
+              onClick={() => toggleMembership(team)}
+              disabled={pendingId === team.id}
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-60 ${
+                team.is_member
+                  ? "border border-og-border-md text-gray-600 dark:text-gray-300 hover:bg-og-surface-alt"
+                  : "bg-og-action hover:bg-og-action-dark text-white"
+              }`}
+            >
+              {pendingId === team.id ? "…" : team.is_member ? "Leave" : "Join"}
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -838,7 +728,7 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-4">
           {section === "profile" && <ProfileSection user={user} onRefresh={refreshUser} />}
-          {section === "teams" && <TeamsSection user={user} />}
+          {section === "teams" && <TeamsSection />}
           {section === "delete" && <DeleteSection onDeleted={handleDeleted} />}
         </div>
       </div>

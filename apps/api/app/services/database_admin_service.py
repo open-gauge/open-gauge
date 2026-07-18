@@ -1,12 +1,13 @@
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from ..core.config import settings
-from ..models.user import User
+from ..models.user import User, UserRole
 from . import storage
 
 
@@ -52,11 +53,16 @@ def import_database(dump_bytes: bytes) -> None:
             raise DatabaseAdminError(f"pg_restore failed: {result.stderr.strip()}")
 
 
-def reset_to_clean_state(db: Session) -> None:
+def reset_to_clean_state(db: Session, current_user_id: uuid.UUID) -> None:
     """Wipe every table's data and empty file storage, then restore only the
     superadmin accounts — bringing a demo/trial install back to the state a
     fresh deployment starts in. Superadmins keep their id (and therefore their
-    current session token stays valid) and password."""
+    current session token stays valid) and password.
+
+    Also always preserves the calling user regardless of role/flag, since this
+    endpoint is gated on the same "superuser or role==superadmin" check used
+    elsewhere — without this, a role==superadmin user lacking is_superuser
+    could trigger a clear that deletes their own account."""
     preserved = [
         {
             "id": u.id,
@@ -69,7 +75,13 @@ def reset_to_clean_state(db: Session) -> None:
             "is_verified": u.is_verified,
             "created_at": u.created_at,
         }
-        for u in db.query(User).filter(User.is_superuser.is_(True)).all()
+        for u in db.query(User)
+        .filter(
+            User.is_superuser.is_(True)
+            | (User.role == UserRole.superadmin)
+            | (User.id == current_user_id)
+        )
+        .all()
     ]
     db.expunge_all()
 

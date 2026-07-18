@@ -31,7 +31,7 @@ import type { Team } from "@/services/user.service";
 // Fixture shape (widened by resolveJsonModule) -> strongly-typed store shape
 // ---------------------------------------------------------------------------
 
-interface StoredTeam extends Team {
+interface StoredTeam extends Omit<Team, "is_member"> {
   organization_id: string;
   created_at: string;
 }
@@ -560,9 +560,35 @@ export function createOrganization(input: { name: string; description?: string }
   return org;
 }
 
-export function listTeams(orgId?: string): StoredTeam[] {
+export function listTeams(orgId?: string): Team[] {
   const teams = getState().teams;
-  return orgId ? teams.filter((t) => t.organization_id === orgId) : teams;
+  const scoped = orgId ? teams.filter((t) => t.organization_id === orgId) : teams;
+  const memberIds = new Set(getDemoUser().teams.map((t) => t.id));
+  return scoped.map((t) => ({ ...t, is_member: memberIds.has(t.id) }));
+}
+
+/** Self-service: join/leave mutate the demo user's own `teams` list — the
+ * same shape the real API returns on `/users/me` and enriched user reads. */
+export function joinTeam(teamId: string): Team | undefined {
+  const state = getState();
+  const team = state.teams.find((t) => t.id === teamId);
+  const user = getDemoUser();
+  if (!team || !user || user.organization_id !== team.organization_id) return undefined;
+  if (!user.teams.some((t) => t.id === teamId)) {
+    user.teams.push({ id: team.id, name: team.name });
+    persist();
+  }
+  return { ...team, is_member: true };
+}
+
+export function leaveTeam(teamId: string): Team | undefined {
+  const state = getState();
+  const team = state.teams.find((t) => t.id === teamId);
+  const user = getDemoUser();
+  if (!team || !user || user.organization_id !== team.organization_id) return undefined;
+  user.teams = user.teams.filter((t) => t.id !== teamId);
+  persist();
+  return { ...team, is_member: false };
 }
 
 export function createTeam(input: { name: string; description?: string; organization_id: string }): StoredTeam {

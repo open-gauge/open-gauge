@@ -47,6 +47,33 @@ class TestDatabaseAccessControl:
         resp = client.get("/api/v1/admin/database/export", headers=auth_headers)
         assert resp.status_code == 403
 
+    def test_superadmin_role_without_is_superuser_flag_is_allowed(
+        self, client: TestClient, db: Session
+    ) -> None:
+        """Regression: role=superadmin was previously rejected unless the
+        separate is_superuser flag (which no admin-panel UI can ever set on
+        another account) was also true — the Dangerous zone was effectively
+        unreachable for any account promoted to superadmin after the initial
+        bootstrap user. `role == "superadmin"` alone must be sufficient, same
+        as every other superadmin-tier gate in the API."""
+        user = User(
+            id=uuid.uuid4(),
+            email=f"promoted_{uuid.uuid4().hex[:8]}@opengauge.test",
+            name="Promoted Superadmin",
+            hashed_password=hash_password("Testpass123!"),
+            role=UserRole.superadmin,
+            is_active=True,
+            is_superuser=False,
+        )
+        db.add(user)
+        db.flush()
+        headers = {"Authorization": f"Bearer {create_access_token({'sub': str(user.id)})}"}
+
+        # A 400 (bad confirmation text) rather than 403 proves the superuser
+        # check passed — the request reached the confirmation validation.
+        resp = client.post("/api/v1/admin/database/reset", json={"confirm": "not RESET"}, headers=headers)
+        assert resp.status_code == 400, resp.text
+
 
 class TestDatabaseReset:
     def test_reset_requires_exact_confirmation_string(self, client: TestClient, db: Session) -> None:
@@ -99,6 +126,37 @@ class TestDatabaseReset:
         assert kept is not None
         assert kept.is_superuser is True
         assert kept.is_verified is True
+
+        me = client.get("/api/v1/admin/stats", headers=headers)
+        assert me.status_code == 200, me.text
+
+    def test_reset_preserves_caller_with_role_superadmin_but_not_is_superuser_flag(
+        self, client: TestClient, db: Session
+    ) -> None:
+        """Regression: _require_superuser lets role=="superadmin" through even
+        without is_superuser, but reset_to_clean_state only preserved
+        is_superuser==True accounts — so a user in exactly this role/flag
+        combination deleted themselves by clearing the database."""
+        user = User(
+            id=uuid.uuid4(),
+            email=f"promoted_{uuid.uuid4().hex[:8]}@opengauge.test",
+            name="Promoted Superadmin",
+            hashed_password=hash_password("Testpass123!"),
+            role=UserRole.superadmin,
+            is_active=True,
+            is_superuser=False,
+        )
+        db.add(user)
+        db.flush()
+        user_id = user.id
+        headers = {"Authorization": f"Bearer {create_access_token({'sub': str(user_id)})}"}
+
+        resp = client.post("/api/v1/admin/database/reset", json={"confirm": "RESET"}, headers=headers)
+        assert resp.status_code == 204, resp.text
+
+        kept = db.query(User).filter(User.id == user_id).first()
+        assert kept is not None
+        assert kept.role == UserRole.superadmin
 
         me = client.get("/api/v1/admin/stats", headers=headers)
         assert me.status_code == 200, me.text

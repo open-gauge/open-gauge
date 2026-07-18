@@ -9,6 +9,7 @@ from ...dependencies.deps import get_current_user
 from ...models.user import User
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import stored_file as file_repo
+from ...repositories import team_member as team_member_repo
 from ...repositories import user as user_repo
 from ...schemas.user import ChangePasswordRequest, UserCreate, UserResponse, UserSelfUpdate, UserUpdate
 from ...services import storage as storage_svc
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 def _enrich_user(user: User, db: Session) -> UserResponse:
     data = UserResponse.model_validate(user)
+    data.teams = team_member_repo.list_teams_for_user(db, user.id)
     if user.profile_picture_id:
         f = file_repo.get_by_id(db, user.profile_picture_id)
         if f:
@@ -69,9 +71,6 @@ def update_me(
     if "email" in updates and updates["email"] != current_user.email:
         if user_repo.get_by_email(db, updates["email"]):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already in use")
-    # Allow clearing team by passing empty string
-    if "team" in updates and updates["team"] == "":
-        updates["team"] = None
     user_repo.update(db, current_user, **updates)
     return _enrich_user(current_user, db)
 
@@ -194,7 +193,6 @@ def create_user(
         hashed_password=hash_password(body.password),
         role=body.role,
         organization_id=body.organization_id,
-        team=body.team,
     )
 
 

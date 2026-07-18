@@ -146,7 +146,9 @@ const users = userDefs.map((u) => ({
   email: u.email,
   name: u.name,
   role: u.role,
-  team: u.team,
+  // Membership is opt-in and modeled as a list — each demo user belongs to
+  // at most one team here, matching the pre-existing team assignments.
+  teams: u.team ? [{ id: teamByName[u.team].id, name: u.team }] : [],
   is_active: true,
   is_superuser: u.role === "superadmin",
   is_verified: true,

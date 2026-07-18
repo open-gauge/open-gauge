@@ -18,26 +18,52 @@ from app.models.calibration import Calibration
 from app.models.email_settings import EmailSettings
 from app.models.organization import Organization
 from app.models.team import Team
+from app.models.team_member import TeamMember
 from app.models.user import User, UserRole
 from app.services.calibration_reminders import sweep as run_reminder_sweep
 from app.services.notifications import team_member_emails
 from tests.conftest import make_asset_id
 
 
+def _get_singleton_settings(db: Session) -> EmailSettings:
+    """email_settings is a true single-row table (enforced by a unique index —
+    see migration 023): there's always exactly one, real, already-committed
+    row in this shared dev database, so tests must update it in place rather
+    than inserting a second one. Because that update happens inside this
+    test's own rolled-back transaction, the real row is restored afterward —
+    but it also means every test that touches mail must set every field it
+    depends on explicitly, never assume an unconfigured/default state."""
+    settings = db.query(EmailSettings).first()
+    if settings is None:
+        settings = EmailSettings(id=uuid.uuid4())
+        db.add(settings)
+        db.flush()
+    return settings
+
+
 def _enable_mail(db: Session, **overrides) -> EmailSettings:
-    settings = EmailSettings(
-        id=uuid.uuid4(),
-        smtp_host="127.0.0.1",
-        smtp_port=1,  # closed port: fails immediately instead of hanging
-        smtp_use_tls=True,
-        from_email="noreply@opengauge.test",
-        from_name="Open Gauge",
-        enabled=True,
-        calibration_reminder_days=14,
-    )
+    settings = _get_singleton_settings(db)
+    settings.smtp_host = "127.0.0.1"
+    settings.smtp_port = 1  # closed port: fails immediately instead of hanging
+    settings.smtp_username = None
+    settings.smtp_password = None
+    settings.smtp_use_tls = True
+    settings.from_email = "noreply@opengauge.test"
+    settings.from_name = "Open Gauge"
+    settings.enabled = True
+    settings.calibration_reminder_days = 14
     for k, v in overrides.items():
         setattr(settings, k, v)
-    db.add(settings)
+    db.flush()
+    return settings
+
+
+def _disable_mail(db: Session) -> EmailSettings:
+    """For tests that need to observe "mail not configured" behavior — the
+    shared dev database this suite runs against always has a real, enabled
+    SMTP configuration, so that state can never be assumed as a default."""
+    settings = _get_singleton_settings(db)
+    settings.enabled = False
     db.flush()
     return settings
 
@@ -64,6 +90,7 @@ class TestRegisterWithoutMailConfigured:
     def test_register_creates_unverified_account_requiring_admin_activation(
         self, client: TestClient, auth_headers: dict, db: Session
     ) -> None:
+        _disable_mail(db)
         email = f"newuser_{uuid.uuid4().hex[:8]}@opengauge.test"
         response = client.post(
             "/api/v1/auth/register",
@@ -232,6 +259,7 @@ class TestForgotPasswordWithoutMailConfigured:
     def test_forgot_password_is_always_204_and_issues_no_token(
         self, client: TestClient, db: Session, test_user: User
     ) -> None:
+        _disable_mail(db)
         resp = client.post(
             "/api/v1/auth/forgot-password", json={"email": test_user.email}
         )
@@ -340,7 +368,12 @@ class TestForgotPasswordWithMailConfigured:
 # ---------------------------------------------------------------------------
 
 class TestEmailSettingsAdmin:
-    def test_get_creates_default_row(self, client: TestClient, auth_headers: dict) -> None:
+    def test_get_reports_no_password_when_none_configured(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        settings = _disable_mail(db)
+        settings.smtp_password = None
+        db.flush()
         resp = client.get("/api/v1/admin/email-settings", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
@@ -440,10 +473,11 @@ def team_with_member(db: Session, test_user: User) -> tuple[Team, User]:
         name="Team Member",
         hashed_password=hash_password("Testpass123!"),
         role=UserRole.technician,
-        team=team.name,
         is_active=True,
     )
     db.add(member)
+    db.flush()
+    db.add(TeamMember(team_id=team.id, user_id=member.id))
     db.flush()
     return team, member
 
@@ -518,7 +552,11 @@ class TestCalibrationReminderSweep:
 
         run_reminder_sweep(db)
 
-        assert sent == [member.email]
+        # The sweep scans every due/overdue calibration in the database, not just this
+        # test's fixture — in a shared dev DB there may be other real team-owned
+        # calibrations that are also due, so assert membership rather than exact
+        # equality (which real unrelated data could otherwise break).
+        assert member.email in sent
         db.refresh(cal)
         assert cal.due_reminder_sent_at is not None
         assert cal.overdue_reminder_sent_at is None
@@ -552,21 +590,26 @@ class TestCalibrationReminderSweep:
         cal.due_reminder_sent_at = already_sent
         db.flush()
 
-        def _fail_if_called(*a, **k):
-            raise AssertionError("should not send a reminder that was already sent")
-
+        # The sweep scans every due/overdue calibration in the database, not just this
+        # test's fixture — recording calls (rather than failing the moment any send
+        # happens) keeps this test valid even if a shared dev DB has other real
+        # calibrations that are legitimately due right now.
+        sent = []
         monkeypatch.setattr(
-            "app.services.calibration_reminders.mail_svc.send_email", _fail_if_called
+            "app.services.calibration_reminders.mail_svc.send_email",
+            lambda db, to, subject, html, text: sent.append(to),
         )
 
         run_reminder_sweep(db)
 
         db.refresh(cal)
         assert cal.due_reminder_sent_at == already_sent
+        assert member.email not in sent
 
     def test_is_noop_when_mail_disabled(
         self, db: Session, test_user: User, team_with_member: tuple[Team, User]
     ) -> None:
+        _disable_mail(db)
         team, member = team_with_member
         asset = _make_asset(db, team.id, test_user.id)
         cal = _make_calibration(db, asset, date.today() - timedelta(days=3), test_user.id)

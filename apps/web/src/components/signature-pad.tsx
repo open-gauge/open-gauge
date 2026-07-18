@@ -79,7 +79,12 @@ export function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-dashed border-og-border-md bg-og-surface-alt overflow-hidden touch-none">
+      {/* Fixed white, not bg-og-surface-alt — the canvas itself stays transparent
+          (its exported PNG must remain transparent-background), but the ink is a
+          fixed dark navy, so it needs a fixed light backdrop to stay visible in
+          dark mode instead of going dark-on-near-black. Same reasoning as the
+          PDF thumbnail's bg-white: this surface always represents "paper". */}
+      <div className="rounded-lg border border-dashed border-og-border-md bg-white overflow-hidden touch-none">
         <canvas
           ref={canvasRef}
           width={WIDTH}

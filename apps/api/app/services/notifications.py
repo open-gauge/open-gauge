@@ -12,6 +12,7 @@ from ..core.database import SessionLocal
 from ..models.asset import Asset
 from ..models.calibration import Calibration
 from ..models.team import Team
+from ..models.team_member import TeamMember
 from ..models.user import User
 from . import mail as mail_svc
 from . import mail_templates
@@ -25,7 +26,11 @@ def team_member_emails(db, asset: Asset, exclude_user_id: uuid.UUID | None) -> l
     team = db.query(Team).filter(Team.id == asset.owner).first()
     if not team:
         return []
-    query = db.query(User).filter(User.team == team.name, User.is_active.is_(True))
+    query = (
+        db.query(User)
+        .join(TeamMember, TeamMember.user_id == User.id)
+        .filter(TeamMember.team_id == team.id, User.is_active.is_(True))
+    )
     if exclude_user_id:
         query = query.filter(User.id != exclude_user_id)
     return [u.email for u in query.all()]

@@ -34,8 +34,13 @@ def _require_admin(user: User) -> None:
 
 def _require_superuser(user: User) -> None:
     """Stricter than _require_admin — the database export/import/reset endpoints
-    can destroy every organization's data, not just the current one."""
-    if not user.is_superuser:
+    can destroy every organization's data, not just the current one. Matches
+    the `is_superuser or role == "superadmin"` convention used elsewhere for
+    this same privilege tier (e.g. certificate_templates.py's global-template
+    gate) — the `superadmin` role is documented as "system-level
+    administration across organizations", so it must grant this too, not just
+    the separate `is_superuser` bootstrap flag."""
+    if not (user.is_superuser or user.role == "superadmin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superadmin only")
 
 
@@ -184,9 +189,10 @@ def send_test_email(
 
 
 # ---------------------------------------------------------------------------
-# Database — export/import/reset the whole PostgreSQL database. Destructive,
-# superadmin-only, and logged to the audit trail. Lives under Admin -> Database
-# in the UI, behind an explicit confirmation on every action.
+# Database — export/import/clear the PostgreSQL database. Destructive,
+# superadmin-only, and logged to the audit trail. Lives under the
+# "Dangerous zone" in Admin -> Dashboard, behind an explicit confirmation on
+# every action.
 # ---------------------------------------------------------------------------
 
 class DatabaseResetRequest(BaseModel):
@@ -298,5 +304,5 @@ def reset_database(
     # Logged *after* the wipe — reset_to_clean_state truncates audit_logs like
     # every other table, so anything written beforehand would be discarded.
     # Superadmins keep their id across the reset, so the FK on actor_id holds.
-    db_admin_svc.reset_to_clean_state(db)
+    db_admin_svc.reset_to_clean_state(db, current_user.id)
     _log_database_action(db, request, current_user, "database.reset")

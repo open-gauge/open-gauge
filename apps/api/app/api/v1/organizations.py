@@ -187,9 +187,10 @@ def deactivate_organization(
     db.query(Team).filter(
         Team.organization_id == org.id, Team.is_active.is_(True)
     ).update({"is_active": False})
-    # Cascade: clear organization and team from affected users
+    # Cascade: clear organization from affected users (their team memberships
+    # are already moot once the teams above are deactivated)
     from ...models.user import User as UserModel  # avoid name clash
     db.query(UserModel).filter(
         UserModel.organization_id == org.id
-    ).update({"organization_id": None, "team": None})
+    ).update({"organization_id": None})
     org_repo.deactivate(db, org)
