@@ -2587,9 +2587,12 @@ function CalibrationRingCard({
 }
 
 // ---------------------------------------------------------------------------
-// Sticker modal — shows 2×2 and 4×2 label previews with download buttons
+// Sticker modal — shows 1×0.5, 2×2, and 4×2 label previews with download buttons
 // ---------------------------------------------------------------------------
+type StickerSize = "1x0.5" | "2x2" | "4x2";
+
 function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTag: string; onClose: () => void }) {
+  const [preview1, setPreview1] = useState<string | null>(null);
   const [preview2, setPreview2] = useState<string | null>(null);
   const [preview4, setPreview4] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2599,11 +2602,13 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
   useEffect(() => {
     let cancelled = false;
     Promise.all([
+      fetchAssetLabelBlob(assetId, "1x0.5", "png"),
       fetchAssetLabelBlob(assetId, "2x2", "png"),
       fetchAssetLabelBlob(assetId, "4x2", "png"),
     ])
-      .then(([b2, b4]) => {
+      .then(([b1, b2, b4]) => {
         if (cancelled) return;
+        setPreview1(URL.createObjectURL(b1));
         setPreview2(URL.createObjectURL(b2));
         setPreview4(URL.createObjectURL(b4));
       })
@@ -2612,7 +2617,7 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
     return () => { cancelled = true; };
   }, [assetId]);
 
-  async function download(size: "2x2" | "4x2", fmt: "png" | "jpg" | "pdf") {
+  async function download(size: StickerSize, fmt: "png" | "jpg" | "pdf") {
     const key = `${size}-${fmt}`;
     setDownloading(key);
     try {
@@ -2640,6 +2645,8 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
           </button>
         </div>
         <div className="p-5 space-y-5">
+          <StickerRow size="1x0.5" label="1×0.5 inches" preview={preview1} aspect="w-28 h-14" loading={loading} downloading={downloading} onDownload={download} />
+          <div className="border-t border-og-border" />
           <StickerRow size="2x2" label="2×2 inches" preview={preview2} aspect="w-28 h-28" loading={loading} downloading={downloading} onDownload={download} />
           <div className="border-t border-og-border" />
           <StickerRow size="4x2" label="4×2 inches" preview={preview4} aspect="w-56 h-28" loading={loading} downloading={downloading} onDownload={download} />
@@ -2652,8 +2659,8 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
 function StickerRow({
   size, label, preview, aspect, loading, downloading, onDownload,
 }: {
-  size: "2x2" | "4x2"; label: string; preview: string | null; aspect: string;
-  loading: boolean; downloading: string | null; onDownload: (size: "2x2" | "4x2", fmt: "png" | "jpg" | "pdf") => void;
+  size: StickerSize; label: string; preview: string | null; aspect: string;
+  loading: boolean; downloading: string | null; onDownload: (size: StickerSize, fmt: "png" | "jpg" | "pdf") => void;
 }) {
   return (
     <div className="flex items-center gap-4">

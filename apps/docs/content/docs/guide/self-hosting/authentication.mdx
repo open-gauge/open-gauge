@@ -52,7 +52,10 @@ MinIO like any other attached file (see [Data model & concepts](../concepts/data
 
 Every user with a role other than `viewer` can set a signature from **Settings → Profile**,
 either by uploading a transparent-background PNG or by drawing it directly with the mouse
-(or touch/pen) on a canvas — either way, the result is stored as a transparent PNG.
+(or touch/pen) on a canvas — either way, the result is stored as a transparent PNG. While
+drawing, **Undo** reverts the last stroke and **Erase** toggles an eraser mode that removes ink
+under the pointer, so a mis-drawn portion can be corrected without clearing the whole canvas
+(that's still what **Clear** does).
 
 Unlike a profile picture, a signature is cryptographically bound to the account:
 

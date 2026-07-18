@@ -646,7 +646,7 @@ def export_asset(
 @router.get("/{asset_pk}/label")
 def get_asset_label(
     asset_pk: uuid.UUID,
-    size: str = Query("4x2", pattern="^(2x2|4x2)$"),
+    size: str = Query("4x2", pattern=r"^(1x0\.5|2x2|4x2)$"),
     format: str = Query("png", pattern="^(png|jpg|pdf)$"),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),

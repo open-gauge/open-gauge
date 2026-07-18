@@ -9,6 +9,18 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 2.4.0
+
+### Added
+
+- The signature pad (used when a user sets their approval signature) now has **Undo** and
+  **Erase** buttons alongside **Clear**. Undo reverts the last stroke; Erase toggles an eraser
+  mode that removes ink under the pointer instead of adding it, so a mis-drawn portion of a
+  signature can be corrected without redrawing the whole thing.
+- A new **1×0.5 in** QR sticker size, alongside the existing 2×2 and 4×2 sizes: QR code on the
+  left half, asset ID and asset name on the right half. Available in PNG, JPG, and PDF from the
+  same asset **Sticker** dialog.
+
 ## 2.3.0
 
 ### Changed

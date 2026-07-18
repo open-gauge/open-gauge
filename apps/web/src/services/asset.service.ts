@@ -254,7 +254,7 @@ export async function listProcedures(physicalQuantity?: string): Promise<{ id: s
 
 export async function fetchAssetLabelBlob(
   assetId: string,
-  size: "2x2" | "4x2",
+  size: "1x0.5" | "2x2" | "4x2",
   format: "png" | "jpg" | "pdf",
 ): Promise<Blob> {
   return apiBlob(

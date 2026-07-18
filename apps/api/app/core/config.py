@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     # Single source of truth for the backend's version. Keep in sync with
     # apps/web/package.json's "version" field — see the Versioning section in
     # AGENTS.md and VERSIONS.md at the repo root for the policy.
-    app_version: str = "2.3.0"
+    app_version: str = "2.4.0"
     secret_key: str = "change-this-secret-key-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days

@@ -2,6 +2,7 @@
 Asset label / sticker generator.
 
 Sizes:
+  "1x0.5" — 25.4 × 12.7 mm (1 × 0.5 in) QR code (left half) + asset ID + asset name (right half)
   "2x2"  — 50.8 × 50.8 mm  (2 × 2 in)   QR code + asset ID
   "4x2"  — 101.6 × 50.8 mm (4 × 2 in)   QR + ID + sensor name + coefficient table + dates
 
@@ -53,7 +54,7 @@ def generate_label(
     calibration: "Calibration | None",
     points: "list[CalibrationData]",
     owner_name: str | None,
-    size: str,    # "2x2" | "4x2"
+    size: str,    # "1x0.5" | "2x2" | "4x2"
     fmt: str,     # "png" | "jpg" | "pdf"
     base_url: str,
 ) -> tuple[bytes, str]:
@@ -181,17 +182,61 @@ def _raster(
 ) -> "Image":  # type: ignore[name-defined]
     from PIL import Image, ImageDraw
 
-    W = (4 * INCH) if size == "4x2" else (2 * INCH)
-    H = 2 * INCH
+    if size == "1x0.5":
+        W, H = INCH, INCH // 2
+    elif size == "4x2":
+        W, H = 4 * INCH, 2 * INCH
+    else:
+        W, H = 2 * INCH, 2 * INCH
     canvas = Image.new("RGBA", (W, H), BG)
     draw   = ImageDraw.Draw(canvas)
     qr_img = Image.open(io.BytesIO(qr_bytes)).convert("RGBA")
 
-    if size == "2x2":
+    if size == "1x0.5":
+        _draw_1x0_5(canvas, draw, qr_img, asset_id, name)
+    elif size == "2x2":
         _draw_2x2(canvas, draw, qr_img, asset_id)
     else:
         _draw_4x2(canvas, draw, qr_img, asset_id, name, coeff_rows, cal_date, due_date)
     return canvas
+
+
+# ── 1×0.5 sticker ─────────────────────────────────────────────────────────────
+#  Left half: QR code.  Right half: asset ID (bold) + asset name (secondary).
+def _draw_1x0_5(canvas, draw, qr_img, asset_id: str, name: str) -> None:
+    from PIL import Image
+
+    W, H = canvas.size  # 300 × 150
+
+    draw.rectangle([1, 1, W - 2, H - 2], outline=LBL_BRD[:3], width=1)
+
+    half = W // 2
+
+    # Left half: QR code, centred
+    pad = 10
+    qr_size = min(half - 2 * pad, H - 2 * pad)
+    qr_x = (half - qr_size) // 2
+    qr_y = (H - qr_size) // 2
+    qr_img_r = qr_img.resize((qr_size, qr_size), Image.LANCZOS)
+    canvas.paste(qr_img_r, (qr_x, qr_y), qr_img_r)
+
+    # Vertical divider
+    draw.line([(half, 8), (half, H - 8)], fill=DIV_V[:3], width=1)
+
+    # Right half: asset ID (dominant) + asset name (secondary)
+    rx = half + 12
+
+    id_font   = _load_font(24, bold=True, mono=True)
+    name_font = _load_font(15)
+
+    id_text = asset_id[:12] + ("…" if len(asset_id) > 12 else "")
+    name_text = name[:18] + ("…" if len(name) > 18 else "") if name else ""
+
+    if name_text:
+        draw.text((rx, H // 2 - 20), id_text, font=id_font, fill=TXT_PRI[:3], anchor="lm")
+        draw.text((rx, H // 2 + 12), name_text, font=name_font, fill=TXT_SEC[:3], anchor="lm")
+    else:
+        draw.text((rx, H // 2), id_text, font=id_font, fill=TXT_PRI[:3], anchor="lm")
 
 
 # ── 2×2 sticker ──────────────────────────────────────────────────────────────
