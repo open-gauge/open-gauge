@@ -21,6 +21,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Docker Compose env file
+        run: cp infrastructure/docker/.env.example infrastructure/docker/.env
+
       - name: Start database and API
         run: docker compose -f infrastructure/docker/docker-compose.yml up -d --build db api
 
