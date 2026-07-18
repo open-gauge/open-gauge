@@ -170,6 +170,60 @@ class TestRegisterWithMailConfigured:
         assert resp.status_code == 204
 
 
+class TestRegisterFirstUserOnFreshInstall:
+    """Regression test: on a fresh install there is no admin yet who could
+    activate a pending account, so the very first registration must not be
+    stuck unverified forever — it's created verified and as superadmin
+    instead. `count_users` is patched to 0 rather than deleting the (shared,
+    already-populated) test database's users table, which would fail on
+    foreign keys held by other rows."""
+
+    def test_first_registered_account_is_verified_superadmin(
+        self, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.repositories import user as user_repo
+
+        monkeypatch.setattr(user_repo, "count_users", lambda db: 0)
+
+        email = f"firstuser_{uuid.uuid4().hex[:8]}@opengauge.test"
+        response = client.post(
+            "/api/v1/auth/register",
+            json={"email": email, "name": "First User", "password": "Testpass123!"},
+        )
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["verification_required"] is False
+        assert "superadmin" in body["message"].lower()
+
+        user = db.query(User).filter(User.email == email).first()
+        assert user.is_verified is True
+        assert user.is_superuser is True
+        assert user.role == UserRole.superadmin
+
+        login = client.post(
+            "/api/v1/auth/login", json={"email": email, "password": "Testpass123!"}
+        )
+        assert login.status_code == 200
+
+    def test_second_registered_account_is_not_promoted(
+        self, client: TestClient, db: Session
+    ) -> None:
+        """Sanity check on the other side of the branch: with users already
+        present (the normal case for every test in this suite), registration
+        follows the regular unverified/pending-activation path."""
+        email = f"seconduser_{uuid.uuid4().hex[:8]}@opengauge.test"
+        response = client.post(
+            "/api/v1/auth/register",
+            json={"email": email, "name": "Second User", "password": "Testpass123!"},
+        )
+        assert response.status_code == 201, response.text
+        assert response.json()["verification_required"] is True
+
+        user = db.query(User).filter(User.email == email).first()
+        assert user.is_verified is False
+        assert user.is_superuser is False
+
+
 # ---------------------------------------------------------------------------
 # Forgot password / reset password
 # ---------------------------------------------------------------------------

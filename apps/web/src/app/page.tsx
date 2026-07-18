@@ -5,6 +5,7 @@ import AuthCard from "@/components/auth-card";
 import ParticleBackground from "@/components/particle-background";
 import ThemeToggle from "@/components/theme-toggle";
 import { isDemoMode } from "@/lib/demo/is-demo-mode";
+import { APP_VERSION } from "@/lib/version";
 import {
   ActivityIcon,
   GitBranchIcon,
@@ -63,7 +64,7 @@ export default function LoginPage() {
             {/* Status badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/60 dark:bg-og-action/30 backdrop-blur-xs rounded-full text-xs text-gray-600 dark:text-gray-300 border border-white/80 dark:border-white/10 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              v1.0.0 · self-hosted
+              v{APP_VERSION} · self-hosted
             </div>
 
             {/* Headline */}

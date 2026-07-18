@@ -6,7 +6,6 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
 
 from .api.v1 import auth as auth_router
 from .api.v1 import dashboard as dashboard_router
@@ -22,16 +21,11 @@ from .api.v1 import signatures as signature_router
 from .api.v1 import teams as team_router
 from .api.v1 import admin as admin_router
 from .core.config import settings
-from .core.database import SessionLocal
-from .seeds.seed import seed_database
 from .services.calibration_reminders import run_reminder_sweep
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    with SessionLocal() as db:
-        seed_database(db)
-
     # BackgroundScheduler (thread-based) rather than AsyncIOScheduler: the sweep does
     # blocking DB/SMTP I/O and must not run on — and block — the request event loop.
     scheduler = BackgroundScheduler()
@@ -65,7 +59,7 @@ OPENAPI_TAGS = [
 app = FastAPI(
     title=settings.app_name,
     description="Open Gauge API",
-    version="0.1.0",
+    version=settings.app_version,
     lifespan=lifespan,
     openapi_tags=OPENAPI_TAGS,
 )

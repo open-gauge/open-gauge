@@ -45,11 +45,12 @@ def register_endpoint(body: RegisterRequest, db: Session = Depends(get_db)) -> R
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    message = (
-        "Account created. Check your email to verify your address before signing in."
-        if mail_svc.is_enabled(db)
-        else "Account created. An administrator needs to activate your account before you can sign in."
-    )
+    if not verification_required:
+        message = "Account created as the superadmin for this installation. You can sign in now."
+    elif mail_svc.is_enabled(db):
+        message = "Account created. Check your email to verify your address before signing in."
+    else:
+        message = "Account created. An administrator needs to activate your account before you can sign in."
     return RegisterResponse(verification_required=verification_required, message=message)
 
 

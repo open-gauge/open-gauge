@@ -43,6 +43,31 @@ docker compose up -d
 | API (OpenAPI schema at `/openapi.json`, Swagger UI at `/docs`) | http://localhost:8000 |
 | Documentation site | http://localhost:3002 |
 
+## Configuration
+
+All configuration for the Docker Compose deployment lives in one file:
+[`infrastructure/docker/.env`](infrastructure/docker/.env). Edit it before deploying anywhere
+other than a local trial — in particular, change every password/secret and set `HOST_IP` (or
+`FRONTEND_URL`/`NEXT_PUBLIC_API_URL`/`NEXT_PUBLIC_DOCS_URL` individually) to your production
+domain. `docker-compose.yml` reads every credential and URL from this file via `${VAR}`
+substitution — nothing is hardcoded in the compose file itself.
+
+| Variable | Used by | Purpose |
+|---|---|---|
+| `HOST_IP` | web, docs, minio URLs | Hostname/IP the app is reachable at; used to derive the URLs below |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | db, api | PostgreSQL credentials and database name |
+| `SECRET_KEY` | api | Signs auth tokens — set a long random value in production |
+| `FRONTEND_URL` | api | Public app URL; encoded into generated QR codes and asset labels |
+| `CORS_ORIGINS` | api | Origins allowed to call the API |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | minio, api | MinIO (S3-compatible file storage) credentials |
+| `MINIO_BUCKET` | api | Bucket used for calibration certificates, datasheets, and uploads |
+| `MINIO_PUBLIC_URL` | api | URL browsers use to fetch files directly from MinIO |
+| `NEXT_PUBLIC_API_URL` | web | API URL baked into the frontend build |
+| `NEXT_PUBLIC_DOCS_URL` | web | Documentation site URL baked into the frontend build |
+
+Running the API or web app outside Docker (e.g. for local development)? See
+[`apps/api/.env.example`](apps/api/.env.example) instead — Compose does not read that file.
+
 ## Structure
 
 * [`apps/api`](apps/api) — FastAPI backend

@@ -4,16 +4,16 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: opengauge_user
-      POSTGRES_PASSWORD: opengauge_password
-      POSTGRES_DB: opengauge_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opengauge_user -d opengauge_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -25,16 +25,20 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://opengauge_user:opengauge_password@db:5432/opengauge_db
-      SECRET_KEY: change-this-secret-key-in-production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY}
+
+      # Public URL of the frontend — used to build links inside the app,
+      # including the asset URL encoded into generated QR codes.
+      FRONTEND_URL: ${FRONTEND_URL}
 
       # Allow both localhost and remote clients
       CORS_ORIGINS: ${CORS_ORIGINS}
 
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: opengauge_admin
-      MINIO_SECRET_KEY: opengauge_password_secret
-      MINIO_BUCKET: opengauge-files
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
       MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
 
     depends_on:
@@ -102,8 +106,8 @@ services:
     command: server /data --console-address ":9001"
 
     environment:
-      MINIO_ROOT_USER: opengauge_admin
-      MINIO_ROOT_PASSWORD: opengauge_password_secret
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
 
     ports:
       - "9000:9000"

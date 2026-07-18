@@ -3,6 +3,10 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     app_name: str = "Open Gauge API"
+    # Single source of truth for the backend's version. Keep in sync with
+    # apps/web/package.json's "version" field — see the Versioning section in
+    # AGENTS.md and VERSIONS.md at the repo root for the policy.
+    app_version: str = "1.1.0"
     secret_key: str = "change-this-secret-key-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days

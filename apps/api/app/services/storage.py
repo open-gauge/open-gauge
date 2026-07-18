@@ -4,6 +4,7 @@ import uuid
 from datetime import timedelta
 
 from minio import Minio
+from minio.deleteobjects import DeleteObject
 from minio.error import S3Error
 
 from ..core.config import settings
@@ -106,6 +107,22 @@ def download_file(storage_path: str, bucket: str | None = None) -> bytes | None:
             resp.release_conn()
     except S3Error:
         return None
+
+
+def delete_all_objects(bucket: str | None = None) -> None:
+    """Empty a bucket entirely. Used by the admin database reset — silently
+    ignores a missing bucket rather than failing the whole reset over it."""
+    bucket = bucket or settings.minio_bucket
+    client = _upload_client()
+    try:
+        objects = client.list_objects(bucket, recursive=True)
+        to_delete = [DeleteObject(obj.object_name) for obj in objects]
+        if to_delete:
+            # remove_objects is lazy — draining the iterator is what actually
+            # issues the batch delete calls.
+            list(client.remove_objects(bucket, to_delete))
+    except S3Error:
+        pass
 
 
 def sha256_hex(data: bytes) -> str:

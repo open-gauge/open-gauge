@@ -45,18 +45,22 @@ air-gapped deployments.
 
 ## Key environment variables
 
-Set these in `infrastructure/docker/docker-compose.yml` (or an `.env` file it references)
-before deploying anywhere beyond local evaluation:
+Every credential and URL used by `infrastructure/docker/docker-compose.yml` is read from a
+single file, [`infrastructure/docker/.env`](https://github.com/open-gauge/open-gauge/blob/main/infrastructure/docker/.env)
+— edit that file (not the compose file itself) before deploying anywhere beyond local evaluation:
 
 | Variable | Service | Purpose |
 |---|---|---|
-| `DATABASE_URL` | `api` | Postgres connection string. |
+| `HOST_IP` | web, docs, minio URLs | Hostname/IP the app is reachable at; used to derive the URLs below. |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `db`, `api` | Postgres credentials and database name. |
 | `SECRET_KEY` | `api` | Signs session/auth tokens — **change this in production**. |
+| `FRONTEND_URL` | `api` | Public app URL; encoded into generated QR codes and asset labels — point this at your production domain, not `localhost`. |
 | `CORS_ORIGINS` | `api` | JSON array of origins allowed to call the API (must include your `web` URL). |
-| `MINIO_ENDPOINT` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` / `MINIO_BUCKET` | `api` | Object storage credentials. |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minio`, `api` | Object storage credentials. |
+| `MINIO_BUCKET` | `api` | Bucket used for calibration certificates, datasheets, and uploads. |
 | `MINIO_PUBLIC_URL` | `api` | The externally-reachable MinIO URL used for presigned certificate/file links. |
 | `NEXT_PUBLIC_API_URL` | `web` (build arg) | The browser-reachable API URL, baked in at build time. |
-| `API_INTERNAL_URL` | `web`, `docs` | The container-to-container API URL (e.g. `http://api:8000`), used for server-side requests. |
+| `API_INTERNAL_URL` | `web`, `docs` | The container-to-container API URL (e.g. `http://api:8000`), used for server-side requests — hardcoded in the compose file since it never varies between deployments. |
 | `NEXT_PUBLIC_DOCS_URL` | `web` (build arg) | The browser-reachable docs URL — used by in-app tooltips to deep-link into this documentation. |
 
 ## Backups
@@ -64,14 +68,22 @@ before deploying anywhere beyond local evaluation:
 Two things need backing up:
 
 1. **PostgreSQL** (`postgres_data` volume) — everything structured: assets, calibrations,
-   users, audit logs. Use `pg_dump`/`pg_restore` against the `db` service, or snapshot the
-   named volume.
+   users, audit logs. The easiest path is **Admin → Database → Export database** in the app
+   (superadmin only) — it streams a `pg_dump` custom-format archive of the whole database, which
+   the same page's **Import database** button restores. Equivalently, run `pg_dump`/`pg_restore`
+   against the `db` service directly, or snapshot the named volume.
 2. **MinIO** (`minio_data` volume) — certificates, datasheets, and images. Snapshot the named
    volume, or use `mc mirror` against the MinIO S3 API.
 
 Losing MinIO data doesn't corrupt calibration records (regenerate certificates on demand via
 `GET /calibrations/{id}/certificate`), but losing PostgreSQL data loses everything — back it up
 on a real schedule, not just the volume snapshot that happens to exist.
+
+**Admin → Database** also has a **Reset to clean state** action, which deletes every
+organization, asset, location, procedure, and calibration, and every non-superadmin user, and
+empties file storage — keeping only superadmin accounts. It's the way to take a populated
+demo/trial install back to the empty state a fresh deployment starts in, without reinstalling.
+It requires typing `RESET` to confirm and cannot be undone.
 
 ## Running database migrations
 

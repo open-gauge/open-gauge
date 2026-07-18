@@ -18,7 +18,9 @@ function activeFolderIds(tree: PageTree.Root, pathname: string): Set<string> {
 
 export function DocsNavTree({ tree, collapsed }: { tree: PageTree.Root; collapsed: boolean }) {
   const pathname = usePathname();
-  const isActive = pathname === "/documentation" || pathname.startsWith("/documentation/");
+  const isApiReference = pathname === "/documentation/api" || pathname.startsWith("/documentation/api/");
+  const isActive =
+    !isApiReference && (pathname === "/documentation" || pathname.startsWith("/documentation/"));
   const [open, setOpen] = useState(isActive);
   const [openFolders, setOpenFolders] = useState<Set<string>>(() => activeFolderIds(tree, pathname));
 

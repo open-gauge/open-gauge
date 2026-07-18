@@ -11,7 +11,10 @@ offline / air-gapped environments — and is never coupled to a cloud-only provi
 - **Local users and passwords** — the default for small self-hosted installations. Works
   fully offline; no external dependency. Every self-registered account requires activation before
   it can sign in — see [Email notifications](./email-notifications.mdx#account-verification) for
-  how that works with and without SMTP configured.
+  how that works with and without SMTP configured. The one exception is the very first account
+  created on a fresh install: with no admin yet able to activate anyone, it's created verified
+  and as `superadmin` automatically, so a new deployment always starts empty and ready to use
+  rather than pre-populated with demo data.
 - **OAuth2 / OpenID Connect** — for organizations that already run an identity provider.
 - **Enterprise SSO** — via an OIDC-compatible provider. **Keycloak** is the recommended choice
   for enterprise deployments that want self-hosted SSO without depending on a cloud identity

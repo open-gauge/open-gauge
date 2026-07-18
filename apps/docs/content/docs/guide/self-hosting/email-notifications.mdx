@@ -43,7 +43,15 @@ only the automated, self-service parts of it are.
 
 Every self-registered account (`POST /auth/register`) starts unverified and cannot sign in until
 activated — there is no path where self-registration grants instant access, regardless of mail
-configuration. What activation looks like depends on whether mail is enabled:
+configuration.
+
+**Exception: the very first account on a fresh install.** With zero users in the database there
+is no admin who could activate anyone, so that first registration is created verified, with role
+`superadmin`, and can sign in immediately. Every account registered after that follows the normal
+activation flow below.
+
+What activation looks like for everyone after the first account depends on whether mail is
+enabled:
 
 **With mail enabled:**
 

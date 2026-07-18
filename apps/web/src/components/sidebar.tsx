@@ -18,6 +18,7 @@ import {
 import { DocsNavTree } from "@/components/docs-nav-tree";
 import { ApiNavTree } from "@/components/api-nav-tree";
 import { isDemoMode } from "@/lib/demo/is-demo-mode";
+import { APP_VERSION } from "@/lib/version";
 
 interface NavItem {
   href: string;
@@ -170,7 +171,7 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
         {!collapsed && (
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <p className="text-[11px] text-gray-400 whitespace-nowrap">v1.0.0 · self-hosted</p>
+            <p className="text-[11px] text-gray-400 whitespace-nowrap">v{APP_VERSION} · self-hosted</p>
           </div>
         )}
         <button

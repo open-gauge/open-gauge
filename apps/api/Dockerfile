@@ -10,7 +10,7 @@ ARG TECTONIC_SHA256=f3c825128095dc3399ea11c08c18035b33050a216930c295c79e8eb11bd2
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
-    apt-get update && apt-get install -y --no-install-recommends curl fonts-dejavu-core ca-certificates libgraphite2-3 fontconfig && \
+    apt-get update && apt-get install -y --no-install-recommends curl fonts-dejavu-core ca-certificates libgraphite2-3 fontconfig postgresql-client && \
     curl -fsSL -o /tmp/tectonic.tar.gz \
       "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/tectonic-${TECTONIC_VERSION}-x86_64-unknown-linux-gnu.tar.gz" && \
     echo "${TECTONIC_SHA256}  /tmp/tectonic.tar.gz" | sha256sum -c - && \

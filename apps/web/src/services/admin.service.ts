@@ -1,4 +1,4 @@
-import { apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
+import { apiBlob, apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { UserProfile } from "@/types/user";
 
@@ -263,5 +263,27 @@ export async function sendTestEmail(toEmail: string): Promise<void> {
     method: "POST",
     headers: { ...tokenHeader(), "Content-Type": "application/json" },
     body: JSON.stringify({ to_email: toEmail }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Database — export/import/reset the whole database. Superadmin only.
+// ---------------------------------------------------------------------------
+
+export async function exportDatabase(): Promise<Blob> {
+  return apiBlob("/api/v1/admin/database/export", { headers: tokenHeader() });
+}
+
+export async function importDatabase(file: File): Promise<void> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<void>("/api/v1/admin/database/import", form, { headers: tokenHeader() });
+}
+
+export async function resetDatabase(confirm: string): Promise<void> {
+  return apiFetch<void>("/api/v1/admin/database/reset", {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ confirm }),
   });
 }

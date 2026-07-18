@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..core.config import settings
 from ..core.security import create_access_token, hash_password, verify_password
+from ..models.user import UserRole
 from ..repositories import user as user_repo
 from . import mail as mail_svc
 from . import mail_templates
@@ -38,9 +39,25 @@ def register(db: Session, email: str, name: str, password: str) -> tuple[str | N
     account (Admin -> Users), same as the "forgot password without mail" story.
     access_token is therefore always None here; it's kept on the response shape
     for symmetry with verify_email(), which does return one once activated.
+
+    Exception: the very first account on a fresh install has no admin who could
+    activate it, so it is created verified and as superadmin instead of being
+    stuck pending forever.
     """
     if user_repo.get_by_email(db, email):
         raise AuthError("An account with this email already exists")
+
+    if user_repo.count_users(db) == 0:
+        user_repo.create(
+            db,
+            email=email,
+            name=name,
+            hashed_password=hash_password(password),
+            role=UserRole.superadmin,
+            is_superuser=True,
+            is_verified=True,
+        )
+        return None, False
 
     mail_enabled = mail_svc.is_enabled(db)
 
