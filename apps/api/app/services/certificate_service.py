@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import io
 import logging
+import random
+import uuid
+from datetime import date
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -18,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from ..models.location import Location
 from ..models.organization import Organization
+from ..models.team import Team
 from ..models.user import User
 from ..repositories import certificate_template as certtpl_repo
 from ..repositories import stored_file as file_repo
@@ -42,6 +46,30 @@ _DECISION_RULE_LABEL = {
     "guard_band_w_uncertainty": "Guard-banded acceptance (acceptance zone reduced by expanded uncertainty)",
     "shared_risk": "Shared-risk acceptance (acceptance zone expanded by expanded uncertainty)",
 }
+
+# Sensor.accuracy_type is a free-text field (see app/models/sensor.py) whose
+# values come from the frontend's ACCURACY_TYPE_OPTIONS — displayed here as
+# plain words rather than the raw stored token (e.g. "percent_of_reading").
+_ACCURACY_TYPE_LABEL = {
+    "percent_of_reading": "% of reading",
+    "percent_of_full_scale": "% of full scale",
+    "absolute": "absolute",
+}
+
+# Human names for low-order polynomial coefficients, paired with a subscripted
+# symbol (a0, a1, ...) for cross-reference with the function formula shown
+# alongside the coefficient table. The symbol is rendered via LaTeX math-mode
+# subscript syntax ($a_0$) rather than Unicode subscript characters (₀, ₁,
+# ...) — DejaVu Sans does not reliably render those glyphs under Tectonic's
+# XeTeX engine, so they were silently disappearing. Since this contains raw
+# LaTeX, the template must reference \VAR{row.name} directly, not
+# \VAR{row.name|latex} (the escape filter would mangle the math syntax).
+_COEFFICIENT_NAME = {0: "Offset", 1: "Gain", 2: "Quadratic", 3: "Cubic"}
+
+
+def _coefficient_name(power: int) -> str:
+    base = _COEFFICIENT_NAME.get(power, f"a{power}")
+    return f"{base} ($a_{{{power}}}$)"
 
 
 # ---------------------------------------------------------------------------
@@ -72,9 +100,19 @@ def _fmt_accuracy(sensor: "Sensor") -> str:
     if sensor.accuracy_value is None:
         return "—"
     val = _fmt(sensor.accuracy_value, 4)
-    t = f" {sensor.accuracy_type}" if sensor.accuracy_type else ""
+    t = f" {_ACCURACY_TYPE_LABEL.get(sensor.accuracy_type, sensor.accuracy_type)}" if sensor.accuracy_type else ""
     u = f" {sensor.accuracy_unit}" if sensor.accuracy_unit else ""
     return f"±{val}{u}{t}"
+
+
+def _build_function_formula(degree: int) -> str:
+    """Generic (non-numeric) calibration function in LaTeX math syntax, e.g.
+    'f(x) = a_0 + a_1 x + a_2 x^2' — paired with the named coefficient value
+    table so a reader can match each row to its place in the function."""
+    terms = ["a_0"]
+    for power in range(1, degree + 1):
+        terms.append("a_1 x" if power == 1 else f"a_{{{power}}} x^{power}")
+    return "f(x) = " + " + ".join(terms)
 
 
 def _build_coefficient_rows(coeffs: list[float] | None) -> tuple[list[dict], str | None]:
@@ -83,7 +121,10 @@ def _build_coefficient_rows(coeffs: list[float] | None) -> tuple[list[dict], str
         return [], None
     degree = len(coeffs) - 1
     rows = [
-        {"coefficient": f"a{power}", "term": f"x^{power}" if power > 0 else "1", "value": _fmt(v, 8)}
+        {
+            "coefficient": f"a{power}", "name": _coefficient_name(power),
+            "term": f"x^{power}" if power > 0 else "1", "value": _fmt(v, 8),
+        }
         for power, v in enumerate(reversed(coeffs))
     ]
     if degree == 1:
@@ -125,6 +166,60 @@ def _build_stat_rows(cal: "Calibration") -> list[dict]:
             "value": f"{uc_rounded:g}" if uc_rounded is not None else "—",
         })
     return rows
+
+
+def _build_results_summary(cal: "Calibration", unit: str) -> list[dict]:
+    """Max error / %FS error / expanded uncertainty — a compact three-row
+    'error at a glance' table, distinct from the full statistical breakdown
+    in stat_rows (used by example_tables.tex's results section)."""
+    rows: list[dict] = []
+    if cal.max_error is not None:
+        rows.append({"label": "Max Error", "value": f"{_fmt(cal.max_error, 6)} {unit}".strip()})
+    if cal.full_scale_error is not None:
+        rows.append({"label": "% Full-Scale Error", "value": f"{_fmt(cal.full_scale_error, 4)} %"})
+    if cal.expanded_uncertainty is not None:
+        # GUM §7.2.6: quote uncertainty to at most 2 significant figures.
+        u_rounded = round_to_sig_figs(cal.expanded_uncertainty, 2)
+        k_str = f"k={_fmt(cal.coverage_factor, 3)}" if cal.coverage_factor else ""
+        cl_str = f"{_fmt(cal.confidence_level, 4)}%" if cal.confidence_level else ""
+        rows.append({
+            "label": "Expanded Uncertainty (U)",
+            "value": f"{u_rounded:g} {unit} [{k_str} {cl_str}]".replace("[ ]", "").strip(),
+        })
+    return rows
+
+
+def _build_error_summary(cal: "Calibration", unit: str) -> dict | None:
+    """Max error / %FS error / expanded uncertainty as a single compact row of
+    three columns (Abs. Error, FS Error, Uncertainty), each signed with ±,
+    for example_tables.tex's results section."""
+    if cal.max_error is None and cal.full_scale_error is None and cal.expanded_uncertainty is None:
+        return None
+    abs_error = f"±{_fmt(cal.max_error, 4)} {unit}".strip() if cal.max_error is not None else "—"
+    fs_error = f"±{_fmt(cal.full_scale_error, 4)} %" if cal.full_scale_error is not None else "—"
+    if cal.expanded_uncertainty is not None:
+        # GUM §7.2.6: quote uncertainty to at most 2 significant figures.
+        u_rounded = round_to_sig_figs(cal.expanded_uncertainty, 2)
+        uncertainty = f"±{u_rounded:g} {unit}".strip()
+    else:
+        uncertainty = "—"
+    return {"abs_error": abs_error, "fs_error": fs_error, "uncertainty": uncertainty}
+
+
+def _build_conformity_derivation(cal: "Calibration", conformity: dict | None, unit: str) -> str | None:
+    """Narrates the max-error + expanded-uncertainty total against the
+    specification the conformity statement was assessed against, so the
+    pass/fail conclusion in the footer boilerplate is traceable to a number
+    on the page rather than asserted on its own."""
+    if not conformity or cal.max_error is None or cal.expanded_uncertainty is None:
+        return None
+    combined = cal.max_error + cal.expanded_uncertainty
+    return (
+        f"The maximum error ({_fmt(cal.max_error, 4)} {unit}) plus the expanded uncertainty "
+        f"({_fmt(cal.expanded_uncertainty, 4)} {unit}) totals {_fmt(combined, 4)} {unit}, "
+        f"against a specification of {conformity['specification']} — the calibration "
+        f"{conformity['result_label']} to the specification."
+    )
 
 
 def _build_uncertainty_budget_rows(cal: "Calibration") -> list[dict]:
@@ -214,11 +309,14 @@ def _build_template_context(
     organization: "Organization | None",
     version: int,
     certificate_number: str,
+    calibration_location_name: str | None = None,
+    team_name: str | None = None,
 ) -> dict:
     reference_unit = points[0].reference_unit if points else ""
     measured_unit = points[0].measured_unit if points else ""
 
     coefficient_rows, equation = _build_coefficient_rows(calibration.poly_coefficients)
+    asset_type_label = str(asset.asset_type.value).title() if asset.asset_type else "—"
 
     valid_range = None
     if calibration.range_min is not None or calibration.valid_range_min is not None:
@@ -228,6 +326,22 @@ def _build_template_context(
 
     channel = None
     if sensor:
+        range_str = f"{_fmt(sensor.measurement_min, 5)}–{_fmt(sensor.measurement_max, 5)} {sensor.unit or ''}".strip()
+        if sensor.output_signal_min is not None and sensor.output_signal_max is not None:
+            signal_str = (
+                f"{_fmt(sensor.output_signal_min, 5)}–{_fmt(sensor.output_signal_max, 5)} "
+                f"{sensor.output_signal_unit or ''}"
+            ).strip()
+        else:
+            signal_str = "—"
+        if sensor.measurement_uncertainty is not None:
+            precision_str = f"±{_fmt(sensor.measurement_uncertainty, 4)} {sensor.uncertainty_unit or ''}".strip()
+        else:
+            precision_str = "—"
+        if sensor.resolution is not None:
+            resolution_str = f"{_fmt(sensor.resolution, 4)} {sensor.resolution_unit or ''}".strip()
+        else:
+            resolution_str = "—"
         channel = {
             "id": sensor.channel_id or "—",
             "quantity": sensor.physical_quantity or "—",
@@ -235,6 +349,10 @@ def _build_template_context(
             "min": _fmt(sensor.measurement_min, 5),
             "max": _fmt(sensor.measurement_max, 5),
             "accuracy": _fmt_accuracy(sensor),
+            "range": range_str,
+            "signal": signal_str,
+            "precision": precision_str,
+            "resolution": resolution_str,
         }
 
     procedure_ctx = None
@@ -256,6 +374,14 @@ def _build_template_context(
             "serial": reference_asset.serial_number or "—",
         }
 
+    # "Chapter"/"Revision"/"Calibration ID" — document-control fields used by
+    # accredited-lab-style templates (see example_tables.tex.jinja) alongside
+    # the certificate_number/version already used by the built-in template.
+    chapter = channel["quantity"].title() if channel else asset_type_label
+
+    conformity = _build_conformity(calibration)
+    degree = len(calibration.poly_coefficients) - 1 if calibration.poly_coefficients else 0
+
     return {
         "certificate_number": certificate_number,
         "org_name": organization.name if organization else "Open Gauge",
@@ -272,7 +398,7 @@ def _build_template_context(
         "asset_model": asset.model or "—",
         "asset_serial": asset.serial_number or "—",
         "asset_part_number": asset.manufacturer_part_number or "—",
-        "asset_type_label": str(asset.asset_type.value).title() if asset.asset_type else "—",
+        "asset_type_label": asset_type_label,
         "asset_notes": asset.notes or None,
         "channel": channel,
         "external_lab_name": calibration.external_lab_name,
@@ -284,11 +410,15 @@ def _build_template_context(
         "pressure": _fmt(calibration.pressure, 4) if calibration.pressure is not None else None,
         "coefficient_rows": coefficient_rows,
         "equation": equation,
+        "function_formula": _build_function_formula(degree),
         "stat_rows": _build_stat_rows(calibration),
+        "results_summary": _build_results_summary(calibration, reference_unit),
+        "error_summary": _build_error_summary(calibration, reference_unit),
         "uncertainty_budget_rows": _build_uncertainty_budget_rows(calibration),
         "effective_dof_note": _build_effective_dof_note(calibration),
         "uncertainty_statement": _build_uncertainty_statement(calibration, reference_unit),
-        "conformity": _build_conformity(calibration),
+        "conformity": conformity,
+        "conformity_derivation": _build_conformity_derivation(calibration, conformity, reference_unit),
         "valid_range": valid_range,
         "notes": calibration.notes,
         "dataset_rows": _build_dataset_rows(points) if points else [],
@@ -297,6 +427,11 @@ def _build_template_context(
         "qr_path": None,
         "chart_path": None,
         "lab_footer": calibration.external_lab_name or (organization.name if organization else None),
+        "chapter": chapter,
+        "calibration_id": str(calibration.id)[:8].upper(),
+        "generated_date": date.today().isoformat(),
+        "calibration_location": calibration_location_name,
+        "team_name": team_name,
     }
 
 
@@ -376,10 +511,99 @@ def _render_chart_png(
 
 
 # ---------------------------------------------------------------------------
+# Randomized sample data for the admin "preview a template" feature
+# ---------------------------------------------------------------------------
+
+def build_random_preview_context(num_points: int = 10) -> tuple[dict, dict[str, bytes]]:
+    """Build a plausible, randomized context + images for previewing a
+    template in the admin UI, without needing a real calibration on hand.
+
+    Unlike latex_service.dummy_context() (fixed, minimal, used to validate
+    that an uploaded template compiles at all), this generates a fresh random
+    linear-calibration dataset every call — a real scatter+fit chart alongside
+    a matching dataset table, so an admin previewing a template sees something
+    close to what a real certificate looks like.
+    """
+    true_gain = round(random.uniform(0.85, 1.15), 4)
+    true_offset = round(random.uniform(-3.0, 3.0), 4)
+    reference_vals = sorted(round(random.uniform(0, 100), 2) for _ in range(num_points))
+
+    measured_vals: list[float] = []
+    residual_abs_vals: list[float] = []
+    dataset_rows: list[dict] = []
+    for i, ref in enumerate(reference_vals):
+        measured = (ref - true_offset) / true_gain + random.uniform(-0.4, 0.4)
+        fit = true_gain * measured + true_offset
+        residual_abs = fit - ref
+        residual_pct = (residual_abs / ref * 100) if ref else 0.0
+        measured_vals.append(measured)
+        residual_abs_vals.append(residual_abs)
+        dataset_rows.append({
+            "index": str(i),
+            "measured": _fmt(measured, 6),
+            "reference": _fmt(ref, 6),
+            "fit": _fmt(fit, 6),
+            "residual_abs": _fmt(residual_abs, 6),
+            "residual_pct": _fmt(residual_pct, 4),
+        })
+
+    coefficient_rows, equation = _build_coefficient_rows([true_gain, true_offset])
+    max_abs_residual = max((abs(v) for v in residual_abs_vals), default=0.0)
+    full_scale_pct = (max_abs_residual / 100 * 100) if reference_vals else 0.0
+    expanded_uncertainty = max_abs_residual * 2
+    specification = "±0.5 V (absolute)"
+    result_label = "CONFORMS" if (max_abs_residual + expanded_uncertainty) <= 0.5 else "DOES NOT CONFORM"
+
+    context = latex_service.dummy_context()
+    context.update({
+        "dataset_rows": dataset_rows,
+        "measured_unit": "V",
+        "reference_unit": "V",
+        "coefficient_rows": coefficient_rows,
+        "equation": equation,
+        "function_formula": _build_function_formula(1),
+        "calibration_id": f"CAL-{random.randint(1000, 9999)}",
+        "chapter": "Voltage",
+        "generated_date": date.today().isoformat(),
+        "calibration_location": "Metrology Lab A",
+        "team_name": "Instrumentation Team",
+        "results_summary": [
+            {"label": "Max Error", "value": f"{_fmt(max_abs_residual, 6)} V"},
+            {"label": "% Full-Scale Error", "value": f"{_fmt(full_scale_pct, 4)} %"},
+            {"label": "Expanded Uncertainty (U)", "value": f"{_fmt(expanded_uncertainty, 4)} V [k=2.00 95.00%]"},
+        ],
+        "error_summary": {
+            "abs_error": f"±{_fmt(max_abs_residual, 4)} V",
+            "fs_error": f"±{_fmt(full_scale_pct, 4)} %",
+            "uncertainty": f"±{_fmt(expanded_uncertainty, 4)} V",
+        },
+        "conformity": {
+            "result_label": result_label,
+            "specification": specification,
+            "decision_rule_label": "Simple acceptance (tolerance only, per ISO/IEC Guide 98-4)",
+            "expanded_uncertainty_line": None,
+        },
+        "conformity_derivation": (
+            f"The maximum error ({_fmt(max_abs_residual, 4)} V) plus the expanded uncertainty "
+            f"({_fmt(expanded_uncertainty, 4)} V) totals {_fmt(max_abs_residual + expanded_uncertainty, 4)} V, "
+            f"against a specification of {specification} — the calibration {result_label} to the specification."
+        ),
+    })
+
+    images = {
+        "logo.png": latex_service.dummy_placeholder_png(),
+        "signature.png": latex_service.dummy_placeholder_png(),
+        "qr.png": _render_qr_png("https://example.com/preview") or latex_service.dummy_placeholder_png(),
+        "chart.png": _render_chart_png(measured_vals, reference_vals, [true_gain, true_offset], "V", "V"),
+    }
+    return context, images
+
+
+# ---------------------------------------------------------------------------
 # Organization / template resolution
 # ---------------------------------------------------------------------------
 
-def _resolve_organization(db: Session, asset: "Asset", calibration: "Calibration") -> "Organization | None":
+def resolve_organization(db: Session, asset: "Asset", calibration: "Calibration") -> "Organization | None":
     """Asset's location org, falling back to the performing user's org."""
     if asset.location_id:
         location = db.query(Location).filter(Location.id == asset.location_id).first()
@@ -396,6 +620,27 @@ def _resolve_organization(db: Session, asset: "Asset", calibration: "Calibration
     return None
 
 
+def resolve_performer_user_id(db: Session, calibration: "Calibration") -> "uuid.UUID | None":
+    """Which user's signature to attach to the certificate: the explicitly
+    linked performer, or — as a fallback — an active user whose display name
+    exactly matches the free-text performed_by_name. The fallback covers
+    calibrations recorded before performed_by_user_id was linked (e.g. older
+    records, or CSV/seed imports), so a signature still shows up whenever the
+    typed name unambiguously identifies a real account.
+    """
+    if calibration.performed_by_user_id:
+        return calibration.performed_by_user_id
+    if calibration.performed_by_name:
+        matched_user = (
+            db.query(User)
+            .filter(User.name == calibration.performed_by_name, User.is_active.is_(True))
+            .first()
+        )
+        if matched_user:
+            return matched_user.id
+    return None
+
+
 def _read_file_text(db: Session, file_id) -> str | None:
     f = file_repo.get_by_id(db, file_id)
     if not f:
@@ -406,13 +651,28 @@ def _read_file_text(db: Session, file_id) -> str | None:
     return data.decode("utf-8")
 
 
-def resolve_template_source(db: Session, organization: "Organization | None") -> str:
-    """Resolve the .tex Jinja source to use: org default -> global default -> built-in.
+def resolve_template_source(
+    db: Session, organization: "Organization | None", template_id: uuid.UUID | None = None,
+) -> str:
+    """Resolve the .tex Jinja source to use.
+
+    If `template_id` is given, that specific active template is used regardless
+    of scope (an explicit choice, e.g. from the calibration certificate download
+    dropdown) — raises ValueError if it doesn't exist or isn't active. Otherwise:
+    org default -> global default -> built-in.
 
     Guarantees certificates still generate on a fresh install with zero
     configuration — the built-in template is read straight off local disk,
     no DB row required.
     """
+    if template_id is not None:
+        row = certtpl_repo.get_by_id(db, template_id)
+        if not row or not row.is_active:
+            raise ValueError(f"Certificate template {template_id} not found")
+        text = _read_file_text(db, row.template_file_id)
+        if text is None:
+            raise ValueError(f"Certificate template {template_id} file is unavailable")
+        return text
     if organization:
         row = certtpl_repo.get_active_default(db, organization.id)
         if row:
@@ -441,13 +701,32 @@ def generate_certificate(
     sensor: "Sensor | None",
     version: int,
     app_base_url: str,
+    template_id: uuid.UUID | None = None,
 ) -> bytes:
-    """Generate a calibration certificate PDF and return its bytes."""
-    organization = _resolve_organization(db, asset, calibration)
+    """Generate a calibration certificate PDF and return its bytes.
+
+    `template_id`, if given, forces a specific active template to be used
+    instead of the resolved org/global/built-in default (e.g. a one-off
+    "download with this template" request) — see `resolve_template_source`.
+    """
+    organization = resolve_organization(db, asset, calibration)
     certificate_number = f"OG-CAL-{asset.asset_id}-v{version}"
+
+    calibration_location_name = None
+    if calibration.calibration_location_id:
+        location = db.query(Location).filter(Location.id == calibration.calibration_location_id).first()
+        if location:
+            calibration_location_name = location.name
+
+    team_name = None
+    if asset.owner:
+        team = db.query(Team).filter(Team.id == asset.owner).first()
+        if team:
+            team_name = team.name
 
     context = _build_template_context(
         asset, calibration, points, procedure, reference_asset, sensor, organization, version, certificate_number,
+        calibration_location_name=calibration_location_name, team_name=team_name,
     )
 
     images: dict[str, bytes] = {}
@@ -477,8 +756,9 @@ def generate_certificate(
             images["logo.png"] = logo_png
             context["org_logo_path"] = "logo.png"
 
-    if calibration.performed_by_user_id:
-        sig = signature_repo.get_active(db, calibration.performed_by_user_id)
+    performer_user_id = resolve_performer_user_id(db, calibration)
+    if performer_user_id:
+        sig = signature_repo.get_active(db, performer_user_id)
         if sig:
             sig_bytes = None
             sig_file = file_repo.get_by_id(db, sig.image_file_id)
@@ -489,6 +769,6 @@ def generate_certificate(
                 images["signature.png"] = sig_png
                 context["performer_signature_path"] = "signature.png"
 
-    template_source = resolve_template_source(db, organization)
+    template_source = resolve_template_source(db, organization, template_id=template_id)
     rendered = latex_service.render_template(template_source, context)
     return latex_service.compile_tex(rendered, images)

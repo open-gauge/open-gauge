@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from ...models.user import User
 from ...repositories import asset as asset_repo
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import calibration as cal_repo
+from ...repositories import certificate_template as certtpl_repo
 from ...repositories import stored_file as sf_repo
 from ...schemas.calibration import (
     AnalyzePointOut,
@@ -24,6 +25,7 @@ from ...schemas.calibration import (
 )
 from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
+from ...services.latex_service import LatexCompileError
 from ...services.storage import delete_file, get_presigned_url, sha256_hex, upload_file
 
 logger = logging.getLogger(__name__)
@@ -332,16 +334,80 @@ def get_certificate(
     return JSONResponse({"url": url, "filename": file_rec.original_filename})
 
 
+@router.get("/{cal_id}/certificate-templates")
+def list_certificate_templates_for_calibration(
+    cal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[dict]:
+    """List certificate templates available for this calibration's asset —
+    its resolved organization's templates plus global ones. Powers the
+    template picker on the certificate download button."""
+    from ...services.certificate_service import resolve_organization
+
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    organization = resolve_organization(db, asset, cal)
+    templates = certtpl_repo.list_templates(db, organization_id=organization.id if organization else None)
+    return [{"id": str(t.id), "name": t.name} for t in templates]
+
+
+@router.get("/{cal_id}/certificate/download")
+def download_certificate(
+    cal_id: uuid.UUID,
+    template_id: uuid.UUID | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Response:
+    """Live-generate and stream the calibration certificate PDF as a direct
+    download, optionally rendered with a specific certificate template
+    instead of the resolved org/global default.
+
+    Unlike GET /certificate, this never reads from or writes to the cached
+    calibration_file_id — it's always a fresh, ad-hoc render (needed since a
+    one-off "try this template" download must not overwrite the canonical
+    stored certificate), so it's a little slower but always reflects the
+    chosen template exactly.
+    """
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    if not cal.poly_coefficients:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration has no results yet")
+
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    try:
+        pdf_bytes = _build_certificate_pdf(db, cal, template_id=template_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except LatexCompileError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    filename = f"certificate_{asset.asset_id}_v{cal.calibration_version}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _generate_and_store_certificate(db: Session, cal: "object", uploaded_by: uuid.UUID) -> None:  # type: ignore[type-arg]
-    """Generate the certificate PDF and persist it to MinIO + files table.
-
-    Updates cal.calibration_file_id in-place (commits the FK).
-    Replaces any existing certificate file record for this calibration.
-    """
+def _build_certificate_pdf(db: Session, cal: "object", template_id: uuid.UUID | None = None) -> bytes:  # type: ignore[type-arg]
+    """Live-render+compile a certificate PDF for a calibration, optionally
+    with a specific template. Shared by the auto-generate-and-cache path
+    (`_generate_and_store_certificate`) and the ad-hoc template-picker
+    download endpoint, which never caches its result."""
     from ...models.calibration import Calibration  # local import to avoid circular
     from ...services.certificate_service import generate_certificate
 
@@ -368,9 +434,7 @@ def _generate_and_store_certificate(db: Session, cal: "object", uploaded_by: uui
 
     # calibration_version is already the correct chronological position by the time
     # the certificate is generated (create_calibration renumbers before calling this).
-    version = cal.calibration_version
-
-    pdf_bytes = generate_certificate(
+    return generate_certificate(
         db=db,
         asset=asset,
         calibration=cal,
@@ -378,9 +442,28 @@ def _generate_and_store_certificate(db: Session, cal: "object", uploaded_by: uui
         procedure=procedure,  # type: ignore[arg-type]
         reference_asset=reference_asset,
         sensor=sensor,
-        version=version,
+        version=cal.calibration_version,
         app_base_url=settings.frontend_url,
+        template_id=template_id,
     )
+
+
+def _generate_and_store_certificate(db: Session, cal: "object", uploaded_by: uuid.UUID) -> None:  # type: ignore[type-arg]
+    """Generate the certificate PDF and persist it to MinIO + files table.
+
+    Updates cal.calibration_file_id in-place (commits the FK).
+    Replaces any existing certificate file record for this calibration.
+    """
+    from ...models.calibration import Calibration  # local import to avoid circular
+
+    assert isinstance(cal, Calibration)
+
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+    if not asset:
+        raise ValueError(f"Asset {cal.asset_id} not found")
+
+    version = cal.calibration_version
+    pdf_bytes = _build_certificate_pdf(db, cal)
 
     filename = f"certificate_{asset.asset_id}_v{version}.pdf"
     object_path = f"certificates/{asset.asset_id}/{cal.id}/{filename}"

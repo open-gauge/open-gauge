@@ -59,5 +59,5 @@ def format_expanded_uncertainty_statement(
         f"confidence of {cl_str}."
     )
     if range_min is not None and range_max is not None:
-        sentence += f" This applies to results obtained from the fitted calibration function over the range {range_min:g} to {range_max:g} {unit}."
+        sentence += f" This applies to results obtained from the fitted calibration function over the range {range_min:.2g} to {range_max:.2g} {unit}."
     return sentence

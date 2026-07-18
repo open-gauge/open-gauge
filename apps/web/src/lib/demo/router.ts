@@ -381,6 +381,8 @@ route("GET", "/api/v1/calibrations/:id/certificate", ({ params }) => {
   return { url, filename };
 });
 
+route("GET", "/api/v1/calibrations/:id/certificate-templates", () => []);
+
 route("POST", "/api/v1/calibrations/analyze", ({ body }): unknown => {
   const req = body as AnalyzeRequest;
   const params: AnalyzeCalibrationParams = {

@@ -9,6 +9,7 @@ from ...models.user import User
 from ...repositories import certificate_template as certtpl_repo
 from ...repositories import stored_file as file_repo
 from ...schemas.certificate_template import CertificateTemplateResponse, CertificateTemplateUpdate
+from ...services import certificate_service
 from ...services import latex_service
 from ...services import storage as storage_svc
 from ...services.latex_service import LatexCompileError
@@ -151,8 +152,9 @@ def preview_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    """Re-compile the template with dummy data and return the PDF directly, so an
-    admin can see what it looks like without generating a real certificate."""
+    """Re-compile the template with a freshly randomized 10-row sample dataset
+    and return the PDF directly, so an admin can see what it looks like —
+    dataset table, chart, everything — without generating a real certificate."""
     _ = current_user
     template = certtpl_repo.get_by_id(db, template_id)
     if not template:
@@ -166,8 +168,10 @@ def preview_template(
     if data is None:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage unavailable")
 
+    context, images = certificate_service.build_random_preview_context()
     try:
-        pdf_bytes = latex_service.compile_dummy(data.decode("utf-8"))
+        rendered = latex_service.render_template(data.decode("utf-8"), context)
+        pdf_bytes = latex_service.compile_tex(rendered, images)
     except LatexCompileError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Template failed to compile: {e}")
 
@@ -178,7 +182,13 @@ def preview_template(
 def preview_builtin_template(
     _: User = Depends(get_current_user),
 ) -> Response:
-    """Preview the app's built-in default template (no DB row exists for it)."""
+    """Preview the app's built-in default template (no DB row exists for it)
+    with a freshly randomized 10-row sample dataset."""
     tex_source = latex_service.BUILTIN_TEMPLATE_PATH.read_text(encoding="utf-8")
-    pdf_bytes = latex_service.compile_dummy(tex_source)
+    context, images = certificate_service.build_random_preview_context()
+    try:
+        rendered = latex_service.render_template(tex_source, context)
+        pdf_bytes = latex_service.compile_tex(rendered, images)
+    except LatexCompileError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Template failed to compile: {e}")
     return Response(content=pdf_bytes, media_type="application/pdf")

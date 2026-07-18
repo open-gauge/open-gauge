@@ -141,6 +141,7 @@ def dummy_context() -> dict:
         "channel": {
             "id": "CH1", "quantity": "pressure", "unit": "bar",
             "min": "0", "max": "10", "accuracy": "±0.1%",
+            "range": "0–10 bar", "signal": "4–20 mA", "precision": "±0.02 bar", "resolution": "0.001 bar",
         },
         "external_lab_name": None,
         "external_lab_certificate_number": None,
@@ -153,17 +154,25 @@ def dummy_context() -> dict:
         "humidity": "45.0",
         "pressure": "101325",
         "coefficient_rows": [
-            {"coefficient": "a0", "term": "1", "value": "0.1"},
-            {"coefficient": "a1", "term": "x^1", "value": "1.0"},
+            {"coefficient": "a0", "name": "Offset ($a_{0}$)", "term": "1", "value": "0.1"},
+            {"coefficient": "a1", "name": "Gain ($a_{1}$)", "term": "x^1", "value": "1.0"},
         ],
         "equation": "y = 0.1 + 1.0*x",
+        "function_formula": "f(x) = a_0 + a_1 x",
         "stat_rows": [{"label": "R²", "value": "0.999"}],
+        "results_summary": [
+            {"label": "Max Error", "value": "0.02 bar"},
+            {"label": "% Full-Scale Error", "value": "0.1 %"},
+            {"label": "Expanded Uncertainty (U)", "value": "0.04 bar [k=2.00 95.00%]"},
+        ],
+        "error_summary": {"abs_error": "±0.02 bar", "fs_error": "±0.1 %", "uncertainty": "±0.04 bar"},
         "uncertainty_budget_rows": [
             {"source": "fit_residuals", "distribution": "normal", "standard_uncertainty": "0.02", "dof": "4"},
         ],
         "effective_dof_note": None,
         "uncertainty_statement": None,
         "conformity": None,
+        "conformity_derivation": None,
         "valid_range": "0 to 10",
         "notes": None,
         "dataset_rows": [
@@ -174,6 +183,11 @@ def dummy_context() -> dict:
         "qr_path": "qr.png",
         "chart_path": "chart.png",
         "lab_footer": "Demo Organization",
+        "chapter": "Pressure",
+        "calibration_id": "CAL-0001",
+        "generated_date": "2026-01-01",
+        "calibration_location": "Metrology Lab A",
+        "team_name": "Instrumentation Team",
     }
 
 

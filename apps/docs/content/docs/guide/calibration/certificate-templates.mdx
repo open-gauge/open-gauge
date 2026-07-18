@@ -22,7 +22,9 @@ syntax):
 Every free-text placeholder must go through the `latex` filter — `\VAR{asset_name\|latex}` — which
 escapes characters LaTeX treats specially (`\ { } $ & # ^ _ % ~`). Numeric/pre-formatted fields
 are safe either way; image paths (see below) must **not** be filtered, since they're plain
-filenames, not text to render.
+filenames, not text to render. The same applies to any placeholder documented below as "raw
+LaTeX math" (`coefficient_rows[].name`, `function_formula`) — they contain literal `$...$` math
+syntax and must be used unfiltered, or the escaping would break the math mode.
 
 The rendered `.tex` is compiled to PDF by [Tectonic](https://tectonic-typesetting.github.io/), a
 small self-contained LaTeX engine (not a full TeX Live install) — see
@@ -41,12 +43,20 @@ name, and optionally mark it as that scope's default.
 **Every upload is validated with a dry-run compile** (dummy data) before being saved — a
 template with a LaTeX syntax error or a typo'd placeholder is rejected immediately, with the
 compiler's error message, rather than only failing the next time a real certificate is
-generated. Use the **Preview** button (on an uploaded template, or **Preview built-in**) to see
-a rendered PDF with dummy data at any time.
+generated.
 
 Replacing a template's content isn't an in-place edit — upload it again as a new template and
 promote it to default. The old version stays around (soft-deleted, not default) so past
 certificates that reference it conceptually remain traceable to what generated them.
+
+## Previewing a template
+
+Every template row (and the app's built-in default) shows a small thumbnail of its first page,
+rendered client-side from a **freshly randomized 10-row sample calibration dataset** (a synthetic
+linear fit with realistic noise) generated fresh on every load — a close approximation of what a
+real certificate looks like without needing a real calibration on hand. Click the thumbnail to
+open a full-size, scrollable preview of every page, with a **Download** button to save the
+rendered sample PDF.
 
 ## Placeholder reference
 
@@ -60,8 +70,12 @@ certificates that reference it conceptually remain traceable to what generated t
 | `performer_name` | text | |
 | `performer_signature_path` | image path, optional | The performing user's signature, if set |
 | `calibration_date`, `due_date` | text | Pre-formatted date strings |
-| `version` | integer | |
+| `version` | integer | Also usable as a document "revision number" |
 | `calibration_type` | text | |
+| `chapter` | text | The channel's physical quantity (e.g. `"Pressure"`), or the asset type if there's no channel — useful for document-control-style headers grouping certificates by measurement type |
+| `calibration_id` | text | Short identifier (first 8 chars of the calibration's UUID, uppercased) distinct from `certificate_number` |
+| `generated_date` | text | Today's date (when the certificate is being generated), distinct from `calibration_date` |
+| `qr_path` | image path, optional — QR code linking to the asset |
 
 ### Asset / channel
 
@@ -69,7 +83,7 @@ certificates that reference it conceptually remain traceable to what generated t
 |---|---|
 | `asset_id`, `asset_name`, `asset_manufacturer`, `asset_model`, `asset_serial`, `asset_part_number`, `asset_type_label` | text |
 | `asset_notes` | text, optional |
-| `channel` | object, optional — `channel.id`, `.quantity`, `.unit`, `.min`, `.max`, `.accuracy` |
+| `channel` | object, optional — `channel.id`, `.quantity`, `.unit`, `.min`, `.max`, `.accuracy`, `.range` (pre-formatted "min–max unit"), `.signal` (pre-formatted electrical output range, or `"—"`), `.precision` (sensor's stated measurement uncertainty, or `"—"`), `.resolution` (or `"—"`) |
 
 ### Traceability
 
@@ -79,18 +93,24 @@ certificates that reference it conceptually remain traceable to what generated t
 | `procedure` | object, optional — `.id`, `.name`, `.version`, `.standard_ref` |
 | `reference_asset` | object, optional — `.id`, `.name`, `.manufacturer`, `.model`, `.serial` |
 | `temperature`, `humidity`, `pressure` | text, optional (°C / %RH / Pa) |
+| `calibration_location` | text, optional — name of the location the calibration was performed at, if assigned |
+| `team_name` | text, optional — name of the team that owns the asset, if assigned |
 
 ### Results
 
 | Placeholder | Type |
 |---|---|
-| `coefficient_rows` | list of `{coefficient, term, value}` |
-| `equation` | text, optional |
+| `coefficient_rows` | list of `{coefficient, name, term, value}` — `name` is a human label with a math-mode subscript, e.g. `"Offset ($a_{0}$)"`; since it's raw LaTeX math, reference it as `\VAR{row.name}` **without** the `latex` filter (escaping would mangle the `$`/`_`/`{}`) |
+| `function_formula` | text, optional — the generic (non-numeric) calibration function in LaTeX math syntax, e.g. `"f(x) = a_0 + a_1 x"`; also raw LaTeX math — use `\VAR{function_formula}` unfiltered, typically wrapped in `\[...\]` |
+| `equation` | text, optional — the same function with actual fitted values substituted, e.g. `"y = -0.047 + 1.0004*x"` |
 | `stat_rows` | list of `{label, value}` (R², RMSE, uncertainty, etc.) |
+| `results_summary` | list of `{label, value}` — compact 3-row Max Error / % Full-Scale Error / Expanded Uncertainty table |
+| `error_summary` | object, optional — `.abs_error`, `.fs_error`, `.uncertainty`, each pre-formatted and signed with ± (e.g. `"±0.12 %RH"`) — a 3-column single-row alternative to `results_summary` |
 | `uncertainty_budget_rows` | list of `{source, distribution, standard_uncertainty, dof}` |
 | `effective_dof_note` | text, optional |
 | `uncertainty_statement` | text, optional — full GUM §7.2.4-style sentence |
 | `conformity` | object, optional — `.result_label`, `.specification`, `.decision_rule_label`, `.expanded_uncertainty_line` |
+| `conformity_derivation` | text, optional — narrates max error + expanded uncertainty against the specification and states the pass/fail conclusion (e.g. `"...totals 0.28 %RH, against a specification of ±0.8 (absolute) — the calibration CONFORMS..."`); `None` unless both a conformity assessment and error/uncertainty values exist |
 | `valid_range` | text, optional |
 | `notes` | text, optional |
 
@@ -101,9 +121,31 @@ certificates that reference it conceptually remain traceable to what generated t
 | `dataset_rows` | list of `{index, measured, reference, fit, residual_abs, residual_pct}` |
 | `measured_unit`, `reference_unit` | text |
 | `chart_path` | image path, optional — scatter + fit-curve chart |
-| `qr_path` | image path, optional — links to the asset |
 | `lab_footer` | text, optional — printed in the page footer |
 
-The built-in template (`apps/api/app/templates/certificates/default.tex.jinja` in the repo) is
-the canonical, always-up-to-date example of every placeholder in use — copy it as a starting
-point for a custom template.
+## Example templates in the repo
+
+Two complete, working templates ship in `apps/api/app/templates/certificates/` as reference
+material — both compile as-is and can be uploaded directly to try out:
+
+- **`default.tex.jinja`** — the built-in fallback. The canonical, always-up-to-date example of
+  every placeholder in use.
+- **`example_tables.tex`** — a denser, document-control-style alternative to the built-in
+  default, covering the same content but laid out differently:
+  - A document-control header (doc number, chapter, revision, sensor/calibration IDs, page)
+    instead of a plain letterhead.
+  - Asset & channel information in three columns — a QR code of the asset, then the asset
+    fields grouped two-per-column instead of split across separate label/value columns — plus a
+    channel specification table covering measurement range, signal output range, accuracy,
+    precision, and resolution.
+  - Fitted coefficients shown as a symbolic function (`function_formula`, e.g. `f(x) = a_0 + a_1
+    x`) next to a table naming each coefficient (Offset, Gain, ...) with its value, rather than
+    a single numeric equation.
+  - A three-column Error & Uncertainty summary (Abs. Error / FS Error / Uncertainty) in one row,
+    followed by the GUM explanatory paragraph and a conformity-derivation sentence that states
+    the pass/fail conclusion against the numbers on the page.
+  - A full-width dataset table with a two-row header (column name, then unit) and no chart.
+  - A three-column footer repeated on every page: the preparer's name and signature on the
+    left, a plain ISO/IEC 17025 issuance statement in the center (no conformity badge — the
+    pass/fail conclusion lives in the results section instead), and the asset's team and
+    organization name on the right.

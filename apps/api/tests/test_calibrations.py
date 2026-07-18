@@ -716,3 +716,131 @@ class TestRestoreCalibration:
         r = client.post(f"/api/v1/calibrations/{calibration['id']}/restore")
         assert r.status_code == 403  # HTTPBearer returns 403 when missing
 
+
+# ---------------------------------------------------------------------------
+# GET /calibrations/{id}/certificate-templates and /certificate/download
+# ---------------------------------------------------------------------------
+
+def _superadmin_headers(db: Session) -> dict:
+    user = User(
+        id=uuid.uuid4(),
+        email=f"super_{uuid.uuid4().hex[:8]}@opengauge.test",
+        name="Super Admin",
+        hashed_password=hash_password("Testpass123!"),
+        role=UserRole.superadmin,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+    return {"Authorization": f"Bearer {create_access_token({'sub': str(user.id)})}"}
+
+
+def _upload_global_template(client: TestClient, db: Session, *, name: str = "Global Test Template") -> dict:
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parent.parent / "app" / "templates" / "certificates" / "default.tex.jinja"
+    ).read_text(encoding="utf-8")
+    headers = _superadmin_headers(db)
+    r = client.post(
+        "/api/v1/certificate-templates",
+        files={"file": ("template.tex", source.encode("utf-8"), "text/x-tex")},
+        data={"name": name, "is_default": "false"},
+        headers=headers,
+    )
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+class TestCertificateTemplatesForCalibration:
+    def test_lists_global_templates(
+        self, client: TestClient, auth_headers: dict, db: Session, calibration: dict
+    ) -> None:
+        template = _upload_global_template(client, db)
+        r = client.get(f"/api/v1/calibrations/{calibration['id']}/certificate-templates", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        ids = [t["id"] for t in r.json()]
+        assert template["id"] in ids
+
+    def test_empty_when_no_templates_uploaded(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.get(f"/api/v1/calibrations/{calibration['id']}/certificate-templates", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_unknown_calibration_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.get(f"/api/v1/calibrations/{uuid.uuid4()}/certificate-templates", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_requires_authentication(self, client: TestClient, calibration: dict) -> None:
+        r = client.get(f"/api/v1/calibrations/{calibration['id']}/certificate-templates")
+        assert r.status_code == 403
+
+
+class TestDownloadCertificateWithTemplate:
+    def test_rejects_incomplete_calibration(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        # `calibration` fixture has no poly_coefficients — no fit/results yet.
+        r = client.get(f"/api/v1/calibrations/{calibration['id']}/certificate/download", headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_downloads_pdf_with_default_template(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
+        r = client.get(f"/api/v1/calibrations/{cal['id']}/certificate/download", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.headers["content-type"] == "application/pdf"
+        assert r.content.startswith(b"%PDF-")
+
+    def test_downloads_pdf_with_explicit_template(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        template = _upload_global_template(client, db)
+        cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
+        r = client.get(
+            f"/api/v1/calibrations/{cal['id']}/certificate/download",
+            params={"template_id": template["id"]},
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        assert r.content.startswith(b"%PDF-")
+
+    def test_does_not_overwrite_the_cached_certificate(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        """A one-off template-specific download is an ad-hoc render — it must
+        not touch calibration_file_id, the canonical stored certificate."""
+        template = _upload_global_template(client, db, name="Alt Template")
+        cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
+        before = client.get(f"/api/v1/calibrations/{cal['id']}", headers=auth_headers).json()
+        client.get(
+            f"/api/v1/calibrations/{cal['id']}/certificate/download",
+            params={"template_id": template["id"]},
+            headers=auth_headers,
+        )
+        after = client.get(f"/api/v1/calibrations/{cal['id']}", headers=auth_headers).json()
+        assert before["calibration_file_id"] == after["calibration_file_id"]
+
+    def test_unknown_template_id_returns_404(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
+        r = client.get(
+            f"/api/v1/calibrations/{cal['id']}/certificate/download",
+            params={"template_id": str(uuid.uuid4())},
+            headers=auth_headers,
+        )
+        assert r.status_code == 404
+
+    def test_unknown_calibration_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.get(f"/api/v1/calibrations/{uuid.uuid4()}/certificate/download", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_requires_authentication(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
+        r = client.get(f"/api/v1/calibrations/{cal['id']}/certificate/download")
+        assert r.status_code == 403
+

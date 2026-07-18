@@ -24,6 +24,7 @@
     "katex": "^0.16.11",
     "motion": "^12.42.2",
     "next": "16.2.10",
+    "pdfjs-dist": "^6.1.200",
     "plotly.js-dist-min": "^3.6.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",

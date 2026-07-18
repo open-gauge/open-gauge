@@ -8,8 +8,8 @@ export function baseOptions(): BaseLayoutProps {
       title: (
         <>
           {/* Light mode: dark-text logo; dark mode: light-text logo (matches apps/web's sidebar) */}
-          <Image src="/assets/Logo dark.svg" alt="Open Gauge" width={140} height={28} priority className="block dark:hidden" />
-          <Image src="/assets/Logo light.svg" alt="Open Gauge" width={140} height={28} priority className="hidden dark:block" />
+          <Image src="/assets/Logo dark.png" alt="Open Gauge" width={140} height={28} priority className="block dark:hidden" />
+          <Image src="/assets/Logo light.png" alt="Open Gauge" width={140} height={28} priority className="hidden dark:block" />
         </>
       ),
     },

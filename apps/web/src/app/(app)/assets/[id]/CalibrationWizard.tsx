@@ -695,6 +695,11 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         calibration_date: step1.calibration_date,
         due_date: dueDate.toISOString().slice(0, 10),
         performed_by_name: step1.performed_by_name,
+        // Only tie the calibration to a real user account when "current user" is
+        // selected (not "Other…") — an external/free-text performer isn't a system
+        // user, so there's no signature to look up for them. This is what lets the
+        // certificate's signature-lookup (by performed_by_user_id) find anything.
+        performed_by_user_id: step1.performed_by_other ? null : user.id,
         calibration_type: step1.calibration_type,
         external_lab_name: step1.external_lab_name || null,
         external_lab_certificate_number: step1.external_lab_certificate_number || null,

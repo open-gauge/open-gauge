@@ -269,6 +269,25 @@ export async function getCalibrationCertificateUrl(calId: string): Promise<{ url
   });
 }
 
+export interface CertificateTemplateOption {
+  id: string;
+  name: string;
+}
+
+export async function listCalibrationCertificateTemplates(calId: string): Promise<CertificateTemplateOption[]> {
+  return apiFetch<CertificateTemplateOption[]>(`/api/v1/calibrations/${calId}/certificate-templates`, {
+    headers: tokenHeader(),
+  });
+}
+
+/** Live-generates and downloads the certificate, optionally with a specific template. */
+export async function downloadCalibrationCertificateBlob(calId: string, templateId?: string | null): Promise<Blob> {
+  const qs = templateId ? `?template_id=${encodeURIComponent(templateId)}` : "";
+  return apiBlob(`/api/v1/calibrations/${calId}/certificate/download${qs}`, {
+    headers: tokenHeader(),
+  });
+}
+
 export async function listLocations(): Promise<LocationOption[]> {
   const raw = await apiFetch<{ id: string; name: string; parent_location_id: string | null }[]>(
     `/api/v1/locations?limit=500`,

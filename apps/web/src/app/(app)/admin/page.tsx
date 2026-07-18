@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import type { UserProfile } from "@/types/user";
 import {
   CameraIcon,
@@ -19,7 +20,6 @@ import {
   DashboardIcon,
   AssetRegistryIcon,
   DocumentIcon,
-  DownloadIcon,
   UploadCloudIcon,
   ActivityIcon,
   WarningIcon,
@@ -953,10 +953,6 @@ function OrgsSection() {
 // Certificate templates section
 // ---------------------------------------------------------------------------
 
-function openPdfBlob(blob: Blob): void {
-  window.open(URL.createObjectURL(blob), "_blank");
-}
-
 function CertificateTemplateRow({
   template,
   onUpdated,
@@ -970,7 +966,6 @@ function CertificateTemplateRow({
   const [name, setName] = useState(template.name);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
-  const [previewing, setPreviewing] = useState(false);
 
   async function handleSave() {
     if (!name.trim()) return;
@@ -1004,17 +999,6 @@ function CertificateTemplateRow({
     }
   }
 
-  async function handlePreview() {
-    setPreviewing(true);
-    try {
-      openPdfBlob(await previewCertificateTemplate(template.id));
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed to render preview");
-    } finally {
-      setPreviewing(false);
-    }
-  }
-
   if (editing) {
     return (
       <div className="px-4 py-4 space-y-3 bg-og-surface-alt border-b border-og-border">
@@ -1036,8 +1020,8 @@ function CertificateTemplateRow({
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <DocumentIcon size={14} className="text-gray-400 shrink-0" />
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <PdfThumbnail fetchPdf={() => previewCertificateTemplate(template.id)} title={template.name} />
         <div className="min-w-0">
           <p className="text-sm font-medium text-og-text truncate">{template.name}</p>
           {template.description && <p className="text-xs text-gray-400 truncate">{template.description}</p>}
@@ -1049,10 +1033,6 @@ function CertificateTemplateRow({
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        <button onClick={handlePreview} disabled={previewing}
-          className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-60" title="Preview">
-          <DownloadIcon size={13} />
-        </button>
         {!template.is_default && (
           <button onClick={handleSetDefault} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title="Set as default">
             <CheckIcon size={13} />
@@ -1080,7 +1060,6 @@ function CertificateTemplatesSection({ orgs }: { orgs: Organization[] }) {
   const [uploadDefault, setUploadDefault] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
-  const [previewingBuiltin, setPreviewingBuiltin] = useState(false);
 
   const organizationId = scope === "global" ? undefined : scope;
 
@@ -1111,22 +1090,11 @@ function CertificateTemplatesSection({ orgs }: { orgs: Organization[] }) {
     }
   }
 
-  async function handlePreviewBuiltin() {
-    setPreviewingBuiltin(true);
-    try {
-      openPdfBlob(await previewBuiltinCertificateTemplate());
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed to render preview");
-    } finally {
-      setPreviewingBuiltin(false);
-    }
-  }
-
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
         <p className="text-xs font-semibold text-og-text">Certificate Templates</p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <select value={scope} onChange={(e) => setScope(e.target.value)}
             className="px-2 py-1.5 text-xs rounded-lg border border-og-border-md bg-og-surface text-og-text">
             <option value="global">Global (all organizations)</option>
@@ -1134,10 +1102,10 @@ function CertificateTemplatesSection({ orgs }: { orgs: Organization[] }) {
               <option key={org.id} value={org.id}>{org.name}</option>
             ))}
           </select>
-          <button onClick={handlePreviewBuiltin} disabled={previewingBuiltin}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60">
-            <DownloadIcon size={12} /> {previewingBuiltin ? "Rendering…" : "Preview built-in"}
-          </button>
+          <div className="flex items-center gap-2 pl-3 border-l border-og-border-md">
+            <PdfThumbnail fetchPdf={previewBuiltinCertificateTemplate} title="Built-in default" />
+            <span className="text-xs text-gray-400">Built-in default</span>
+          </div>
         </div>
       </div>
 

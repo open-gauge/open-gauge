@@ -13,13 +13,17 @@ def list_templates(
     db: Session, organization_id: uuid.UUID | None = None, include_global: bool = True
 ) -> list[CertificateTemplate]:
     q = db.query(CertificateTemplate).filter(CertificateTemplate.is_active.is_(True))
-    if organization_id is not None and include_global:
-        q = q.filter(
-            (CertificateTemplate.organization_id == organization_id)
-            | (CertificateTemplate.organization_id.is_(None))
-        )
-    elif organization_id is not None:
-        q = q.filter(CertificateTemplate.organization_id == organization_id)
+    if organization_id is not None:
+        if include_global:
+            q = q.filter(
+                (CertificateTemplate.organization_id == organization_id)
+                | (CertificateTemplate.organization_id.is_(None))
+            )
+        else:
+            q = q.filter(CertificateTemplate.organization_id == organization_id)
+    else:
+        # organization_id=None means "global scope" — not "no filter at all".
+        q = q.filter(CertificateTemplate.organization_id.is_(None))
     return q.order_by(CertificateTemplate.name).all()
 
 

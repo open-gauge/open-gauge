@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   deleteAssetFile,
+  downloadCalibrationCertificateBlob,
   fetchAssetLabelBlob,
   getAssetAuditLogs,
   getAssetCalibrations,
@@ -12,6 +13,7 @@ import {
   getAssetProfile,
   getCalibrationCertificateUrl,
   getCalibrationPoints,
+  listCalibrationCertificateTemplates,
   listLocations,
   listTeams,
   restoreCalibration,
@@ -22,6 +24,7 @@ import {
   uploadAssetFile,
   uploadAssetPicture,
   voidCalibration,
+  type CertificateTemplateOption,
 } from "@/services/asset.service";
 import { useAuth } from "@/lib/auth-context";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
@@ -1531,7 +1534,6 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const [resultView, setResultView] = useState<ResultView>("equation");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [certLoading, setCertLoading] = useState(false);
   const [calLocation, setCalLocation] = useState<LocationItem | null>(null);
   const [deletingCalId, setDeletingCalId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -1711,46 +1713,20 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           </div>
         ) : <div />}
 
-        <div className="flex items-center gap-2">
-          {selectedCal && (
-            <button
-              type="button"
-              disabled={certLoading}
-              onClick={async () => {
-                setCertLoading(true);
-                try {
-                  const { url, filename } = await getCalibrationCertificateUrl(selectedCal.id);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = filename;
-                  a.click();
-                } catch {
-                  alert("Certificate not available yet. Please try again shortly.");
-                } finally {
-                  setCertLoading(false);
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <DownloadIcon size={12} />
-              {certLoading ? "Generating…" : "Download Certificate"}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setWizardOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-          >
-            <PlusIcon size={12} />
-            Add Calibration
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setWizardOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+        >
+          <PlusIcon size={12} />
+          Add Calibration
+        </button>
       </div>
 
       {selectedCal ? (
         <div className="bg-og-surface border border-og-border rounded-xl p-5 space-y-4">
-          {/* Header row — version / date / performed by */}
-          <div className="flex items-start gap-4">
+          {/* Header row — version / date / performed by (left) + certificate download (right) */}
+          <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-mono font-bold text-og-accent">v{selectedCal.calibration_version}</span>
@@ -1764,6 +1740,12 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 </p>
               )}
             </div>
+            <CertificateDownloadButton
+              calibrationId={selectedCal.id}
+              assetTag={profile.asset_id}
+              calibrationVersion={selectedCal.calibration_version}
+              disabled={!selectedCal.poly_coefficients}
+            />
           </div>
 
           {/* Result view: Equation / Coefficients */}
@@ -2165,6 +2147,121 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       )}
     </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Certificate download split button — main button downloads with the
+// currently selected template (the org/global default unless the dropdown
+// picked a specific one); the chevron opens the template picker.
+// ---------------------------------------------------------------------------
+
+function CertificateDownloadButton({
+  calibrationId, assetTag, calibrationVersion, disabled,
+}: {
+  calibrationId: string;
+  assetTag: string;
+  calibrationVersion: number;
+  disabled: boolean;
+}) {
+  const [templates, setTemplates] = useState<CertificateTemplateOption[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSelectedTemplateId(null);
+    listCalibrationCertificateTemplates(calibrationId).then(setTemplates).catch(() => setTemplates([]));
+  }, [calibrationId]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [menuOpen]);
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      if (selectedTemplateId) {
+        const blob = await downloadCalibrationCertificateBlob(calibrationId, selectedTemplateId);
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = `certificate_${assetTag}_v${calibrationVersion}.pdf`;
+        a.click();
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        const { url, filename } = await getCalibrationCertificateUrl(calibrationId);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+      }
+    } catch {
+      alert("Certificate not available yet. Please try again shortly.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div ref={menuRef} className="relative flex items-stretch shrink-0">
+      <button
+        type="button"
+        disabled={disabled || downloading}
+        onClick={handleDownload}
+        title={selectedTemplateId ? `Download using ${templates.find((t) => t.id === selectedTemplateId)?.name ?? "selected template"}` : "Download using the default template"}
+        className="flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-l-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {downloading ? (
+          <span className="inline-block w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+        ) : (
+          <DownloadIcon size={12} />
+        )}
+        {downloading ? "Generating…" : "Download Certificate"}
+      </button>
+      <button
+        type="button"
+        disabled={disabled || downloading}
+        onClick={() => setMenuOpen((v) => !v)}
+        title="Choose certificate template"
+        className="flex items-center px-1.5 py-1.5 text-gray-600 dark:text-gray-300 border border-l-0 border-og-border-md rounded-r-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <ChevronDownIcon size={12} />
+      </button>
+      {menuOpen && (
+        <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-og-surface border border-og-border rounded-lg shadow-lg py-1">
+          <button
+            type="button"
+            onClick={() => { setSelectedTemplateId(null); setMenuOpen(false); }}
+            className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left hover:bg-og-surface-alt transition-colors"
+          >
+            Default template
+            {selectedTemplateId === null && <CheckIcon size={12} className="text-og-accent shrink-0" />}
+          </button>
+          {templates.length > 0 && <div className="my-1 border-t border-og-border" />}
+          {templates.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => { setSelectedTemplateId(t.id); setMenuOpen(false); }}
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left hover:bg-og-surface-alt transition-colors"
+            >
+              <span className="truncate">{t.name}</span>
+              {selectedTemplateId === t.id && <CheckIcon size={12} className="text-og-accent shrink-0" />}
+            </button>
+          ))}
+          {templates.length === 0 && (
+            <p className="px-3 py-1.5 text-xs text-gray-400">No custom templates available</p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

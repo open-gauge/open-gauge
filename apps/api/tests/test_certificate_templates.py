@@ -20,6 +20,10 @@ _BUILTIN_TEMPLATE = (
     Path(__file__).resolve().parent.parent / "app" / "templates" / "certificates" / "default.tex.jinja"
 ).read_text(encoding="utf-8")
 
+_EXAMPLE_TABLES_TEMPLATE = (
+    Path(__file__).resolve().parent.parent / "app" / "templates" / "certificates" / "example_tables.tex"
+).read_text(encoding="utf-8")
+
 _BROKEN_TEMPLATE = r"\documentclass{article}\begin{document}\undefinedcommand{oops}\end{document}"
 
 
@@ -107,6 +111,14 @@ class TestUploadTemplate:
         assert response.status_code == 201, response.text
         assert response.json()["organization_id"] is None
 
+    def test_example_tables_template_uploads_successfully(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        """example_tables.tex — the document-control-header/footer example with
+        a side-by-side dataset table + chart — must pass the same dry-run
+        compile validation as any other uploaded template."""
+        org = _org(db)
+        response = _upload(client, auth_headers, org_id=str(org.id), source=_EXAMPLE_TABLES_TEMPLATE, name="Example Tables")
+        assert response.status_code == 201, response.text
+
     def test_second_default_unsets_first_within_same_scope(self, client: TestClient, auth_headers: dict, db: Session) -> None:
         org = _org(db)
         first = _upload(client, auth_headers, org_id=str(org.id), is_default=True, name="First").json()
@@ -120,6 +132,36 @@ class TestUploadTemplate:
 
 
 class TestListUpdateDeleteTemplate:
+    def test_global_scope_excludes_org_specific_templates(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        """Regression test: listing with no organization_id (the "Global"
+        scope in the admin UI) must return only global templates, not every
+        org's templates mixed in — a query-filter bug previously made
+        organization_id=None behave as "no filter at all"."""
+        org = _org(db)
+        org_scoped = _upload(client, auth_headers, org_id=str(org.id), name="Org Only").json()
+        superadmin = _superadmin(db)
+        global_tpl = _upload(client, _headers_for(superadmin), org_id=None, name="Global Only").json()
+
+        listed = client.get("/api/v1/certificate-templates", headers=auth_headers).json()
+        ids = [t["id"] for t in listed]
+        assert global_tpl["id"] in ids
+        assert org_scoped["id"] not in ids
+
+    def test_org_scope_includes_global_templates(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        org = _org(db)
+        org_scoped = _upload(client, auth_headers, org_id=str(org.id), name="Org Only").json()
+        superadmin = _superadmin(db)
+        global_tpl = _upload(client, _headers_for(superadmin), org_id=None, name="Global Only").json()
+
+        listed = client.get(f"/api/v1/certificate-templates?organization_id={org.id}", headers=auth_headers).json()
+        ids = [t["id"] for t in listed]
+        assert org_scoped["id"] in ids
+        assert global_tpl["id"] in ids
+
     def test_update_metadata(self, client: TestClient, auth_headers: dict, db: Session) -> None:
         org = _org(db)
         created = _upload(client, auth_headers, org_id=str(org.id)).json()
@@ -172,3 +214,19 @@ class TestPreview:
     def test_preview_nonexistent_returns_404(self, client: TestClient, auth_headers: dict) -> None:
         response = client.post(f"/api/v1/certificate-templates/{uuid.uuid4()}/preview", headers=auth_headers)
         assert response.status_code == 404
+
+    def test_preview_uses_a_freshly_randomized_sample_each_time(self, client: TestClient, auth_headers: dict) -> None:
+        """The preview endpoint renders a new random 10-row dataset (+ matching
+        chart) on every call, so two consecutive previews of the same template
+        must not be byte-identical."""
+        first = client.post("/api/v1/certificate-templates/preview-builtin", headers=auth_headers)
+        second = client.post("/api/v1/certificate-templates/preview-builtin", headers=auth_headers)
+        assert first.status_code == 200 and second.status_code == 200
+        assert first.content != second.content
+
+    def test_example_tables_preview_renders_side_by_side_layout(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = _org(db)
+        created = _upload(client, auth_headers, org_id=str(org.id), source=_EXAMPLE_TABLES_TEMPLATE).json()
+        response = client.post(f"/api/v1/certificate-templates/{created['id']}/preview", headers=auth_headers)
+        assert response.status_code == 200, response.text
+        assert response.content.startswith(b"%PDF-")

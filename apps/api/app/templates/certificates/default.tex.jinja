@@ -70,7 +70,7 @@
 \end{minipage}
 
 \vspace{3mm}
-\begin{tabular}{@{}p{28mm}p{55mm}p{28mm}p{\dimexpr\linewidth-111mm\relax}@{}}
+\begin{tabular}{@{}p{32mm}@{}p{47mm}@{}p{32mm}@{}p{\dimexpr\linewidth-111mm\relax}@{}}
 \textbf{\color{oggray}Asset ID} & \VAR{asset_id|latex} & \textbf{\color{oggray}Calibration Date} & \VAR{calibration_date|latex}\\
 \textbf{\color{oggray}Asset Name} & \VAR{asset_name|latex} & \textbf{\color{oggray}Due Date} & \VAR{due_date|latex}\\
 \textbf{\color{oggray}Type} & \VAR{asset_type_label|latex} & \textbf{\color{oggray}Version} & v\VAR{version|latex}\\
@@ -83,7 +83,7 @@
 % ---- Section 1: Asset information ----
 \sectionbar{1. ASSET INFORMATION}
 
-\begin{tabular}{@{}p{28mm}p{55mm}p{28mm}p{\dimexpr\linewidth-111mm\relax}@{}}
+\begin{tabular}{@{}p{32mm}@{}p{47mm}@{}p{32mm}@{}p{\dimexpr\linewidth-111mm\relax}@{}}
 \textbf{\color{oggray}Asset ID} & \VAR{asset_id|latex} & \textbf{\color{oggray}Asset Name} & \VAR{asset_name|latex}\\
 \textbf{\color{oggray}Manufacturer} & \VAR{asset_manufacturer|latex} & \textbf{\color{oggray}Model} & \VAR{asset_model|latex}\\
 \textbf{\color{oggray}Serial Number} & \VAR{asset_serial|latex} & \textbf{\color{oggray}Part Number} & \VAR{asset_part_number|latex}\\
@@ -96,7 +96,7 @@
 \BLOCK{if channel}
 \vspace{3mm}
 {\small\bfseries\color{ogdark}Channel Specification}\\[1mm]
-\begin{tabular}{@{}p{18mm}p{28mm}p{14mm}p{18mm}p{18mm}p{\dimexpr\linewidth-96mm\relax}@{}}
+\begin{tabular}{@{}p{18mm}@{}p{28mm}@{}p{14mm}@{}p{18mm}@{}p{18mm}@{}p{\dimexpr\linewidth-96mm\relax}@{}}
 \toprule
 \textbf{Channel} & \textbf{Quantity} & \textbf{Unit} & \textbf{Min} & \textbf{Max} & \textbf{Accuracy}\\
 \midrule
@@ -108,7 +108,7 @@
 % ---- Section 2: Traceability ----
 \sectionbar{2. TRACEABILITY \& PROCEDURE}
 
-\begin{tabular}{@{}p{32mm}p{58mm}p{32mm}p{\dimexpr\linewidth-122mm\relax}@{}}
+\begin{tabular}{@{}p{32mm}@{}p{58mm}@{}p{32mm}@{}p{\dimexpr\linewidth-122mm\relax}@{}}
 \textbf{\color{oggray}Calibration Type} & \VAR{calibration_type|latex} & \textbf{\color{oggray}External Lab} & \VAR{external_lab_name|latex}\\
 \textbf{\color{oggray}Certificate No.} & \VAR{external_lab_certificate_number|latex} & \textbf{\color{oggray}Performed by} & \VAR{performer_name|latex}\\
 \BLOCK{if procedure}
@@ -120,7 +120,7 @@
 \BLOCK{if reference_asset}
 \vspace{3mm}
 {\small\bfseries\color{ogdark}Reference Standard}\\[1mm]
-\begin{tabular}{@{}p{22mm}p{45mm}p{32mm}p{32mm}p{\dimexpr\linewidth-131mm\relax}@{}}
+\begin{tabular}{@{}p{22mm}@{}p{45mm}@{}p{32mm}@{}p{32mm}@{}p{\dimexpr\linewidth-131mm\relax}@{}}
 \toprule
 \textbf{Asset ID} & \textbf{Name} & \textbf{Manufacturer} & \textbf{Model} & \textbf{Serial No.}\\
 \midrule
@@ -143,7 +143,7 @@
 
 \BLOCK{if coefficient_rows}
 {\small\bfseries\color{ogdark}Polynomial Coefficients}\\[1mm]
-\begin{tabular}{@{}p{20mm}p{20mm}p{60mm}@{}}
+\begin{tabular}{@{}p{24mm}@{}p{20mm}@{}p{56mm}@{}}
 \toprule
 \textbf{Coefficient} & \textbf{Term} & \textbf{Value}\\
 \midrule
@@ -162,7 +162,7 @@
 \BLOCK{if stat_rows}
 \vspace{3mm}
 {\small\bfseries\color{ogdark}Statistical Analysis}\\[1mm]
-\begin{tabular}{@{}p{55mm}p{55mm}@{}}
+\begin{tabular}{@{}p{55mm}@{}p{55mm}@{}}
 \toprule
 \textbf{Metric} & \textbf{Value}\\
 \midrule
@@ -176,7 +176,7 @@
 \BLOCK{if uncertainty_budget_rows}
 \vspace{3mm}
 {\small\bfseries\color{ogdark}Uncertainty Budget}\\[1mm]
-\begin{tabular}{@{}p{48mm}p{28mm}p{45mm}p{20mm}@{}}
+\begin{tabular}{@{}p{48mm}@{}p{28mm}@{}p{45mm}@{}p{20mm}@{}}
 \toprule
 \textbf{Source} & \textbf{Distribution} & \textbf{Std. Uncertainty (u)} & \textbf{dof}\\
 \midrule
@@ -222,7 +222,7 @@ Decision rule applied: \VAR{conformity.decision_rule_label|latex}.\\
 \BLOCK{if dataset_rows}
 \sectionbar{4. DATASET}
 
-\begin{longtable}{@{}p{8mm}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}p{\dimexpr(\linewidth-8mm)/5\relax}@{}}
+\begin{longtable}{@{}p{8mm}@{}p{\dimexpr(\linewidth-8mm)/5\relax}@{}p{\dimexpr(\linewidth-8mm)/5\relax}@{}p{\dimexpr(\linewidth-8mm)/5\relax}@{}p{\dimexpr(\linewidth-8mm)/5\relax}@{}p{\dimexpr(\linewidth-8mm)/5\relax}@{}}
 \toprule
 \textbf{\#} & \textbf{Measured (\VAR{measured_unit|latex})} & \textbf{Reference (\VAR{reference_unit|latex})} & \textbf{Fit Value} & \textbf{Residual (abs)} & \textbf{Residual (\%)}\\
 \midrule

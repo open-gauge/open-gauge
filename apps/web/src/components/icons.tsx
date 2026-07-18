@@ -705,10 +705,14 @@ export function ShieldIcon({ size = 16, className }: IconProps = {}) {
 /** Cloud with upward arrow — drag-and-drop upload zone icon. */
 export function UploadCloudIcon({ size = 16, className }: IconProps = {}) {
   return (
+    // <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+    //   <path d="M10.5 10.5a3 3 0 1 0-5 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    //   <path d="M8 3v7M5.5 5.5 8 3l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    //   <path d="M2 13h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    // </svg>    
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
-      <path d="M10.5 10.5a3 3 0 1 0-5 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M8 3v7M5.5 5.5 8 3l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 13h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M8 1.5v6.5M5 5.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 9v3.5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
