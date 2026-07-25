@@ -12,20 +12,7 @@ import {
   WarningIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/avatar";
-
-const ROLE_LABELS: Record<string, string> = {
-  superadmin: "Super Admin",
-  admin:      "Admin",
-  technician: "Technician",
-  viewer:     "Viewer",
-};
-
-const ROLE_COLORS: Record<string, string> = {
-  superadmin: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  admin:      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  technician: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-  viewer:     "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-};
+import { ROLE_LABELS, ROLE_COLORS } from "@/lib/roles";
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -114,9 +101,6 @@ export default function UserDetailClient() {
                 {ROLE_LABELS[user.role] ?? user.role}
               </span>
             } />
-            {user.teams.length > 0 && (
-              <InfoRow label="Teams" value={user.teams.map((t) => t.name).join(", ")} />
-            )}
             <InfoRow label="Status" value={
               user.is_active
                 ? <span className="text-emerald-600 dark:text-emerald-400">Active</span>

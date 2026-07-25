@@ -15,7 +15,6 @@ import {
   getCalibrationPoints,
   listCalibrationCertificateTemplates,
   listLocations,
-  listTeams,
   restoreCalibration,
   retireAsset,
   updateAsset,
@@ -27,6 +26,8 @@ import {
   type CertificateTemplateOption,
 } from "@/services/asset.service";
 import { useAuth } from "@/lib/auth-context";
+import { listMyOrganizations } from "@/services/organization.service";
+import type { OrganizationListItem } from "@/types/organization";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
 import type { CalibrationPoint, CalibrationRecord } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
@@ -58,7 +59,6 @@ import {
 import { toSI, fromSI } from "@/lib/unit-conversion";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
 import {
-  CameraIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -83,7 +83,7 @@ import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
 import { UserMention } from "@/components/user-mention";
 import { Tooltip } from "@/components/tooltip";
-import { ImagePreviewModal } from "@/components/image-preview-modal";
+import { ImageUploadField } from "@/components/image-upload-field";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { StatRow } from "@/components/stat-row";
 import { ASSET_DOCS_LINKS, CHAN_DOCS_LINKS, STAT_DOCS_LINKS } from "@/lib/docs-links";
@@ -153,7 +153,7 @@ function SpecRow({
   label, value, accent, tooltip, tooltipDocsHref,
 }: {
   label: string;
-  value: string | null | undefined;
+  value: ReactNode;
   accent?: boolean;
   tooltip?: string;
   tooltipDocsHref?: string;
@@ -209,7 +209,6 @@ interface EditChannelForm {
 
 interface EditFormState {
   asset_id: string;
-  owner: string;
   name: string;
   description: string;
   manufacturer: string;
@@ -217,6 +216,7 @@ interface EditFormState {
   serial_number: string;
   manufacturer_part_number: string;
   location_id: string;
+  organization_id: string;
   firmware_version: string;
   power_supply: string;
   power_consumption_w: string;
@@ -245,7 +245,6 @@ function s(v: string | number | null | undefined): string {
 function profileToForm(profile: AssetProfile): EditFormState {
   return {
     asset_id: s(profile.asset_id),
-    owner: s(profile.owner),
     name: s(profile.name),
     description: s(profile.description),
     manufacturer: s(profile.manufacturer),
@@ -253,6 +252,7 @@ function profileToForm(profile: AssetProfile): EditFormState {
     serial_number: s(profile.serial_number),
     manufacturer_part_number: s(profile.manufacturer_part_number),
     location_id: s(profile.location_id),
+    organization_id: s(profile.organization_id),
     firmware_version: s(profile.firmware_version),
     power_supply: s(profile.power_supply),
     power_consumption_w: s(profile.power_consumption_w),
@@ -349,7 +349,6 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
 
   return {
     asset_id: form.asset_id.trim() || undefined,
-    owner: orNull(form.owner),
     name: form.name.trim() || undefined,
     description: orNull(form.description),
     manufacturer: form.manufacturer.trim() || undefined,
@@ -357,6 +356,7 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
     serial_number: orNull(form.serial_number),
     manufacturer_part_number: orNull(form.manufacturer_part_number),
     location_id: orNull(form.location_id),
+    organization_id: orNull(form.organization_id),
     firmware_version: orNull(form.firmware_version),
     power_supply: orNull(form.power_supply),
     power_consumption_w: numOrNull(form.power_consumption_w),
@@ -384,7 +384,6 @@ function validateForm(form: EditFormState): Record<string, string> {
   const errors: Record<string, string> = {};
 
   if (!form.asset_id.trim()) errors.asset_id = "Asset ID is required";
-  if (!form.owner.trim()) errors.owner = "Owner is required";
   if (!form.name.trim()) errors.name = "Name is required";
   if (!form.manufacturer.trim()) errors.manufacturer = "Manufacturer is required";
   if (!form.model.trim()) errors.model = "Model is required";
@@ -952,7 +951,7 @@ function RetireModal({ assetName, onRetire, onClose }: {
 // ---------------------------------------------------------------------------
 
 function OverviewTab({
-  profile, isEditing, form, onChange, errors, locations, teams,
+  profile, isEditing, form, onChange, errors, locations, myOrgs,
 }: {
   profile: AssetProfile;
   isEditing: boolean;
@@ -960,7 +959,7 @@ function OverviewTab({
   onChange: (f: EditFormState) => void;
   errors: Record<string, string>;
   locations: LocationOption[];
-  teams: { id: string; name: string }[];
+  myOrgs: OrganizationListItem[];
 }) {
   const daq = profile.daq_details;
 
@@ -1027,15 +1026,6 @@ function OverviewTab({
               <EditInput label="Model" value={form.model} onChange={set("model")} error={errors.model} required placeholder="e.g. TF53" />
               <EditInput label="Serial number" value={form.serial_number} onChange={set("serial_number")} placeholder="e.g. SN-20240001" />
               <EditInput label="Part number" value={form.manufacturer_part_number} onChange={set("manufacturer_part_number")} placeholder="e.g. 4250041" />
-              <EditSelect
-                label="Owner"
-                value={form.owner}
-                onChange={set("owner")}
-                options={teams.map((t) => ({ value: t.id, label: t.name }))}
-                error={errors.owner}
-                required
-                placeholder="Select team…"
-              />
               <div className="sm:col-span-2">
                 <EditTextArea label="Description" value={form.description} onChange={set("description")} placeholder="Short description of the asset's purpose and context" />
               </div>
@@ -1045,6 +1035,13 @@ function OverviewTab({
           {/* Location */}
           <CollapsibleSection title="Location" forceOpen={isEditing}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <EditSelect
+                label="Organization"
+                value={form.organization_id}
+                onChange={set("organization_id")}
+                options={myOrgs.map((o) => ({ value: o.id, label: o.name }))}
+                placeholder="Select organization…"
+              />
               <EditSelect
                 label="Location"
                 value={form.location_id}
@@ -1154,6 +1151,16 @@ function OverviewTab({
           <h3 className="text-sm font-semibold text-og-text mb-3">General</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
             <SpecRow label="Asset ID" value={profile.asset_id} accent tooltip="Auto-generated, unique human-readable identifier, separate from the asset's internal database id." tooltipDocsHref={ASSET_DOCS_LINKS.asset_id} />
+            <SpecRow
+              label="Organization"
+              value={profile.organization_id && profile.organization_name ? (
+                <Link href={`/organizations/${profile.organization_id}`} className="text-og-accent hover:underline">
+                  {profile.organization_name}
+                </Link>
+              ) : profile.organization_name}
+              tooltip="The organization that owns this asset."
+              tooltipDocsHref={ASSET_DOCS_LINKS.organization}
+            />
             <SpecRow label="Name" value={profile.name} tooltip="What this asset shows as in lists and headers." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
             <SpecRow label="Manufacturer" value={profile.manufacturer} tooltip="The company that made the physical unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
             <SpecRow label="Model" value={profile.model} tooltip="The manufacturer's model designation for the physical unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
@@ -1165,7 +1172,6 @@ function OverviewTab({
 
         <CollapsibleSection title="Location">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-            <SpecRow label="Owner" value={profile.owner_name} tooltip="The team responsible for this asset." tooltipDocsHref={ASSET_DOCS_LINKS.owner} />
             <SpecRow label="Site" value={profile.site_name} tooltip="The top-level site this asset's location belongs to." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
             <SpecRow label="Location" value={profile.location_name} tooltip="Where the asset currently is, picked from the organization's location tree." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
             <SpecRow label="Location code" value={profile.location_code} tooltip="The location's short internal code." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
@@ -2703,7 +2709,7 @@ export default function AssetDetailClient() {
   const id = params.id as string;
   const router = useRouter();
   const { user } = useAuth();
-  const isAdmin = user.is_superuser || user.role === "superadmin" || user.role === "admin";
+  const isAdmin = user.role === "superadmin" || user.role === "admin";
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [profile, setProfile] = useState<AssetProfile | null>(null);
@@ -2721,15 +2727,13 @@ export default function AssetDetailClient() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locations, setLocations] = useState<LocationOption[]>([]);
-  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [myOrgs, setMyOrgs] = useState<OrganizationListItem[]>([]);
   const [retireModalOpen, setRetireModalOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   // Asset picture
-  const pictureInputRef = useRef<HTMLInputElement>(null);
   const [pictureUploading, setPictureUploading] = useState(false);
-  const [pictureModalOpen, setPictureModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -2759,7 +2763,7 @@ export default function AssetDetailClient() {
     setSaveError(null);
     setIsEditing(true);
     listLocations().then(setLocations).catch(() => {});
-    listTeams().then(setTeams).catch(() => {});
+    listMyOrganizations().then(setMyOrgs).catch(() => {});
   }
 
   async function handleRetire(reason?: string) {
@@ -2838,10 +2842,8 @@ export default function AssetDetailClient() {
     }
   }
 
-  async function handlePictureChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !profile) return;
+  async function handlePictureChange(file: File) {
+    if (!profile) return;
     setPictureUploading(true);
     setSaveError(null);
     try {
@@ -2928,15 +2930,6 @@ export default function AssetDetailClient() {
         />
       )}
 
-      {pictureModalOpen && profile.picture_url && (
-        <ImagePreviewModal
-          src={profile.picture_url}
-          alt={profile.name}
-          title={profile.name}
-          onClose={() => setPictureModalOpen(false)}
-        />
-      )}
-
       {!profile.is_active && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-5 py-3 flex items-center gap-3">
           <WarningIcon size={16} className="text-red-500 shrink-0" />
@@ -2960,52 +2953,24 @@ export default function AssetDetailClient() {
       <div className="bg-og-surface border border-og-border rounded-xl p-6">
         <div className="flex items-start justify-between gap-4">
           {/* Picture */}
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => profile.picture_url && setPictureModalOpen(true)}
-              disabled={!profile.picture_url}
-              className="w-20 h-20 rounded-full overflow-hidden bg-og-surface-alt border border-og-border flex items-center justify-center disabled:cursor-default"
-            >
-              {profile.picture_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.picture_url} alt={profile.name} className="w-full h-full object-cover" />
-              ) : (
+          <ImageUploadField
+            imageUrl={profile.picture_url}
+            alt={profile.name}
+            editable={isEditing}
+            uploading={pictureUploading}
+            onUpload={handlePictureChange}
+            onRemove={handlePictureRemove}
+            size={80}
+          >
+            {profile.picture_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.picture_url} alt={profile.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-og-surface-alt border border-og-border flex items-center justify-center">
                 <ImageIcon size={28} className="text-gray-300" />
-              )}
-            </button>
-            {isEditing && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => pictureInputRef.current?.click()}
-                  disabled={pictureUploading}
-                  title="Change picture"
-                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-og-action hover:bg-og-action-dark text-white flex items-center justify-center shadow-sm transition-colors disabled:opacity-60"
-                >
-                  <CameraIcon size={13} />
-                </button>
-                {profile.picture_url && (
-                  <button
-                    type="button"
-                    onClick={handlePictureRemove}
-                    disabled={pictureUploading}
-                    title="Remove picture"
-                    className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-sm transition-colors disabled:opacity-60"
-                  >
-                    <TrashIcon size={13} />
-                  </button>
-                )}
-                <input
-                  ref={pictureInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePictureChange}
-                />
-              </>
+              </div>
             )}
-          </div>
+          </ImageUploadField>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
@@ -3226,7 +3191,7 @@ export default function AssetDetailClient() {
               onChange={handleFormChange}
               errors={editErrors}
               locations={locations}
-              teams={teams}
+              myOrgs={myOrgs}
             />
           )}
           {activeTab === "health" && (

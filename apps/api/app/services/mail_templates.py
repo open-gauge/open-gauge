@@ -99,3 +99,41 @@ def render_calibration_reminder_email(asset_name: str, asset_id: str, due_date: 
     """
     text = f"{asset_name} ({asset_id}) {status_text.replace('<strong>', '').replace('</strong>', '')}."
     return subject, _wrap(body), text
+
+
+def render_organization_join_request_email(org_name: str, requester_name: str, requester_email: str, org_url: str) -> tuple[str, str, str]:
+    subject = f"{requester_name} requested to join {org_name}"
+    body = f"""
+    <h1 style="font-size:18px;color:{_TEXT};margin:0 0 12px;">New join request</h1>
+    <p style="font-size:14px;color:{_TEXT};line-height:1.5;">
+      <strong>{requester_name}</strong> ({requester_email}) has requested to join <strong>{org_name}</strong>.
+    </p>
+    <p style="margin:20px 0;">
+      <a href="{org_url}" style="background:{_ACCENT};color:#fff;text-decoration:none;
+        padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;">Review request</a>
+    </p>
+    """
+    text = f"{requester_name} ({requester_email}) has requested to join {org_name}.\nReview it here: {org_url}"
+    return subject, _wrap(body), text
+
+
+def render_organization_join_decided_email(org_name: str, approved: bool, org_url: str) -> tuple[str, str, str]:
+    if approved:
+        subject = f"You've joined {org_name}"
+        headline = "Request approved"
+        message = f"Your request to join <strong>{org_name}</strong> was approved. You're now a member."
+    else:
+        subject = f"Your request to join {org_name} was declined"
+        headline = "Request declined"
+        message = f"Your request to join <strong>{org_name}</strong> was declined."
+
+    body = f"""
+    <h1 style="font-size:18px;color:{_TEXT};margin:0 0 12px;">{headline}</h1>
+    <p style="font-size:14px;color:{_TEXT};line-height:1.5;">{message}</p>
+    <p style="margin:20px 0;">
+      <a href="{org_url}" style="background:{_ACCENT};color:#fff;text-decoration:none;
+        padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;">View organization</a>
+    </p>
+    """
+    text = f"{message.replace('<strong>', '').replace('</strong>', '')}\n{org_url}"
+    return subject, _wrap(body), text

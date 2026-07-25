@@ -30,10 +30,10 @@ export const CHAN_DOCS_LINKS: Record<string, string> = {
 // General asset fields — apps/docs/content/docs/guide/sensors/asset-registry.mdx
 export const ASSET_DOCS_LINKS: Record<string, string> = {
   asset_id: "/docs/guide/sensors/asset-registry#asset-id",
+  organization: "/docs/guide/sensors/asset-registry#organization",
   identity: "/docs/guide/sensors/asset-registry#identity",
   part_number: "/docs/guide/sensors/asset-registry#part-number",
   description: "/docs/guide/sensors/asset-registry#description",
-  owner: "/docs/guide/sensors/asset-registry#owner",
   location: "/docs/guide/sensors/asset-registry#location",
   dimensions_weight: "/docs/guide/sensors/asset-registry#dimensions-weight",
   mounting_type: "/docs/guide/sensors/asset-registry#mounting-type",

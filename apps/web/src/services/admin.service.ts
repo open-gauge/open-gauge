@@ -14,24 +14,12 @@ export interface AdminStats {
   calibrations: number;
   users: number;
   organizations: number;
-  teams: number;
 }
 
 export interface AdminSystem {
   uptime_seconds: number;
   db_status: "ok" | "error";
   api_version: string;
-}
-
-export interface Organization {
-  id: string;
-  name: string;
-  description: string | null;
-  logo_file_id: string | null;
-  logo_url: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
@@ -66,57 +54,12 @@ export async function getUserById(id: string): Promise<UserProfile> {
 
 export async function updateAdminUser(
   userId: string,
-  body: { role?: string; organization_id?: string | null; is_active?: boolean; is_verified?: boolean },
+  body: { role?: string; is_active?: boolean; is_verified?: boolean },
 ): Promise<UserProfile> {
   return apiFetch<UserProfile>(`/api/v1/users/${userId}`, {
     method: "PUT",
     headers: { ...tokenHeader(), "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
-}
-
-export async function listOrganizations(): Promise<Organization[]> {
-  return apiFetch<Organization[]>("/api/v1/organizations", { headers: tokenHeader() });
-}
-
-export async function createOrganization(body: { name: string; description?: string }): Promise<Organization> {
-  return apiFetch<Organization>("/api/v1/organizations", {
-    method: "POST",
-    headers: { ...tokenHeader(), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-export async function updateOrganization(
-  orgId: string,
-  body: { name?: string; description?: string },
-): Promise<Organization> {
-  return apiFetch<Organization>(`/api/v1/organizations/${orgId}`, {
-    method: "PUT",
-    headers: { ...tokenHeader(), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-export async function deleteOrganization(orgId: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/organizations/${orgId}`, {
-    method: "DELETE",
-    headers: tokenHeader(),
-  });
-}
-
-export async function uploadOrgLogo(orgId: string, file: File): Promise<Organization> {
-  const form = new FormData();
-  form.append("file", file);
-  return apiUpload<Organization>(`/api/v1/organizations/${orgId}/logo`, form, {
-    headers: tokenHeader(),
-  });
-}
-
-export async function deleteOrgLogo(orgId: string): Promise<Organization> {
-  return apiFetch<Organization>(`/api/v1/organizations/${orgId}/logo`, {
-    method: "DELETE",
-    headers: tokenHeader(),
   });
 }
 
@@ -179,42 +122,6 @@ export async function previewCertificateTemplate(templateId: string): Promise<Bl
 
 export async function previewBuiltinCertificateTemplate(): Promise<Blob> {
   return apiBlobPost("/api/v1/certificate-templates/preview-builtin", {}, { headers: tokenHeader() });
-}
-
-export interface AdminTeam {
-  id: string;
-  name: string;
-  description: string | null;
-}
-
-export async function listOrgTeams(orgId: string): Promise<AdminTeam[]> {
-  return apiFetch<AdminTeam[]>(`/api/v1/teams?org_id=${orgId}`, { headers: tokenHeader() });
-}
-
-export async function createOrgTeam(orgId: string, body: { name: string; description?: string }): Promise<AdminTeam> {
-  return apiFetch<AdminTeam>("/api/v1/teams", {
-    method: "POST",
-    headers: { ...tokenHeader(), "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, organization_id: orgId }),
-  });
-}
-
-export async function updateOrgTeam(
-  teamId: string,
-  body: { name?: string; description?: string },
-): Promise<AdminTeam> {
-  return apiFetch<AdminTeam>(`/api/v1/teams/${teamId}`, {
-    method: "PUT",
-    headers: { ...tokenHeader(), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-export async function deleteOrgTeam(teamId: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/teams/${teamId}`, {
-    method: "DELETE",
-    headers: tokenHeader(),
-  });
 }
 
 // ---------------------------------------------------------------------------

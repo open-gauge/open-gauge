@@ -8,6 +8,7 @@ import type * as PageTree from "fumadocs-core/page-tree";
 import {
   ActivityIcon,
   AssetRegistryIcon,
+  BuildingIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   DashboardIcon,
@@ -31,6 +32,7 @@ const WORKSPACE_NAV: NavItem[] = [
   { href: "/assets",       label: "Asset Registry",   icon: <AssetRegistryIcon size={15} /> },
   { href: "/sites",        label: "Locations",        icon: <MapPinIcon size={15} /> },
   { href: "/procedures",    label: "Procedures",       icon: <ProceduresIcon size={15} /> },
+  { href: "/organizations", label: "Organizations",    icon: <BuildingIcon size={15} /> },
   { href: "/activity",     label: "Activity",         icon: <ActivityIcon size={15} /> },
 ];
 

@@ -296,7 +296,7 @@ class TestValidateImportZip:
 
 
 class TestImportWithOverrides:
-    def test_import_applies_location_and_owner_overrides(
+    def test_import_applies_location_override(
         self, client: TestClient, auth_headers: dict, populated_asset: dict
     ) -> None:
         org = client.post(
@@ -307,11 +307,6 @@ class TestImportWithOverrides:
             json={"organization_id": org["id"], "name": "Lab A", "location_type": "laboratory"},
             headers=auth_headers,
         ).json()
-        team = client.post(
-            "/api/v1/teams",
-            json={"name": "Cal Team", "organization_id": org["id"]},
-            headers=auth_headers,
-        ).json()
 
         zip_bytes = _export_zip(client, auth_headers, populated_asset["id"])
         zip_bytes = _rewrite_asset_id(zip_bytes, populated_asset["asset_id"], make_asset_id())
@@ -319,7 +314,7 @@ class TestImportWithOverrides:
         r = client.post(
             "/api/v1/assets/import",
             files={"file": ("export.zip", zip_bytes, "application/zip")},
-            data={"location_id": location["id"], "owner": team["id"]},
+            data={"location_id": location["id"]},
             headers=auth_headers,
         )
         assert r.status_code == 200, r.text
@@ -330,9 +325,8 @@ class TestImportWithOverrides:
             f"/api/v1/assets/{result['new_asset_pk']}", headers=auth_headers
         ).json()
         assert new_asset["location_id"] == location["id"]
-        assert new_asset["owner"] == team["id"]
 
-    def test_import_without_overrides_leaves_location_and_owner_null(
+    def test_import_without_overrides_leaves_location_null(
         self, client: TestClient, auth_headers: dict, populated_asset: dict
     ) -> None:
         zip_bytes = _export_zip(client, auth_headers, populated_asset["id"])
@@ -347,4 +341,3 @@ class TestImportWithOverrides:
             f"/api/v1/assets/{result['new_asset_pk']}", headers=auth_headers
         ).json()
         assert new_asset["location_id"] is None
-        assert new_asset["owner"] is None

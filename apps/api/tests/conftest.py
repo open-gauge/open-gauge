@@ -77,7 +77,6 @@ def test_user(db: Session) -> User:
         hashed_password=hash_password("Testpass123!"),
         role=UserRole.admin,
         is_active=True,
-        is_superuser=False,
     )
     db.add(user)
     db.flush()

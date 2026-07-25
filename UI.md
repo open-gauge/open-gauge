@@ -164,6 +164,46 @@ const INPUT_ERR  = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
 ---
 
+## Image Upload Field
+
+Circular picture with click-to-preview and, in edit mode, two overlaid round buttons (upload /
+remove). Used for any editable picture field — asset picture, organization logo, user profile
+picture — via the shared `ImageUploadField` component (`@/components/image-upload-field`), which
+owns the interactive chrome (clickable circle, preview modal, overlaid buttons, hidden file input)
+while the caller supplies the visual content as `children` (a plain `<img>`+fallback-icon block,
+or `Avatar` for initials-based fallback):
+
+```tsx
+<ImageUploadField
+  imageUrl={profile.picture_url}
+  alt={profile.name}
+  editable={isEditing}       // show overlaid camera/trash buttons
+  uploading={pictureUploading}
+  onUpload={(file) => handlePictureChange(file)}
+  onRemove={handlePictureRemove}
+  size={80}
+>
+  {profile.picture_url ? (
+    <img src={profile.picture_url} alt={profile.name} className="w-full h-full object-cover" />
+  ) : (
+    <div className="w-full h-full bg-og-surface-alt border border-og-border flex items-center justify-center">
+      <ImageIcon size={28} className="text-gray-300" />
+    </div>
+  )}
+</ImageUploadField>
+```
+
+- The circle is always clickable when an image is present — clicking opens `ImagePreviewModal`.
+- The overlaid camera button (`-bottom-1 -right-1`, `bg-og-action`) and trash button
+  (`-bottom-1 -left-1`, `bg-red-500`, only rendered when an image exists) only appear when
+  `editable` is true — outside of edit mode the field is view/preview only.
+- `size` must match between the `ImageUploadField` wrapper and whatever `children` renders (e.g.
+  `Avatar`'s own `size` prop), since the wrapper clips to a circle of that exact size.
+
+**Rule: never build a bespoke picture-upload UI — use `ImageUploadField`.**
+
+---
+
 ## Color Rules (Summary)
 
 | Use case | Token |
@@ -200,3 +240,4 @@ const INPUT_ERR  = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 - Show empty/null fields in detail views — skip them entirely
 - Define inline SVG icons — add to `icons.tsx` and import
 - Use `bg-white`, `bg-gray-50`, `border-gray-100`, `border-gray-200` for structural UI
+- Build a bespoke picture-upload UI — use the shared `ImageUploadField` component

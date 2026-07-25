@@ -1,27 +1,16 @@
 {
   "generatedAt": "2026-07-13T09:00:00.000Z",
   "demoUserId": "ca260218-3b80-445d-9468-c2dedfcc49b2",
-  "organization": {
-    "id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
-    "name": "Meridian Calibration Labs",
-    "description": "Independent metrology and instrumentation calibration laboratory serving industrial process customers.",
-    "is_active": true,
-    "created_at": "2024-01-13T09:00:00.000Z",
-    "updated_at": "2026-06-13T09:00:00.000Z"
-  },
   "users": [
     {
       "id": "ca260218-3b80-445d-9468-c2dedfcc49b2",
       "email": "jordan.avery@meridiancal.example",
       "name": "Jordan Avery",
       "role": "superadmin",
-      "teams": [],
       "is_active": true,
-      "is_superuser": true,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2025-09-13T09:00:00.000Z",
       "updated_at": "2026-07-13T09:00:00.000Z"
     },
@@ -30,18 +19,10 @@
       "email": "priya.natarajan@meridiancal.example",
       "name": "Priya Natarajan",
       "role": "admin",
-      "teams": [
-        {
-          "id": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
-          "name": "Metrology Lab"
-        }
-      ],
       "is_active": true,
-      "is_superuser": false,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2024-10-13T09:00:00.000Z",
       "updated_at": "2026-05-13T09:00:00.000Z"
     },
@@ -50,18 +31,10 @@
       "email": "marcus.webb@meridiancal.example",
       "name": "Marcus Webb",
       "role": "technician",
-      "teams": [
-        {
-          "id": "878a760c-d479-4fa9-981d-fd3be9b21191",
-          "name": "Instrumentation & Controls"
-        }
-      ],
       "is_active": true,
-      "is_superuser": false,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2025-02-13T09:00:00.000Z",
       "updated_at": "2026-02-13T09:00:00.000Z"
     },
@@ -70,18 +43,10 @@
       "email": "elena.kowalski@meridiancal.example",
       "name": "Elena Kowalski",
       "role": "technician",
-      "teams": [
-        {
-          "id": "878a760c-d479-4fa9-981d-fd3be9b21191",
-          "name": "Instrumentation & Controls"
-        }
-      ],
       "is_active": true,
-      "is_superuser": false,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2024-09-13T09:00:00.000Z",
       "updated_at": "2026-04-13T09:00:00.000Z"
     },
@@ -90,18 +55,10 @@
       "email": "tomasz.riedel@meridiancal.example",
       "name": "Tomasz Riedel",
       "role": "technician",
-      "teams": [
-        {
-          "id": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
-          "name": "Metrology Lab"
-        }
-      ],
       "is_active": true,
-      "is_superuser": false,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2025-11-13T09:00:00.000Z",
       "updated_at": "2026-02-13T09:00:00.000Z"
     },
@@ -110,18 +67,10 @@
       "email": "sarah.lindqvist@meridiancal.example",
       "name": "Sarah Lindqvist",
       "role": "admin",
-      "teams": [
-        {
-          "id": "bcfe20d4-a531-4b72-b89b-6a9498c00129",
-          "name": "Quality Assurance"
-        }
-      ],
       "is_active": true,
-      "is_superuser": false,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2024-04-13T09:00:00.000Z",
       "updated_at": "2026-03-13T09:00:00.000Z"
     },
@@ -130,18 +79,10 @@
       "email": "david.chen@meridiancal.example",
       "name": "David Chen",
       "role": "viewer",
-      "teams": [
-        {
-          "id": "a50fa5d1-5011-44ac-a8a0-de252c589eb1",
-          "name": "Process Engineering"
-        }
-      ],
       "is_active": true,
-      "is_superuser": false,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2025-08-13T09:00:00.000Z",
       "updated_at": "2026-06-13T09:00:00.000Z"
     },
@@ -150,57 +91,12 @@
       "email": "amara.okafor@meridiancal.example",
       "name": "Amara Okafor",
       "role": "viewer",
-      "teams": [
-        {
-          "id": "e83a5beb-e16c-4459-bf95-0f2e4e57fdb6",
-          "name": "Reliability & Maintenance"
-        }
-      ],
       "is_active": true,
-      "is_superuser": false,
       "is_verified": true,
       "profile_picture_id": null,
       "profile_picture_url": null,
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
       "created_at": "2024-05-13T09:00:00.000Z",
       "updated_at": "2026-04-13T09:00:00.000Z"
-    }
-  ],
-  "teams": [
-    {
-      "id": "878a760c-d479-4fa9-981d-fd3be9b21191",
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
-      "name": "Instrumentation & Controls",
-      "description": "Owns field sensors, transmitters, and process instrumentation.",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
-      "name": "Metrology Lab",
-      "description": "Reference standards, primary calibration lab, and traceability chain.",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "a50fa5d1-5011-44ac-a8a0-de252c589eb1",
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
-      "name": "Process Engineering",
-      "description": "Process design support and instrumentation specification.",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "e83a5beb-e16c-4459-bf95-0f2e4e57fdb6",
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
-      "name": "Reliability & Maintenance",
-      "description": "Preventive maintenance and asset reliability programs.",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "bcfe20d4-a531-4b72-b89b-6a9498c00129",
-      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
-      "name": "Quality Assurance",
-      "description": "ISO/IEC 17025 quality system, audits, and document control.",
-      "created_at": "2024-03-13T09:00:00.000Z"
     }
   ],
   "locations": [
@@ -1202,7 +1098,6 @@
       "price_eur": 6209.49,
       "purchase_date": "2024-09-13",
       "warranty_expiry_date": "2027-04-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1269,8 +1164,8 @@
       "calibration_count": 6,
       "subtype": "temperature",
       "technology": "thermistor NTC",
-      "owner_name": null,
-      "calibration_health_score": 92
+      "calibration_health_score": 92,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "65c18cc0-56dd-41f2-83e5-2de3606c173a",
@@ -1301,7 +1196,6 @@
       "price_eur": 3192.6,
       "purchase_date": "2024-09-13",
       "warranty_expiry_date": "2027-09-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1368,8 +1262,8 @@
       "calibration_count": 5,
       "subtype": "temperature",
       "technology": "infrared",
-      "owner_name": null,
-      "calibration_health_score": 62
+      "calibration_health_score": 62,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "1714904b-b89f-4a1d-9c58-1f8b665aa523",
@@ -1400,7 +1294,6 @@
       "price_eur": 5596.69,
       "purchase_date": "2024-01-13",
       "warranty_expiry_date": "2027-04-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1467,8 +1360,8 @@
       "calibration_count": 5,
       "subtype": "temperature",
       "technology": "infrared",
-      "owner_name": null,
-      "calibration_health_score": 54
+      "calibration_health_score": 54,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "f9affe0f-2cb7-4c62-bbfe-8e55b985851d",
@@ -1499,7 +1392,6 @@
       "price_eur": 1251.22,
       "purchase_date": "2025-05-13",
       "warranty_expiry_date": "2027-12-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1566,8 +1458,8 @@
       "calibration_count": 5,
       "subtype": "temperature",
       "technology": "RTD PT100",
-      "owner_name": null,
-      "calibration_health_score": 45
+      "calibration_health_score": 45,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "14155b1e-7303-47b5-8264-4b95fff6a810",
@@ -1598,7 +1490,6 @@
       "price_eur": 4288.85,
       "purchase_date": "2025-05-13",
       "warranty_expiry_date": "2028-01-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1665,8 +1556,8 @@
       "calibration_count": 3,
       "subtype": "temperature",
       "technology": "infrared",
-      "owner_name": null,
-      "calibration_health_score": 94
+      "calibration_health_score": 94,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "0ab7c435-c5da-44a5-8029-135a6e0d4709",
@@ -1697,7 +1588,6 @@
       "price_eur": 6229.86,
       "purchase_date": "2024-04-13",
       "warranty_expiry_date": "2027-05-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1764,8 +1654,8 @@
       "calibration_count": 6,
       "subtype": "pressure",
       "technology": "strain gauge",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "89768f30-7035-4b29-a39b-95fa06f12ae0",
@@ -1796,7 +1686,6 @@
       "price_eur": 471.16,
       "purchase_date": "2025-05-13",
       "warranty_expiry_date": "2027-08-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1863,8 +1752,8 @@
       "calibration_count": 5,
       "subtype": "pressure",
       "technology": "capacitive",
-      "owner_name": null,
-      "calibration_health_score": 92
+      "calibration_health_score": 92,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "bbc3d9b3-bfca-4d66-8052-8369b569c1d7",
@@ -1895,7 +1784,6 @@
       "price_eur": 7209.04,
       "purchase_date": "2024-03-13",
       "warranty_expiry_date": "2028-05-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -1962,8 +1850,8 @@
       "calibration_count": 5,
       "subtype": "pressure",
       "technology": "piezoresistive",
-      "owner_name": null,
-      "calibration_health_score": 97
+      "calibration_health_score": 97,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "4f63bf2e-1401-48ce-90e3-d60218030a6d",
@@ -1994,7 +1882,6 @@
       "price_eur": 795.63,
       "purchase_date": "2025-01-13",
       "warranty_expiry_date": "2027-03-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2061,8 +1948,8 @@
       "calibration_count": 3,
       "subtype": "pressure",
       "technology": "capacitive",
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "61d1b7d0-60f5-4540-a3a3-5eaaf7a181bf",
@@ -2093,7 +1980,6 @@
       "price_eur": 6260.61,
       "purchase_date": "2024-01-13",
       "warranty_expiry_date": "2028-06-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2160,8 +2046,8 @@
       "calibration_count": 6,
       "subtype": "pressure",
       "technology": "capacitive",
-      "owner_name": null,
-      "calibration_health_score": 82
+      "calibration_health_score": 82,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "ec224ff0-dc83-4579-a3f0-0a014a704adc",
@@ -2192,7 +2078,6 @@
       "price_eur": 3144.61,
       "purchase_date": "2024-05-13",
       "warranty_expiry_date": "2028-03-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2259,8 +2144,8 @@
       "calibration_count": 5,
       "subtype": "flow",
       "technology": "electromagnetic",
-      "owner_name": null,
-      "calibration_health_score": 65
+      "calibration_health_score": 65,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "0a664cdd-fed2-4b81-9c2f-e5577677f463",
@@ -2291,7 +2176,6 @@
       "price_eur": 2781.45,
       "purchase_date": "2024-10-13",
       "warranty_expiry_date": "2028-07-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2358,8 +2242,8 @@
       "calibration_count": 5,
       "subtype": "flow",
       "technology": "differential pressure",
-      "owner_name": null,
-      "calibration_health_score": 59
+      "calibration_health_score": 59,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "c92e50a5-53d2-4f95-9131-9eb3cc5bd038",
@@ -2390,7 +2274,6 @@
       "price_eur": 5511.21,
       "purchase_date": "2024-10-13",
       "warranty_expiry_date": "2027-09-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2457,8 +2340,8 @@
       "calibration_count": 5,
       "subtype": "flow",
       "technology": "electromagnetic",
-      "owner_name": null,
-      "calibration_health_score": 71
+      "calibration_health_score": 71,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "b21ed30b-fd6e-4e07-9ea6-e4edb25357b1",
@@ -2489,7 +2372,6 @@
       "price_eur": 4226.1,
       "purchase_date": "2024-03-13",
       "warranty_expiry_date": "2027-05-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2556,8 +2438,8 @@
       "calibration_count": 5,
       "subtype": "humidity",
       "technology": "thermal conductivity",
-      "owner_name": null,
-      "calibration_health_score": 39
+      "calibration_health_score": 39,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "586dda62-320c-4ee2-aa71-89fb08106cf7",
@@ -2588,7 +2470,6 @@
       "price_eur": 7810.5,
       "purchase_date": "2025-04-13",
       "warranty_expiry_date": "2027-02-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2655,8 +2536,8 @@
       "calibration_count": 6,
       "subtype": "humidity",
       "technology": "thermal conductivity",
-      "owner_name": null,
-      "calibration_health_score": 89
+      "calibration_health_score": 89,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "ed84b537-c07d-45f5-84e4-362bf57af542",
@@ -2687,7 +2568,6 @@
       "price_eur": 3691.19,
       "purchase_date": "2024-10-13",
       "warranty_expiry_date": "2027-10-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2754,8 +2634,8 @@
       "calibration_count": 6,
       "subtype": "humidity",
       "technology": "capacitive",
-      "owner_name": null,
-      "calibration_health_score": 90
+      "calibration_health_score": 90,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "571f240c-3d13-4808-a0a2-2f8db348313c",
@@ -2786,7 +2666,6 @@
       "price_eur": 6321.43,
       "purchase_date": "2025-01-13",
       "warranty_expiry_date": "2028-04-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2853,8 +2732,8 @@
       "calibration_count": 6,
       "subtype": "level",
       "technology": "capacitive",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "2c5f0a44-5dee-43f3-98b7-a1183da81804",
@@ -2885,7 +2764,6 @@
       "price_eur": 2566.35,
       "purchase_date": "2025-05-13",
       "warranty_expiry_date": "2028-02-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -2952,8 +2830,8 @@
       "calibration_count": 3,
       "subtype": "level",
       "technology": "hydrostatic",
-      "owner_name": null,
-      "calibration_health_score": 76
+      "calibration_health_score": 76,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "31517e4e-f7e5-4f41-9aae-dc2ffc640eb0",
@@ -2984,7 +2862,6 @@
       "price_eur": 2709.5,
       "purchase_date": "2024-09-13",
       "warranty_expiry_date": "2027-04-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3051,8 +2928,8 @@
       "calibration_count": 5,
       "subtype": "level",
       "technology": "ultrasonic",
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "86afecb6-ecd6-4f36-8358-21feb61156a8",
@@ -3083,7 +2960,6 @@
       "price_eur": 5793.6,
       "purchase_date": "2024-10-13",
       "warranty_expiry_date": "2027-01-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3150,8 +3026,8 @@
       "calibration_count": 5,
       "subtype": "force",
       "technology": "piezoelectric",
-      "owner_name": null,
-      "calibration_health_score": 44
+      "calibration_health_score": 44,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "4ba4d10b-10b2-4333-aefb-f0f22ceceee3",
@@ -3182,7 +3058,6 @@
       "price_eur": 7026.01,
       "purchase_date": "2024-01-13",
       "warranty_expiry_date": "2027-06-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3249,8 +3124,8 @@
       "calibration_count": 6,
       "subtype": "force",
       "technology": "piezoelectric",
-      "owner_name": null,
-      "calibration_health_score": 49
+      "calibration_health_score": 49,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "e1db5564-bae1-42d9-8c82-5a117d85ff3a",
@@ -3281,7 +3156,6 @@
       "price_eur": 4770.53,
       "purchase_date": "2024-01-13",
       "warranty_expiry_date": "2028-02-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3348,8 +3222,8 @@
       "calibration_count": 6,
       "subtype": "force",
       "technology": "strain gauge",
-      "owner_name": null,
-      "calibration_health_score": 49
+      "calibration_health_score": 49,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "9cedcbd2-7da6-4ddf-8407-c4ce3767a314",
@@ -3380,7 +3254,6 @@
       "price_eur": 5607.3,
       "purchase_date": "2024-10-13",
       "warranty_expiry_date": "2027-07-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3447,8 +3320,8 @@
       "calibration_count": 3,
       "subtype": "torque",
       "technology": "strain gauge",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "3e91e962-ba29-4849-b6d3-88db1af09ba6",
@@ -3479,7 +3352,6 @@
       "price_eur": 934.59,
       "purchase_date": "2025-03-13",
       "warranty_expiry_date": "2027-10-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3546,8 +3418,8 @@
       "calibration_count": 5,
       "subtype": "torque",
       "technology": "strain gauge",
-      "owner_name": null,
-      "calibration_health_score": 100
+      "calibration_health_score": 100,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "6f3ec0df-78e0-4023-9a05-4b0498146aa1",
@@ -3578,7 +3450,6 @@
       "price_eur": 674.98,
       "purchase_date": "2024-02-13",
       "warranty_expiry_date": "2027-06-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3645,8 +3516,8 @@
       "calibration_count": 5,
       "subtype": "mass",
       "technology": "strain gauge",
-      "owner_name": null,
-      "calibration_health_score": 82
+      "calibration_health_score": 82,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "418b9287-a255-4616-b8f3-c4a7de6babfa",
@@ -3677,7 +3548,6 @@
       "price_eur": 6493.55,
       "purchase_date": "2025-02-13",
       "warranty_expiry_date": "2027-12-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3744,8 +3614,8 @@
       "calibration_count": 6,
       "subtype": "mass",
       "technology": "strain gauge",
-      "owner_name": null,
-      "calibration_health_score": 100
+      "calibration_health_score": 100,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "69519882-e1df-4d2f-8247-185d3ae50f86",
@@ -3776,7 +3646,6 @@
       "price_eur": 6651.27,
       "purchase_date": "2024-11-13",
       "warranty_expiry_date": "2028-05-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3843,8 +3712,8 @@
       "calibration_count": 6,
       "subtype": "voltage",
       "technology": "resistive divider",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "9794260a-cf08-4e80-9021-9d33e0e3a65e",
@@ -3875,7 +3744,6 @@
       "price_eur": 6569.39,
       "purchase_date": "2024-07-13",
       "warranty_expiry_date": "2027-08-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -3942,8 +3810,8 @@
       "calibration_count": 5,
       "subtype": "voltage",
       "technology": "isolation amplifier",
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "2eb5957e-b718-4a62-bb15-46edcf960e81",
@@ -3974,7 +3842,6 @@
       "price_eur": 7724.98,
       "purchase_date": "2025-02-13",
       "warranty_expiry_date": "2027-03-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4041,8 +3908,8 @@
       "calibration_count": 3,
       "subtype": "current",
       "technology": "shunt resistor",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "0f3d89a1-a5ed-4159-90fa-737815a24f47",
@@ -4073,7 +3940,6 @@
       "price_eur": 2273.17,
       "purchase_date": "2024-04-13",
       "warranty_expiry_date": "2028-04-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4140,8 +4006,8 @@
       "calibration_count": 6,
       "subtype": "current",
       "technology": "shunt resistor",
-      "owner_name": null,
-      "calibration_health_score": 40
+      "calibration_health_score": 40,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "8d104be5-3611-4c77-b6e9-66efe7d738cb",
@@ -4172,7 +4038,6 @@
       "price_eur": 867.1,
       "purchase_date": "2024-02-13",
       "warranty_expiry_date": "2028-05-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4239,8 +4104,8 @@
       "calibration_count": 5,
       "subtype": "resistance",
       "technology": "four wire",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "bb462aad-0adc-4a2d-93bd-3fd1077ef62a",
@@ -4271,7 +4136,6 @@
       "price_eur": 7681.65,
       "purchase_date": "2024-04-13",
       "warranty_expiry_date": "2028-01-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4338,8 +4202,8 @@
       "calibration_count": 5,
       "subtype": "resistance",
       "technology": "four wire",
-      "owner_name": null,
-      "calibration_health_score": 97
+      "calibration_health_score": 97,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "e62ebf14-9ba6-4f93-972b-63ad7c44fb12",
@@ -4370,7 +4234,6 @@
       "price_eur": 7345.87,
       "purchase_date": "2024-03-13",
       "warranty_expiry_date": "2027-06-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": false,
       "retired_at": "2026-06-09T09:00:00.000Z",
       "retired_reason": "Decommissioned — replaced by newer instrumentation.",
@@ -4437,8 +4300,8 @@
       "calibration_count": 6,
       "subtype": "displacement",
       "technology": "LVDT",
-      "owner_name": null,
-      "calibration_health_score": 97
+      "calibration_health_score": 97,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "ba649e15-ca44-4962-a97b-38778df3d4e2",
@@ -4469,7 +4332,6 @@
       "price_eur": 3475.89,
       "purchase_date": "2024-06-13",
       "warranty_expiry_date": "2027-05-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": false,
       "retired_at": "2026-06-05T09:00:00.000Z",
       "retired_reason": "Decommissioned — replaced by newer instrumentation.",
@@ -4536,8 +4398,8 @@
       "calibration_count": 5,
       "subtype": "displacement",
       "technology": "LVDT",
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "7d85249e-b089-4b73-a40d-d22e5e073336",
@@ -4568,7 +4430,6 @@
       "price_eur": 717.3,
       "purchase_date": "2024-12-13",
       "warranty_expiry_date": "2027-12-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4635,8 +4496,8 @@
       "calibration_count": 5,
       "subtype": "displacement",
       "technology": "laser",
-      "owner_name": null,
-      "calibration_health_score": 97
+      "calibration_health_score": 97,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "3bfea18b-5466-4a8b-887f-6c9d04794a0d",
@@ -4667,7 +4528,6 @@
       "price_eur": 5710.34,
       "purchase_date": "2025-05-13",
       "warranty_expiry_date": "2028-04-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4734,8 +4594,8 @@
       "calibration_count": 5,
       "subtype": "angle",
       "technology": "magnetic encoder",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "a6c8c937-7f99-4e87-9bdd-786df380b805",
@@ -4766,7 +4626,6 @@
       "price_eur": 6426.5,
       "purchase_date": "2024-01-13",
       "warranty_expiry_date": "2027-03-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4833,8 +4692,8 @@
       "calibration_count": 6,
       "subtype": "angle",
       "technology": "magnetic encoder",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "5da23468-6a2f-4eef-a4e2-292678a2d22c",
@@ -4865,7 +4724,6 @@
       "price_eur": 4467.77,
       "purchase_date": "2024-07-13",
       "warranty_expiry_date": "2027-08-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -4932,8 +4790,8 @@
       "calibration_count": 3,
       "subtype": "angular_velocity",
       "technology": "hall effect",
-      "owner_name": null,
-      "calibration_health_score": 98
+      "calibration_health_score": 98,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "993faa03-33e5-49f6-9cc1-27bc61b15339",
@@ -4964,7 +4822,6 @@
       "price_eur": 6334.96,
       "purchase_date": "2024-10-13",
       "warranty_expiry_date": "2028-03-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5031,8 +4888,8 @@
       "calibration_count": 5,
       "subtype": "angular_velocity",
       "technology": "tachometer",
-      "owner_name": null,
-      "calibration_health_score": 97
+      "calibration_health_score": 97,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "cd27a82c-dffa-47b2-b49e-8944fee4dffd",
@@ -5063,7 +4920,6 @@
       "price_eur": 6360.12,
       "purchase_date": "2024-10-13",
       "warranty_expiry_date": "2028-05-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5130,8 +4986,8 @@
       "calibration_count": 5,
       "subtype": "acceleration",
       "technology": "MEMS",
-      "owner_name": null,
-      "calibration_health_score": 64
+      "calibration_health_score": 64,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "d0792c8f-ec4e-4d81-b059-7bd4fc5cc52a",
@@ -5162,7 +5018,6 @@
       "price_eur": 2302.35,
       "purchase_date": "2024-02-13",
       "warranty_expiry_date": "2027-02-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5229,8 +5084,8 @@
       "calibration_count": 3,
       "subtype": "acceleration",
       "technology": "piezoelectric",
-      "owner_name": null,
-      "calibration_health_score": 100
+      "calibration_health_score": 100,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "f3ad63e2-4a5e-4c5a-b1f3-1334abc75fc1",
@@ -5261,7 +5116,6 @@
       "price_eur": 3730.99,
       "purchase_date": "2025-01-13",
       "warranty_expiry_date": "2027-09-13",
-      "owner": "878a760c-d479-4fa9-981d-fd3be9b21191",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5328,8 +5182,8 @@
       "calibration_count": 6,
       "subtype": "acceleration",
       "technology": "piezoresistive",
-      "owner_name": null,
-      "calibration_health_score": 52
+      "calibration_health_score": 52,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "03e4cce4-9195-4d21-ab57-999a024da961",
@@ -5360,7 +5214,6 @@
       "price_eur": 1635.2,
       "purchase_date": "2025-02-13",
       "warranty_expiry_date": "2027-09-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5413,8 +5266,8 @@
       "calibration_count": 5,
       "subtype": "USB",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "22f0f481-5de9-482a-9d27-31bc0f5ae6b9",
@@ -5445,7 +5298,6 @@
       "price_eur": 4842.88,
       "purchase_date": "2024-03-13",
       "warranty_expiry_date": "2027-05-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5498,8 +5350,8 @@
       "calibration_count": 6,
       "subtype": "Wireless",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "dacc3131-56f5-44fe-8b07-16aaab2f45fd",
@@ -5530,7 +5382,6 @@
       "price_eur": 5479.3,
       "purchase_date": "2024-06-13",
       "warranty_expiry_date": "2027-08-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5583,8 +5434,8 @@
       "calibration_count": 5,
       "subtype": "Ethernet",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "5e7dbffa-a217-4343-bb80-15e62ae39156",
@@ -5615,7 +5466,6 @@
       "price_eur": 5126.47,
       "purchase_date": "2024-12-13",
       "warranty_expiry_date": "2027-12-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5668,8 +5518,8 @@
       "calibration_count": 6,
       "subtype": "PCIe",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "ba9750c9-92ba-42fa-a47c-2e980732b26b",
@@ -5700,7 +5550,6 @@
       "price_eur": 5264.29,
       "purchase_date": "2024-02-13",
       "warranty_expiry_date": "2027-03-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5753,8 +5602,8 @@
       "calibration_count": 6,
       "subtype": "PXI",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "5da95e3b-dcf2-4af3-be53-90e1eb2cf491",
@@ -5785,7 +5634,6 @@
       "price_eur": 2378.31,
       "purchase_date": "2025-05-13",
       "warranty_expiry_date": "2027-06-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5838,8 +5686,8 @@
       "calibration_count": 5,
       "subtype": "USB",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "13e287f5-5697-4054-bac7-e0548a617944",
@@ -5870,7 +5718,6 @@
       "price_eur": 5777.38,
       "purchase_date": "2025-04-13",
       "warranty_expiry_date": "2027-03-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -5923,8 +5770,8 @@
       "calibration_count": 3,
       "subtype": "Wireless",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     },
     {
       "id": "b788b866-0b8b-459b-8996-aea630ee4f1e",
@@ -5955,7 +5802,6 @@
       "price_eur": 3876.5,
       "purchase_date": "2025-05-13",
       "warranty_expiry_date": "2027-02-13",
-      "owner": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
       "is_active": true,
       "retired_at": null,
       "retired_reason": null,
@@ -6008,8 +5854,8 @@
       "calibration_count": 6,
       "subtype": "Ethernet",
       "technology": null,
-      "owner_name": null,
-      "calibration_health_score": 99
+      "calibration_health_score": 99,
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32"
     }
   ],
   "calibrations": [
@@ -47732,81 +47578,6 @@
       "created_at": "2024-03-13T09:00:00.000Z"
     },
     {
-      "id": "c1fdd4fe-23ea-4341-ace4-48531c828883",
-      "actor_id": "ca260218-3b80-445d-9468-c2dedfcc49b2",
-      "actor_email": "jordan.avery@meridiancal.example",
-      "actor_name": "Jordan Avery",
-      "actor_role": "superadmin",
-      "action": "team.created",
-      "entity_type": "team",
-      "entity_id": "878a760c-d479-4fa9-981d-fd3be9b21191",
-      "entity_asset_id": null,
-      "before_state": null,
-      "after_state": null,
-      "ip_address": "10.20.169.41",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "67052831-e21f-4637-aa15-03e942ccd8a4",
-      "actor_id": "ca260218-3b80-445d-9468-c2dedfcc49b2",
-      "actor_email": "jordan.avery@meridiancal.example",
-      "actor_name": "Jordan Avery",
-      "actor_role": "superadmin",
-      "action": "team.created",
-      "entity_type": "team",
-      "entity_id": "e3802202-e72d-4ae3-a9a5-5a42228a0065",
-      "entity_asset_id": null,
-      "before_state": null,
-      "after_state": null,
-      "ip_address": "10.20.14.35",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "d0e2d8bf-24b3-462a-8637-708e2648f21c",
-      "actor_id": "ca260218-3b80-445d-9468-c2dedfcc49b2",
-      "actor_email": "jordan.avery@meridiancal.example",
-      "actor_name": "Jordan Avery",
-      "actor_role": "superadmin",
-      "action": "team.created",
-      "entity_type": "team",
-      "entity_id": "a50fa5d1-5011-44ac-a8a0-de252c589eb1",
-      "entity_asset_id": null,
-      "before_state": null,
-      "after_state": null,
-      "ip_address": "10.20.242.201",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "ed6f1916-48ec-48ae-9ab4-3a11f88f5b65",
-      "actor_id": "ca260218-3b80-445d-9468-c2dedfcc49b2",
-      "actor_email": "jordan.avery@meridiancal.example",
-      "actor_name": "Jordan Avery",
-      "actor_role": "superadmin",
-      "action": "team.created",
-      "entity_type": "team",
-      "entity_id": "e83a5beb-e16c-4459-bf95-0f2e4e57fdb6",
-      "entity_asset_id": null,
-      "before_state": null,
-      "after_state": null,
-      "ip_address": "10.20.74.197",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
-      "id": "5a8787d8-5629-4f58-a02a-8e157d7386c5",
-      "actor_id": "ca260218-3b80-445d-9468-c2dedfcc49b2",
-      "actor_email": "jordan.avery@meridiancal.example",
-      "actor_name": "Jordan Avery",
-      "actor_role": "superadmin",
-      "action": "team.created",
-      "entity_type": "team",
-      "entity_id": "bcfe20d4-a531-4b72-b89b-6a9498c00129",
-      "entity_asset_id": null,
-      "before_state": null,
-      "after_state": null,
-      "ip_address": "10.20.29.236",
-      "created_at": "2024-03-13T09:00:00.000Z"
-    },
-    {
       "id": "df67d0d8-c7ea-4ff3-a1bf-054c43a2e093",
       "actor_id": "9efe7c27-6556-49c7-bb0f-643edf284b71",
       "actor_email": "tomasz.riedel@meridiancal.example",
@@ -67683,5 +67454,98 @@
     "enabled": true,
     "calibration_reminder_days": 30,
     "updated_at": "2026-05-13T09:00:00.000Z"
-  }
+  },
+  "organizations": [
+    {
+      "id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "name": "Meridian Calibration Labs",
+      "full_name": null,
+      "description": "Independent metrology and instrumentation calibration laboratory serving industrial process customers.",
+      "website": null,
+      "location_id": null,
+      "email": null,
+      "phone": null,
+      "private": false,
+      "logo_file_id": null,
+      "is_active": true,
+      "created_at": "2024-01-13T09:00:00.000Z",
+      "updated_at": "2026-06-13T09:00:00.000Z"
+    }
+  ],
+  "organizationMembers": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "ca260218-3b80-445d-9468-c2dedfcc49b2",
+      "role": "admin",
+      "active": true,
+      "created_at": "2025-09-13T09:00:00.000Z",
+      "updated_at": "2025-09-13T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "14e94b5a-d255-4395-9e1a-fa1a3ab90ec4",
+      "role": "admin",
+      "active": true,
+      "created_at": "2024-10-13T09:00:00.000Z",
+      "updated_at": "2024-10-13T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "e8d76946-7a62-4734-aba7-dfb4c7ae4a98",
+      "role": "member",
+      "active": true,
+      "created_at": "2025-02-13T09:00:00.000Z",
+      "updated_at": "2025-02-13T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "45437ba5-4a17-4f24-b8cc-fb2cfeaee8ec",
+      "role": "member",
+      "active": true,
+      "created_at": "2024-09-13T09:00:00.000Z",
+      "updated_at": "2024-09-13T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "9efe7c27-6556-49c7-bb0f-643edf284b71",
+      "role": "member",
+      "active": true,
+      "created_at": "2025-11-13T09:00:00.000Z",
+      "updated_at": "2025-11-13T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "d80058d5-96b3-4cd1-afef-f622ba72cace",
+      "role": "admin",
+      "active": true,
+      "created_at": "2024-04-13T09:00:00.000Z",
+      "updated_at": "2024-04-13T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "4d3905da-cdd3-4af4-a0f9-8ad4c8264c72",
+      "role": "member",
+      "active": true,
+      "created_at": "2025-08-13T09:00:00.000Z",
+      "updated_at": "2025-08-13T09:00:00.000Z"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "organization_id": "62ee805c-1db1-410c-8ce8-c5fee0adbf32",
+      "user_id": "b2af2924-b95c-4052-92e2-1db25846aba6",
+      "role": "member",
+      "active": true,
+      "created_at": "2024-05-13T09:00:00.000Z",
+      "updated_at": "2024-05-13T09:00:00.000Z"
+    }
+  ],
+  "joinRequests": [],
+  "notifications": []
 }

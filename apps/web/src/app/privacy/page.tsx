@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         To create an account you provide a name, email address, and password (stored as a salted hash,
         never in plain text). If email notifications are configured by an administrator, your email
         address is used to send account verification and password-reset links, and — for technicians and
-        team members — calibration due-date reminders.
+        admins in your organization — calibration due-date reminders.
       </p>
 
       <h2>3. Email delivery</h2>

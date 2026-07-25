@@ -8,13 +8,12 @@ from sqlalchemy.orm import Session
 
 from ...core.config import settings
 from ...core.database import SessionLocal, get_db
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import require_admin, require_superadmin
 from ...models.asset import Asset
 from ...models.calibration import Calibration
 from ...models.calibration_method import Procedure
 from ...models.email_settings import EmailSettings
 from ...models.organization import Organization
-from ...models.team import Team
 from ...models.user import User
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import email_settings as email_settings_repo
@@ -27,30 +26,12 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 _START_TIME = time.time()
 
 
-def _require_admin(user: User) -> None:
-    if not (user.is_superuser or user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-
-
-def _require_superuser(user: User) -> None:
-    """Stricter than _require_admin — the database export/import/reset endpoints
-    can destroy every organization's data, not just the current one. Matches
-    the `is_superuser or role == "superadmin"` convention used elsewhere for
-    this same privilege tier (e.g. certificate_templates.py's global-template
-    gate) — the `superadmin` role is documented as "system-level
-    administration across organizations", so it must grant this too, not just
-    the separate `is_superuser` bootstrap flag."""
-    if not (user.is_superuser or user.role == "superadmin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superadmin only")
-
-
 class AdminStatsResponse(BaseModel):
     assets: int
     procedures: int
     calibrations: int
     users: int
     organizations: int
-    teams: int
 
 
 class AdminSystemResponse(BaseModel):
@@ -62,10 +43,8 @@ class AdminSystemResponse(BaseModel):
 @router.get("/stats", response_model=AdminStatsResponse)
 def get_admin_stats(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> AdminStatsResponse:
-    _require_admin(current_user)
-
     def count(model, *filters):  # type: ignore[no-untyped-def]
         q = db.query(func.count(model.id))
         for f in filters:
@@ -78,16 +57,14 @@ def get_admin_stats(
         calibrations=count(Calibration, Calibration.is_active.is_(True)),
         users=count(User, User.is_active.is_(True)),
         organizations=count(Organization, Organization.is_active.is_(True)),
-        teams=count(Team, Team.is_active.is_(True)),
     )
 
 
 @router.get("/system", response_model=AdminSystemResponse)
 def get_admin_system(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> AdminSystemResponse:
-    _require_admin(current_user)
     try:
         db.execute(text("SELECT 1"))
         db_ok = True
@@ -124,12 +101,11 @@ def _email_settings_response(settings: EmailSettings) -> EmailSettingsResponse:
 @router.get("/email-settings", response_model=EmailSettingsResponse)
 def get_email_settings(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> EmailSettingsResponse:
     """Get the SMTP configuration used for registration and calibration
     notification emails. The password is never returned — only whether one is
     set. Admin/superadmin only."""
-    _require_admin(current_user)
     settings = email_settings_repo.get_or_create(db)
     return _email_settings_response(settings)
 
@@ -139,12 +115,11 @@ def update_email_settings(
     body: EmailSettingsUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> EmailSettingsResponse:
     """Update the SMTP configuration. Fields are partial: omit smtp_password to
     leave it unchanged, or pass an empty string to clear it. Admin/superadmin
     only; the change is recorded in the audit log with the password redacted."""
-    _require_admin(current_user)
     settings = email_settings_repo.get_or_create(db)
 
     before = _email_settings_response(settings).model_dump(mode="json")
@@ -176,11 +151,10 @@ def update_email_settings(
 def send_test_email(
     body: TestEmailRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> None:
     """Send a one-off test email using the currently saved SMTP settings, to
     verify the configuration works before relying on it. Admin/superadmin only."""
-    _require_admin(current_user)
     settings = email_settings_repo.get_or_create(db)
     try:
         mail_svc.send_test_email(settings, body.to_email)
@@ -216,12 +190,11 @@ def _log_database_action(db: Session, request: Request, current_user: User, acti
 def export_database(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_superadmin),
 ) -> Response:
     """Download a full PostgreSQL dump (pg_dump custom format) of the entire
     database — every organization, asset, calibration, and user. Superadmin
     only. Restore it with POST /admin/database/import."""
-    _require_superuser(current_user)
     try:
         dump = db_admin_svc.export_database()
     except db_admin_svc.DatabaseAdminError as e:
@@ -241,13 +214,12 @@ def export_database(
 def import_database(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_superadmin),
     file: UploadFile = File(...),
 ) -> None:
     """Restore a pg_dump custom-format archive produced by GET /admin/database/export,
     replacing every table's contents. Superadmin only — this overwrites the
     entire database, including the account making the request."""
-    _require_superuser(current_user)
     dump = file.file.read()
     actor_email = current_user.email
     ip_address = request.client.host if request.client else None
@@ -287,14 +259,13 @@ def reset_database(
     body: DatabaseResetRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_superadmin),
 ) -> None:
     """Delete every organization, asset, location, procedure, calibration, and
     non-superadmin user, and empty file storage — resetting the app to the
     same clean state a fresh install starts in. Superadmin accounts (including
     the caller) are preserved. Superadmin only; requires the literal
     confirmation string "RESET" to guard against an accidental call."""
-    _require_superuser(current_user)
     if body.confirm != "RESET":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

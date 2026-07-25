@@ -15,9 +15,11 @@ import {
   XIcon,
 } from "@/components/icons";
 import ThemeToggle from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 import { Avatar } from "@/components/avatar";
 import { listAssets } from "@/services/asset.service";
 import type { AssetListItem } from "@/types/asset";
+import { ROLE_LABELS as ROLE_LABEL } from "@/lib/roles";
 
 interface DocSearchResult {
   id: string;
@@ -25,13 +27,6 @@ interface DocSearchResult {
   type: "page" | "heading" | "text";
   content: string;
 }
-
-const ROLE_LABEL: Record<string, string> = {
-  superadmin: "Super Admin",
-  admin:      "Admin",
-  technician: "Technician",
-  viewer:     "Viewer",
-};
 
 export default function TopBar() {
   const { user, logout } = useAuth();
@@ -272,6 +267,8 @@ export default function TopBar() {
           )}
         </div>
 
+        <NotificationBell />
+
         <ThemeToggle />
 
         {/* Avatar + dropdown */}
@@ -299,7 +296,7 @@ export default function TopBar() {
               </div>
 
               <div className="py-1">
-                {(user.is_superuser || user.role === "superadmin" || user.role === "admin") && (
+                {(user.role === "superadmin" || user.role === "admin") && (
                   <button
                     type="button"
                     onClick={() => { setAvatarOpen(false); router.push("/admin"); }}

@@ -27,7 +27,7 @@ class Asset(Base):
     serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     manufacturer_part_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     location_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True, index=True)
-    owner: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True)
     datasheet_file_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     datasheet_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     firmware_version: Mapped[str | None] = mapped_column(String(100), nullable=True)

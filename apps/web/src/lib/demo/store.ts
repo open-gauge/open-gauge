@@ -24,24 +24,81 @@ import type { LocationItem } from "@/types/location";
 import type { Procedure } from "@/types/procedure";
 import type { StoredFile } from "@/types/stored_file";
 import type { UserProfile, UserSignature } from "@/types/user";
-import type { EmailSettings, Organization } from "@/services/admin.service";
-import type { Team } from "@/services/user.service";
+import type { EmailSettings } from "@/services/admin.service";
+import type {
+  EligibleUser,
+  Organization,
+  OrganizationJoinRequest,
+  OrganizationListItem,
+  OrganizationMember,
+  OrgRole,
+} from "@/types/organization";
+import type { Notification } from "@/types/notification";
 
 // ---------------------------------------------------------------------------
 // Fixture shape (widened by resolveJsonModule) -> strongly-typed store shape
 // ---------------------------------------------------------------------------
 
-interface StoredTeam extends Omit<Team, "is_member"> {
-  organization_id: string;
+/** Raw organization row as stored — the viewer-relative fields on the
+ * `Organization` API type (is_member/my_role/can_manage/asset_count/
+ * member_count/location_name/logo_url) are computed per-request, mirroring
+ * apps/api/app/api/v1/organizations.py's _build_org_response. */
+interface StoredOrganization {
+  id: string;
+  name: string;
+  full_name: string | null;
+  description: string | null;
+  website: string | null;
+  location_id: string | null;
+  email: string | null;
+  phone: string | null;
+  private: boolean;
+  logo_file_id: string | null;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+interface StoredOrgMember {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: OrgRole;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface StoredJoinRequest {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  updated_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
+}
+
+interface StoredNotification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface DemoState {
   generatedAt: string;
   demoUserId: string;
-  organization: Organization;
+  organizations: StoredOrganization[];
+  organizationMembers: StoredOrgMember[];
+  joinRequests: StoredJoinRequest[];
   users: UserProfile[];
-  teams: StoredTeam[];
   locations: LocationItem[];
   procedures: Procedure[];
   assets: AssetProfile[];
@@ -52,8 +109,9 @@ interface DemoState {
   healthSnapshots: Record<string, AssetHealthResponse>;
   emailSettings: EmailSettings;
   // Optional: absent in the committed fixture (added after it was generated), so every
-  // accessor below must tolerate `signatures` being undefined at runtime.
+  // accessor below must tolerate `signatures`/`notifications` being undefined at runtime.
   signatures?: Record<string, UserSignature>;
+  notifications?: StoredNotification[];
 }
 
 const FIXTURE = rawFixture as unknown as DemoState;
@@ -123,6 +181,11 @@ function locationById(id: string | null): LocationItem | undefined {
   return getState().locations.find((l) => l.id === id);
 }
 
+function organizationNameById(id: string | null): string | null {
+  if (!id) return null;
+  return getState().organizations.find((o) => o.id === id)?.name ?? null;
+}
+
 function resolveLocationPath(locationId: string | null): { siteName: string | null; locationName: string | null } {
   if (!locationId) return { siteName: null, locationName: null };
   const path: string[] = [];
@@ -133,11 +196,6 @@ function resolveLocationPath(locationId: string | null): { siteName: string | nu
   }
   path.reverse();
   return { siteName: path[0] ?? null, locationName: path[path.length - 1] ?? null };
-}
-
-function teamNameById(teamId: string | null): string | null {
-  if (!teamId) return null;
-  return getState().teams.find((t) => t.id === teamId)?.name ?? null;
 }
 
 const DUE_SOON_WINDOW_DAYS = 30;
@@ -172,9 +230,9 @@ export function recomputeAssetDerived(asset: AssetProfile): AssetProfile {
   asset.location_description = loc?.description ?? null;
   asset.location_latitude = loc?.latitude ?? null;
   asset.location_longitude = loc?.longitude ?? null;
-  asset.owner_name = teamNameById(asset.owner);
   asset.subtype = asset.asset_type === "sensor" ? (asset.sensor_channels[0]?.physical_quantity ?? null) : (asset.daq_details?.daq_type ?? null);
   asset.technology = asset.asset_type === "sensor" ? (asset.sensor_channels[0]?.technology ?? null) : null;
+  asset.organization_name = organizationNameById(asset.organization_id);
 
   const snapshot = getState().healthSnapshots[asset.id];
   asset.calibration_health_score = snapshot?.overview ? Math.round(snapshot.overview.health_score) : null;
@@ -224,6 +282,7 @@ function toListItem(asset: AssetProfile): AssetListItem {
 export interface ListAssetsFilter {
   isActive?: boolean;
   locationId?: string;
+  organizationId?: string;
   includeDescendants?: boolean;
   limit?: number;
 }
@@ -256,6 +315,7 @@ export function listAssets(filter: ListAssetsFilter = {}): AssetListItem[] {
     const ids = filter.includeDescendants ? descendantLocationIds(filter.locationId) : new Set([filter.locationId]);
     assets = assets.filter((a) => a.location_id !== null && ids.has(a.location_id));
   }
+  if (filter.organizationId) assets = assets.filter((a) => a.organization_id === filter.organizationId);
   assets = [...assets].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
   if (filter.limit !== undefined) assets = assets.slice(0, filter.limit);
   return assets.map(toListItem);
@@ -292,10 +352,6 @@ export function retireAsset(id: string, reason?: string): AssetProfile | undefin
   recomputeAssetDerived(asset);
   persist();
   return asset;
-}
-
-export function listTeamsLite(): { id: string; name: string }[] {
-  return getState().teams.map((t) => ({ id: t.id, name: t.name }));
 }
 
 // ---------------------------------------------------------------------------
@@ -525,96 +581,334 @@ export function setUserSignature(userId: string, signature: UserSignature | null
 }
 
 // ---------------------------------------------------------------------------
-// Organizations / teams
+// Organizations
 // ---------------------------------------------------------------------------
+//
+// Demo mode has exactly one real "current user" (getDemoUser()), so every
+// viewer-relative field below (is_member/my_role/can_manage, and the private-
+// org redaction) is computed relative to that one identity — there's no need
+// to thread a viewer id through, unlike the real multi-user backend.
 
-export function getOrganization(): Organization {
-  return getState().organization;
+function membershipFor(orgId: string, userId: string): StoredOrgMember | undefined {
+  return getState().organizationMembers.find((m) => m.organization_id === orgId && m.user_id === userId);
 }
 
-export function listOrganizations(): Organization[] {
-  return [getState().organization];
+function isOrgAdmin(org: StoredOrganization, userId: string): boolean {
+  const user = getState().users.find((u) => u.id === userId);
+  if (user?.role === "superadmin") return true;
+  const m = membershipFor(org.id, userId);
+  return !!(m && m.active && m.role === "admin");
 }
 
-export function updateOrganization(patch: Partial<Organization>): Organization {
-  const org = getState().organization;
+function isOrgMember(org: StoredOrganization, userId: string): boolean {
+  const user = getState().users.find((u) => u.id === userId);
+  if (user?.role === "superadmin") return true;
+  const m = membershipFor(org.id, userId);
+  return !!(m && m.active);
+}
+
+export function countActiveAdmins(orgId: string): number {
+  return getState().organizationMembers.filter((m) => m.organization_id === orgId && m.active && m.role === "admin").length;
+}
+
+function isLastAdmin(org: StoredOrganization, userId: string): boolean {
+  const m = membershipFor(org.id, userId);
+  if (!m || !m.active || m.role !== "admin") return false;
+  return countActiveAdmins(org.id) <= 1;
+}
+
+function countAssetsForOrg(orgId: string): number {
+  return getState().assets.filter((a) => a.organization_id === orgId && a.is_active).length;
+}
+
+function countMembersForOrg(orgId: string): number {
+  return getState().organizationMembers.filter((m) => m.organization_id === orgId && m.active).length;
+}
+
+function buildOrgListItem(org: StoredOrganization, userId: string): OrganizationListItem {
+  const member = isOrgMember(org, userId);
+  const membership = membershipFor(org.id, userId);
+  return {
+    id: org.id, name: org.name, private: org.private, logo_url: org.private ? null : orgLogoUrl(org),
+    is_member: member,
+    my_role: membership && membership.active ? membership.role : null,
+    is_last_admin: isLastAdmin(org, userId),
+    has_pending_join_request: !member && hasPendingJoinRequest(org.id, userId),
+    member_count: member ? countMembersForOrg(org.id) : null,
+  };
+}
+
+// Demo mode has no presigned-URL storage backend — the "logo_url" is just
+// whatever blob URL the upload handler stashed alongside logo_file_id.
+const orgLogoUrls = new Map<string, string>();
+function orgLogoUrl(org: StoredOrganization): string | null {
+  return org.logo_file_id ? (orgLogoUrls.get(org.id) ?? null) : null;
+}
+
+function buildOrgResponse(org: StoredOrganization, userId: string): Organization {
+  const member = isOrgMember(org, userId);
+  const canManage = isOrgAdmin(org, userId);
+  const membership = membershipFor(org.id, userId);
+  const myRole = membership && membership.active ? membership.role : null;
+
+  const base: Organization = {
+    id: org.id, name: org.name, private: org.private, is_active: org.is_active,
+    created_at: org.created_at, updated_at: org.updated_at,
+    full_name: null, description: null, website: null, location_id: null, location_name: null,
+    email: null, phone: null, logo_file_id: null, logo_url: null,
+    asset_count: null, member_count: null,
+    is_member: member, my_role: myRole, can_manage: canManage,
+    is_last_admin: isLastAdmin(org, userId),
+    has_pending_join_request: !member && hasPendingJoinRequest(org.id, userId),
+  };
+  if (org.private && !member) return base;
+
+  return {
+    ...base,
+    full_name: org.full_name,
+    description: org.description,
+    website: org.website,
+    location_id: org.location_id,
+    location_name: org.location_id ? (locationById(org.location_id)?.name ?? null) : null,
+    email: org.email,
+    phone: org.phone,
+    logo_file_id: org.logo_file_id,
+    logo_url: orgLogoUrl(org),
+    asset_count: countAssetsForOrg(org.id),
+    member_count: countMembersForOrg(org.id),
+  };
+}
+
+export function listOrganizations(userId: string = getDemoUser().id): OrganizationListItem[] {
+  return getState().organizations.filter((o) => o.is_active).map((o) => buildOrgListItem(o, userId));
+}
+
+export function listUserOrganizations(userId: string): OrganizationListItem[] {
+  const myOrgIds = new Set(
+    getState().organizationMembers.filter((m) => m.user_id === userId && m.active).map((m) => m.organization_id)
+  );
+  return getState().organizations.filter((o) => o.is_active && myOrgIds.has(o.id)).map((o) => buildOrgListItem(o, userId));
+}
+
+export function getOrganizationRaw(id: string): StoredOrganization | undefined {
+  return getState().organizations.find((o) => o.id === id);
+}
+
+export function getOrganization(id: string, userId: string): Organization | undefined {
+  const org = getOrganizationRaw(id);
+  return org ? buildOrgResponse(org, userId) : undefined;
+}
+
+export interface OrganizationCreateInput {
+  name: string;
+  full_name?: string | null;
+  description?: string | null;
+  website?: string | null;
+  location_id?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  private?: boolean;
+}
+
+export function createOrganization(input: OrganizationCreateInput, creatorId: string): Organization {
+  const now = nowIso();
+  const org: StoredOrganization = {
+    id: genId(),
+    name: input.name,
+    full_name: input.full_name ?? null,
+    description: input.description ?? null,
+    website: input.website ?? null,
+    location_id: input.location_id ?? null,
+    email: input.email ?? null,
+    phone: input.phone ?? null,
+    private: input.private ?? false,
+    logo_file_id: null,
+    is_active: true,
+    created_at: now,
+    updated_at: now,
+  };
+  getState().organizations.push(org);
+  getState().organizationMembers.push({
+    id: genId(), organization_id: org.id, user_id: creatorId, role: "admin", active: true, created_at: now, updated_at: now,
+  });
+  persist();
+  return buildOrgResponse(org, creatorId);
+}
+
+export function updateOrganization(
+  id: string, patch: Partial<Omit<StoredOrganization, "id" | "created_at">>, userId: string
+): Organization | undefined {
+  const org = getOrganizationRaw(id);
+  if (!org) return undefined;
   Object.assign(org, patch, { updated_at: nowIso() });
   persist();
-  return org;
+  return buildOrgResponse(org, userId);
 }
 
-export function createOrganization(input: { name: string; description?: string }): Organization {
-  // Organizations aren't calibration-traceability data — a second org can genuinely
-  // exist for the rest of the session, it just won't have any assets/locations in it.
-  const org: Organization = {
-    id: genId(),
-    name: input.name,
-    description: input.description ?? null,
-    logo_file_id: null,
-    logo_url: null,
-    is_active: true,
-    created_at: nowIso(),
-    updated_at: nowIso(),
-  };
+export function setOrgLogo(id: string, logoUrl: string | null, userId: string): Organization | undefined {
+  if (logoUrl) orgLogoUrls.set(id, logoUrl);
+  else orgLogoUrls.delete(id);
+  return updateOrganization(id, { logo_file_id: logoUrl ? genId() : null }, userId);
+}
+
+export function deactivateOrganization(id: string): void {
+  const org = getOrganizationRaw(id);
+  if (!org) return;
+  org.is_active = false;
+  getState().organizationMembers
+    .filter((m) => m.organization_id === id && m.active)
+    .forEach((m) => { m.active = false; });
   persist();
-  return org;
 }
 
-export function listTeams(orgId?: string): Team[] {
-  const teams = getState().teams;
-  const scoped = orgId ? teams.filter((t) => t.organization_id === orgId) : teams;
-  const memberIds = new Set(getDemoUser().teams.map((t) => t.id));
-  return scoped.map((t) => ({ ...t, is_member: memberIds.has(t.id) }));
+// --- Members ---------------------------------------------------------------
+
+export function listOrgMembers(orgId: string): OrganizationMember[] {
+  const usersById = new Map(getState().users.map((u) => [u.id, u]));
+  return getState().organizationMembers
+    .filter((m) => m.organization_id === orgId && m.active)
+    .map((m) => {
+      const u = usersById.get(m.user_id);
+      return { user_id: m.user_id, name: u?.name ?? "Unknown", email: u?.email ?? "", role: m.role, active: m.active, created_at: m.created_at };
+    });
 }
 
-/** Self-service: join/leave mutate the demo user's own `teams` list — the
- * same shape the real API returns on `/users/me` and enriched user reads. */
-export function joinTeam(teamId: string): Team | undefined {
-  const state = getState();
-  const team = state.teams.find((t) => t.id === teamId);
-  const user = getDemoUser();
-  if (!team || !user || user.organization_id !== team.organization_id) return undefined;
-  if (!user.teams.some((t) => t.id === teamId)) {
-    user.teams.push({ id: team.id, name: team.name });
-    persist();
+export function updateMemberRole(orgId: string, userId: string, role: OrgRole): OrganizationMember | undefined {
+  const m = membershipFor(orgId, userId);
+  if (!m) return undefined;
+  m.role = role;
+  m.updated_at = nowIso();
+  persist();
+  const u = getState().users.find((x) => x.id === userId);
+  return { user_id: userId, name: u?.name ?? "", email: u?.email ?? "", role: m.role, active: m.active, created_at: m.created_at };
+}
+
+export function removeMember(orgId: string, userId: string): void {
+  const m = membershipFor(orgId, userId);
+  if (!m) return;
+  m.active = false;
+  m.updated_at = nowIso();
+  persist();
+}
+
+export function listNonMembers(orgId: string, q?: string): EligibleUser[] {
+  const activeMemberIds = new Set(
+    getState().organizationMembers.filter((m) => m.organization_id === orgId && m.active).map((m) => m.user_id)
+  );
+  const pattern = q?.trim().toLowerCase();
+  return getState().users
+    .filter((u) => u.is_active && !activeMemberIds.has(u.id))
+    .filter((u) => !pattern || u.name.toLowerCase().includes(pattern) || u.email.toLowerCase().includes(pattern))
+    .map((u) => ({ id: u.id, name: u.name, email: u.email }));
+}
+
+export function addMembers(orgId: string, userIds: string[]): OrganizationMember[] {
+  const now = nowIso();
+  for (const userId of userIds) {
+    if (!getState().users.some((u) => u.id === userId)) continue;
+    const existing = membershipFor(orgId, userId);
+    if (existing) {
+      existing.active = true;
+      existing.role = "member";
+      existing.updated_at = now;
+    } else {
+      getState().organizationMembers.push({
+        id: genId(), organization_id: orgId, user_id: userId, role: "member", active: true, created_at: now, updated_at: now,
+      });
+    }
   }
-  return { ...team, is_member: true };
-}
-
-export function leaveTeam(teamId: string): Team | undefined {
-  const state = getState();
-  const team = state.teams.find((t) => t.id === teamId);
-  const user = getDemoUser();
-  if (!team || !user || user.organization_id !== team.organization_id) return undefined;
-  user.teams = user.teams.filter((t) => t.id !== teamId);
   persist();
-  return { ...team, is_member: false };
+  return listOrgMembers(orgId);
 }
 
-export function createTeam(input: { name: string; description?: string; organization_id: string }): StoredTeam {
-  const team: StoredTeam = {
-    id: genId(),
-    organization_id: input.organization_id,
-    name: input.name,
-    description: input.description ?? null,
-    created_at: nowIso(),
+// --- Join requests -----------------------------------------------------------
+
+export function hasPendingJoinRequest(orgId: string, userId: string): boolean {
+  return getState().joinRequests.some((r) => r.organization_id === orgId && r.user_id === userId && r.status === "pending");
+}
+
+export function createJoinRequest(orgId: string, userId: string): OrganizationJoinRequest {
+  const now = nowIso();
+  const req: StoredJoinRequest = {
+    id: genId(), organization_id: orgId, user_id: userId, status: "pending",
+    created_at: now, updated_at: now, decided_by: null, decided_at: null,
   };
-  getState().teams.push(team);
+  getState().joinRequests.push(req);
   persist();
-  return team;
+  const u = getState().users.find((x) => x.id === userId);
+  return { id: req.id, organization_id: orgId, user_id: userId, user_name: u?.name ?? "", user_email: u?.email ?? "", status: req.status, created_at: req.created_at };
 }
 
-export function updateTeam(id: string, patch: { name?: string; description?: string }): StoredTeam | undefined {
-  const team = getState().teams.find((t) => t.id === id);
-  if (!team) return undefined;
-  Object.assign(team, patch);
-  persist();
-  return team;
+export function listPendingJoinRequests(orgId: string): OrganizationJoinRequest[] {
+  const usersById = new Map(getState().users.map((u) => [u.id, u]));
+  return getState().joinRequests
+    .filter((r) => r.organization_id === orgId && r.status === "pending")
+    .map((r) => {
+      const u = usersById.get(r.user_id);
+      return { id: r.id, organization_id: r.organization_id, user_id: r.user_id, user_name: u?.name ?? "", user_email: u?.email ?? "", status: r.status, created_at: r.created_at };
+    });
 }
 
-export function deleteTeam(id: string): void {
+export function decideJoinRequest(orgId: string, requestId: string, approve: boolean, decidedBy: string): void {
+  const req = getState().joinRequests.find((r) => r.id === requestId && r.organization_id === orgId);
+  if (!req) return;
+  const now = nowIso();
+  req.status = approve ? "approved" : "rejected";
+  req.decided_by = decidedBy;
+  req.decided_at = now;
+  req.updated_at = now;
+  if (approve) {
+    const existing = membershipFor(orgId, req.user_id);
+    if (existing) {
+      existing.active = true;
+      existing.role = "member";
+      existing.updated_at = now;
+    } else {
+      getState().organizationMembers.push({
+        id: genId(), organization_id: orgId, user_id: req.user_id, role: "member", active: true, created_at: now, updated_at: now,
+      });
+    }
+  }
+  persist();
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export function createNotification(input: { userId: string; type: string; title: string; body?: string | null; link?: string | null }): void {
   const state = getState();
-  state.teams = state.teams.filter((t) => t.id !== id);
+  if (!state.notifications) state.notifications = [];
+  const now = nowIso();
+  state.notifications.push({
+    id: genId(), user_id: input.userId, type: input.type, title: input.title,
+    body: input.body ?? null, link: input.link ?? null, is_read: false, created_at: now, updated_at: now,
+  });
+  persist();
+}
+
+export function listNotificationsForUser(userId: string): Notification[] {
+  return (getState().notifications ?? [])
+    .filter((n) => n.user_id === userId)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .map((n) => ({ id: n.id, type: n.type, title: n.title, body: n.body, link: n.link, is_read: n.is_read, created_at: n.created_at }));
+}
+
+export function countUnreadNotifications(userId: string): number {
+  return (getState().notifications ?? []).filter((n) => n.user_id === userId && !n.is_read).length;
+}
+
+export function markNotificationRead(id: string, userId: string): Notification | undefined {
+  const n = (getState().notifications ?? []).find((x) => x.id === id && x.user_id === userId);
+  if (!n) return undefined;
+  n.is_read = true;
+  n.updated_at = nowIso();
+  persist();
+  return { id: n.id, type: n.type, title: n.title, body: n.body, link: n.link, is_read: n.is_read, created_at: n.created_at };
+}
+
+export function markAllNotificationsRead(userId: string): void {
+  (getState().notifications ?? []).forEach((n) => { if (n.user_id === userId) n.is_read = true; });
   persist();
 }
 

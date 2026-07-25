@@ -21,9 +21,9 @@ from sqlalchemy.orm import Session
 
 from ..models.location import Location
 from ..models.organization import Organization
-from ..models.team import Team
 from ..models.user import User
 from ..repositories import certificate_template as certtpl_repo
+from ..repositories import organization as org_repo
 from ..repositories import stored_file as file_repo
 from ..repositories import user_signature as signature_repo
 from ..services import latex_service
@@ -310,7 +310,6 @@ def _build_template_context(
     version: int,
     certificate_number: str,
     calibration_location_name: str | None = None,
-    team_name: str | None = None,
 ) -> dict:
     reference_unit = points[0].reference_unit if points else ""
     measured_unit = points[0].measured_unit if points else ""
@@ -431,7 +430,6 @@ def _build_template_context(
         "calibration_id": str(calibration.id)[:8].upper(),
         "generated_date": date.today().isoformat(),
         "calibration_location": calibration_location_name,
-        "team_name": team_name,
     }
 
 
@@ -566,7 +564,6 @@ def build_random_preview_context(num_points: int = 10) -> tuple[dict, dict[str, 
         "chapter": "Voltage",
         "generated_date": date.today().isoformat(),
         "calibration_location": "Metrology Lab A",
-        "team_name": "Instrumentation Team",
         "results_summary": [
             {"label": "Max Error", "value": f"{_fmt(max_abs_residual, 6)} V"},
             {"label": "% Full-Scale Error", "value": f"{_fmt(full_scale_pct, 4)} %"},
@@ -604,7 +601,13 @@ def build_random_preview_context(num_points: int = 10) -> tuple[dict, dict[str, 
 # ---------------------------------------------------------------------------
 
 def resolve_organization(db: Session, asset: "Asset", calibration: "Calibration") -> "Organization | None":
-    """Asset's location org, falling back to the performing user's org."""
+    """The asset's own organization_id (authoritative — set directly when the
+    asset was created), falling back to its location's org, then the
+    performing user's first active organization membership."""
+    if asset.organization_id:
+        org = db.query(Organization).filter(Organization.id == asset.organization_id).first()
+        if org:
+            return org
     if asset.location_id:
         location = db.query(Location).filter(Location.id == asset.location_id).first()
         if location:
@@ -612,11 +615,9 @@ def resolve_organization(db: Session, asset: "Asset", calibration: "Calibration"
             if org:
                 return org
     if calibration.performed_by_user_id:
-        user = db.query(User).filter(User.id == calibration.performed_by_user_id).first()
-        if user and user.organization_id:
-            org = db.query(Organization).filter(Organization.id == user.organization_id).first()
-            if org:
-                return org
+        orgs = org_repo.list_user_organizations(db, calibration.performed_by_user_id)
+        if orgs:
+            return orgs[0]
     return None
 
 
@@ -718,15 +719,9 @@ def generate_certificate(
         if location:
             calibration_location_name = location.name
 
-    team_name = None
-    if asset.owner:
-        team = db.query(Team).filter(Team.id == asset.owner).first()
-        if team:
-            team_name = team.name
-
     context = _build_template_context(
         asset, calibration, points, procedure, reference_asset, sensor, organization, version, certificate_number,
-        calibration_location_name=calibration_location_name, team_name=team_name,
+        calibration_location_name=calibration_location_name,
     )
 
     images: dict[str, bytes] = {}

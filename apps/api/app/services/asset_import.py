@@ -142,7 +142,6 @@ def import_asset_from_folder(
     folder: str,
     created_by: uuid.UUID,
     location_id: uuid.UUID | None = None,
-    owner: uuid.UUID | None = None,
 ) -> Asset:
     imported = _load_asset_yaml(zf, folder)
     a = imported.asset
@@ -160,7 +159,6 @@ def import_asset_from_folder(
         serial_number=a.serial_number,
         manufacturer_part_number=a.manufacturer_part_number,
         location_id=location_id,
-        owner=owner,
         datasheet_url=a.datasheet_url,
         firmware_version=a.firmware_version,
         power_supply=a.power_supply,
@@ -401,14 +399,13 @@ def import_assets_zip(
     zip_bytes: bytes,
     created_by: uuid.UUID,
     location_id: uuid.UUID | None = None,
-    owner: uuid.UUID | None = None,
 ) -> list[AssetImportResult]:
     """Import every asset folder found in a zip. Returns one result per folder;
     a failure in one folder never prevents the others from being imported.
 
-    location_id/owner (when given) are applied to every asset created in this
+    location_id (when given) is applied to every asset created in this
     call — set by the "Import from file" flow, which only ever imports a
-    single asset and lets the user pick both from a dropdown first."""
+    single asset and lets the user pick it from a dropdown first."""
     try:
         zf = zipfile.ZipFile(BytesIO(zip_bytes))
     except zipfile.BadZipFile:
@@ -432,7 +429,7 @@ def import_assets_zip(
         try:
             with db.begin_nested():
                 asset = import_asset_from_folder(
-                    db, zf, name, created_by, location_id=location_id, owner=owner
+                    db, zf, name, created_by, location_id=location_id
                 )
             results.append(AssetImportResult(
                 source_folder=name, status="created",

@@ -54,7 +54,6 @@ def register(db: Session, email: str, name: str, password: str) -> tuple[str | N
             name=name,
             hashed_password=hash_password(password),
             role=UserRole.superadmin,
-            is_superuser=True,
             is_verified=True,
         )
         return None, False

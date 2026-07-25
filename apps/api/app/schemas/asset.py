@@ -29,7 +29,7 @@ class AssetCreate(BaseModel):
     serial_number: str | None = None
     manufacturer_part_number: str | None = None
     location_id: uuid.UUID | None = None
-    owner: uuid.UUID | None = None
+    organization_id: uuid.UUID | None = None
     datasheet_url: str | None = None
     firmware_version: str | None = None
     power_supply: str | None = None
@@ -73,8 +73,8 @@ class AssetUpdate(BaseModel):
     model: str | None = None
     serial_number: str | None = None
     manufacturer_part_number: str | None = None
-    owner: uuid.UUID | None = None
     location_id: uuid.UUID | None = None
+    organization_id: uuid.UUID | None = None
     firmware_version: str | None = None
     power_supply: str | None = None
     power_consumption_w: int | None = None
@@ -109,7 +109,7 @@ class AssetResponse(BaseModel):
     serial_number: str | None
     manufacturer_part_number: str | None
     location_id: uuid.UUID | None
-    owner: uuid.UUID | None
+    organization_id: uuid.UUID | None
     datasheet_url: str | None
     firmware_version: str | None
     power_supply: str | None
@@ -150,6 +150,7 @@ class AssetResponse(BaseModel):
 
 
 class AssetProfileResponse(AssetResponse):
+    organization_name: str | None = None
     site_name: str | None = None
     location_name: str | None = None
     location_code: str | None = None
@@ -162,7 +163,6 @@ class AssetProfileResponse(AssetResponse):
     calibration_count: int = 0
     subtype: str | None = None
     technology: str | None = None
-    owner_name: str | None = None
     calibration_health_score: float | None = None
 
 

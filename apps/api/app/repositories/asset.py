@@ -10,8 +10,8 @@ from ..models.calibration_method import CalibrationMethod
 from ..models.sensor import Sensor
 from ..models.daq import DAQ
 from ..models.location import Location
+from ..models.organization import Organization
 from ..models.asset_location import AssetLocation
-from ..models.team import Team
 from ..schemas.sensor import SensorChannelCreate
 from ..schemas.daq import DaqCreate
 
@@ -45,6 +45,7 @@ def list_assets(
     is_active: bool | None = None,
     asset_type: AssetType | None = None,
     location_id: uuid.UUID | None = None,
+    organization_id: uuid.UUID | None = None,
     include_descendants: bool = False,
 ) -> list[dict]:
     today = date.today()
@@ -84,6 +85,8 @@ def list_assets(
             q = q.filter(Asset.location_id.in_(subtree_ids))
         else:
             q = q.filter(Asset.location_id == location_id)
+    if organization_id:
+        q = q.filter(Asset.organization_id == organization_id)
 
     assets = q.order_by(Asset.updated_at.desc()).offset(skip).limit(limit).all()
     if not assets:
@@ -330,6 +333,12 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
     }
     site_name, location_name = resolve_location_path(asset.location_id, all_locs)
 
+    organization_name: str | None = None
+    if asset.organization_id:
+        org = db.query(Organization).filter(Organization.id == asset.organization_id).first()
+        if org:
+            organization_name = org.name
+
     location_code: str | None = None
     location_description: str | None = None
     location_latitude: float | None = None
@@ -341,13 +350,6 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
             location_description = leaf.description
             location_latitude = float(leaf.latitude) if leaf.latitude is not None else None
             location_longitude = float(leaf.longitude) if leaf.longitude is not None else None
-
-    # Owner team name
-    owner_name: str | None = None
-    if asset.owner:
-        team = db.query(Team).filter(Team.id == asset.owner).first()
-        if team:
-            owner_name = team.name
 
     # Calibration summary (voided calibrations are not valid history — excluded)
     cals = (
@@ -383,6 +385,7 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
         subtype = daq.daq_type
 
     return {
+        "organization_name": organization_name,
         "site_name": site_name,
         "location_name": location_name,
         "location_code": location_code,
@@ -395,7 +398,6 @@ def get_profile_extras(db: Session, asset_pk: uuid.UUID) -> dict:
         "calibration_count": cal_count,
         "subtype": subtype,
         "technology": technology,
-        "owner_name": owner_name,
     }
 
 
@@ -419,7 +421,7 @@ def duplicate(db: Session, source: Asset, new_asset_id: str, created_by: uuid.UU
         serial_number=None,  # serial numbers are unique per physical device
         manufacturer_part_number=source.manufacturer_part_number,
         location_id=source.location_id,
-        owner=source.owner,
+        organization_id=source.organization_id,
         datasheet_url=source.datasheet_url,
         firmware_version=source.firmware_version,
         power_supply=source.power_supply,

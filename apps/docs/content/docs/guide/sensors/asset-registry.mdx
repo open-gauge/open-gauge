@@ -45,10 +45,11 @@ when ordering spares or looking up a datasheet.
 
 Free-text notes on the asset's purpose or context, shown under its identity fields.
 
-### Owner [#owner]
+### Organization [#organization]
 
-The team responsible for this asset, selected from the organization's teams — see
-[Data model & concepts](../concepts/data-model.mdx#organizations-teams).
+The organization that owns this asset, picked from a dropdown of the creating user's own
+organizations when the asset is created — required, and independent of the asset's location
+(the two aren't cross-validated). See [Organizations](../organizations/index.mdx).
 
 ### Location [#location]
 
@@ -134,11 +135,11 @@ Each asset gets its own folder named after its `asset_id` (e.g. `OG-00042/`), co
   calibration, oldest first).
 
 **What's deliberately left out of `asset.yaml`**: internal database UUIDs — the asset's own id,
-its location, its owning team, `created_by`/`retired_by`, and every file's id. These only make
-sense inside the database they came from. Where useful, a human-readable name is included
-instead purely for reference (e.g. `location_name`, `owner_team_name`, `calibration_method_name`,
-`internal_procedure_name`) — sensor channels are relinked by `channel_id` rather than a raw
-sensor UUID. One field has no safe substitute and is omitted entirely: a calibration's reference
+its location, `created_by`/`retired_by`, and every file's id. These only make sense inside the
+database they came from. Where useful, a human-readable name is included instead purely for
+reference (e.g. `location_name`, `calibration_method_name`, `internal_procedure_name`) — sensor
+channels are relinked by `channel_id` rather than a raw sensor UUID. One field has no safe
+substitute and is omitted entirely: a calibration's reference
 to another asset (`internal_reference_asset_id`) is not exported or re-linked.
 
 Calibration history is exported and re-imported **verbatim** — `calibration_version` and every
@@ -153,8 +154,8 @@ which may itself contain one or more asset folders — handy for re-importing a 
 export). Both flows call the same backend endpoint and report one result per asset folder, so a
 problem with one asset never blocks the others in the same file.
 
-On import, a brand-new asset is created with a new internal id. Its `location_id` and `owner`
-are left unset (the exported names are informational only) until you assign them manually.
+On import, a brand-new asset is created with a new internal id. Its `location_id` is left unset
+(the exported `location_name` is informational only) until you assign it manually.
 `calibration_method_name`/`internal_procedure_name` are matched case-insensitively against
 procedures already registered in the target system; if no match is found, the link is simply
 left blank rather than failing the import. If the exported `asset_id` already exists in the

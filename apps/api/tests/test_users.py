@@ -1,6 +1,6 @@
 """
 Tests for the user profile picture endpoints and PUT /users/{id} (admin-only
-account management: role, organization, team, is_active, is_verified).
+account management: role, organization, is_active, is_verified).
 
 Covers: upload (happy path + replace + reject non-image), delete, and the
 enrichment of GET /users/me and GET /users/{id} with profile_picture_url.
@@ -131,7 +131,7 @@ class TestUserPicture:
 
 
 class TestUpdateUser:
-    """PUT /users/{id} is admin-only — role, organization, team, is_active, and
+    """PUT /users/{id} is admin-only — role, organization, is_active, and
     is_verified are all privilege-bearing fields. There is no self-service
     bypass (that's what PATCH /users/me is for, with its own narrower schema)."""
 

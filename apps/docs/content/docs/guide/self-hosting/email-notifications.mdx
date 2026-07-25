@@ -3,9 +3,15 @@ title: Email notifications
 description: SMTP configuration for account verification, password reset, and calibration reminders, managed entirely by an admin.
 ---
 
-Open Gauge can send email for three things: confirming new accounts, resetting a forgotten
-password, and keeping a calibration's owning team aware of its status. Like Gogs/Gitea, SMTP is a
-single, admin-managed configuration rather than something every user touches.
+Open Gauge can send email for four things: confirming new accounts, resetting a forgotten
+password, keeping a calibration's owning organization aware of its status, and alerting
+organization admins to a join request. Like Gogs/Gitea, SMTP is a single, admin-managed
+configuration rather than something every user touches.
+
+Organization join requests are the one event with a guaranteed non-email fallback: they always
+raise an in-app notification (the bell icon in the top bar) regardless of whether SMTP is
+configured — email is a bonus on top of that, not the only way to find out. See
+[Organizations → Join requests](../organizations/index.mdx#join-requests).
 
 ## Configuration
 
@@ -88,11 +94,12 @@ can reset the password by re-creating credentials or otherwise assisting them ou
 
 ## Calibration notifications
 
-Two events trigger an email to everyone on an asset's owning team (see
-[Data model & concepts](../concepts/data-model.mdx) for how assets, teams, and users relate):
+Two events trigger an email to every active Technician, Admin, and Super Admin in an asset's
+organization (see [Data model & concepts](../concepts/data-model.mdx) for how assets and
+organizations relate; Viewers are never notified since they can't act on a calibration):
 
-- **New calibration recorded** — as soon as `POST /calibrations` succeeds, the team is notified
-  (except the person who just logged it).
+- **New calibration recorded** — as soon as `POST /calibrations` succeeds, the organization's
+  technicians and admins are notified (except the person who just logged it).
 - **Due soon / overdue** — a daily sweep (07:00 server time) checks every active asset's latest
   calibration. Each calibration is reminded at most once per threshold: once when it enters the
   configured reminder window, and once more if it lapses into overdue. A calibration with no

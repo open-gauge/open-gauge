@@ -10,12 +10,13 @@ import {
   importAssetsZip,
   listAssets,
   listLocations,
-  listTeams,
   validateImportZip,
   type AssetImportPreview,
   type AssetImportResult,
 } from "@/services/asset.service";
 import type { AssetCreateBody, AssetListItem, ChannelListItem, LocationOption } from "@/types/asset";
+import { listMyOrganizations } from "@/services/organization.service";
+import type { OrganizationListItem } from "@/types/organization";
 import {
   CALIBRATION_STATUS_LABEL,
   CALIBRATION_STATUS_STYLE,
@@ -838,9 +839,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importLocations, setImportLocations] = useState<LocationOption[]>([]);
-  const [importTeams, setImportTeams] = useState<{ id: string; name: string }[]>([]);
   const [importLocationId, setImportLocationId] = useState("");
-  const [importOwnerId, setImportOwnerId] = useState("");
 
   // --- "new from scratch" state ---
   const [form, setForm] = useState({
@@ -850,10 +849,16 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
     manufacturer: "",
     model: "",
     serial_number: "",
+    organization_id: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [myOrgs, setMyOrgs] = useState<OrganizationListItem[]>([]);
+
+  useEffect(() => {
+    listMyOrganizations().then(setMyOrgs).catch(() => {});
+  }, []);
 
   // --- "copy" state ---
   const [copySearch, setCopySearch] = useState("");
@@ -880,6 +885,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
     if (!form.name.trim()) errs.name = "Required";
     if (!form.manufacturer.trim()) errs.manufacturer = "Required";
     if (!form.model.trim()) errs.model = "Required";
+    if (!form.organization_id) errs.organization_id = "Required";
     return errs;
   }
 
@@ -896,6 +902,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
         manufacturer: form.manufacturer.trim(),
         model: form.model.trim(),
         serial_number: form.serial_number.trim() || null,
+        organization_id: form.organization_id,
       };
       const created = await createAsset(body);
       onCreated(created.id);
@@ -934,7 +941,6 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
     setImportPreview(null);
     setImportError(null);
     setImportLocationId("");
-    setImportOwnerId("");
     setImportValidating(true);
     try {
       const preview = await validateImportZip(file);
@@ -944,7 +950,6 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
       }
       setImportPreview(preview);
       if (importLocations.length === 0) listLocations().then(setImportLocations).catch(() => {});
-      if (importTeams.length === 0) listTeams().then(setImportTeams).catch(() => {});
     } catch {
       setImportError("The file is not a valid asset. Please check the file and try again.");
     } finally {
@@ -975,7 +980,6 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
     try {
       const res = await importAssetZipWithOverrides(importFile, {
         locationId: importLocationId || undefined,
-        owner: importOwnerId || undefined,
       });
       if (res.results.length !== 1) {
         setImportError(`Expected exactly one asset in the file, found ${res.results.length}.`);
@@ -1024,7 +1028,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => { setMode("import"); setImportFile(null); setImportError(null); setImportPreview(null); setImportLocationId(""); setImportOwnerId(""); }}
+                onClick={() => { setMode("import"); setImportFile(null); setImportError(null); setImportPreview(null); setImportLocationId(""); }}
                 className="col-span-2 flex items-center gap-3 p-4 rounded-xl border-2 border-og-border hover:border-og-accent hover:bg-og-accent/5 transition-colors group text-left"
               >
                 <div className="w-10 h-10 rounded-full bg-og-accent/10 flex items-center justify-center shrink-0 group-hover:bg-og-accent/20 transition-colors">
@@ -1109,6 +1113,25 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                 <label className="text-xs text-gray-400">Name <span className="text-red-400">*</span></label>
                 <input value={form.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. PT100 Temperature Sensor" className={`${IB} ${formErrors.name ? IB_ERR : IB_OK}`} />
                 {formErrors.name && <p className="text-xs text-red-500">{formErrors.name}</p>}
+              </div>
+
+              {/* Organization */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400">Organization <span className="text-red-400">*</span></label>
+                <select
+                  value={form.organization_id}
+                  onChange={(e) => set("organization_id")(e.target.value)}
+                  className={`${IB} ${formErrors.organization_id ? IB_ERR : IB_OK}`}
+                >
+                  <option value="">Select an organization…</option>
+                  {myOrgs.map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+                {formErrors.organization_id && <p className="text-xs text-red-500">{formErrors.organization_id}</p>}
+                {myOrgs.length === 0 && (
+                  <p className="text-[10px] text-gray-400">You&apos;re not a member of any organization yet — create or join one first.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1274,20 +1297,6 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
                       ))}
                     </select>
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-gray-400">Owning team <span className="text-gray-400 font-normal">(optional)</span></label>
-                    <select
-                      value={importOwnerId}
-                      onChange={(e) => setImportOwnerId(e.target.value)}
-                      className={`${IB} ${IB_OK}`}
-                    >
-                      <option value="">Unassigned</option>
-                      {importTeams.map((team) => (
-                        <option key={team.id} value={team.id}>{team.name}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
               )}
             </div>
@@ -1359,6 +1368,7 @@ export default function AssetsPage() {
   const [sortDir, setSortDir]     = useState<SortDir>("asc");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
+  const [organizationFilter, setOrganizationFilter] = useState<{ id: string; name: string } | null>(null);
   const [quickFilter, setQuickFilter] = useState<{ label: string; type: "asset_type" | "health_max"; value: string } | null>(null);
   const [newAssetOpen, setNewAssetOpen] = useState(false);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
@@ -1371,6 +1381,9 @@ export default function AssetsPage() {
     const lname = params.get("location_name");
     const inclDes = params.get("include_descendants") === "true";
     if (lid) setLocationFilter({ id: lid, name: lname ?? lid, includeDescendants: inclDes });
+    const oid = params.get("organization_id");
+    const oname = params.get("organization_name");
+    if (oid) setOrganizationFilter({ id: oid, name: oname ?? oid });
     const at = params.get("asset_type");
     if (at === "sensor") setQuickFilter({ type: "asset_type", value: "sensor", label: "Sensors only" });
     if (at === "daq")    setQuickFilter({ type: "asset_type", value: "daq",    label: "DAQ units only" });
@@ -1389,7 +1402,12 @@ export default function AssetsPage() {
   function loadAssets() {
     setLoading(true);
     setError(null);
-    return listAssets({ limit: 200, location_id: locationFilter?.id, include_descendants: locationFilter?.includeDescendants })
+    return listAssets({
+      limit: 200,
+      location_id: locationFilter?.id,
+      include_descendants: locationFilter?.includeDescendants,
+      organization_id: organizationFilter?.id,
+    })
       .then(setAssets)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -1397,7 +1415,7 @@ export default function AssetsPage() {
 
   useEffect(() => {
     loadAssets();
-  }, [locationFilter]);
+  }, [locationFilter, organizationFilter]);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -1654,6 +1672,21 @@ export default function AssetsPage() {
           <button
             type="button"
             onClick={() => setLocationFilter(null)}
+            className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
+          >
+            View all ✕
+          </button>
+        </div>
+      )}
+
+      {organizationFilter && (
+        <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
+          <span className="text-xs text-og-accent font-medium">
+            Filtered by organization: <span className="font-semibold">{organizationFilter.name}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setOrganizationFilter(null)}
             className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
             View all ✕

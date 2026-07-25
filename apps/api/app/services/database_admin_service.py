@@ -59,10 +59,11 @@ def reset_to_clean_state(db: Session, current_user_id: uuid.UUID) -> None:
     fresh deployment starts in. Superadmins keep their id (and therefore their
     current session token stays valid) and password.
 
-    Also always preserves the calling user regardless of role/flag, since this
-    endpoint is gated on the same "superuser or role==superadmin" check used
-    elsewhere — without this, a role==superadmin user lacking is_superuser
-    could trigger a clear that deletes their own account."""
+    Also always preserves the calling user regardless of role, since this
+    endpoint is gated on the "role==superadmin" check used elsewhere — without
+    this, a caller who is superadmin only by virtue of being the current user
+    (e.g. immediately after a role change) could trigger a clear that deletes
+    their own account."""
     preserved = [
         {
             "id": u.id,
@@ -71,16 +72,11 @@ def reset_to_clean_state(db: Session, current_user_id: uuid.UUID) -> None:
             "hashed_password": u.hashed_password,
             "role": u.role,
             "is_active": u.is_active,
-            "is_superuser": u.is_superuser,
             "is_verified": u.is_verified,
             "created_at": u.created_at,
         }
         for u in db.query(User)
-        .filter(
-            User.is_superuser.is_(True)
-            | (User.role == UserRole.superadmin)
-            | (User.id == current_user_id)
-        )
+        .filter((User.role == UserRole.superadmin) | (User.id == current_user_id))
         .all()
     ]
     db.expunge_all()

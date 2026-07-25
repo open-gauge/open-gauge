@@ -1,0 +1,96 @@
+---
+title: Organizations
+description: Multi-organization membership, org-level roles, join requests, and asset ownership.
+---
+
+**Organizations** are Open Gauge's tenant boundary — every asset belongs to one, and every user
+can belong to any number of them. Manage them from the **Organizations** page in the sidebar.
+
+## Creating an organization
+
+Any authenticated user can create an organization from **Organizations → New Organization** —
+there's no admin gate on this, the same way creating a GitHub or Gogs organization doesn't
+require being a site admin. The creator automatically becomes that organization's first **admin**
+member.
+
+An organization has: **name**, an optional **full legal name**, **description**, **website**,
+**location** (its primary/HQ location, picked from the location tree — see
+[Locations](../locations/index.mdx)), **email**, **phone**, a **logo**, and a **private** flag.
+
+## Membership and organization roles
+
+A user can be a member of any number of organizations, with a role scoped to *that* organization
+alone:
+
+| Role | Can do |
+|---|---|
+| `member` | View full organization details, the member roster, and its assets. |
+| `admin` | Everything a member can, plus: edit the organization's profile/logo, manage members (change roles, remove members), approve/reject join requests, and deactivate the organization. |
+
+This is a separate concept from the global RBAC role on the user's account
+(`superadmin`/`admin`/`technician`/`viewer` — see
+[Authentication](../self-hosting/authentication.mdx#roles-rbac)). The two don't overlap except
+for one override: **Super Admin** can manage any organization regardless of their membership in
+it, as a system-level safety net (e.g. an organization stuck with zero admins). The global `admin`
+role has no special access to an organization it isn't a member of — organization management is
+otherwise peer-to-peer, same as Gogs.
+
+### Leaving and removing members
+
+A **Join / Leave** button appears on every organization's list row and on its detail page — next to
+**Edit** for admins, in Edit's place for everyone else. Its label depends on the viewer: "Request to
+join", a disabled "Request pending" while a request is outstanding, or a red "Leave" for members;
+each opens a confirmation dialog before doing anything.
+
+A member can leave at any time — unless they're the organization's **last remaining admin**. In
+that case the Leave dialog guides them instead of just failing: promote another member to admin
+first if there are other members, or deactivate the organization instead if they're the only member
+left. The same last-admin guard applies when an admin tries to remove *themselves*. Removing (or
+leaving) doesn't delete the membership record — it's marked inactive, preserving the history of who
+was ever part of the organization, consistent with Open Gauge's general soft-delete philosophy (see
+[Data model & concepts](../concepts/data-model.mdx)).
+
+An admin can also add members directly from the organization page's **Add member** button, which
+opens a searchable, multi-select list of every user who isn't already an active member — selected
+users are added with the `member` role.
+
+## Visibility
+
+- **Public organizations** (`private: false`) show their full profile — name, full name,
+  description, website, location, email, phone — to any authenticated user, whether or not
+  they're a member.
+- **Private organizations** show only their **name** (with a lock icon) in the **Organizations**
+  list, so they're still discoverable enough to request joining. Everything else — the profile
+  details, the member roster, and its assets — is visible only to members (and Super Admin).
+- The **member roster** itself is never public, even for a non-private organization — only
+  members can see who else belongs to it.
+- An admin can deactivate ("delete") an organization from its edit form's **Danger zone**, behind
+  a confirmation dialog. A deactivated organization is invisible to everyone except Super Admin —
+  it drops out of the Organizations list and its page 404s for anyone else, the same treatment as
+  a private organization taken to its extreme.
+
+## Join requests
+
+A user who isn't a member of an organization can send a **join request** from that organization's
+page. This notifies every admin of the organization two ways:
+
+- **Email**, if SMTP is configured (see [Email notifications](../self-hosting/email-notifications.mdx)).
+- An **in-app notification** (the bell icon in the top bar) — always, regardless of whether mail
+  is configured. This is the guaranteed channel; email is a convenience on top of it.
+
+The requester shows up right in the organization's **Members** list with a "Pending" status —
+clicking the in-app notification takes an admin straight to the organization page in edit mode so
+the new request is immediately visible. An admin approves or rejects it from that same row.
+Approving adds the requester as a `member`; either decision notifies the requester the same way.
+
+## Assets belong to an organization
+
+Every asset has a direct `organization_id`, chosen from a dropdown of the creating user's own
+organizations when the asset is created. This is independent of the asset's **location** — an
+asset's organization and its location's organization aren't cross-validated, so pick both
+separately. The organization is shown on the asset's detail page (Overview tab → General panel)
+and linked back to that organization's page.
+
+An organization's page shows a clickable **asset count** that links to the asset register,
+filtered to that organization's assets (`/assets?organization_id=...`), the same pattern used by
+a location's asset count (see [Locations](../locations/index.mdx)).

@@ -26,14 +26,21 @@ elsewhere in Open Gauge.
 
 ## Roles (RBAC)
 
-Every user has exactly one role, which governs what they can see and change:
+Every user has exactly one role, which governs what they can see and change. This is the
+account's only privilege flag — there is no separate "superuser" bit; Super Admin capability
+comes entirely from `role == superadmin`:
 
 | Role | Typical use |
 |---|---|
 | `viewer` | Read-only access — browse assets, calibrations, and certificates. |
 | `technician` | Day-to-day operational work: add sensors, run calibrations, update locations. |
-| `admin` | Organization administration: manage users, teams, procedures. |
-| `superadmin` | System-level administration across organizations. |
+| `admin` | Manages user accounts (create, deactivate, change role). Cannot reach the Dangerous zone. |
+| `superadmin` | Everything Admin can do, plus the Dangerous zone (database export/import/reset), and can manage any organization regardless of membership. |
+
+This is a system-wide grant, separate from the **organization role** (`member`/`admin`) a user
+has within a specific organization — managing a given organization's profile, members, and join
+requests is governed by that org-scoped role, not this one (Super Admin is the only global role
+with an override into organization management). See [Organizations](../organizations/index.mdx).
 
 Protected endpoints reject unauthenticated requests, and role checks are enforced on the
 backend (not just hidden in the UI) — see the [Auth](/docs/api/auth) and

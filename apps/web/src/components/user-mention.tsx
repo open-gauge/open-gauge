@@ -1,13 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
-const ROLE_LABELS: Record<string, string> = {
-  superadmin: "Super Admin",
-  admin:      "Admin",
-  technician: "Technician",
-  viewer:     "Viewer",
-};
+import { ROLE_LABELS } from "@/lib/roles";
 
 function deriveDisplayName(name: string | null, email: string): string {
   if (name) return name;

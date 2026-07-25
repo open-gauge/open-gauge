@@ -3,7 +3,7 @@
 Read-only: no database writes happen here. Each asset is serialized to a
 human-readable YAML file (asset.yaml) plus a media/ folder with the actual
 bytes of its picture, datasheet, pinout/sensor images, attached files, and
-calibration certificates. UUIDs for location/ownership/file ids are excluded
+calibration certificates. UUIDs for location/file ids are excluded
 from the YAML — see the "asset import/export" guide doc for the full schema.
 """
 import enum
@@ -22,7 +22,6 @@ from ..models.calibration import Calibration
 from ..models.calibration_method import Procedure
 from ..models.location import Location
 from ..models.stored_file import StoredFile
-from ..models.team import Team
 from ..repositories import asset as asset_repo
 from ..repositories import calibration as cal_repo
 from ..repositories import stored_file as file_repo
@@ -92,12 +91,6 @@ def build_asset_yaml(db: Session, asset: Asset) -> dict:
     all_locs = {str(loc.id): loc for loc in db.query(Location).all()}
     site_name, location_name = asset_repo.resolve_location_path(asset.location_id, all_locs)
 
-    owner_team_name = None
-    if asset.owner:
-        team = db.query(Team).filter(Team.id == asset.owner).first()
-        if team:
-            owner_team_name = team.name
-
     channels = asset_repo.get_sensor_channels(db, asset.id)
     daq = asset_repo.get_daq_details(db, asset.id)
     calibrations = _sorted_calibrations(db, asset.id)
@@ -148,7 +141,6 @@ def build_asset_yaml(db: Session, asset: Asset) -> dict:
         "updated_at": asset.updated_at,
         "location_name": location_name,
         "site_name": site_name,
-        "owner_team_name": owner_team_name,
         # Presence flags start optimistic (based on the FK being set) and are
         # corrected by _write_asset_into_zip once the actual download is attempted.
         **{flag: getattr(asset, fk) is not None for fk, flag, _ in _ASSET_MEDIA_SPECS},

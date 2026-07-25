@@ -53,7 +53,6 @@ def generate_label(
     asset: "Asset",
     calibration: "Calibration | None",
     points: "list[CalibrationData]",
-    owner_name: str | None,
     size: str,    # "1x0.5" | "2x2" | "4x2"
     fmt: str,     # "png" | "jpg" | "pdf"
     base_url: str,

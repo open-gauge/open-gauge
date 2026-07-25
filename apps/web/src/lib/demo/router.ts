@@ -20,10 +20,8 @@ import type { StoredFile } from "@/types/stored_file";
 import type {
   AdminStats,
   AdminSystem,
-  AdminTeam,
   EmailSettings,
   EmailSettingsUpdate,
-  Organization,
 } from "@/services/admin.service";
 import type {
   AssetImportPreview,
@@ -33,7 +31,8 @@ import type {
 import type { RegisterResult } from "@/services/auth.service";
 import type { LocationCreateBody } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
-import type { Team } from "@/services/user.service";
+import type { OrganizationCreateInput } from "./store";
+import type { OrgRole } from "@/types/organization";
 
 export const DEMO_TOKEN = "demo-token";
 
@@ -173,7 +172,7 @@ route("GET", "/api/v1/users/:id", ({ params }) => {
 });
 
 route("PUT", "/api/v1/users/:id", ({ params, body }) => {
-  const patch = body as { role?: string; organization_id?: string | null; is_active?: boolean; is_verified?: boolean };
+  const patch = body as { role?: string; is_active?: boolean; is_verified?: boolean };
   const user = store.updateUser(params[0], patch as Partial<import("@/types/user").UserProfile>);
   if (!user) throw new NotFoundError("user not found");
   return user;
@@ -192,7 +191,6 @@ route("GET", "/api/v1/admin/stats", (): AdminStats => ({
   calibrations: store.listAuditLogs({ limit: 1_000_000 }).filter((l) => l.entity_type === "calibration").length,
   users: store.listUsers({}).length,
   organizations: store.listOrganizations().length,
-  teams: store.listTeams().length,
 }));
 
 route("GET", "/api/v1/admin/system", (): AdminSystem => ({
@@ -209,14 +207,91 @@ route("POST", "/api/v1/admin/email-settings/test", () => undefined);
 // Organizations
 // ---------------------------------------------------------------------------
 
-route("GET", "/api/v1/organizations", () => store.listOrganizations());
+route("GET", "/api/v1/organizations", ({ qs }) =>
+  qs.get("mine") === "true"
+    ? store.listUserOrganizations(store.getDemoUser().id)
+    : store.listOrganizations(store.getDemoUser().id));
+
 route("POST", "/api/v1/organizations", ({ body }) =>
-  store.createOrganization(body as { name: string; description?: string }));
-route("PUT", "/api/v1/organizations/:id", ({ body }) =>
-  store.updateOrganization(body as Partial<Organization>));
-route("DELETE", "/api/v1/organizations/:id", () => undefined);
-route("DELETE", "/api/v1/organizations/:id/logo", () =>
-  store.updateOrganization({ logo_file_id: null, logo_url: null }));
+  store.createOrganization(body as OrganizationCreateInput, store.getDemoUser().id));
+
+route("GET", "/api/v1/organizations/:id", ({ params }) => {
+  const org = store.getOrganization(params[0], store.getDemoUser().id);
+  if (!org) throw new NotFoundError("organization not found");
+  return org;
+});
+
+route("PUT", "/api/v1/organizations/:id", ({ params, body }) => {
+  const org = store.updateOrganization(params[0], body as Partial<OrganizationCreateInput>, store.getDemoUser().id);
+  if (!org) throw new NotFoundError("organization not found");
+  return org;
+});
+
+route("DELETE", "/api/v1/organizations/:id", ({ params }) => {
+  store.deactivateOrganization(params[0]);
+  return undefined;
+});
+
+route("DELETE", "/api/v1/organizations/:id/logo", ({ params }) =>
+  store.setOrgLogo(params[0], null, store.getDemoUser().id));
+
+route("GET", "/api/v1/organizations/:id/members", ({ params }) => store.listOrgMembers(params[0]));
+
+route("GET", "/api/v1/organizations/:id/eligible-members", ({ params, qs }) =>
+  store.listNonMembers(params[0], qs.get("q") ?? undefined));
+
+route("POST", "/api/v1/organizations/:id/members", ({ params, body }) => {
+  const { user_ids } = body as { user_ids: string[] };
+  return store.addMembers(params[0], user_ids);
+});
+
+route("PUT", "/api/v1/organizations/:id/members/:userId", ({ params, body }) => {
+  const { role } = body as { role: OrgRole };
+  const member = store.updateMemberRole(params[0], params[1], role);
+  if (!member) throw new NotFoundError("member not found");
+  return member;
+});
+
+route("DELETE", "/api/v1/organizations/:id/members/:userId", ({ params }) => {
+  store.removeMember(params[0], params[1]);
+  return undefined;
+});
+
+route("POST", "/api/v1/organizations/:id/leave", ({ params }) => {
+  store.removeMember(params[0], store.getDemoUser().id);
+  return undefined;
+});
+
+route("POST", "/api/v1/organizations/:id/join-requests", ({ params }) =>
+  store.createJoinRequest(params[0], store.getDemoUser().id));
+
+route("GET", "/api/v1/organizations/:id/join-requests", ({ params }) => store.listPendingJoinRequests(params[0]));
+
+route("POST", "/api/v1/organizations/:id/join-requests/:requestId/approve", ({ params }) => {
+  store.decideJoinRequest(params[0], params[1], true, store.getDemoUser().id);
+  return undefined;
+});
+
+route("POST", "/api/v1/organizations/:id/join-requests/:requestId/reject", ({ params }) => {
+  store.decideJoinRequest(params[0], params[1], false, store.getDemoUser().id);
+  return undefined;
+});
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+route("GET", "/api/v1/notifications", () => store.listNotificationsForUser(store.getDemoUser().id));
+route("GET", "/api/v1/notifications/unread-count", () => ({ count: store.countUnreadNotifications(store.getDemoUser().id) }));
+route("POST", "/api/v1/notifications/:id/read", ({ params }) => {
+  const n = store.markNotificationRead(params[0], store.getDemoUser().id);
+  if (!n) throw new NotFoundError("notification not found");
+  return n;
+});
+route("POST", "/api/v1/notifications/read-all", () => {
+  store.markAllNotificationsRead(store.getDemoUser().id);
+  return undefined;
+});
 
 // ---------------------------------------------------------------------------
 // Certificate templates — LaTeX template management isn't simulated in demo
@@ -229,44 +304,6 @@ route("PUT", "/api/v1/certificate-templates/:id", () => {
   throw new NotFoundError("certificate templates aren't available in this demo");
 });
 route("DELETE", "/api/v1/certificate-templates/:id", () => undefined);
-
-// ---------------------------------------------------------------------------
-// Teams (shared by admin.service, user.service, asset.service)
-// ---------------------------------------------------------------------------
-
-route("GET", "/api/v1/teams", ({ qs }) => store.listTeams(qs.get("org_id") ?? undefined));
-
-route("POST", "/api/v1/teams", ({ body }) => {
-  const input = body as { name: string; description?: string; organization_id?: string };
-  return store.createTeam({
-    name: input.name,
-    description: input.description,
-    organization_id: input.organization_id ?? store.getOrganization().id,
-  });
-});
-
-route("PUT", "/api/v1/teams/:id", ({ params, body }) => {
-  const team = store.updateTeam(params[0], body as { name?: string; description?: string });
-  if (!team) throw new NotFoundError("team not found");
-  return team as AdminTeam | Team;
-});
-
-route("DELETE", "/api/v1/teams/:id", ({ params }) => {
-  store.deleteTeam(params[0]);
-  return undefined;
-});
-
-route("POST", "/api/v1/teams/:id/join", ({ params }) => {
-  const team = store.joinTeam(params[0]);
-  if (!team) throw new NotFoundError("team not found");
-  return team;
-});
-
-route("DELETE", "/api/v1/teams/:id/leave", ({ params }) => {
-  const team = store.leaveTeam(params[0]);
-  if (!team) throw new NotFoundError("team not found");
-  return team;
-});
 
 // ---------------------------------------------------------------------------
 // Locations
@@ -535,6 +572,7 @@ route("GET", "/api/v1/assets", ({ qs }) =>
   store.listAssets({
     isActive: bool(qs.get("is_active")),
     locationId: qs.get("location_id") ?? undefined,
+    organizationId: qs.get("organization_id") ?? undefined,
     includeDescendants: bool(qs.get("include_descendants")),
     limit: num(qs.get("limit")),
   }));
@@ -553,6 +591,7 @@ route("POST", "/api/v1/assets", ({ body }) => {
     serial_number: input.serial_number ?? null,
     manufacturer_part_number: null,
     location_id: input.location_id ?? null,
+    organization_id: input.organization_id ?? null,
     firmware_version: null,
     power_supply: null,
     power_consumption_w: null,
@@ -571,7 +610,6 @@ route("POST", "/api/v1/assets", ({ body }) => {
     price_eur: null,
     purchase_date: null,
     warranty_expiry_date: null,
-    owner: input.owner ?? null,
     is_active: true,
     retired_at: null,
     retired_reason: null,
@@ -614,6 +652,7 @@ route("POST", "/api/v1/assets", ({ body }) => {
         is_active: true,
       }
       : null,
+    organization_name: null,
     site_name: null,
     location_name: null,
     location_code: null,
@@ -626,7 +665,6 @@ route("POST", "/api/v1/assets", ({ body }) => {
     calibration_count: 0,
     subtype: null,
     technology: null,
-    owner_name: null,
     calibration_health_score: null,
   };
   const created = store.createAsset(profile);
@@ -1022,7 +1060,8 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
   // /api/v1/organizations/:id/logo
   m = /^\/api\/v1\/organizations\/([^/]+)\/logo$/.exec(req.pathname);
   if (m) {
-    const org = store.updateOrganization({ logo_url: url, logo_file_id: store.genId() });
+    const org = store.setOrgLogo(m[1], url, store.getDemoUser().id);
+    if (!org) throw new Error("organization not found");
     return org as unknown as T;
   }
 

@@ -16,12 +16,12 @@ from app.core.security import create_access_token, hash_password
 from app.models.asset import Asset, AssetType
 from app.models.calibration import Calibration
 from app.models.email_settings import EmailSettings
+from app.models.location import Location
 from app.models.organization import Organization
-from app.models.team import Team
-from app.models.team_member import TeamMember
+from app.models.organization_member import OrganizationMember, OrgRole
 from app.models.user import User, UserRole
 from app.services.calibration_reminders import sweep as run_reminder_sweep
-from app.services.notifications import team_member_emails
+from app.services.notifications import org_member_emails
 from tests.conftest import make_asset_id
 
 
@@ -224,7 +224,6 @@ class TestRegisterFirstUserOnFreshInstall:
 
         user = db.query(User).filter(User.email == email).first()
         assert user.is_verified is True
-        assert user.is_superuser is True
         assert user.role == UserRole.superadmin
 
         login = client.post(
@@ -248,7 +247,6 @@ class TestRegisterFirstUserOnFreshInstall:
 
         user = db.query(User).filter(User.email == email).first()
         assert user.is_verified is False
-        assert user.is_superuser is False
 
 
 # ---------------------------------------------------------------------------
@@ -456,33 +454,43 @@ class TestEmailSettingsAdmin:
 
 
 # ---------------------------------------------------------------------------
-# Team member resolution + calibration reminder sweep
+# Organization member resolution + calibration reminder sweep
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def team_with_member(db: Session, test_user: User) -> tuple[Team, User]:
+def org_with_member(db: Session, test_user: User) -> tuple[Location, User]:
+    """An organization with one active Technician in it, plus a location in
+    that org — assets are scoped to an organization via their location (see
+    services/certificate_service.resolve_organization), so tests need a real
+    location to exercise that resolution rather than a bare org id."""
     org = Organization(id=uuid.uuid4(), name=f"Org {uuid.uuid4().hex[:6]}")
     db.add(org)
     db.flush()
-    team = Team(id=uuid.uuid4(), organization_id=org.id, name=f"Cal Lab {uuid.uuid4().hex[:6]}", created_by=test_user.id)
-    db.add(team)
+    location = Location(
+        id=uuid.uuid4(),
+        organization_id=org.id,
+        name=f"Cal Lab {uuid.uuid4().hex[:6]}",
+        location_type="laboratory",
+        created_by=test_user.id,
+    )
+    db.add(location)
     db.flush()
     member = User(
         id=uuid.uuid4(),
         email=f"member_{uuid.uuid4().hex[:8]}@opengauge.test",
-        name="Team Member",
+        name="Org Member",
         hashed_password=hash_password("Testpass123!"),
         role=UserRole.technician,
         is_active=True,
     )
     db.add(member)
     db.flush()
-    db.add(TeamMember(team_id=team.id, user_id=member.id))
+    db.add(OrganizationMember(organization_id=org.id, user_id=member.id, role=OrgRole.member, active=True))
     db.flush()
-    return team, member
+    return location, member
 
 
-def _make_asset(db: Session, owner_team_id, created_by: uuid.UUID) -> Asset:
+def _make_asset(db: Session, location_id, created_by: uuid.UUID) -> Asset:
     asset = Asset(
         id=uuid.uuid4(),
         asset_id=make_asset_id(),
@@ -490,7 +498,7 @@ def _make_asset(db: Session, owner_team_id, created_by: uuid.UUID) -> Asset:
         name="Reminder Test Sensor",
         manufacturer="Fluke",
         model="724",
-        owner=owner_team_id,
+        location_id=location_id,
         is_active=True,
         created_by=created_by,
     )
@@ -513,35 +521,60 @@ def _make_calibration(db: Session, asset: Asset, due_date: date, created_by: uui
     return cal
 
 
-class TestTeamMemberEmails:
-    def test_resolves_active_members_of_the_owning_team(
-        self, db: Session, test_user: User, team_with_member: tuple[Team, User]
+class TestOrgMemberEmails:
+    def test_resolves_active_members_of_the_owning_organization(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
     ) -> None:
-        team, member = team_with_member
-        asset = _make_asset(db, team.id, test_user.id)
-        emails = team_member_emails(db, asset, exclude_user_id=None)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today(), test_user.id)
+        emails = org_member_emails(db, asset, cal, exclude_user_id=None)
         assert emails == [member.email]
 
     def test_excludes_given_user_id(
-        self, db: Session, test_user: User, team_with_member: tuple[Team, User]
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
     ) -> None:
-        team, member = team_with_member
-        asset = _make_asset(db, team.id, test_user.id)
-        emails = team_member_emails(db, asset, exclude_user_id=member.id)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today(), test_user.id)
+        emails = org_member_emails(db, asset, cal, exclude_user_id=member.id)
         assert emails == []
 
-    def test_no_owner_returns_no_recipients(self, db: Session, test_user: User) -> None:
+    def test_excludes_viewers(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
+    ) -> None:
+        location, member = org_with_member
+        viewer = User(
+            id=uuid.uuid4(),
+            email=f"viewer_{uuid.uuid4().hex[:8]}@opengauge.test",
+            name="Org Viewer",
+            hashed_password=hash_password("Testpass123!"),
+            role=UserRole.viewer,
+            is_active=True,
+        )
+        db.add(viewer)
+        db.flush()
+        db.add(OrganizationMember(organization_id=location.organization_id, user_id=viewer.id, role=OrgRole.member, active=True))
+        db.flush()
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today(), test_user.id)
+        emails = org_member_emails(db, asset, cal, exclude_user_id=None)
+        assert emails == [member.email]
+        assert viewer.email not in emails
+
+    def test_no_location_returns_no_recipients(self, db: Session, test_user: User) -> None:
         asset = _make_asset(db, None, test_user.id)
-        assert team_member_emails(db, asset, exclude_user_id=None) == []
+        cal = _make_calibration(db, asset, date.today(), test_user.id)
+        assert org_member_emails(db, asset, cal, exclude_user_id=None) == []
 
 
 class TestCalibrationReminderSweep:
     def test_sends_due_soon_reminder_and_marks_it_sent(
-        self, db: Session, test_user: User, team_with_member: tuple[Team, User], monkeypatch
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User], monkeypatch
     ) -> None:
         _enable_mail(db, calibration_reminder_days=14)
-        team, member = team_with_member
-        asset = _make_asset(db, team.id, test_user.id)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
         cal = _make_calibration(db, asset, date.today() + timedelta(days=5), test_user.id)
 
         sent = []
@@ -553,7 +586,7 @@ class TestCalibrationReminderSweep:
         run_reminder_sweep(db)
 
         # The sweep scans every due/overdue calibration in the database, not just this
-        # test's fixture — in a shared dev DB there may be other real team-owned
+        # test's fixture — in a shared dev DB there may be other real org-owned
         # calibrations that are also due, so assert membership rather than exact
         # equality (which real unrelated data could otherwise break).
         assert member.email in sent
@@ -562,11 +595,11 @@ class TestCalibrationReminderSweep:
         assert cal.overdue_reminder_sent_at is None
 
     def test_sends_overdue_reminder_and_marks_it_sent(
-        self, db: Session, test_user: User, team_with_member: tuple[Team, User], monkeypatch
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User], monkeypatch
     ) -> None:
         _enable_mail(db)
-        team, member = team_with_member
-        asset = _make_asset(db, team.id, test_user.id)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
         cal = _make_calibration(db, asset, date.today() - timedelta(days=3), test_user.id)
 
         monkeypatch.setattr(
@@ -580,11 +613,11 @@ class TestCalibrationReminderSweep:
         assert cal.overdue_reminder_sent_at is not None
 
     def test_does_not_resend_once_marked(
-        self, db: Session, test_user: User, team_with_member: tuple[Team, User], monkeypatch
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User], monkeypatch
     ) -> None:
         _enable_mail(db)
-        team, member = team_with_member
-        asset = _make_asset(db, team.id, test_user.id)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
         cal = _make_calibration(db, asset, date.today() + timedelta(days=5), test_user.id)
         already_sent = datetime.now(timezone.utc)
         cal.due_reminder_sent_at = already_sent
@@ -607,11 +640,11 @@ class TestCalibrationReminderSweep:
         assert member.email not in sent
 
     def test_is_noop_when_mail_disabled(
-        self, db: Session, test_user: User, team_with_member: tuple[Team, User]
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
     ) -> None:
         _disable_mail(db)
-        team, member = team_with_member
-        asset = _make_asset(db, team.id, test_user.id)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
         cal = _make_calibration(db, asset, date.today() - timedelta(days=3), test_user.id)
 
         run_reminder_sweep(db)
@@ -620,13 +653,13 @@ class TestCalibrationReminderSweep:
         assert cal.overdue_reminder_sent_at is None
 
     def test_failed_delivery_is_not_marked_as_sent(
-        self, db: Session, test_user: User, team_with_member: tuple[Team, User]
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
     ) -> None:
         """Uses the real (closed-port) SMTP target so delivery genuinely fails —
         confirms a failed send is left unmarked and will be retried next sweep."""
         _enable_mail(db)
-        team, member = team_with_member
-        asset = _make_asset(db, team.id, test_user.id)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
         cal = _make_calibration(db, asset, date.today() - timedelta(days=3), test_user.id)
 
         run_reminder_sweep(db)

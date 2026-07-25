@@ -18,7 +18,7 @@ from .api.v1 import procedures as procedure_router
 from .api.v1 import audit_logs as log_router
 from .api.v1 import users as user_router
 from .api.v1 import signatures as signature_router
-from .api.v1 import teams as team_router
+from .api.v1 import notifications as notification_router
 from .api.v1 import admin as admin_router
 from .core.config import settings
 from .services.calibration_reminders import run_reminder_sweep
@@ -29,8 +29,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # BackgroundScheduler (thread-based) rather than AsyncIOScheduler: the sweep does
     # blocking DB/SMTP I/O and must not run on — and block — the request event loop.
     scheduler = BackgroundScheduler()
-    # Once a day: email a calibration's owning team when it's due soon or overdue.
-    # A no-op if email notifications aren't configured (see /admin/email-settings).
+    # Once a day: email a calibration's owning organization's technicians/admins
+    # when it's due soon or overdue. A no-op if email notifications aren't
+    # configured (see /admin/email-settings).
     scheduler.add_job(run_reminder_sweep, CronTrigger(hour=7, minute=0))
     scheduler.start()
 
@@ -42,7 +43,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 OPENAPI_TAGS = [
     {"name": "Auth", "description": "Login, session, and token management."},
     {"name": "Dashboard", "description": "Aggregate KPIs and summaries for the dashboard home screen."},
-    {"name": "Organizations", "description": "Tenant root records."},
+    {"name": "Organizations", "description": "Multi-tenant organizations, membership, and join requests."},
+    {"name": "Notifications", "description": "In-app notification inbox."},
     {"name": "Locations", "description": "Hierarchical site/building/lab location tree."},
     {"name": "Assets", "description": "The instrumentation asset registry (sensors and DAQs)."},
     {"name": "Calibrations", "description": "Calibration analysis, records, points, and certificates."},
@@ -51,7 +53,6 @@ OPENAPI_TAGS = [
     {"name": "Audit Logs", "description": "Immutable record of significant state changes."},
     {"name": "Users", "description": "User accounts and profiles."},
     {"name": "Signatures", "description": "User signature capture and cryptographic signing/verification."},
-    {"name": "Teams", "description": "Teams within an organization, used for asset ownership."},
     {"name": "Admin", "description": "Organization- and system-level administration."},
     {"name": "Health", "description": "Service liveness check."},
 ]
@@ -83,7 +84,7 @@ app.include_router(procedure_router.router, prefix="/api/v1")
 app.include_router(log_router.router, prefix="/api/v1")
 app.include_router(user_router.router, prefix="/api/v1")
 app.include_router(signature_router.router, prefix="/api/v1")
-app.include_router(team_router.router, prefix="/api/v1")
+app.include_router(notification_router.router, prefix="/api/v1")
 app.include_router(admin_router.router, prefix="/api/v1")
 
 

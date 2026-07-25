@@ -5,11 +5,10 @@ from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...core.security import hash_password, verify_password
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import get_current_user, require_admin
 from ...models.user import User
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import stored_file as file_repo
-from ...repositories import team_member as team_member_repo
 from ...repositories import user as user_repo
 from ...schemas.user import ChangePasswordRequest, UserCreate, UserResponse, UserSelfUpdate, UserUpdate
 from ...services import storage as storage_svc
@@ -19,7 +18,6 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 def _enrich_user(user: User, db: Session) -> UserResponse:
     data = UserResponse.model_validate(user)
-    data.teams = team_member_repo.list_teams_for_user(db, user.id)
     if user.profile_picture_id:
         f = file_repo.get_by_id(db, user.profile_picture_id)
         if f:
@@ -34,10 +32,8 @@ def list_users(
     is_active: bool | None = None,
     q: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> list[UserResponse]:
-    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return user_repo.list_users(db, skip=skip, limit=limit, is_active=is_active, q=q)
 
 
@@ -46,10 +42,8 @@ def count_users(
     is_active: bool | None = None,
     q: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> dict:
-    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return {"count": user_repo.count_users(db, is_active=is_active, q=q)}
 
 
@@ -180,10 +174,8 @@ def delete_me(
 def create_user(
     body: UserCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> UserResponse:
-    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     if user_repo.get_by_email(db, body.email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     return user_repo.create(
@@ -192,7 +184,6 @@ def create_user(
         name=body.name,
         hashed_password=hash_password(body.password),
         role=body.role,
-        organization_id=body.organization_id,
     )
 
 
@@ -215,13 +206,11 @@ def update_user(
     user_id: uuid.UUID,
     body: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> UserResponse:
-    """Admin-only: role, organization, team, is_active, and is_verified are all
+    """Admin-only: role, organization, is_active, and is_verified are all
     privilege-bearing fields. Self-service updates go through PATCH /users/me
-    (UserSelfUpdate) instead, which only allows name/email/team."""
-    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    (UserSelfUpdate) instead, which only allows name/email."""
     user = user_repo.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -232,10 +221,8 @@ def update_user(
 def deactivate_user(
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> None:
-    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     user = user_repo.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

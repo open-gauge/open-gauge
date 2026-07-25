@@ -16,12 +16,14 @@ export async function listAssets(params: {
   is_active?: boolean;
   location_id?: string;
   include_descendants?: boolean;
+  organization_id?: string;
 } = {}): Promise<AssetListItem[]> {
   const qs = new URLSearchParams();
   if (params.limit !== undefined) qs.set("limit", String(params.limit));
   if (params.is_active !== undefined) qs.set("is_active", String(params.is_active));
   if (params.location_id !== undefined) qs.set("location_id", params.location_id);
   if (params.include_descendants) qs.set("include_descendants", "true");
+  if (params.organization_id !== undefined) qs.set("organization_id", params.organization_id);
   return apiFetch<AssetListItem[]>(`/api/v1/assets?${qs}`, {
     headers: tokenHeader(),
   });
@@ -140,12 +142,11 @@ export async function validateImportZip(file: File): Promise<AssetImportPreview>
 
 export async function importAssetZipWithOverrides(
   file: File,
-  overrides: { locationId?: string; owner?: string } = {}
+  overrides: { locationId?: string } = {}
 ): Promise<AssetImportResponse> {
   const form = new FormData();
   form.append("file", file);
   if (overrides.locationId) form.append("location_id", overrides.locationId);
-  if (overrides.owner) form.append("owner", overrides.owner);
   return apiUpload<AssetImportResponse>(`/api/v1/assets/import`, form, {
     headers: tokenHeader(),
   });
@@ -179,12 +180,6 @@ export async function retireAsset(id: string, reason?: string): Promise<void> {
   const qs = reason ? `?reason=${encodeURIComponent(reason)}` : "";
   return apiFetch<void>(`/api/v1/assets/${id}${qs}`, {
     method: "DELETE",
-    headers: tokenHeader(),
-  });
-}
-
-export async function listTeams(): Promise<{ id: string; name: string }[]> {
-  return apiFetch<{ id: string; name: string }[]>(`/api/v1/teams`, {
     headers: tokenHeader(),
   });
 }

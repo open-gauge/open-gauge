@@ -23,8 +23,8 @@ class AssetImportResponse(BaseModel):
 
 # ---------------------------------------------------------------------------
 # Pre-import validation preview — lets the "Import from file" UI show the
-# asset's identity and ask the user to pick a location/owner (the UUID-typed
-# fields that are never exported) before actually creating anything.
+# asset's identity and ask the user to pick a location (the UUID-typed
+# field that is never exported) before actually creating anything.
 # ---------------------------------------------------------------------------
 
 class AssetImportPreview(BaseModel):

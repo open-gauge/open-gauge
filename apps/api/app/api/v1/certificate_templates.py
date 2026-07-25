@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import get_current_user, require_admin, require_superadmin
 from ...models.user import User
 from ...repositories import certificate_template as certtpl_repo
 from ...repositories import stored_file as file_repo
@@ -15,16 +15,6 @@ from ...services import storage as storage_svc
 from ...services.latex_service import LatexCompileError
 
 router = APIRouter(prefix="/certificate-templates", tags=["Certificate Templates"])
-
-
-def _require_admin(user: User) -> None:
-    if not (user.is_superuser or user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
-
-
-def _require_superadmin(user: User) -> None:
-    if not (user.is_superuser or user.role == "superadmin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superadmin only (global templates affect every organization)")
 
 
 @router.get("", response_model=list[CertificateTemplateResponse])
@@ -50,9 +40,9 @@ async def upload_template(
     (dummy data) before being persisted, so a bad template is rejected immediately
     rather than silently failing the next time a real certificate is generated."""
     if organization_id is None:
-        _require_superadmin(current_user)
+        require_superadmin(current_user)
     else:
-        _require_admin(current_user)
+        require_admin(current_user)
 
     data = await file.read()
     try:
@@ -111,9 +101,9 @@ def update_template(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
 
     if template.organization_id is None:
-        _require_superadmin(current_user)
+        require_superadmin(current_user)
     else:
-        _require_admin(current_user)
+        require_admin(current_user)
 
     if body.is_default:
         certtpl_repo.unset_default(db, template.organization_id)
@@ -139,9 +129,9 @@ def delete_template(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
 
     if template.organization_id is None:
-        _require_superadmin(current_user)
+        require_superadmin(current_user)
     else:
-        _require_admin(current_user)
+        require_admin(current_user)
 
     certtpl_repo.deactivate(db, template)
 

@@ -1,4 +1,4 @@
-"""Daily sweep that emails a calibration's owning team when it's due soon or overdue.
+"""Daily sweep that emails a calibration's owning organization when it's due soon or overdue.
 
 Runs on an in-process scheduler (see main.py) — there's no separate worker process
 in this stack, so this stays a lightweight periodic job rather than a queue.
@@ -16,7 +16,7 @@ from ..models.calibration import Calibration
 from ..repositories import email_settings as email_settings_repo
 from . import mail as mail_svc
 from . import mail_templates
-from .notifications import team_member_emails
+from .notifications import org_member_emails
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def sweep(db) -> None:
     today = date.today()
     due_soon_limit = today + timedelta(days=reminder_days)
 
-    assets = db.query(Asset).filter(Asset.is_active.is_(True), Asset.owner.isnot(None)).all()
+    assets = db.query(Asset).filter(Asset.is_active.is_(True)).all()
     if not assets:
         return
     assets_by_id = {a.id: a for a in assets}
@@ -85,7 +85,7 @@ def sweep(db) -> None:
 
 
 def _send_reminder(db, asset: Asset, cal: Calibration, overdue: bool) -> None:
-    recipients = team_member_emails(db, asset, exclude_user_id=None)
+    recipients = org_member_emails(db, asset, cal, exclude_user_id=None)
     if not recipients:
         return
 

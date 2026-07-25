@@ -84,6 +84,7 @@ export interface AssetProfile {
   serial_number: string | null;
   manufacturer_part_number: string | null;
   location_id: string | null;
+  organization_id: string | null;
   firmware_version: string | null;
   power_supply: string | null;
   power_consumption_w: number | null;
@@ -102,7 +103,6 @@ export interface AssetProfile {
   price_eur: number | null;
   purchase_date: string | null;
   warranty_expiry_date: string | null;
-  owner: string | null;
   is_active: boolean;
   retired_at: string | null;
   retired_reason: string | null;
@@ -119,6 +119,7 @@ export interface AssetProfile {
   sensor_channels: SensorChannelFull[];
   daq_details: DaqDetailsFull | null;
   // enriched
+  organization_name: string | null;
   site_name: string | null;
   location_name: string | null;
   location_code: string | null;
@@ -131,7 +132,6 @@ export interface AssetProfile {
   calibration_count: number;
   subtype: string | null;
   technology: string | null;
-  owner_name: string | null;
   calibration_health_score: number | null;
 }
 
@@ -189,7 +189,7 @@ export interface AssetCreateBody {
   serial_number?: string | null;
   description?: string | null;
   location_id?: string | null;
-  owner?: string | null;
+  organization_id?: string | null;
 }
 
 export interface AssetUpdateRequest {
@@ -201,6 +201,7 @@ export interface AssetUpdateRequest {
   serial_number?: string | null;
   manufacturer_part_number?: string | null;
   location_id?: string | null;
+  organization_id?: string | null;
   firmware_version?: string | null;
   power_supply?: string | null;
   power_consumption_w?: number | null;
@@ -217,7 +218,6 @@ export interface AssetUpdateRequest {
   price_eur?: number | null;
   purchase_date?: string | null;
   warranty_expiry_date?: string | null;
-  owner?: string | null;
   notes?: string | null;
   pinout_table?: Array<{ pin_number: number; name: string; description: string }> | null;
   sensor_channels?: SensorChannelUpdateInput[];

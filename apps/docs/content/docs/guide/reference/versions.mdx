@@ -4,13 +4,87 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v2.4.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.0.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.0.0
+
+### Added
+
+- Organizations are now full multi-tenant entities. Any user can create one and becomes its first
+  admin automatically; a user can belong to any number of organizations, each with its own
+  `member`/`admin` role — distinct from the global RBAC role on the user's account. Only Super
+  Admin overrides into organization management the caller isn't a member of; the global `admin`
+  role has no special access to organizations, matching the peer-to-peer model.
+  - New profile fields: `full_name`, `website`, `location_id` (primary/HQ location), `email`,
+    `phone`, `private`.
+  - New dedicated **Organizations** page (list + per-organization detail page, replacing the old
+    Admin → Organizations panel) and a sidebar tab.
+  - Members can leave, and admins can remove members or change their role — guarded so an
+    organization is never left with zero admins (the last admin must promote someone else first,
+    or deactivate the organization instead).
+  - Private organizations show only their name (with a lock icon) to non-members, so they stay
+    discoverable enough to request joining; everything else about them — profile, member roster,
+    assets — is members-only.
+  - Non-members can send a **join request**; every admin of that organization gets notified via
+    a new in-app notification inbox (bell icon in the top bar) always, plus email if SMTP is
+    configured. Approving adds the requester as a `member`.
+  - Assets now carry a direct `organization_id` (chosen from the creating user's own organizations),
+    independent of the asset's location — shown on the asset detail page and linked back to the
+    organization's page, which in turn shows a clickable asset count filtering the asset register.
+  - The organization page's Members panel gained an **Add member** button (a modal listing every
+    user not already an active member, multi-select, added with the `member` role) and a
+    **Danger zone** with a confirmed delete action — deleting deactivates the organization,
+    hiding it from everyone except Super Admin. Pending join requests now show inline in the same
+    Members list with a "Pending" status instead of a separate panel, and approving/rejecting
+    doesn't require edit mode; changing a member's role or removing them now does.
+  - A **Join / Leave** button now appears on every organization's list row and its detail page
+    (beside Edit for admins, in Edit's place for everyone else): "Request to join", a disabled
+    "Request pending" once a request is in flight, or a red "Leave" for members — each behind a
+    confirmation dialog. Leaving as an organization's last admin is guided instead of just
+    rejected: promote another member first, or delete the organization if it's the last member too.
+  - New shared `ImageUploadField` UI component (circular picture, click-to-preview, overlaid
+    upload/remove buttons in edit mode) — now used consistently for the organization logo, asset
+    picture, and user profile picture.
+
+### Changed
+
+- **Breaking:** Teams are removed. Open Gauge now mimics Gogs — only users and organizations,
+  no team layer between them.
+  - Dropped the `teams` and `team_members` tables, the `/teams*` API endpoints, the Settings →
+    Teams self-service join/leave UI, and the Admin → Organizations nested team panel.
+  - Asset ownership (previously `assets.owner`, a team reference) is superseded by the direct
+    `assets.organization_id` above.
+  - Calibration email notifications (new-calibration and due/overdue reminders) now go to every
+    active Technician/Admin/Super Admin who is a member of the asset's organization instead of a
+    team's members; Viewers are never notified. The built-in certificate template's footer drops
+    its separate "Team" line, since the "Organization" line already covers this.
+- **Breaking:** The redundant `User.is_superuser` boolean is removed. It was always ORed with
+  `role == "superadmin"` at every permission check; Super Admin capability now comes solely from
+  the `role` field. Any account that had `is_superuser=true` is promoted to `role=superadmin` by
+  the migration so no one loses access.
+- **Breaking:** `users.organization_id` (a single nullable FK, one org per user) is replaced by
+  the `organization_members` many-to-many table described above.
+- Consolidated 11+ duplicated `_require_admin`/`_require_superuser` router-local helper functions
+  into shared `require_admin`/`require_superadmin` FastAPI dependencies in `dependencies/deps.py`.
+  The frontend's four copies of `ROLE_LABELS`/`ROLE_COLORS` are similarly consolidated into
+  `lib/roles.ts`.
+
+### Fixed
+
+- The organization logo displayed as a non-clickable square instead of the circular,
+  click-to-preview picture used everywhere else.
+- An organization's website link resolved as relative to the current page when the stored value
+  had no `http(s)://` prefix, sending visitors to a broken `/organizations/<website>` URL instead
+  of the intended site. Storage is unchanged; only the outgoing link is normalized.
+- The asset count on an organization's page linked to the asset register but didn't actually
+  filter it by organization — the register never read `organization_id`/`organization_name` from
+  the URL.
 
 ## 2.4.0
 

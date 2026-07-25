@@ -14,6 +14,7 @@ import {
   XIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/avatar";
+import { ImageUploadField } from "@/components/image-upload-field";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { SignaturePad } from "@/components/signature-pad";
 import {
@@ -22,15 +23,11 @@ import {
   deleteMyPicture,
   deleteMySignature,
   getMySignature,
-  joinTeam,
-  leaveTeam,
-  listTeams,
   updateMe,
   uploadMyPicture,
   uploadMySignature,
   verifyUserSignature,
   type SignatureVerifyResult,
-  type Team,
 } from "@/services/user.service";
 
 // ---------------------------------------------------------------------------
@@ -57,15 +54,10 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 // ---------------------------------------------------------------------------
 
 function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh: () => Promise<void> }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const [previewOpen, setPreviewOpen] = useState(false);
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function handleFileChange(file: File) {
     setUploading(true);
     setError("");
     try {
@@ -97,55 +89,22 @@ function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh:
         <p className="text-xs font-semibold text-og-text">Profile Picture</p>
       </div>
       <div className="p-4 flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => user.profile_picture_url && setPreviewOpen(true)}
-          disabled={!user.profile_picture_url}
-          className="rounded-full shrink-0 disabled:cursor-default"
+        <ImageUploadField
+          imageUrl={user.profile_picture_url}
+          alt={user.name}
+          editable
+          uploading={uploading}
+          onUpload={handleFileChange}
+          onRemove={handleRemove}
+          size={64}
         >
           <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={64} />
-        </button>
+        </ImageUploadField>
         <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
-            >
-              <CameraIcon size={12} /> {uploading ? "Uploading…" : "Change picture"}
-            </button>
-            {user.profile_picture_url && (
-              <button
-                type="button"
-                onClick={handleRemove}
-                disabled={uploading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
-              >
-                <TrashIcon size={12} /> Remove
-              </button>
-            )}
-          </div>
           <p className="text-[11px] text-gray-400">JPG, PNG or GIF. Max 5MB.</p>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
       </div>
-
-      {previewOpen && user.profile_picture_url && (
-        <ImagePreviewModal
-          src={user.profile_picture_url}
-          alt={user.name}
-          title={user.name}
-          onClose={() => setPreviewOpen(false)}
-        />
-      )}
     </div>
   );
 }
@@ -524,89 +483,6 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
 }
 
 // ---------------------------------------------------------------------------
-// Teams section
-// ---------------------------------------------------------------------------
-
-function TeamsSection() {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadErr, setLoadErr] = useState("");
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [actionErr, setActionErr] = useState("");
-
-  useEffect(() => {
-    listTeams()
-      .then(setTeams)
-      .catch((e: unknown) => setLoadErr(e instanceof Error ? e.message : "Failed to load teams"))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function toggleMembership(team: Team) {
-    setPendingId(team.id);
-    setActionErr("");
-    try {
-      const updated = team.is_member ? await leaveTeam(team.id) : await joinTeam(team.id);
-      setTeams((prev) => prev.map((t) => (t.id === team.id ? updated : t)));
-    } catch (e: unknown) {
-      setActionErr(e instanceof Error ? e.message : "Failed to update team membership");
-    } finally {
-      setPendingId(null);
-    }
-  }
-
-  return (
-    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
-      <div className="px-4 py-3 border-b border-og-border">
-        <p className="text-xs font-semibold text-og-text">Teams</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">
-          Choose which of your organization&apos;s teams to join — membership is opt-in and
-          determines who gets calibration reminder emails for a team-owned asset. Creating,
-          renaming, or deleting teams is done from Admin → Organizations.
-        </p>
-      </div>
-
-      {actionErr && <p className="px-4 pt-3 text-xs text-red-500">{actionErr}</p>}
-
-      <div className="divide-y divide-og-border">
-        {loading && (
-          <div className="flex items-center justify-center py-10 gap-2 text-xs text-gray-400">
-            <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-            Loading…
-          </div>
-        )}
-        {!loading && loadErr && (
-          <div className="px-4 py-4 text-sm text-red-500">{loadErr}</div>
-        )}
-        {!loading && !loadErr && teams.length === 0 && (
-          <p className="px-4 py-6 text-sm text-gray-400">No teams in your organization yet.</p>
-        )}
-        {teams.map((team) => (
-          <div key={team.id} className="flex items-start justify-between px-4 py-3 gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-og-text">{team.name}</p>
-              {team.description && (
-                <p className="text-xs text-gray-400 mt-0.5">{team.description}</p>
-              )}
-            </div>
-            <button
-              onClick={() => toggleMembership(team)}
-              disabled={pendingId === team.id}
-              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-60 ${
-                team.is_member
-                  ? "border border-og-border-md text-gray-600 dark:text-gray-300 hover:bg-og-surface-alt"
-                  : "bg-og-action hover:bg-og-action-dark text-white"
-              }`}
-            >
-              {pendingId === team.id ? "…" : team.is_member ? "Leave" : "Join"}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Delete Account section
 // ---------------------------------------------------------------------------
 
@@ -674,11 +550,10 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
 // Page
 // ---------------------------------------------------------------------------
 
-type Section = "profile" | "teams" | "delete";
+type Section = "profile" | "delete";
 
 const NAV: { id: Section; label: string }[] = [
   { id: "profile", label: "Profile" },
-  { id: "teams", label: "Teams" },
   { id: "delete", label: "Delete Account" },
 ];
 
@@ -728,7 +603,6 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-4">
           {section === "profile" && <ProfileSection user={user} onRefresh={refreshUser} />}
-          {section === "teams" && <TeamsSection />}
           {section === "delete" && <DeleteSection onDeleted={handleDeleted} />}
         </div>
       </div>

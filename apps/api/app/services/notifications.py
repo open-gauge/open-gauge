@@ -1,4 +1,4 @@
-"""Best-effort email notifications to a calibration's owning team.
+"""Best-effort email notifications to a calibration's owning organization.
 
 These run as FastAPI background tasks *after* the response has already been
 sent, so each entry point opens its own short-lived DB session rather than
@@ -11,25 +11,35 @@ import uuid
 from ..core.database import SessionLocal
 from ..models.asset import Asset
 from ..models.calibration import Calibration
-from ..models.team import Team
-from ..models.team_member import TeamMember
-from ..models.user import User
+from ..models.organization_member import OrganizationMember
+from ..models.user import User, UserRole
+from .certificate_service import resolve_organization
 from . import mail as mail_svc
 from . import mail_templates
 
 logger = logging.getLogger(__name__)
 
 
-def team_member_emails(db, asset: Asset, exclude_user_id: uuid.UUID | None) -> list[str]:
-    if not asset.owner:
-        return []
-    team = db.query(Team).filter(Team.id == asset.owner).first()
-    if not team:
+def org_member_emails(
+    db, asset: Asset, calibration: Calibration, exclude_user_id: uuid.UUID | None
+) -> list[str]:
+    """Active Technician/Admin/Super Admin users who are active members of the
+    asset's organization (resolved the same way certificates are: the asset's
+    own organization_id, falling back to its location, then the performing
+    user's organization). Viewers are excluded — they can't act on a
+    calibration, so notifying them would be noise."""
+    organization = resolve_organization(db, asset, calibration)
+    if not organization:
         return []
     query = (
         db.query(User)
-        .join(TeamMember, TeamMember.user_id == User.id)
-        .filter(TeamMember.team_id == team.id, User.is_active.is_(True))
+        .join(OrganizationMember, OrganizationMember.user_id == User.id)
+        .filter(
+            OrganizationMember.organization_id == organization.id,
+            OrganizationMember.active.is_(True),
+            User.is_active.is_(True),
+            User.role != UserRole.viewer,
+        )
     )
     if exclude_user_id:
         query = query.filter(User.id != exclude_user_id)
@@ -46,7 +56,7 @@ def notify_new_calibration(calibration_id: uuid.UUID, actor_id: uuid.UUID) -> No
         asset = db.query(Asset).filter(Asset.id == cal.asset_id).first()
         if not asset:
             return
-        recipients = team_member_emails(db, asset, exclude_user_id=actor_id)
+        recipients = org_member_emails(db, asset, cal, exclude_user_id=actor_id)
         if not recipients:
             return
         actor = db.query(User).filter(User.id == actor_id).first()

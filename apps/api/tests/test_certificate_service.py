@@ -318,7 +318,6 @@ class TestBuildRandomPreviewContext:
     def test_example_tables_context_fields_are_populated(self) -> None:
         context, _ = build_random_preview_context()
         assert context["calibration_location"]
-        assert context["team_name"]
         assert len(context["results_summary"]) == 3
         assert context["conformity"]["result_label"] in ("CONFORMS", "DOES NOT CONFORM")
         assert context["function_formula"] == "f(x) = a_0 + a_1 x"

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...core.config import settings
 from ...core.database import get_db
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import get_current_user, require_admin
 from ...models.calibration_method import Procedure
 from ...models.user import User
 from ...repositories import asset as asset_repo
@@ -215,18 +215,13 @@ def list_points(
     return cal_repo.list_points(db, cal_id)
 
 
-def _require_admin(current_user: User) -> None:
-    if not (current_user.is_superuser or current_user.role in ("superadmin", "admin")):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-
-
 @router.delete("/{cal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def void_calibration(
     cal_id: uuid.UUID,
     request: Request,
     reason: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> None:
     """Mark a calibration invalid rather than deleting it. Calibration history is
     never destroyed (see AGENTS.md's calibration philosophy): the record, its data
@@ -234,8 +229,6 @@ def void_calibration(
     from listings by default, excluded from due-date/status calculations, and
     excluded from drift/health analysis, until an admin restores it.
     Restricted to admin and superadmin."""
-    _require_admin(current_user)
-
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
@@ -266,11 +259,9 @@ def restore_calibration(
     cal_id: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> CalibrationResponse:
     """Reinstate a previously voided calibration. Restricted to admin and superadmin."""
-    _require_admin(current_user)
-
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")

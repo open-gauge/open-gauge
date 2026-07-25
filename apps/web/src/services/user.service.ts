@@ -8,13 +8,6 @@ function tokenHeader(): Record<string, string> {
   return authHeader(token);
 }
 
-export interface Team {
-  id: string;
-  name: string;
-  description: string | null;
-  is_member: boolean;
-}
-
 export async function updateMe(body: { name?: string; email?: string }): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/v1/users/me", {
     method: "PATCH",
@@ -96,24 +89,6 @@ export async function changePassword(currentPassword: string, newPassword: strin
 
 export async function deleteMe(): Promise<void> {
   return apiFetch<void>("/api/v1/users/me", {
-    method: "DELETE",
-    headers: tokenHeader(),
-  });
-}
-
-export async function listTeams(): Promise<Team[]> {
-  return apiFetch<Team[]>("/api/v1/teams", { headers: tokenHeader() });
-}
-
-export async function joinTeam(teamId: string): Promise<Team> {
-  return apiFetch<Team>(`/api/v1/teams/${teamId}/join`, {
-    method: "POST",
-    headers: tokenHeader(),
-  });
-}
-
-export async function leaveTeam(teamId: string): Promise<Team> {
-  return apiFetch<Team>(`/api/v1/teams/${teamId}/leave`, {
     method: "DELETE",
     headers: tokenHeader(),
   });

@@ -187,7 +187,6 @@ def dummy_context() -> dict:
         "calibration_id": "CAL-0001",
         "generated_date": "2026-01-01",
         "calibration_location": "Metrology Lab A",
-        "team_name": "Instrumentation Team",
     }
 
 

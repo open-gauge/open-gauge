@@ -66,6 +66,7 @@ def list_assets(
     is_active: bool | None = None,
     asset_type: AssetType | None = None,
     location_id: uuid.UUID | None = None,
+    organization_id: uuid.UUID | None = None,
     include_descendants: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
@@ -77,6 +78,7 @@ def list_assets(
         is_active=is_active,
         asset_type=asset_type,
         location_id=location_id,
+        organization_id=organization_id,
         include_descendants=include_descendants,
     )
 
@@ -148,7 +150,7 @@ def export_assets_bulk(
     response_model=AssetImportPreview,
     summary="Validate a single-asset import ZIP",
     description="Check whether a ZIP contains exactly one valid, importable asset (used by the "
-    "'New Asset → Import from file' flow before it asks the user to pick a location/owner). "
+    "'New Asset → Import from file' flow before it asks the user to pick a location). "
     "Never creates anything — always returns 200 with a `valid` flag rather than an error status, "
     "so the UI can show either the asset preview or a plain 'not a valid asset' message.",
     tags=["Assets"],
@@ -169,7 +171,7 @@ async def validate_import_zip(
     "feature. Each top-level folder containing an asset.yaml is imported independently — "
     "a failure importing one asset does not block the others in the same file. Used by both "
     "the registry's bulk 'Import' button and the 'New Asset → Import from file' flow. "
-    "location_id/owner are optional and, when given, are applied to every asset imported in "
+    "location_id is optional and, when given, is applied to every asset imported in "
     "this call (the 'Import from file' flow only ever imports one asset at a time).",
     tags=["Assets"],
 )
@@ -177,13 +179,12 @@ async def import_assets(
     request: Request,
     file: UploadFile = File(...),
     location_id: uuid.UUID | None = Form(None),
-    owner: uuid.UUID | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AssetImportResponse:
     data = await file.read()
     results = import_svc.import_assets_zip(
-        db, data, created_by=current_user.id, location_id=location_id, owner=owner
+        db, data, created_by=current_user.id, location_id=location_id
     )
     db.commit()
     for r in results:
@@ -654,7 +655,6 @@ def get_asset_label(
     """Generate and return an asset label/sticker in the requested size and format."""
     from ...services.label_service import generate_label
     from ...models.calibration_method import Procedure
-    from ...models.team import Team
 
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
@@ -668,19 +668,11 @@ def get_asset_label(
     from ...repositories import calibration as _cal_repo
     points = _cal_repo.list_points(db, latest_cal.id) if latest_cal else []
 
-    # Owner team name
-    owner_name: str | None = None
-    if asset.owner:
-        team = db.query(Team).filter(Team.id == asset.owner).first()
-        if team:
-            owner_name = team.name
-
     from ...core.config import settings
     content, content_type = generate_label(
         asset=asset,
         calibration=latest_cal,
         points=points,
-        owner_name=owner_name,
         size=size,
         fmt=format,
         base_url=settings.frontend_url,
