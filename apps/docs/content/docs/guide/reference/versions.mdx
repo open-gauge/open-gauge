@@ -4,13 +4,61 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.0.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.1.1 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.1.1
+
+### Fixed
+
+- **High priority:** the named-volume-to-bind-mount migration command documented in
+  Self-hosting → Deployment (for upgrading an install that pre-dates the 3.0.0 bind-mount fix)
+  silently failed to copy anything when run from Git Bash on Windows: MSYS rewrites *any*
+  `/`-prefixed argument before it reaches `docker.exe`, including the container-side paths in
+  `-v /host/path:/container/path` (not just the host side), mangling them into nonsense like
+  `C:\Program Files\Git\from`. `docker run ... cp -a /from/. /to/` then writes into a bogus
+  location instead of `data/postgres`/`data/minio` — with no error surfaced, so it looked exactly
+  like the rebuild had wiped the data, when the real cause was the migration step never actually
+  running against the right path. The doc now calls out running the command from PowerShell/cmd.exe
+  instead of Git Bash, or prefixing it with `MSYS_NO_PATHCONV=1` if Git Bash is unavoidable, plus
+  how to recognize (a stray empty `data/postgres;C`-style directory) and recover from a botched
+  prior attempt (the original data is still intact in the old named volume until explicitly
+  removed).
+  - Confirmed the current bind-mount configuration itself (introduced in 3.0.0) is not the source
+    of any ongoing data loss: a full `docker compose down` + `up --build` round-trip, both against
+    a freshly-initialized empty `data/` directory and against this repo's own populated one,
+    preserves every row and file exactly.
+  - Added `scripts/verify-media-persistence.sh` — an isolated, non-destructive check (throwaway
+    Compose project name and temp data directory, safe to run alongside a live deployment) that
+    writes a marker row/object, tears the containers down, rebuilds, and confirms both survive.
+    Exits non-zero on failure, so it can be run after any change to `docker-compose.yml` or wired
+    into CI as a regression guard against this class of bug recurring.
+
+## 3.1.0
+
+### Added
+
+- Per-user notification preferences, and a completed notification lifecycle (delete individual/all,
+  click-to-navigate) for the in-app inbox introduced in 3.0.0.
+  - New **Settings → Notifications** section lets each user choose, per category (calibration due,
+    new calibration recorded, organization join request, organization join decision), whether they
+    receive it via email, in-app, both, or neither. New users and untouched categories default to
+    both channels enabled, so nothing needs configuring out of the box.
+  - The notification bell dropdown gained a **Clear all** action and a per-notification remove (×)
+    button — previously the inbox could only be marked read, never actually cleared.
+  - Calibration due-soon/overdue reminders and new-calibration notifications now raise an in-app
+    notification the same way organization join requests already did (in 3.0.0), instead of only
+    ever emailing — the in-app channel doesn't depend on SMTP being configured at all. Both link to
+    the asset's detail page.
+  - The calibration reminder sweep now marks a reminder as sent once *any* enabled channel delivers
+    for *any* recipient (in-app or email), rather than requiring email specifically — a broken SMTP
+    server no longer blocks the guaranteed in-app channel, and won't be retried forever once the
+    recipient has been notified some other way.
 
 ## 3.0.0
 

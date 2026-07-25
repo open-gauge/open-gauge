@@ -8,10 +8,12 @@ password, keeping a calibration's owning organization aware of its status, and a
 organization admins to a join request. Like Gogs/Gitea, SMTP is a single, admin-managed
 configuration rather than something every user touches.
 
-Organization join requests are the one event with a guaranteed non-email fallback: they always
-raise an in-app notification (the bell icon in the top bar) regardless of whether SMTP is
-configured — email is a bonus on top of that, not the only way to find out. See
-[Organizations → Join requests](../organizations/index.mdx#join-requests).
+Every one of these events (except account verification and password reset, which have no in-app
+equivalent) also raises an in-app notification — the bell icon in the top bar — regardless of
+whether SMTP is configured; email is a bonus on top of that, not the only way to find out. See
+[Notifications](../notifications/index.mdx) for the full list of categories, the inbox itself, and
+how each user chooses which channels they want per category from **Settings → Notifications**. See
+also [Organizations → Join requests](../organizations/index.mdx#join-requests).
 
 ## Configuration
 
@@ -40,7 +42,8 @@ instead of failing outright:
   Users** (a "Pending activation" badge and **Activate** button appear there).
 - **Forgot password** has no self-service path at all without SMTP — the sign-in screen tells the
   user to contact their administrator, who can be asked to help them regain access.
-- **Calibration notifications and reminders** are simply skipped.
+- **Calibration notifications and reminders** still raise their in-app notification as normal —
+  only the email half is skipped. See [Notifications](../notifications/index.mdx).
 
 Nothing about account creation or calibration workflows is blocked by mail being unconfigured —
 only the automated, self-service parts of it are.
@@ -94,16 +97,22 @@ can reset the password by re-creating credentials or otherwise assisting them ou
 
 ## Calibration notifications
 
-Two events trigger an email to every active Technician, Admin, and Super Admin in an asset's
-organization (see [Data model & concepts](../concepts/data-model.mdx) for how assets and
-organizations relate; Viewers are never notified since they can't act on a calibration):
+Two events notify every active Technician, Admin, and Super Admin in an asset's organization, via
+an in-app notification and (if configured) email — each recipient's own preferences from
+**Settings → Notifications** decide which channels they actually get (see
+[Notifications](../notifications/index.mdx)). See
+[Data model & concepts](../concepts/data-model.mdx) for how assets and organizations relate;
+Viewers are never notified since they can't act on a calibration:
 
 - **New calibration recorded** — as soon as `POST /calibrations` succeeds, the organization's
   technicians and admins are notified (except the person who just logged it).
 - **Due soon / overdue** — a daily sweep (07:00 server time) checks every active asset's latest
   calibration. Each calibration is reminded at most once per threshold: once when it enters the
-  configured reminder window, and once more if it lapses into overdue. A calibration with no
-  successful delivery is retried on the next day's sweep rather than marked as sent.
+  configured reminder window, and once more if it lapses into overdue. A calibration is only
+  marked as reminded once at least one channel actually delivers for at least one recipient
+  (in-app notification created, or email sent); if none does — e.g. mail isn't configured and
+  every recipient has opted out of in-app for that category — it's retried on the next day's
+  sweep instead.
 
-Both notification paths are best-effort: a failed send is logged and never blocks the calibration
-being recorded, and the daily sweep as a whole never raises past its own log entry.
+All of this is best-effort: a failed send is logged and never blocks the calibration being
+recorded, and the daily sweep as a whole never raises past its own log entry.

@@ -33,7 +33,8 @@ import type {
   OrganizationMember,
   OrgRole,
 } from "@/types/organization";
-import type { Notification } from "@/types/notification";
+import type { Notification, NotificationPreference } from "@/types/notification";
+import { NOTIFICATION_CATEGORIES } from "@/constants/notifications";
 
 // ---------------------------------------------------------------------------
 // Fixture shape (widened by resolveJsonModule) -> strongly-typed store shape
@@ -92,6 +93,13 @@ interface StoredNotification {
   updated_at: string;
 }
 
+interface StoredNotificationPreference {
+  user_id: string;
+  category: string;
+  email_enabled: boolean;
+  in_app_enabled: boolean;
+}
+
 interface DemoState {
   generatedAt: string;
   demoUserId: string;
@@ -109,9 +117,11 @@ interface DemoState {
   healthSnapshots: Record<string, AssetHealthResponse>;
   emailSettings: EmailSettings;
   // Optional: absent in the committed fixture (added after it was generated), so every
-  // accessor below must tolerate `signatures`/`notifications` being undefined at runtime.
+  // accessor below must tolerate `signatures`/`notifications`/`notificationPreferences`
+  // being undefined at runtime.
   signatures?: Record<string, UserSignature>;
   notifications?: StoredNotification[];
+  notificationPreferences?: StoredNotificationPreference[];
 }
 
 const FIXTURE = rawFixture as unknown as DemoState;
@@ -925,6 +935,52 @@ export function markNotificationRead(id: string, userId: string): Notification |
 export function markAllNotificationsRead(userId: string): void {
   (getState().notifications ?? []).forEach((n) => { if (n.user_id === userId) n.is_read = true; });
   persist();
+}
+
+export function deleteNotification(id: string, userId: string): boolean {
+  const state = getState();
+  const list = state.notifications ?? [];
+  const idx = list.findIndex((n) => n.id === id && n.user_id === userId);
+  if (idx === -1) return false;
+  list.splice(idx, 1);
+  persist();
+  return true;
+}
+
+export function deleteAllNotificationsForUser(userId: string): void {
+  const state = getState();
+  state.notifications = (state.notifications ?? []).filter((n) => n.user_id !== userId);
+  persist();
+}
+
+export function getNotificationPreferences(userId: string): NotificationPreference[] {
+  const saved = new Map(
+    (getState().notificationPreferences ?? [])
+      .filter((p) => p.user_id === userId)
+      .map((p) => [p.category, p] as const)
+  );
+  return NOTIFICATION_CATEGORIES.map(({ category }) => {
+    const pref = saved.get(category);
+    return pref
+      ? { category, email_enabled: pref.email_enabled, in_app_enabled: pref.in_app_enabled }
+      : { category, email_enabled: true, in_app_enabled: true };
+  });
+}
+
+export function updateNotificationPreferences(userId: string, preferences: NotificationPreference[]): NotificationPreference[] {
+  const state = getState();
+  if (!state.notificationPreferences) state.notificationPreferences = [];
+  for (const item of preferences) {
+    const existing = state.notificationPreferences.find((p) => p.user_id === userId && p.category === item.category);
+    if (existing) {
+      existing.email_enabled = item.email_enabled;
+      existing.in_app_enabled = item.in_app_enabled;
+    } else {
+      state.notificationPreferences.push({ user_id: userId, category: item.category, email_enabled: item.email_enabled, in_app_enabled: item.in_app_enabled });
+    }
+  }
+  persist();
+  return getNotificationPreferences(userId);
 }
 
 // ---------------------------------------------------------------------------

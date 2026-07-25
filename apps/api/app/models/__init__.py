@@ -10,6 +10,7 @@ from . import (  # noqa: F401
     email_settings,
     location,
     notification,
+    notification_preference,
     organization,
     organization_join_request,
     organization_member,

@@ -1,0 +1,58 @@
+---
+title: Notifications
+description: The in-app notification inbox, its delivery channels, and how each user configures what they receive.
+---
+
+Open Gauge keeps every user aware of the things that need their attention — an organization join
+request, a decision on their own request, or an asset's calibration status — through an in-app
+notification inbox (the bell icon in the top bar) and, optionally, email. Each user chooses which
+channels they want for each category from **Settings → Notifications**.
+
+## Notification categories
+
+Every notification belongs to one of these categories:
+
+| Category | Recipients | Fires when |
+|---|---|---|
+| Calibration due | Active Technician/Admin/Super Admin members of the asset's organization | A calibration enters the reminder window, or lapses into overdue (daily sweep) |
+| New calibration recorded | Same as above, excluding whoever logged it | `POST /calibrations` succeeds |
+| Organization join requests | Admins of the organization | A user requests to join |
+| Organization join decisions | The requester | An admin approves or rejects their request |
+
+Viewers are never notified about calibrations — they can't act on one, so it would be noise. See
+[Calibration notifications](../self-hosting/email-notifications.mdx#calibration-notifications) for
+the email side of these same events.
+
+## Delivery channels
+
+Each category can be delivered via:
+
+- **Internal** — an in-app notification, always available regardless of whether email is
+  configured. This is the guaranteed channel: organization join requests, for instance, always
+  raise one so a request is never silently missed.
+- **Email** — sent only if an administrator has configured SMTP (**Admin → Email**) *and* the
+  recipient hasn't opted out of email for that category.
+
+A user can enable both, either, or neither for a given category. Turning off both means that
+category is fully muted for that user; other users are unaffected, since preferences are per-user.
+
+## Configuring preferences
+
+From **Settings → Notifications**, each category shows two checkboxes — **Email** and
+**Internal** — that save immediately on change. New users (and any category a user hasn't touched)
+default to both channels enabled, so notifications work out of the box without any setup.
+
+## The notification inbox
+
+Clicking the bell icon in the top bar opens the dropdown, listing notifications newest-first:
+
+- **Click a notification** — marks it read and, if it has an associated page (e.g. an asset or
+  organization), navigates there.
+- **Mark all read** — clears the unread indicator without navigating or deleting anything.
+- **Remove (×)** on an individual notification, or **Clear all** — permanently deletes
+  notifications from the inbox. This is separate from read/unread state: a notification can be
+  read but still present, or removed outright.
+
+Deleting a notification only removes it from the recipient's own inbox; it has no effect on the
+underlying event (e.g. deleting a join-request notification doesn't reject the request itself —
+that's still handled from the organization's page).

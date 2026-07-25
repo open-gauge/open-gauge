@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import type { UserProfile, UserSignature } from "@/types/user";
+import type { NotificationPreference } from "@/types/notification";
+import { NOTIFICATION_CATEGORIES } from "@/constants/notifications";
+import { getNotificationPreferences, updateNotificationPreferences } from "@/services/notification.service";
 import {
   CameraIcon,
   CheckIcon,
@@ -483,6 +486,88 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
 }
 
 // ---------------------------------------------------------------------------
+// Notification Preferences section
+// ---------------------------------------------------------------------------
+
+function NotificationsSection() {
+  const [prefs, setPrefs] = useState<NotificationPreference[] | null>(null);
+  const [error, setError] = useState("");
+  const [savingCategory, setSavingCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    getNotificationPreferences()
+      .then(setPrefs)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load preferences"));
+  }, []);
+
+  async function handleToggle(category: string, field: "email_enabled" | "in_app_enabled", value: boolean) {
+    if (!prefs) return;
+    const current = prefs.find((p) => p.category === category);
+    if (!current) return;
+    const updated = { ...current, [field]: value };
+    setPrefs((prev) => prev!.map((p) => (p.category === category ? updated : p)));
+    setSavingCategory(category);
+    setError("");
+    try {
+      setPrefs(await updateNotificationPreferences([updated]));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+      setPrefs((prev) => prev!.map((p) => (p.category === category ? current : p)));
+    } finally {
+      setSavingCategory(null);
+    }
+  }
+
+  return (
+    <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+      <div className="px-4 py-3 border-b border-og-border">
+        <p className="text-xs font-semibold text-og-text">Notification Preferences</p>
+      </div>
+      <div className="p-4">
+        {!prefs && !error && <p className="text-xs text-gray-400">Loading…</p>}
+        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
+        {prefs && (
+          <div className="divide-y divide-og-border">
+            <div className="grid grid-cols-[1fr_4.5rem_4.5rem] gap-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              <span>Notification type</span>
+              <span className="text-center">Email</span>
+              <span className="text-center">Internal</span>
+            </div>
+            {NOTIFICATION_CATEGORIES.map(({ category, label, description }) => {
+              const pref = prefs.find((p) => p.category === category);
+              return (
+                <div key={category} className="grid grid-cols-[1fr_4.5rem_4.5rem] gap-2 items-center py-3">
+                  <div>
+                    <p className="text-sm text-og-text">{label}</p>
+                    <p className="text-xs text-gray-400">{description}</p>
+                  </div>
+                  <div className="flex justify-center">
+                    <input
+                      type="checkbox"
+                      checked={pref?.email_enabled ?? true}
+                      disabled={savingCategory === category}
+                      onChange={(e) => handleToggle(category, "email_enabled", e.target.checked)}
+                    />
+                  </div>
+                  <div className="flex justify-center">
+                    <input
+                      type="checkbox"
+                      checked={pref?.in_app_enabled ?? true}
+                      disabled={savingCategory === category}
+                      onChange={(e) => handleToggle(category, "in_app_enabled", e.target.checked)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Delete Account section
 // ---------------------------------------------------------------------------
 
@@ -550,10 +635,11 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
 // Page
 // ---------------------------------------------------------------------------
 
-type Section = "profile" | "delete";
+type Section = "profile" | "notifications" | "delete";
 
 const NAV: { id: Section; label: string }[] = [
   { id: "profile", label: "Profile" },
+  { id: "notifications", label: "Notifications" },
   { id: "delete", label: "Delete Account" },
 ];
 
@@ -603,6 +689,7 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-4">
           {section === "profile" && <ProfileSection user={user} onRefresh={refreshUser} />}
+          {section === "notifications" && <NotificationsSection />}
           {section === "delete" && <DeleteSection onDeleted={handleDeleted} />}
         </div>
       </div>

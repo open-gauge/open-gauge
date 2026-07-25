@@ -67,3 +67,13 @@ def mark_all_read(db: Session, user_id: uuid.UUID) -> None:
         {"is_read": True}
     )
     db.commit()
+
+
+def delete(db: Session, notification: Notification) -> None:
+    db.delete(notification)
+    db.commit()
+
+
+def delete_all_for_user(db: Session, user_id: uuid.UUID) -> None:
+    db.query(Notification).filter(Notification.user_id == user_id).delete()
+    db.commit()

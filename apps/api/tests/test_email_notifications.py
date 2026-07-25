@@ -17,11 +17,13 @@ from app.models.asset import Asset, AssetType
 from app.models.calibration import Calibration
 from app.models.email_settings import EmailSettings
 from app.models.location import Location
+from app.models.notification import Notification
+from app.models.notification_preference import NotificationPreference
 from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember, OrgRole
 from app.models.user import User, UserRole
 from app.services.calibration_reminders import sweep as run_reminder_sweep
-from app.services.notifications import org_member_emails
+from app.services.notifications import _notify_new_calibration, org_member_emails
 from tests.conftest import make_asset_id
 
 
@@ -639,9 +641,12 @@ class TestCalibrationReminderSweep:
         assert cal.due_reminder_sent_at == already_sent
         assert member.email not in sent
 
-    def test_is_noop_when_mail_disabled(
+    def test_in_app_notification_still_created_when_mail_disabled(
         self, db: Session, test_user: User, org_with_member: tuple[Location, User]
     ) -> None:
+        """No SMTP configured must not block the in-app channel — it's the
+        guaranteed channel, same as organization join-request notifications,
+        and doesn't depend on email being set up at all."""
         _disable_mail(db)
         location, member = org_with_member
         asset = _make_asset(db, location.id, test_user.id)
@@ -650,13 +655,20 @@ class TestCalibrationReminderSweep:
         run_reminder_sweep(db)
 
         db.refresh(cal)
-        assert cal.overdue_reminder_sent_at is None
+        assert cal.overdue_reminder_sent_at is not None
+        notif = db.query(Notification).filter(Notification.user_id == member.id).first()
+        assert notif is not None
+        assert notif.type == "calibration.overdue"
+        assert notif.link == f"/assets/{asset.id}"
 
-    def test_failed_delivery_is_not_marked_as_sent(
+    def test_in_app_delivered_even_if_email_delivery_fails(
         self, db: Session, test_user: User, org_with_member: tuple[Location, User]
     ) -> None:
-        """Uses the real (closed-port) SMTP target so delivery genuinely fails —
-        confirms a failed send is left unmarked and will be retried next sweep."""
+        """Uses the real (closed-port) SMTP target so email delivery genuinely
+        fails. The in-app notification still gets created and the reminder is
+        still marked sent — a broken SMTP server doesn't block the guaranteed
+        in-app channel, and the sweep won't keep retrying email forever once
+        the recipient has been notified some other way."""
         _enable_mail(db)
         location, member = org_with_member
         asset = _make_asset(db, location.id, test_user.id)
@@ -665,4 +677,155 @@ class TestCalibrationReminderSweep:
         run_reminder_sweep(db)
 
         db.refresh(cal)
+        assert cal.overdue_reminder_sent_at is not None
+        assert db.query(Notification).filter(Notification.user_id == member.id).first() is not None
+
+    def test_not_marked_sent_when_no_channel_delivers(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
+    ) -> None:
+        """If the recipient has opted out of in-app and mail isn't configured,
+        nothing was actually delivered, so the reminder must stay unmarked and
+        retry on the next sweep."""
+        _disable_mail(db)
+        location, member = org_with_member
+        db.add(NotificationPreference(user_id=member.id, category="calibration_due", email_enabled=True, in_app_enabled=False))
+        db.flush()
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() - timedelta(days=3), test_user.id)
+
+        run_reminder_sweep(db)
+
+        db.refresh(cal)
         assert cal.overdue_reminder_sent_at is None
+        assert db.query(Notification).filter(Notification.user_id == member.id).first() is None
+
+    def test_respects_email_opt_out(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User], monkeypatch
+    ) -> None:
+        _enable_mail(db)
+        location, member = org_with_member
+        db.add(NotificationPreference(user_id=member.id, category="calibration_due", email_enabled=False, in_app_enabled=True))
+        db.flush()
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() - timedelta(days=3), test_user.id)
+
+        sent = []
+        monkeypatch.setattr(
+            "app.services.calibration_reminders.mail_svc.send_email",
+            lambda db, to, subject, html, text: sent.append(to),
+        )
+
+        run_reminder_sweep(db)
+
+        assert member.email not in sent
+        db.refresh(cal)
+        assert cal.overdue_reminder_sent_at is not None
+        assert db.query(Notification).filter(Notification.user_id == member.id).first() is not None
+
+    def test_respects_in_app_opt_out(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User], monkeypatch
+    ) -> None:
+        _enable_mail(db)
+        location, member = org_with_member
+        db.add(NotificationPreference(user_id=member.id, category="calibration_due", email_enabled=True, in_app_enabled=False))
+        db.flush()
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() - timedelta(days=3), test_user.id)
+
+        sent = []
+        monkeypatch.setattr(
+            "app.services.calibration_reminders.mail_svc.send_email",
+            lambda db, to, subject, html, text: sent.append(to),
+        )
+
+        run_reminder_sweep(db)
+
+        assert member.email in sent
+        assert db.query(Notification).filter(Notification.user_id == member.id).first() is None
+
+
+# ---------------------------------------------------------------------------
+# New-calibration notification (in-app + email, per-user preference gated)
+# ---------------------------------------------------------------------------
+
+class TestNotifyNewCalibration:
+    def test_creates_in_app_notification_for_org_members(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
+    ) -> None:
+        _disable_mail(db)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() + timedelta(days=365), test_user.id)
+
+        _notify_new_calibration(db, cal.id, test_user.id)
+
+        notif = db.query(Notification).filter(Notification.user_id == member.id).first()
+        assert notif is not None
+        assert notif.type == "calibration.created"
+        assert notif.link == f"/assets/{asset.id}"
+
+    def test_excludes_the_acting_user(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
+    ) -> None:
+        location, member = org_with_member
+        db.add(OrganizationMember(organization_id=location.organization_id, user_id=test_user.id, role=OrgRole.member, active=True))
+        db.flush()
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() + timedelta(days=365), test_user.id)
+
+        _notify_new_calibration(db, cal.id, test_user.id)
+
+        assert db.query(Notification).filter(Notification.user_id == test_user.id, Notification.type == "calibration.created").first() is None
+
+    def test_sends_email_when_mail_configured(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User], monkeypatch
+    ) -> None:
+        _enable_mail(db)
+        location, member = org_with_member
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() + timedelta(days=365), test_user.id)
+
+        sent = []
+        monkeypatch.setattr(
+            "app.services.notifications.mail_svc.send_email",
+            lambda db, to, subject, html, text: sent.append(to),
+        )
+
+        _notify_new_calibration(db, cal.id, test_user.id)
+
+        assert member.email in sent
+
+    def test_respects_email_opt_out(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User], monkeypatch
+    ) -> None:
+        _enable_mail(db)
+        location, member = org_with_member
+        db.add(NotificationPreference(user_id=member.id, category="calibration_created", email_enabled=False, in_app_enabled=True))
+        db.flush()
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() + timedelta(days=365), test_user.id)
+
+        sent = []
+        monkeypatch.setattr(
+            "app.services.notifications.mail_svc.send_email",
+            lambda db, to, subject, html, text: sent.append(to),
+        )
+
+        _notify_new_calibration(db, cal.id, test_user.id)
+
+        assert member.email not in sent
+        assert db.query(Notification).filter(Notification.user_id == member.id).first() is not None
+
+    def test_respects_in_app_opt_out(
+        self, db: Session, test_user: User, org_with_member: tuple[Location, User]
+    ) -> None:
+        _disable_mail(db)
+        location, member = org_with_member
+        db.add(NotificationPreference(user_id=member.id, category="calibration_created", email_enabled=True, in_app_enabled=False))
+        db.flush()
+        asset = _make_asset(db, location.id, test_user.id)
+        cal = _make_calibration(db, asset, date.today() + timedelta(days=365), test_user.id)
+
+        _notify_new_calibration(db, cal.id, test_user.id)
+
+        assert db.query(Notification).filter(Notification.user_id == member.id).first() is None

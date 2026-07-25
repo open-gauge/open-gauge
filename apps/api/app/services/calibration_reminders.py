@@ -1,4 +1,6 @@
-"""Daily sweep that emails a calibration's owning organization when it's due soon or overdue.
+"""Daily sweep that notifies a calibration's owning organization when it's due
+soon or overdue, via an in-app Notification (always) and email (if SMTP is
+configured), each gated by the recipient's own notification preferences.
 
 Runs on an in-process scheduler (see main.py) — there's no separate worker process
 in this stack, so this stays a lightweight periodic job rather than a queue.
@@ -13,10 +15,13 @@ from sqlalchemy import func
 from ..core.database import SessionLocal
 from ..models.asset import Asset
 from ..models.calibration import Calibration
+from ..models.notification_preference import NotificationCategory
 from ..repositories import email_settings as email_settings_repo
+from ..repositories import notification as notification_repo
+from ..repositories import notification_preference as notification_preference_repo
 from . import mail as mail_svc
 from . import mail_templates
-from .notifications import org_member_emails
+from .notifications import org_member_users
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +63,11 @@ def run_reminder_sweep() -> None:
 
 def sweep(db) -> None:
     """Runs the reminder sweep against the given session. Exposed separately from
-    run_reminder_sweep() so tests can drive it with the test-transaction session."""
-    if not mail_svc.is_enabled(db):
-        return
+    run_reminder_sweep() so tests can drive it with the test-transaction session.
 
+    Unlike email, the in-app notification channel doesn't depend on SMTP being
+    configured, so the sweep always runs — only the email half of
+    _send_reminder is gated on mail_svc.is_enabled."""
     email_settings = email_settings_repo.get(db)
     reminder_days = email_settings.calibration_reminder_days if email_settings else 14
 
@@ -85,22 +91,47 @@ def sweep(db) -> None:
 
 
 def _send_reminder(db, asset: Asset, cal: Calibration, overdue: bool) -> None:
-    recipients = org_member_emails(db, asset, cal, exclude_user_id=None)
+    recipients = org_member_users(db, asset, cal, exclude_user_id=None)
     if not recipients:
         return
 
-    subject, html_body, text_body = mail_templates.render_calibration_reminder_email(
-        asset.name, asset.asset_id, cal.due_date, overdue
-    )
-    sent_any = False
-    for email in recipients:
-        try:
-            mail_svc.send_email(db, email, subject, html_body, text_body)
-            sent_any = True
-        except mail_svc.MailError:
-            logger.warning("Failed to send calibration reminder to %s for asset %s", email, asset.asset_id)
+    category = NotificationCategory.calibration_due.value
+    delivered_any = False
 
-    if sent_any:
+    # In-app is the guaranteed channel — created regardless of SMTP config,
+    # same as organization join-request notifications.
+    for user in recipients:
+        if notification_preference_repo.is_enabled(db, user.id, category, "in_app"):
+            notification_repo.create(
+                db,
+                user_id=user.id,
+                type="calibration.overdue" if overdue else "calibration.due_soon",
+                title=f"Overdue: {asset.name}" if overdue else f"Calibration due soon: {asset.name}",
+                body=(
+                    f"{asset.asset_id} was due {cal.due_date.isoformat()}."
+                    if overdue
+                    else f"{asset.asset_id} is due {cal.due_date.isoformat()}."
+                ),
+                link=f"/assets/{asset.id}",
+                entity_type="asset",
+                entity_id=asset.id,
+            )
+            delivered_any = True
+
+    if mail_svc.is_enabled(db):
+        subject, html_body, text_body = mail_templates.render_calibration_reminder_email(
+            asset.name, asset.asset_id, cal.due_date, overdue
+        )
+        for user in recipients:
+            if not notification_preference_repo.is_enabled(db, user.id, category, "email"):
+                continue
+            try:
+                mail_svc.send_email(db, user.email, subject, html_body, text_body)
+                delivered_any = True
+            except mail_svc.MailError:
+                logger.warning("Failed to send calibration reminder to %s for asset %s", user.email, asset.asset_id)
+
+    if delivered_any:
         now = datetime.now(timezone.utc)
         if overdue:
             cal.overdue_reminder_sent_at = now

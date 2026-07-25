@@ -33,6 +33,7 @@ import type { LocationCreateBody } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
 import type { OrganizationCreateInput } from "./store";
 import type { OrgRole } from "@/types/organization";
+import type { NotificationPreference } from "@/types/notification";
 
 export const DEMO_TOKEN = "demo-token";
 
@@ -296,6 +297,20 @@ route("POST", "/api/v1/notifications/:id/read", ({ params }) => {
 });
 route("POST", "/api/v1/notifications/read-all", () => {
   store.markAllNotificationsRead(store.getDemoUser().id);
+  return undefined;
+});
+route("GET", "/api/v1/notifications/preferences", () => store.getNotificationPreferences(store.getDemoUser().id));
+route("PUT", "/api/v1/notifications/preferences", ({ body }) => {
+  const { preferences } = body as { preferences: NotificationPreference[] };
+  return store.updateNotificationPreferences(store.getDemoUser().id, preferences);
+});
+route("DELETE", "/api/v1/notifications/:id", ({ params }) => {
+  const removed = store.deleteNotification(params[0], store.getDemoUser().id);
+  if (!removed) throw new NotFoundError("notification not found");
+  return undefined;
+});
+route("DELETE", "/api/v1/notifications", () => {
+  store.deleteAllNotificationsForUser(store.getDemoUser().id);
   return undefined;
 });
 

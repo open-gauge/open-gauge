@@ -14,11 +14,13 @@ from sqlalchemy.orm import Session
 
 from ..core.config import settings
 from ..core.database import SessionLocal
+from ..models.notification_preference import NotificationCategory
 from ..models.organization import Organization
 from ..models.organization_join_request import OrganizationJoinRequest
 from ..models.organization_member import OrgRole
 from ..models.user import User
 from ..repositories import notification as notification_repo
+from ..repositories import notification_preference as notification_preference_repo
 from ..repositories import organization as org_repo
 from . import mail as mail_svc
 from . import mail_templates
@@ -36,6 +38,10 @@ def create_join_request_notifications(db: Session, org: Organization, requester:
     background task, so it's committed atomically with the request itself."""
     admins = [m for m in org_repo.list_members(db, org.id) if m.role == OrgRole.admin]
     for membership in admins:
+        if not notification_preference_repo.is_enabled(
+            db, membership.user_id, NotificationCategory.organization_join_request.value, "in_app"
+        ):
+            continue
         notification_repo.create(
             db,
             user_id=membership.user_id,
@@ -51,6 +57,10 @@ def create_join_request_notifications(db: Session, org: Organization, requester:
 def create_join_decision_notification(db: Session, request: OrganizationJoinRequest, org: Organization, approved: bool) -> None:
     """Synchronous counterpart to create_join_request_notifications, for the
     requester once an admin approves/rejects."""
+    if not notification_preference_repo.is_enabled(
+        db, request.user_id, NotificationCategory.organization_join_decision.value, "in_app"
+    ):
+        return
     notification_repo.create(
         db,
         user_id=request.user_id,
@@ -77,6 +87,10 @@ def send_join_request_emails(organization_id: uuid.UUID, requester_id: uuid.UUID
             org.name, requester.name, requester.email, _org_url(org.id)
         )
         for membership in admins:
+            if not notification_preference_repo.is_enabled(
+                db, membership.user_id, NotificationCategory.organization_join_request.value, "email"
+            ):
+                continue
             admin_user = db.query(User).filter(User.id == membership.user_id).first()
             if not admin_user:
                 continue
@@ -97,6 +111,10 @@ def send_join_decision_email(request_id: uuid.UUID, approved: bool) -> None:
         org = org_repo.get_by_id(db, request.organization_id)
         requester = db.query(User).filter(User.id == request.user_id).first()
         if not org or not requester:
+            return
+        if not notification_preference_repo.is_enabled(
+            db, requester.id, NotificationCategory.organization_join_decision.value, "email"
+        ):
             return
 
         subject, html_body, text_body = mail_templates.render_organization_join_decided_email(
