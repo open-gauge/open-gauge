@@ -8,10 +8,10 @@ can belong to any number of them. Manage them from the **Organizations** page in
 
 ## Creating an organization
 
-Any authenticated user can create an organization from **Organizations → New Organization** —
-there's no admin gate on this, the same way creating a GitHub or Gogs organization doesn't
-require being a site admin. The creator automatically becomes that organization's first **admin**
-member.
+Any authenticated user other than a **Viewer** can create an organization from
+**Organizations → New Organization** — there's no admin gate beyond that, the same way creating a
+GitHub or Gogs organization doesn't require being a site admin. The creator automatically becomes
+that organization's first **admin** member.
 
 An organization has: **name**, an optional **full legal name**, **description**, **website**,
 **location** (its primary/HQ location, picked from the location tree — see
@@ -33,7 +33,10 @@ This is a separate concept from the global RBAC role on the user's account
 for one override: **Super Admin** can manage any organization regardless of their membership in
 it, as a system-level safety net (e.g. an organization stuck with zero admins). The global `admin`
 role has no special access to an organization it isn't a member of — organization management is
-otherwise peer-to-peer, same as Gogs.
+otherwise peer-to-peer, same as Gogs. The one exception is **Viewer**: it's blocked from managing
+*any* organization — creating one, editing its profile, uploading a logo, or touching its members —
+even if it holds a per-org `admin` role. The global RBAC restriction wins over the org-level one
+here, the same way Viewer is read-only everywhere else in Open Gauge.
 
 ### Leaving and removing members
 
@@ -50,9 +53,10 @@ leaving) doesn't delete the membership record — it's marked inactive, preservi
 was ever part of the organization, consistent with Open Gauge's general soft-delete philosophy (see
 [Data model & concepts](../concepts/data-model.mdx)).
 
-An admin can also add members directly from the organization page's **Add member** button, which
-opens a searchable, multi-select list of every user who isn't already an active member — selected
-users are added with the `member` role.
+An admin can also add members directly from the organization page's **Add member** button (visible
+in edit mode, same as the role-change and remove controls), which opens a searchable, multi-select
+list of every user who isn't already an active member — selected users are added with the `member`
+role.
 
 ## Visibility
 
@@ -68,6 +72,11 @@ users are added with the `member` role.
   a confirmation dialog. A deactivated organization is invisible to everyone except Super Admin —
   it drops out of the Organizations list and its page 404s for anyone else, the same treatment as
   a private organization taken to its extreme.
+- Super Admin sees deactivated organizations in the **Organizations** list too (highlighted red,
+  labeled "Deleted") and can reactivate one with the **Restore organization** button that replaces
+  "Delete organization" in that org's Danger zone once it's deactivated. Restoring only makes the
+  organization active and visible again — it doesn't reactivate any memberships that were cleared
+  on deactivation; re-add members via **Add member** afterward.
 
 ## Join requests
 

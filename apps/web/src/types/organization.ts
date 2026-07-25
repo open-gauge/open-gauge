@@ -5,6 +5,7 @@ export interface OrganizationListItem {
   name: string;
   private: boolean;
   logo_url: string | null;
+  is_active: boolean;
   is_member: boolean;
   my_role: OrgRole | null;
   is_last_admin: boolean;

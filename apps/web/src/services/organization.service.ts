@@ -49,6 +49,10 @@ export async function deactivateOrganization(id: string): Promise<void> {
   return apiFetch<void>(`/api/v1/organizations/${id}`, { method: "DELETE", headers: tokenHeader() });
 }
 
+export async function restoreOrganization(id: string): Promise<Organization> {
+  return apiFetch<Organization>(`/api/v1/organizations/${id}/restore`, { method: "POST", headers: tokenHeader() });
+}
+
 export async function uploadOrgLogo(id: string, file: File): Promise<Organization> {
   const form = new FormData();
   form.append("file", file);

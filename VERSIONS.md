@@ -13,11 +13,13 @@ fixes and incremental additions that landed between each minor version.
 
 ### Added
 
-- Organizations are now full multi-tenant entities. Any user can create one and becomes its first
-  admin automatically; a user can belong to any number of organizations, each with its own
-  `member`/`admin` role — distinct from the global RBAC role on the user's account. Only Super
+- Organizations are now full multi-tenant entities. Any non-Viewer user can create one and becomes
+  its first admin automatically; a user can belong to any number of organizations, each with its
+  own `member`/`admin` role — distinct from the global RBAC role on the user's account. Only Super
   Admin overrides into organization management the caller isn't a member of; the global `admin`
-  role has no special access to organizations, matching the peer-to-peer model.
+  role has no special access to organizations, matching the peer-to-peer model. Viewer is blocked
+  from all organization management regardless of any per-org `admin` role they might hold — the
+  global RBAC restriction wins over the org-level one.
   - New profile fields: `full_name`, `website`, `location_id` (primary/HQ location), `email`,
     `phone`, `private`.
   - New dedicated **Organizations** page (list + per-organization detail page, replacing the old
@@ -48,8 +50,18 @@ fixes and incremental additions that landed between each minor version.
   - New shared `ImageUploadField` UI component (circular picture, click-to-preview, overlaid
     upload/remove buttons in edit mode) — now used consistently for the organization logo, asset
     picture, and user profile picture.
+  - A deactivated organization is now visible in the Organizations list to Super Admin only,
+    shown with a red background and a "Deleted" badge, and can be reactivated with a "Restore
+    organization" button in its edit form's Danger zone (`POST /organizations/{id}/restore`) —
+    restoring only affects visibility, not membership.
 
 ### Changed
+
+- **Breaking:** Viewer is now read-only across the whole app, not just organizations — they can no
+  longer create, edit, retire, import, or export assets, procedures, or locations. The
+  `require_not_viewer` dependency (already used for signature management) now also gates every
+  mutating endpoint on `assets`, `procedures`, and `locations`; the corresponding frontend
+  New/Edit/Delete/Import/Export controls are hidden for Viewer accordingly.
 
 - **Breaking:** Teams are removed. Open Gauge now mimics Gogs — only users and organizations,
   no team layer between them.
@@ -82,6 +94,26 @@ fixes and incremental additions that landed between each minor version.
 - The asset count on an organization's page linked to the asset register but didn't actually
   filter it by organization — the register never read `organization_id`/`organization_name` from
   the URL.
+- **High priority:** uploaded files and database rows could still appear to be wiped after
+  `docker compose up --build` even with the project name pinned (previous fix) — a different
+  invocation (cwd, `-p` override, or a legacy `docker-compose` v1 binary ignoring the `name:` key)
+  could still resolve to a differently-named volume. Postgres and MinIO now bind-mount to a fixed
+  host path (`infrastructure/docker/data/`) instead of a named volume, which can't diverge this
+  way. Existing installs: copy your current named-volume data into `./data/postgres` and
+  `./data/minio` before upgrading (`docker run --rm -v <old_volume>:/from -v $(pwd)/data/X:/to
+  alpine cp -a /from/. /to/`), then redeploy.
+- The organization list page's logo was square instead of the circular treatment used everywhere
+  else.
+- The organization picture stayed small (48px) while editing instead of matching the bigger size
+  used when editing an asset or profile picture.
+- Landing on the asset register from an organization's (or location's) filtered link didn't apply
+  the filter until the page was manually refreshed — the register read the filter from
+  `window.location.search` in a mount-only effect, which client-side navigation doesn't re-trigger.
+  Switched to the reactive `useSearchParams()` hook. Separately, dismissing a filter via "View all"
+  only cleared in-memory state, not the URL, so a refresh afterward silently re-applied it — "View
+  all" now also clears the corresponding URL params.
+- The organization page's "Add member" button was visible outside of edit mode, inconsistent with
+  every other member-management control.
 
 ## 2.4.0
 

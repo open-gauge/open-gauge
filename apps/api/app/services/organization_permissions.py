@@ -25,7 +25,11 @@ def get_membership(db: Session, org_id: uuid.UUID, user_id: uuid.UUID) -> Organi
 def is_org_admin(db: Session, user: User, org: Organization) -> bool:
     """Super Admin overrides every organization; otherwise only that org's
     own active admin members can manage it — the global `admin` role has no
-    special access to an organization it doesn't belong to."""
+    special access to an organization it doesn't belong to. Viewer is blocked
+    from managing any organization regardless of their per-org role — the
+    global RBAC restriction wins over the org-level one for this."""
+    if user.role == UserRole.viewer:
+        return False
     if user.role == UserRole.superadmin:
         return True
     membership = get_membership(db, org.id, user.id)

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   createAsset,
   duplicateAsset,
@@ -1357,6 +1358,9 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
 
 export default function AssetsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const canEdit = user.role !== "viewer";
   const [assets, setAssets]       = useState<AssetListItem[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
@@ -1376,20 +1380,31 @@ export default function AssetsPage() {
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const lid = params.get("location_id");
-    const lname = params.get("location_name");
-    const inclDes = params.get("include_descendants") === "true";
-    if (lid) setLocationFilter({ id: lid, name: lname ?? lid, includeDescendants: inclDes });
-    const oid = params.get("organization_id");
-    const oname = params.get("organization_name");
-    if (oid) setOrganizationFilter({ id: oid, name: oname ?? oid });
-    const at = params.get("asset_type");
+    const lid = searchParams.get("location_id");
+    const lname = searchParams.get("location_name");
+    const inclDes = searchParams.get("include_descendants") === "true";
+    setLocationFilter(lid ? { id: lid, name: lname ?? lid, includeDescendants: inclDes } : null);
+
+    const oid = searchParams.get("organization_id");
+    const oname = searchParams.get("organization_name");
+    setOrganizationFilter(oid ? { id: oid, name: oname ?? oid } : null);
+
+    const at = searchParams.get("asset_type");
+    const hm = searchParams.get("health_max");
     if (at === "sensor") setQuickFilter({ type: "asset_type", value: "sensor", label: "Sensors only" });
-    if (at === "daq")    setQuickFilter({ type: "asset_type", value: "daq",    label: "DAQ units only" });
-    const hm = params.get("health_max");
-    if (hm) setQuickFilter({ type: "health_max", value: hm, label: `Health score ≤ ${hm}%` });
-  }, []);
+    else if (at === "daq") setQuickFilter({ type: "asset_type", value: "daq", label: "DAQ units only" });
+    else if (hm) setQuickFilter({ type: "health_max", value: hm, label: `Health score ≤ ${hm}%` });
+    else setQuickFilter(null);
+  }, [searchParams]);
+
+  // Clears both the in-memory filter and the URL params that drive it, so a later
+  // refresh doesn't silently re-apply a filter the user just dismissed via "View all".
+  function clearUrlParams(keys: string[]) {
+    const next = new URLSearchParams(searchParams.toString());
+    keys.forEach((k) => next.delete(k));
+    const qs = next.toString();
+    router.replace(qs ? `/assets?${qs}` : "/assets");
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1588,24 +1603,28 @@ export default function AssetsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button"
-            onClick={() => setBulkExportOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-            <ExportIcon size={13} />
-            Export
-          </button>
-          <button type="button"
-            onClick={() => setBulkImportOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-            <ImportIcon size={13} />
-            Import
-          </button>
-          <button type="button"
-            onClick={() => setNewAssetOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-            <PlusIcon size={13} />
-            New asset
-          </button>
+          {canEdit && (
+            <>
+              <button type="button"
+                onClick={() => setBulkExportOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                <ExportIcon size={13} />
+                Export
+              </button>
+              <button type="button"
+                onClick={() => setBulkImportOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                <ImportIcon size={13} />
+                Import
+              </button>
+              <button type="button"
+                onClick={() => setNewAssetOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+                <PlusIcon size={13} />
+                New asset
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1671,7 +1690,7 @@ export default function AssetsPage() {
           </span>
           <button
             type="button"
-            onClick={() => setLocationFilter(null)}
+            onClick={() => clearUrlParams(["location_id", "location_name", "include_descendants"])}
             className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
             View all ✕
@@ -1686,7 +1705,7 @@ export default function AssetsPage() {
           </span>
           <button
             type="button"
-            onClick={() => setOrganizationFilter(null)}
+            onClick={() => clearUrlParams(["organization_id", "organization_name"])}
             className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
             View all ✕
@@ -1701,7 +1720,7 @@ export default function AssetsPage() {
           </span>
           <button
             type="button"
-            onClick={() => setQuickFilter(null)}
+            onClick={() => clearUrlParams(["asset_type", "health_max"])}
             className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
             View all ✕

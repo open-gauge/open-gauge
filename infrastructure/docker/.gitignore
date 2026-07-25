@@ -1,0 +1,2 @@
+# Postgres and MinIO data (bind-mounted by docker-compose.yml) — host-local, never committed.
+data/

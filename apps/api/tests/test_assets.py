@@ -4,11 +4,33 @@ Tests for the asset endpoints.
 Covers: list, create, get, profile, update (including the Decimal
 serialization regression for audit-log before/after state), and retire.
 """
+import uuid
+
 import pytest
 from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
+from app.core.security import create_access_token, hash_password
+from app.models.user import User, UserRole
 from tests.conftest import make_asset_id
+
+
+def _viewer(db: Session) -> User:
+    user = User(
+        id=uuid.uuid4(),
+        email=f"viewer_{uuid.uuid4().hex[:8]}@opengauge.test",
+        name="Test Viewer",
+        hashed_password=hash_password("Testpass123!"),
+        role=UserRole.viewer,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
+def _headers_for(user: User) -> dict:
+    return {"Authorization": f"Bearer {create_access_token({'sub': str(user.id)})}"}
 
 
 # ---------------------------------------------------------------------------
@@ -449,3 +471,57 @@ class TestAssetFiles:
             f"/api/v1/assets/{uuid.uuid4()}/picture", headers=auth_headers
         )
         assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Viewer role: read-only
+# ---------------------------------------------------------------------------
+
+class TestViewerReadOnly:
+    """Regression: Viewer must not be able to create, edit, retire, import, or
+    export assets — only read endpoints stay open to them."""
+
+    def test_viewer_cannot_create(self, client: TestClient, db: Session) -> None:
+        viewer = _viewer(db)
+        response = client.post(
+            "/api/v1/assets",
+            json={
+                "asset_id": make_asset_id(),
+                "asset_type": "sensor",
+                "name": "Viewer Attempt",
+                "manufacturer": "WIKA",
+                "model": "TC-10",
+                "serial_number": "SN-VIEWER-001",
+            },
+            headers=_headers_for(viewer),
+        )
+        assert response.status_code == 403
+
+    def test_viewer_cannot_update(self, client: TestClient, db: Session, created_asset: dict) -> None:
+        viewer = _viewer(db)
+        response = client.put(
+            f"/api/v1/assets/{created_asset['id']}", json={"name": "Hijacked"}, headers=_headers_for(viewer)
+        )
+        assert response.status_code == 403
+
+    def test_viewer_cannot_retire(self, client: TestClient, db: Session, created_asset: dict) -> None:
+        viewer = _viewer(db)
+        response = client.delete(f"/api/v1/assets/{created_asset['id']}", headers=_headers_for(viewer))
+        assert response.status_code == 403
+
+    def test_viewer_cannot_export_bulk(self, client: TestClient, db: Session, created_asset: dict) -> None:
+        viewer = _viewer(db)
+        response = client.post(
+            "/api/v1/assets/export/bulk", json={"asset_ids": [created_asset["id"]]}, headers=_headers_for(viewer)
+        )
+        assert response.status_code == 403
+
+    def test_viewer_cannot_export_single(self, client: TestClient, db: Session, created_asset: dict) -> None:
+        viewer = _viewer(db)
+        response = client.get(f"/api/v1/assets/{created_asset['id']}/export", headers=_headers_for(viewer))
+        assert response.status_code == 403
+
+    def test_viewer_can_still_read(self, client: TestClient, db: Session, created_asset: dict) -> None:
+        viewer = _viewer(db)
+        response = client.get(f"/api/v1/assets/{created_asset['id']}", headers=_headers_for(viewer))
+        assert response.status_code == 200

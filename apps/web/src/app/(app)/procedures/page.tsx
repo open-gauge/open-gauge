@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -448,6 +449,8 @@ interface ProcedureDetailProps {
 }
 
 function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: ProcedureDetailProps) {
+  const { user } = useAuth();
+  const canEdit = user.role !== "viewer";
   const [isEditing, setIsEditing] = useState(initialEditing);
   const [draft, setDraft] = useState<Procedure>(() => deepCopy(proc));
   const [saving, setSaving] = useState(false);
@@ -697,10 +700,12 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
                   <PrinterIcon size={12} />Print
                 </button>
-                <button type="button" onClick={handleStartEdit}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-                  <EditIcon size={12} />Edit
-                </button>
+                {canEdit && (
+                  <button type="button" onClick={handleStartEdit}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+                    <EditIcon size={12} />Edit
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -1251,6 +1256,8 @@ function EmptyDetail() {
 
 export default function ProceduresPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const canEdit = user.role !== "viewer";
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -1303,12 +1310,14 @@ export default function ProceduresPage() {
           <h1 className="text-xl font-bold text-og-text">Calibration procedures</h1>
           <p className="text-sm text-gray-400 mt-1">{count} procedure{count !== 1 ? "s" : ""} registered.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-            <PlusIcon size={13} />New procedure
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setShowNewModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
+              <PlusIcon size={13} />New procedure
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-5 items-start">

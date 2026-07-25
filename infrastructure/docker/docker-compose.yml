@@ -1,13 +1,18 @@
 # Pins the Compose project name regardless of the working directory or how
 # `docker compose` is invoked from (Compose otherwise derives it from the
 # current directory name, e.g. "docker" if you `cd` into this folder first vs.
-# something else if you run it from the repo root or a script) — without this,
-# switching how you invoke Compose creates a *second*, differently-named stack
-# with its own fresh `postgres_data`/`minio_data` volumes, making uploaded
-# files (profile pictures, signatures, PDFs, certificate templates) and
-# database rows appear to "disappear" after a rebuild when they're actually
-# just sitting in the old stack's volumes.
+# something else if you run it from the repo root or a script).
 name: opengauge
+
+# Postgres and MinIO data live under ./data (bind mounts, not named volumes) —
+# see the `db`/`minio` services below. A bind mount's identity is the literal
+# host path, so it can't silently diverge the way a named volume can (which is
+# keyed off the Compose project name above): a different invocation directory,
+# an explicit `-p` override, or a legacy `docker-compose` v1 binary that
+# ignores the `name:` key would each resolve to a *different* named volume,
+# making uploaded files and database rows appear to vanish after a rebuild
+# even though the pinned project name above already covers the common case.
+# `./data` is git-ignored; back it up like any other directory on the host.
 
 services:
   db:
@@ -19,7 +24,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -123,10 +128,6 @@ services:
       - "9001:9001"
 
     volumes:
-      - minio_data:/data
+      - ./data/minio:/data
 
     restart: unless-stopped
-
-volumes:
-  postgres_data:
-  minio_data:

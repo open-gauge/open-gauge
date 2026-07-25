@@ -595,6 +595,7 @@ function membershipFor(orgId: string, userId: string): StoredOrgMember | undefin
 
 function isOrgAdmin(org: StoredOrganization, userId: string): boolean {
   const user = getState().users.find((u) => u.id === userId);
+  if (user?.role === "viewer") return false;
   if (user?.role === "superadmin") return true;
   const m = membershipFor(org.id, userId);
   return !!(m && m.active && m.role === "admin");
@@ -630,6 +631,7 @@ function buildOrgListItem(org: StoredOrganization, userId: string): Organization
   const membership = membershipFor(org.id, userId);
   return {
     id: org.id, name: org.name, private: org.private, logo_url: org.private ? null : orgLogoUrl(org),
+    is_active: org.is_active,
     is_member: member,
     my_role: membership && membership.active ? membership.role : null,
     is_last_admin: isLastAdmin(org, userId),
@@ -680,7 +682,9 @@ function buildOrgResponse(org: StoredOrganization, userId: string): Organization
 }
 
 export function listOrganizations(userId: string = getDemoUser().id): OrganizationListItem[] {
-  return getState().organizations.filter((o) => o.is_active).map((o) => buildOrgListItem(o, userId));
+  const user = getState().users.find((u) => u.id === userId);
+  const orgs = user?.role === "superadmin" ? getState().organizations : getState().organizations.filter((o) => o.is_active);
+  return orgs.map((o) => buildOrgListItem(o, userId));
 }
 
 export function listUserOrganizations(userId: string): OrganizationListItem[] {
@@ -696,7 +700,10 @@ export function getOrganizationRaw(id: string): StoredOrganization | undefined {
 
 export function getOrganization(id: string, userId: string): Organization | undefined {
   const org = getOrganizationRaw(id);
-  return org ? buildOrgResponse(org, userId) : undefined;
+  if (!org) return undefined;
+  const user = getState().users.find((u) => u.id === userId);
+  if (!org.is_active && user?.role !== "superadmin") return undefined;
+  return buildOrgResponse(org, userId);
 }
 
 export interface OrganizationCreateInput {
@@ -759,6 +766,14 @@ export function deactivateOrganization(id: string): void {
     .filter((m) => m.organization_id === id && m.active)
     .forEach((m) => { m.active = false; });
   persist();
+}
+
+export function restoreOrganization(id: string, userId: string): Organization | undefined {
+  const org = getOrganizationRaw(id);
+  if (!org) return undefined;
+  org.is_active = true;
+  persist();
+  return buildOrgResponse(org, userId);
 }
 
 // --- Members ---------------------------------------------------------------

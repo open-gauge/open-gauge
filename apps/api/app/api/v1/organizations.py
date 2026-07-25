@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Re
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import get_current_user, require_not_viewer, require_superadmin
 from ...models.organization import Organization
 from ...models.organization_join_request import JoinRequestStatus
 from ...models.organization_member import OrganizationMember, OrgRole
@@ -153,11 +153,13 @@ def list_organizations(
 def create_organization(
     body: OrganizationCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> OrganizationResponse:
-    """Any authenticated user may create an organization — org creation is a
-    self-service action independent of the global RBAC role, mirroring Gogs/
-    GitHub. The creator automatically becomes that org's first admin member."""
+    """Any authenticated non-Viewer may create an organization — org creation is
+    a self-service action independent of the global RBAC role otherwise,
+    mirroring Gogs/GitHub, but Viewer is excluded like every other org
+    management action. The creator automatically becomes that org's first
+    admin member."""
     org = org_repo.create(
         db,
         name=body.name,
@@ -308,6 +310,24 @@ def deactivate_organization(
         db, actor_id=current_user.id, actor_email=current_user.email,
         action="organization.deactivated", entity_type="organization", entity_id=org.id,
     )
+
+
+@router.post("/{org_id}/restore", response_model=OrganizationResponse)
+def restore_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+) -> OrganizationResponse:
+    """Reactivate a deactivated organization — Super Admin only, since a
+    deactivated org may have zero active memberships left to fall back on.
+    Restoring only affects visibility; it does not reactivate memberships."""
+    org = _get_org_or_404(db, org_id, current_user)
+    org_repo.restore(db, org)
+    audit_log_repo.create(
+        db, actor_id=current_user.id, actor_email=current_user.email,
+        action="organization.restored", entity_type="organization", entity_id=org.id,
+    )
+    return _build_org_response(db, org, current_user)
 
 
 # ---------------------------------------------------------------------------

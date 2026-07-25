@@ -41,6 +41,7 @@ class OrganizationListItem(BaseModel):
     name: str
     private: bool
     logo_url: str | None = None
+    is_active: bool = True
 
     is_member: bool = False
     my_role: OrgRole | None = None

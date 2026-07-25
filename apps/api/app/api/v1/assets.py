@@ -7,7 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import get_current_user, require_not_viewer
 from ...models.asset import AssetType
 from ...models.user import User
 from ...models.calibration_method import Procedure
@@ -88,7 +88,7 @@ def create_asset(
     body: AssetCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
     if asset_repo.get_by_asset_id(db, body.asset_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Asset ID already exists")
@@ -120,7 +120,7 @@ def export_assets_bulk(
     body: AssetBulkExportRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> Response:
     assets = [a for pk in body.asset_ids if (a := asset_repo.get_by_id(db, pk))]
     if not assets:
@@ -157,7 +157,7 @@ def export_assets_bulk(
 )
 async def validate_import_zip(
     file: UploadFile = File(...),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_not_viewer),
 ) -> AssetImportPreview:
     data = await file.read()
     return import_svc.preview_asset_zip(data)
@@ -180,7 +180,7 @@ async def import_assets(
     file: UploadFile = File(...),
     location_id: uuid.UUID | None = Form(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> AssetImportResponse:
     data = await file.read()
     results = import_svc.import_assets_zip(
@@ -237,7 +237,7 @@ def update_asset(
     body: AssetUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
@@ -300,7 +300,7 @@ def retire_asset(
     request: Request,
     reason: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> None:
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
@@ -326,7 +326,7 @@ def duplicate_asset(
     body: AssetDuplicateRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
     source = asset_repo.get_by_id(db, asset_pk)
     if not source:
@@ -445,7 +445,7 @@ async def upload_asset_file(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> StoredFileResponse:
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
@@ -495,7 +495,7 @@ def delete_asset_file(
     file_id: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> None:
     asset = asset_repo.get_by_id(db, asset_pk)
     f = file_repo.get_by_id(db, file_id)
@@ -523,7 +523,7 @@ async def upload_asset_picture(
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
     """Upload or replace the asset's picture (a photo of the physical unit, shown circled on the asset detail header). Replaces and deletes any previous picture."""
     asset = asset_repo.get_by_id(db, asset_pk)
@@ -582,7 +582,7 @@ def delete_asset_picture(
     asset_pk: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
     """Remove the asset's picture, if one is set."""
     asset = asset_repo.get_by_id(db, asset_pk)
@@ -620,7 +620,7 @@ def export_asset(
     asset_pk: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> Response:
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:

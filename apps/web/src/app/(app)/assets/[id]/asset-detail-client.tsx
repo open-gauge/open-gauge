@@ -2710,6 +2710,7 @@ export default function AssetDetailClient() {
   const router = useRouter();
   const { user } = useAuth();
   const isAdmin = user.role === "superadmin" || user.role === "admin";
+  const canEdit = user.role !== "viewer";
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [profile, setProfile] = useState<AssetProfile | null>(null);
@@ -3006,20 +3007,22 @@ export default function AssetDetailClient() {
           <div className="flex items-center gap-2 shrink-0">
             {!isEditing ? (
               <>
-                <button type="button"
-                  onClick={handleExportAsset}
-                  disabled={exporting}
-                  className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors disabled:opacity-50">
-                  <ExportIcon size={15} />
-                  {exporting ? "Exporting…" : "Export"}
-                </button>
+                {canEdit && (
+                  <button type="button"
+                    onClick={handleExportAsset}
+                    disabled={exporting}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors disabled:opacity-50">
+                    <ExportIcon size={15} />
+                    {exporting ? "Exporting…" : "Export"}
+                  </button>
+                )}
                 <button type="button"
                   onClick={() => setStickerOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors">
                   <QrCodeIcon size={15} />
                   Sticker
                 </button>
-                {profile.is_active && (
+                {profile.is_active && canEdit && (
                   <button
                     type="button"
                     onClick={handleStartEdit}

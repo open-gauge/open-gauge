@@ -23,6 +23,7 @@ import {
   addMembers,
   approveJoinRequest,
   deactivateOrganization,
+  restoreOrganization,
   deleteOrgLogo,
   getOrganization,
   leaveOrganization,
@@ -220,6 +221,7 @@ export default function OrganizationDetailClient() {
 
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
 
@@ -386,7 +388,7 @@ export default function OrganizationDetailClient() {
               uploading={logoUploading}
               onUpload={handleLogoChange}
               onRemove={handleLogoRemove}
-              size={48}
+              size={editing ? 80 : 48}
               previewTitle={org.name}
             >
               {org.logo_url ? (
@@ -541,7 +543,7 @@ export default function OrganizationDetailClient() {
                 <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
                     <p className="text-xs font-semibold text-og-text">Members</p>
-                    {org.can_manage && (
+                    {org.can_manage && editing && (
                       <button
                         type="button"
                         onClick={() => setAddMemberOpen(true)}
@@ -612,16 +614,43 @@ export default function OrganizationDetailClient() {
                     <p className="text-xs font-semibold text-red-600 dark:text-red-400">Danger zone</p>
                   </div>
                   <div className="p-4 flex items-center justify-between gap-3">
-                    <p className="text-xs text-gray-400">
-                      Deleting an organization deactivates it — it becomes invisible to everyone except Super Admin and can&apos;t be restored from here.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteModalOpen(true)}
-                      className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors"
-                    >
-                      Delete organization
-                    </button>
+                    {org.is_active ? (
+                      <>
+                        <p className="text-xs text-gray-400">
+                          Deleting an organization deactivates it — it becomes invisible to everyone except Super Admin, who can restore it from here.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteModalOpen(true)}
+                          className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors"
+                        >
+                          Delete organization
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-400">
+                          This organization is deactivated — invisible to everyone except Super Admin. Restoring makes it active and visible to all users again.
+                        </p>
+                        <button
+                          type="button"
+                          disabled={restoring}
+                          onClick={async () => {
+                            setRestoring(true);
+                            try {
+                              setOrg(await restoreOrganization(org.id));
+                            } catch (e: unknown) {
+                              setActionError(e instanceof Error ? e.message : "Failed to restore organization");
+                            } finally {
+                              setRestoring(false);
+                            }
+                          }}
+                          className="shrink-0 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
+                        >
+                          {restoring ? "Restoring…" : "Restore organization"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

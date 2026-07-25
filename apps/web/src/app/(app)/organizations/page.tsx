@@ -129,7 +129,7 @@ export default function OrganizationsPage() {
             {!loading && `${orgs.length} organization${orgs.length === 1 ? "" : "s"}`}
           </p>
         </div>
-        {!creating && (
+        {!creating && user.role !== "viewer" && (
           <button
             type="button"
             onClick={() => setCreating(true)}
@@ -160,9 +160,14 @@ export default function OrganizationsPage() {
         )}
         <div className="divide-y divide-og-border">
           {orgs.map((org) => (
-            <div key={org.id} className="flex items-center gap-3 px-4 py-3 hover:bg-og-surface-alt transition-colors">
+            <div
+              key={org.id}
+              className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                org.is_active ? "hover:bg-og-surface-alt" : "bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30"
+              }`}
+            >
               <Link href={`/organizations/${org.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-og-surface-alt border border-og-border flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-9 h-9 rounded-full bg-og-surface-alt border border-og-border flex items-center justify-center shrink-0 overflow-hidden">
                   {org.logo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={org.logo_url} alt="" className="w-full h-full object-cover" />
@@ -171,13 +176,18 @@ export default function OrganizationsPage() {
                   )}
                 </div>
                 <p className="text-sm font-medium text-og-text flex-1 min-w-0 truncate">{org.name}</p>
+                {!org.is_active && (
+                  <span className="px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 rounded-full">
+                    Deleted
+                  </span>
+                )}
                 {org.private && (
                   <span className="flex items-center gap-1 text-[10px] font-medium text-gray-400">
                     <LockIcon size={11} /> Private
                   </span>
                 )}
               </Link>
-              {!isSuperAdmin && (
+              {!isSuperAdmin && org.is_active && (
                 <JoinLeaveButton
                   org={org}
                   onJoinClick={() => setJoinTarget(org)}

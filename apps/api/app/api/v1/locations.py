@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import get_current_user, require_not_viewer
 from ...models.user import User
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import location as location_repo
@@ -40,7 +40,7 @@ def create_location(
     body: LocationCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> LocationResponse:
     loc = location_repo.create(db, created_by=current_user.id, **body.model_dump())
     audit_log_repo.create(
@@ -75,7 +75,7 @@ def update_location(
     body: LocationUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> LocationResponse:
     loc = location_repo.get_by_id(db, location_id)
     if not loc:
@@ -101,7 +101,7 @@ def delete_location(
     location_id: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> None:
     loc = location_repo.get_by_id(db, location_id)
     if not loc:

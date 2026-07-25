@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -435,6 +436,8 @@ function LocationDetail({
   onRemoved: (fresh: LocationItem[]) => void;
   inheritedCount?: number;
 }) {
+  const { user } = useAuth();
+  const canEdit = user.role !== "viewer";
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<LocationEditForm>(locationToForm(location));
   const [saving, setSaving] = useState(false);
@@ -627,14 +630,16 @@ function LocationDetail({
 
             {/* Right: Edit button */}
             <div className="w-20 shrink-0 flex justify-end">
-              <button
-                type="button"
-                onClick={startEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
-              >
-                <EditIcon size={12} />
-                Edit
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
+                >
+                  <EditIcon size={12} />
+                  Edit
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -950,6 +955,8 @@ function NewLocationForm({
 // ---------------------------------------------------------------------------
 
 export default function LocationsPage() {
+  const { user } = useAuth();
+  const canEdit = user.role !== "viewer";
   const searchParams = useSearchParams();
   const initialId = searchParams.get("id");
 
@@ -1032,14 +1039,16 @@ export default function LocationsPage() {
               : `${locations.length} location${locations.length !== 1 ? "s" : ""} across your organization`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setNewLocOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-        >
-          <PlusIcon size={13} />
-          New location
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setNewLocOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            <PlusIcon size={13} />
+            New location
+          </button>
+        )}
       </div>
 
       {/* New location form */}

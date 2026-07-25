@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
-from ...dependencies.deps import get_current_user
+from ...dependencies.deps import get_current_user, require_not_viewer
 from ...models.calibration_method import Procedure
 from ...models.user import User
 from ...repositories import audit_log as audit_log_repo
@@ -36,7 +36,7 @@ def create_procedure(
     body: ProcedureCreate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> ProcedureResponse:
     existing = db.query(Procedure).filter(Procedure.proc_id == body.proc_id).first()
     if existing:
@@ -82,7 +82,7 @@ def update_procedure(
     body: ProcedureUpdate,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> ProcedureResponse:
     proc = db.query(Procedure).filter(Procedure.id == proc_pk).first()
     if not proc:
@@ -121,7 +121,7 @@ def delete_procedure(
     proc_pk: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> None:
     proc = db.query(Procedure).filter(Procedure.id == proc_pk).first()
     if not proc:
@@ -172,7 +172,7 @@ async def upload_procedure_step_file(
     step_index: int = Query(..., ge=0),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> StoredFileResponse:
     proc = db.query(Procedure).filter(Procedure.id == proc_pk).first()
     if not proc:
@@ -212,7 +212,7 @@ def delete_procedure_file(
     proc_pk: uuid.UUID,
     file_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_not_viewer),
 ) -> None:
     f = file_repo.get_by_id(db, file_id)
     if not f or f.entity_id != proc_pk:

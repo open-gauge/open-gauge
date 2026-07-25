@@ -57,11 +57,12 @@ class TestOrganizationCrud:
         assert org["my_role"] == "admin"
         assert org["can_manage"] is True
 
-    def test_any_authenticated_user_can_create_including_viewer(self, client: TestClient, db: Session) -> None:
-        """Org creation is self-service, independent of the global RBAC role —
-        even a Viewer can create one and becomes its admin."""
-        viewer = _viewer(db)
-        org = _create_org(client, _headers_for(viewer), "Viewer's Org")
+    def test_any_non_viewer_role_can_create(self, client: TestClient, db: Session) -> None:
+        """Org creation is self-service, independent of the global RBAC role,
+        as long as the caller isn't a Viewer — a plain Technician can create
+        one and becomes its admin."""
+        technician = _make_user(db, UserRole.technician)
+        org = _create_org(client, _headers_for(technician), "Technician's Org")
         assert org["my_role"] == "admin"
         assert org["can_manage"] is True
 
@@ -92,7 +93,7 @@ class TestOrganizationCrud:
     def test_global_admin_role_has_no_special_access(self, client: TestClient, auth_headers: dict, db: Session) -> None:
         """auth_headers belongs to a global `admin`-role user, but that user isn't
         a member of this second org — the global admin role alone grants nothing here."""
-        other_admin_creator = _make_user(db, UserRole.viewer)
+        other_admin_creator = _make_user(db, UserRole.technician)
         org = _create_org(client, _headers_for(other_admin_creator))
         response = client.put(
             f"/api/v1/organizations/{org['id']}", json={"name": "Hijacked"}, headers=auth_headers
@@ -141,7 +142,7 @@ class TestOrganizationVisibility:
 class TestOrganizationMembership:
     def test_mine_filter_scopes_to_own_memberships(self, client: TestClient, auth_headers: dict, db: Session) -> None:
         mine = _create_org(client, auth_headers, "Mine")
-        other_creator = _viewer(db)
+        other_creator = _make_user(db, UserRole.technician)
         _create_org(client, _headers_for(other_creator), "Not mine")
         response = client.get("/api/v1/organizations?mine=true", headers=auth_headers)
         assert response.status_code == 200
@@ -514,6 +515,66 @@ class TestViewerRelativeFields:
         assert found_creator["my_role"] == "admin"
         assert found_creator["is_last_admin"] is True
         assert found_creator["member_count"] == 1
+
+
+class TestViewerCannotManageOrganizations:
+    """Regression: the global RBAC restriction wins over the per-org role —
+    a Viewer is blocked from managing any organization even if they hold an
+    org-level `admin` membership."""
+
+    def test_viewer_cannot_create_organization(self, client: TestClient, db: Session) -> None:
+        viewer = _viewer(db)
+        response = client.post("/api/v1/organizations", json={"name": "Nope"}, headers=_headers_for(viewer))
+        assert response.status_code == 403
+
+    def test_viewer_org_admin_still_cannot_manage(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = _create_org(client, auth_headers)
+        viewer = _viewer(db)
+        add = client.post(
+            f"/api/v1/organizations/{org['id']}/members", json={"user_ids": [str(viewer.id)]}, headers=auth_headers
+        )
+        assert add.status_code == 201, add.text
+        promote = client.put(
+            f"/api/v1/organizations/{org['id']}/members/{viewer.id}", json={"role": "admin"}, headers=auth_headers
+        )
+        assert promote.status_code == 200, promote.text
+
+        viewer_headers = _headers_for(viewer)
+        update = client.put(
+            f"/api/v1/organizations/{org['id']}", json={"description": "hijacked"}, headers=viewer_headers
+        )
+        assert update.status_code == 403
+
+        view = client.get(f"/api/v1/organizations/{org['id']}", headers=viewer_headers)
+        assert view.status_code == 200
+        assert view.json()["can_manage"] is False
+
+
+class TestOrganizationRestore:
+    def test_superadmin_can_restore(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = _create_org(client, auth_headers)
+        client.delete(f"/api/v1/organizations/{org['id']}", headers=auth_headers)
+        superadmin = _make_user(db, UserRole.superadmin)
+        response = client.post(f"/api/v1/organizations/{org['id']}/restore", headers=_headers_for(superadmin))
+        assert response.status_code == 200, response.text
+        assert response.json()["is_active"] is True
+
+        # Now visible again to a plain viewer, not just the superadmin.
+        outsider = _viewer(db)
+        again = client.get(f"/api/v1/organizations/{org['id']}", headers=_headers_for(outsider))
+        assert again.status_code == 200
+
+    def test_org_admin_cannot_restore(self, client: TestClient, auth_headers: dict) -> None:
+        org = _create_org(client, auth_headers)
+        client.delete(f"/api/v1/organizations/{org['id']}", headers=auth_headers)
+        # The creator is that org's own admin, but restore is Super Admin only.
+        response = client.post(f"/api/v1/organizations/{org['id']}/restore", headers=auth_headers)
+        assert response.status_code == 403
+
+    def test_restore_nonexistent_org_returns_404(self, client: TestClient, db: Session) -> None:
+        superadmin = _make_user(db, UserRole.superadmin)
+        response = client.post(f"/api/v1/organizations/{uuid.uuid4()}/restore", headers=_headers_for(superadmin))
+        assert response.status_code == 404
 
 
 def org_creator_id(client: TestClient, creator_headers: dict) -> str:

@@ -232,6 +232,12 @@ route("DELETE", "/api/v1/organizations/:id", ({ params }) => {
   return undefined;
 });
 
+route("POST", "/api/v1/organizations/:id/restore", ({ params }) => {
+  const org = store.restoreOrganization(params[0], store.getDemoUser().id);
+  if (!org) throw new NotFoundError("organization not found");
+  return org;
+});
+
 route("DELETE", "/api/v1/organizations/:id/logo", ({ params }) =>
   store.setOrgLogo(params[0], null, store.getDemoUser().id));
 
