@@ -55,7 +55,7 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
             return (
               <Link
                 key={i}
-                href={`/assets/${event.id}`}
+                href={`/assets/${event.asset_id}`}
                 className="flex items-center gap-4 py-3 border-b border-og-border last:border-0 hover:bg-og-surface-alt rounded-lg px-2 -mx-2 transition-colors"
               >
                 <div className="flex-1 min-w-0">

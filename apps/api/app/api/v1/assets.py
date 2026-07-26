@@ -205,42 +205,42 @@ async def import_assets(
     return AssetImportResponse(results=results)
 
 
-@router.get("/{asset_pk}/profile", response_model=AssetProfileResponse)
+@router.get("/{asset_ref}/profile", response_model=AssetProfileResponse)
 def get_asset_profile(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> AssetProfileResponse:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     base = _enrich(asset, db)
-    extras = asset_repo.get_profile_extras(db, asset_pk)
-    extras["calibration_health_score"] = health_service.get_asset_calibration_health_score(db, asset_pk)
+    extras = asset_repo.get_profile_extras(db, asset.id)
+    extras["calibration_health_score"] = health_service.get_asset_calibration_health_score(db, asset.id)
     return AssetProfileResponse(**base.model_dump(), **extras)
 
 
-@router.get("/{asset_pk}", response_model=AssetResponse)
+@router.get("/{asset_ref}", response_model=AssetResponse)
 def get_asset(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> AssetResponse:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     return _enrich(asset, db)
 
 
-@router.put("/{asset_pk}", response_model=AssetResponse)
+@router.put("/{asset_ref}", response_model=AssetResponse)
 def update_asset(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     body: AssetUpdate,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
@@ -272,15 +272,15 @@ def update_asset(
     return _enrich(asset, db)
 
 
-@router.delete("/{asset_pk}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{asset_ref}", status_code=status.HTTP_204_NO_CONTENT)
 def retire_asset(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     request: Request,
     reason: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> None:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     before_state = snapshot(asset, ["is_active"])
@@ -303,15 +303,15 @@ def retire_asset(
     )
 
 
-@router.post("/{asset_pk}/duplicate", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{asset_ref}/duplicate", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
 def duplicate_asset(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     body: AssetDuplicateRequest,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
-    source = asset_repo.get_by_id(db, asset_pk)
+    source = asset_repo.get_by_ref(db, asset_ref)
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     if asset_repo.get_by_asset_id(db, body.new_asset_id):
@@ -332,9 +332,9 @@ def duplicate_asset(
     return _enrich(new_asset, db)
 
 
-@router.get("/{asset_pk}/calibrations", response_model=list[CalibrationResponse])
+@router.get("/{asset_ref}/calibrations", response_model=list[CalibrationResponse])
 def list_asset_calibrations(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     skip: int = 0,
     limit: int = 50,
     include_voided: bool = False,
@@ -343,39 +343,39 @@ def list_asset_calibrations(
 ) -> list[CalibrationResponse]:
     """List calibration records for this asset, newest first. Voided calibrations
     are excluded unless include_voided=true."""
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return cal_repo.list_by_asset(db, asset_pk, skip=skip, limit=limit, include_voided=include_voided)
+    return cal_repo.list_by_asset(db, asset.id, skip=skip, limit=limit, include_voided=include_voided)
 
 
-@router.get("/{asset_pk}/health", response_model=AssetHealthResponse)
+@router.get("/{asset_ref}/health", response_model=AssetHealthResponse)
 def get_asset_health(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     sensor_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> AssetHealthResponse:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return health_service.get_asset_health(db, asset_pk, sensor_id)
+    return health_service.get_asset_health(db, asset.id, sensor_id)
 
 
-@router.get("/{asset_pk}/health/curve-comparison", response_model=CurveComparisonResponse)
+@router.get("/{asset_ref}/health/curve-comparison", response_model=CurveComparisonResponse)
 def get_asset_health_curve_comparison(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     reference_calibration_id: uuid.UUID,
     current_calibration_id: uuid.UUID,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> CurveComparisonResponse:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     try:
         return health_service.get_curve_comparison(
-            db, asset_pk, reference_calibration_id, current_calibration_id
+            db, asset.id, reference_calibration_id, current_calibration_id
         )
     except health_service.CalibrationNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -383,18 +383,18 @@ def get_asset_health_curve_comparison(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
 
-@router.get("/{asset_pk}/audit-logs", response_model=list[AuditLogResponse])
+@router.get("/{asset_ref}/audit-logs", response_model=list[AuditLogResponse])
 def list_asset_audit_logs(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[AuditLogResponse]:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    logs = audit_log_repo.list_logs(db, entity_id=asset_pk, skip=skip, limit=limit)
+    logs = audit_log_repo.list_logs(db, entity_id=asset.id, skip=skip, limit=limit)
     return audit_log_enrich.enrich(db, logs)
 
 
@@ -407,37 +407,37 @@ def _enrich_files(files: list) -> list[StoredFileResponse]:
     return result
 
 
-@router.get("/{asset_pk}/files", response_model=list[StoredFileResponse])
+@router.get("/{asset_ref}/files", response_model=list[StoredFileResponse])
 def list_asset_files(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[StoredFileResponse]:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     # entity_id is shared with the asset picture (entity_type="asset_picture") — that's
     # managed from the Image section, not the general Files list. See asset_export.py's
     # equivalent filter.
-    files = [f for f in file_repo.list_by_entity(db, asset_pk) if f.entity_type == "asset"]
+    files = [f for f in file_repo.list_by_entity(db, asset.id) if f.entity_type == "asset"]
     return _enrich_files(files)
 
 
-@router.post("/{asset_pk}/files", response_model=StoredFileResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{asset_ref}/files", response_model=StoredFileResponse, status_code=status.HTTP_201_CREATED)
 async def upload_asset_file(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> StoredFileResponse:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
     data = await file.read()
     checksum = storage_svc.sha256_hex(data)
-    object_path = storage_svc.unique_object_name(f"assets/{asset_pk}", file.filename or "file")
+    object_path = storage_svc.unique_object_name(f"assets/{asset.id}", file.filename or "file")
     content_type = file.content_type or "application/octet-stream"
 
     bucket, path, size = storage_svc.upload_file(data, content_type, object_path)
@@ -451,7 +451,7 @@ async def upload_asset_file(
         size_bytes=size,
         checksum_sha256=checksum,
         entity_type="asset",
-        entity_id=asset_pk,
+        entity_id=asset.id,
         uploaded_by=current_user.id,
     )
 
@@ -473,17 +473,17 @@ async def upload_asset_file(
     return resp
 
 
-@router.delete("/{asset_pk}/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{asset_ref}/files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_asset_file(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     file_id: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> None:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     f = file_repo.get_by_id(db, file_id)
-    if not f or f.entity_id != asset_pk:
+    if not f or not asset or f.entity_id != asset.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
     storage_svc.delete_file(f.storage_path, f.bucket)
     file_repo.delete(db, file_id)
@@ -493,24 +493,24 @@ def delete_asset_file(
         actor_email=current_user.email,
         action="asset.file_deleted",
         entity_type="asset",
-        entity_id=asset_pk,
-        entity_asset_id=asset.asset_id if asset else None,
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
         after_state={"filename": f.original_filename},
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
 
 
-@router.post("/{asset_pk}/picture", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{asset_ref}/picture", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
 async def upload_asset_picture(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
     """Upload or replace the asset's picture (a photo of the physical unit, shown circled on the asset detail header). Replaces and deletes any previous picture."""
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
@@ -523,7 +523,7 @@ async def upload_asset_picture(
     old_file_id = asset.picture_id
 
     checksum = storage_svc.sha256_hex(data)
-    object_path = storage_svc.unique_object_name(f"assets/{asset_pk}/picture", file.filename or "picture")
+    object_path = storage_svc.unique_object_name(f"assets/{asset.id}/picture", file.filename or "picture")
     bucket, path, size = storage_svc.upload_file(data, content_type, object_path)
 
     record = file_repo.create(
@@ -535,7 +535,7 @@ async def upload_asset_picture(
         size_bytes=size,
         checksum_sha256=checksum,
         entity_type="asset_picture",
-        entity_id=asset_pk,
+        entity_id=asset.id,
         uploaded_by=current_user.id,
     )
     asset_repo.set_picture(db, asset, record.id)
@@ -561,15 +561,15 @@ async def upload_asset_picture(
     return _enrich(asset, db)
 
 
-@router.delete("/{asset_pk}/picture", response_model=AssetResponse)
+@router.delete("/{asset_ref}/picture", response_model=AssetResponse)
 def delete_asset_picture(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> AssetResponse:
     """Remove the asset's picture, if one is set."""
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     if asset.picture_id:
@@ -593,7 +593,7 @@ def delete_asset_picture(
 
 
 @router.get(
-    "/{asset_pk}/export",
+    "/{asset_ref}/export",
     summary="Export an asset",
     description="Export a single asset as a downloadable ZIP archive: asset.yaml with all "
     "metadata, channels/DAQ, and full calibration history, plus a media/ folder with the "
@@ -601,12 +601,12 @@ def delete_asset_picture(
     tags=["Assets"],
 )
 def export_asset(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> Response:
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     zip_bytes = export_svc.build_asset_export_zip(db, asset)
@@ -628,9 +628,9 @@ def export_asset(
     )
 
 
-@router.get("/{asset_pk}/label")
+@router.get("/{asset_ref}/label")
 def get_asset_label(
-    asset_pk: uuid.UUID,
+    asset_ref: str,
     size: str = Query("4x2", pattern=r"^(1x0\.5|2x2|4x2)$"),
     format: str = Query("png", pattern="^(png|jpg|pdf)$"),
     db: Session = Depends(get_db),
@@ -640,12 +640,12 @@ def get_asset_label(
     from ...services.label_service import generate_label
     from ...models.calibration_method import Procedure
 
-    asset = asset_repo.get_by_id(db, asset_pk)
+    asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
     # Latest calibration
-    cals = cal_repo.list_by_asset(db, asset_pk, skip=0, limit=1)
+    cals = cal_repo.list_by_asset(db, asset.id, skip=0, limit=1)
     latest_cal = cals[0] if cals else None
 
     # A few data points (just need units for equation)

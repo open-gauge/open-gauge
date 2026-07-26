@@ -29,7 +29,7 @@ export default function RecentAssets({ data }: { data: RecentAsset[] }) {
           return (
             <Link
               key={asset.id}
-              href={`/assets/${asset.id}`}
+              href={`/assets/${asset.asset_id}`}
               className="shrink-0 w-52 border border-og-border rounded-xl p-4 hover:border-og-border-md hover:shadow-xs transition-all"
             >
               <div className="flex items-center justify-between mb-3">

@@ -9,6 +9,39 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.6.0
+
+### Changed
+
+- **Assets are now navigated by their human-readable asset ID (e.g. `OG-00042`), not the
+  internal UUID.** Every place that links to an asset detail page — the asset registry list
+  and grid, dashboard widgets (Upcoming calibrations, Recent assets, Activity), top-bar
+  search, and the "New/Duplicate/Import asset" flows — now builds the URL from `asset_id`
+  instead of `id`. QR/sticker labels (`GET /assets/{ref}/label`) now encode the same
+  `asset_id`-based URL, so a freshly generated or reprinted label matches what the browser
+  address bar shows.
+  - Every `/assets/{ref}` endpoint (and its nested resources — calibrations, health,
+    audit-logs, files, picture, export, label, duplicate) now resolves `{ref}` as either the
+    `asset_id` or the internal UUID via `asset_repo.get_by_ref`, so old bookmarked or
+    previously-printed UUID-based links keep working unchanged — this is additive, not a
+    breaking change to the API contract.
+  - Calibration creation (`POST /calibrations`) is unaffected — it already takes the asset's
+    internal UUID in its request body, and the one caller that used the route's raw identifier
+    already passed the resolved profile's UUID, not the URL param.
+
+### Fixed
+
+- **Demo mode 404'd when clicking an asset from the registry.** The registry's list-row and
+  grid-card links (`apps/web/src/app/[locale]/(app)/assets/page.tsx`) were plain `<a href>`
+  tags rather than next-intl's locale-aware `Link` — outside demo mode the i18n middleware
+  papers over this by redirecting to the locale-prefixed URL, but demo mode is a static
+  export with no middleware, so the un-prefixed URL 404'd. Switched both to `Link` from
+  `@/i18n/navigation`, matching every other asset link in the app.
+  - The demo fixture store (`apps/web/src/lib/demo/store.ts`, `router.ts`) resolves the same
+    asset either by `asset_id` or internal id now too, and `generateStaticParams` prerenders
+    demo asset routes under their `asset_id` so the static export has a matching page for
+    every link the app actually generates.
+
 ## 3.5.2
 
 ### Fixed

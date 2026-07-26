@@ -58,7 +58,7 @@ def generate_label(
     base_url: str,
 ) -> tuple[bytes, str]:
     """Return (content_bytes, content_type)."""
-    url = f"{base_url.rstrip('/')}/assets/{asset.id}"
+    url = f"{base_url.rstrip('/')}/assets/{asset.asset_id}"
     qr_bytes = _make_qr(url)
 
     asset_id  = asset.asset_id or ""

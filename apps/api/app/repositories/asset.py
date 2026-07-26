@@ -25,6 +25,18 @@ def get_by_asset_id(db: Session, asset_id: str) -> Asset | None:
     return db.query(Asset).filter(Asset.asset_id == asset_id).first()
 
 
+def get_by_ref(db: Session, ref: str) -> Asset | None:
+    """Resolve an asset from whichever identifier the URL carries — the human-readable
+    asset_id (e.g. "OG-00042", what appears in the address bar and on QR/sticker labels)
+    or, for old bookmarked/scanned links, the internal UUID. Tried as a UUID first since
+    that's a cheap, unambiguous parse; asset_id is never a valid UUID string."""
+    try:
+        pk = uuid.UUID(ref)
+    except ValueError:
+        return get_by_asset_id(db, ref)
+    return get_by_id(db, pk)
+
+
 def resolve_location_path(loc_id: uuid.UUID | None, all_locs: dict) -> tuple[str | None, str | None]:
     """Walk the location ancestor chain and return (root_name, leaf_name)."""
     if not loc_id:

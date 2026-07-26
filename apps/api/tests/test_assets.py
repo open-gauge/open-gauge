@@ -212,6 +212,80 @@ class TestGetAsset:
 
 
 # ---------------------------------------------------------------------------
+# Navigate by asset_id (human-readable code) instead of the internal UUID —
+# the URL an asset detail page now uses, and what QR/sticker labels encode.
+# The UUID form must keep working too, so old bookmarked/scanned links don't break.
+# ---------------------------------------------------------------------------
+
+class TestGetAssetByAssetId:
+    def test_get_by_asset_id_matches_get_by_uuid(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        by_uuid = client.get(f"/api/v1/assets/{created_asset['id']}", headers=auth_headers)
+        by_code = client.get(f"/api/v1/assets/{created_asset['asset_id']}", headers=auth_headers)
+        assert by_uuid.status_code == by_code.status_code == 200
+        assert by_uuid.json() == by_code.json()
+
+    def test_profile_by_asset_id(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        response = client.get(
+            f"/api/v1/assets/{created_asset['asset_id']}/profile", headers=auth_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] == created_asset["id"]
+
+    def test_calibrations_by_asset_id_sees_calibrations_created_by_uuid(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        """Regression: nested endpoints must resolve the ref to the asset's real UUID
+        before querying — filtering by the raw path value directly against a foreign
+        key column would silently return nothing when the URL carries the asset_id."""
+        payload = {
+            "asset_id": created_asset["id"],
+            "calibration_date": "2024-01-01",
+            "due_date": "2025-01-01",
+            "performed_by_name": "Ref Resolution Check",
+        }
+        created_cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert created_cal.status_code == 201, created_cal.text
+
+        response = client.get(
+            f"/api/v1/assets/{created_asset['asset_id']}/calibrations", headers=auth_headers
+        )
+        assert response.status_code == 200
+        assert any(c["id"] == created_cal.json()["id"] for c in response.json())
+
+    def test_audit_logs_by_asset_id(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        response = client.get(
+            f"/api/v1/assets/{created_asset['asset_id']}/audit-logs", headers=auth_headers
+        )
+        assert response.status_code == 200
+        assert any(l["action"] == "asset.created" for l in response.json())
+
+    def test_update_and_retire_by_asset_id(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        code = created_asset["asset_id"]
+        updated = client.put(
+            f"/api/v1/assets/{code}", json={"name": "Renamed via asset_id"}, headers=auth_headers
+        )
+        assert updated.status_code == 200
+        assert updated.json()["name"] == "Renamed via asset_id"
+
+        retired = client.delete(f"/api/v1/assets/{code}", headers=auth_headers)
+        assert retired.status_code == 204
+
+    def test_get_by_nonexistent_asset_id_returns_404(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        response = client.get("/api/v1/assets/OG-does-not-exist", headers=auth_headers)
+        assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
 # Update (including Decimal serialization regression)
 # ---------------------------------------------------------------------------
 

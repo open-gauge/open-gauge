@@ -137,7 +137,7 @@ export default function TopBar() {
   }, [query]);
 
   function handleSelect(asset: AssetListItem) {
-    router.push(`/assets/${asset.id}`);
+    router.push(`/assets/${asset.asset_id}`);
     setQuery("");
     setResults([]);
     setDocResults([]);

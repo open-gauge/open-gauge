@@ -71,7 +71,7 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
               />
               <p className="text-gray-400 mt-1">{timeAgo(item.created_at, t)}</p>
             </div>
-            <div className="leading-relaxed min-w-0 flex-1 text-right">
+            <div className="leading-relaxed min-w-0 flex-1 text-right pr-2">
               <span className="text-gray-500">{actionLabel(item.action)}</span>
               {item.entity_asset_id && (
                 <span className="ml-1 font-mono text-[10px] text-gray-400 bg-og-surface-alt px-1 rounded-sm">

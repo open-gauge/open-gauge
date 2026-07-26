@@ -4,13 +4,33 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.5.2 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.6.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.6.0
+
+### Changed
+
+- **Assets are now navigated by their human-readable asset ID (e.g. `OG-00042`), not the
+  internal UUID.** Every place that links to an asset detail page — the asset registry list
+  and grid, dashboard widgets (Upcoming calibrations, Recent assets, Activity), top-bar
+  search, and the "New/Duplicate/Import asset" flows — now builds the URL from `asset_id`
+  instead of `id`. QR/sticker labels now encode the same `asset_id`-based URL. Every
+  `/assets/{ref}` endpoint (and its nested resources) resolves `{ref}` as either the
+  `asset_id` or the internal UUID, so old bookmarked or previously-printed UUID-based links
+  keep working unchanged.
+
+### Fixed
+
+- **Demo mode 404'd when clicking an asset from the registry** — the registry's list/grid
+  links were plain `<a href>` tags instead of next-intl's locale-aware `Link`, so the
+  un-prefixed URL 404'd in the demo's static export (no middleware to add the locale prefix).
+  Switched to `Link` from `@/i18n/navigation`, matching every other asset link in the app.
 
 ## 3.5.2
 

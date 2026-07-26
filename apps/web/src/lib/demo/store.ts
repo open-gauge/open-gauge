@@ -331,13 +331,20 @@ export function listAssets(filter: ListAssetsFilter = {}): AssetListItem[] {
   return assets.map(toListItem);
 }
 
-export function getAssetProfile(id: string): AssetProfile | undefined {
-  const asset = getState().assets.find((a) => a.id === id);
+// Resolves an asset from whichever identifier the URL carries — the human-readable
+// asset_id (what the app now navigates and links with) or, for old links, the internal
+// id. Mirrors the real backend's asset_repo.get_by_ref.
+function findAssetByRef(ref: string): AssetProfile | undefined {
+  return getState().assets.find((a) => a.id === ref || a.asset_id === ref);
+}
+
+export function getAssetProfile(ref: string): AssetProfile | undefined {
+  const asset = findAssetByRef(ref);
   return asset ? recomputeAssetDerived(asset) : undefined;
 }
 
-export function updateAsset(id: string, patch: Partial<AssetProfile>): AssetProfile | undefined {
-  const asset = getState().assets.find((a) => a.id === id);
+export function updateAsset(ref: string, patch: Partial<AssetProfile>): AssetProfile | undefined {
+  const asset = findAssetByRef(ref);
   if (!asset) return undefined;
   Object.assign(asset, patch, { updated_at: nowIso(), version: asset.version + 1 });
   recomputeAssetDerived(asset);
@@ -352,8 +359,8 @@ export function createAsset(profile: AssetProfile): AssetProfile {
   return profile;
 }
 
-export function retireAsset(id: string, reason?: string): AssetProfile | undefined {
-  const asset = getState().assets.find((a) => a.id === id);
+export function retireAsset(ref: string, reason?: string): AssetProfile | undefined {
+  const asset = findAssetByRef(ref);
   if (!asset) return undefined;
   asset.is_active = false;
   asset.retired_at = nowIso();

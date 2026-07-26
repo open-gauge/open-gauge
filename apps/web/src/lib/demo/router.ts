@@ -721,12 +721,23 @@ route("GET", "/api/v1/assets/:id/profile", ({ params }) => {
   return asset;
 });
 
-route("GET", "/api/v1/assets/:id/calibrations", ({ params, qs }) =>
-  store.listCalibrationsForAsset(params[0], bool(qs.get("include_voided")) ?? false));
+route("GET", "/api/v1/assets/:id/calibrations", ({ params, qs }) => {
+  const asset = store.getAssetProfile(params[0]);
+  if (!asset) throw new NotFoundError("asset not found");
+  return store.listCalibrationsForAsset(asset.id, bool(qs.get("include_voided")) ?? false);
+});
 
-route("GET", "/api/v1/assets/:id/audit-logs", ({ params }) => store.listAuditLogsForAsset(params[0]));
+route("GET", "/api/v1/assets/:id/audit-logs", ({ params }) => {
+  const asset = store.getAssetProfile(params[0]);
+  if (!asset) throw new NotFoundError("asset not found");
+  return store.listAuditLogsForAsset(asset.asset_id);
+});
 
-route("GET", "/api/v1/assets/:id/files", ({ params }) => store.listFilesForEntity("asset", params[0]));
+route("GET", "/api/v1/assets/:id/files", ({ params }) => {
+  const asset = store.getAssetProfile(params[0]);
+  if (!asset) throw new NotFoundError("asset not found");
+  return store.listFilesForEntity("asset", asset.id);
+});
 
 route("DELETE", "/api/v1/assets/:id/files/:fileId", ({ params }) => {
   store.deleteStoredFile(params[1]);
@@ -838,7 +849,9 @@ route("DELETE", "/api/v1/assets/:id", ({ params, qs }) => {
 // ---------------------------------------------------------------------------
 
 route("GET", "/api/v1/assets/:id/health", ({ params }) => {
-  const snapshot = store.getHealthSnapshot(params[0]);
+  const asset = store.getAssetProfile(params[0]);
+  if (!asset) throw new NotFoundError("asset not found");
+  const snapshot = store.getHealthSnapshot(asset.id);
   if (!snapshot) throw new NotFoundError("no health snapshot for asset");
   return snapshot;
 });
@@ -1066,7 +1079,9 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
   // /api/v1/assets/:id/files
   let m = /^\/api\/v1\/assets\/([^/]+)\/files$/.exec(req.pathname);
   if (m) {
-    const stored = store.addStoredFile(makeStoredFile("asset", m[1]));
+    const asset = store.getAssetProfile(m[1]);
+    if (!asset) throw new Error("asset not found");
+    const stored = store.addStoredFile(makeStoredFile("asset", asset.id));
     return stored as unknown as T;
   }
 

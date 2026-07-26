@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   createAsset,
   duplicateAsset,
@@ -434,10 +434,10 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
 
   // Shared cell content
   const sharedId = (
-    <a href={`/assets/${asset.id}`}
+    <Link href={`/assets/${asset.asset_id}`}
       className="font-mono text-xs font-semibold text-og-accent hover:underline whitespace-nowrap">
       {asset.asset_id}
-    </a>
+    </Link>
   );
   const sharedName = (
     <p className="text-sm font-medium text-og-text leading-snug flex items-center gap-1.5">
@@ -565,7 +565,7 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
   const technologyLabel = asset.technology ? translateDynamic(tTech, asset.technology) : null;
   const range = isMulti ? null : formatRange(asset.range_min, asset.range_max, asset.range_unit);
   return (
-    <a href={`/assets/${asset.id}`} className="block bg-og-surface border border-og-border rounded-xl p-4 hover:border-og-border-md hover:shadow-xs transition-all cursor-pointer">
+    <Link href={`/assets/${asset.asset_id}`} className="block bg-og-surface border border-og-border rounded-xl p-4 hover:border-og-border-md hover:shadow-xs transition-all cursor-pointer">
       <div className="flex items-start justify-between mb-3">
         <span className="font-mono text-[10px] font-semibold text-og-accent">{asset.asset_id}</span>
         <StatusBadge status={asset.calibration_status} />
@@ -584,7 +584,7 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
         <span className="font-mono">{range ?? (isMulti ? "—" : (asset.serial_number ?? "—"))}</span>
         <span className="font-mono">{formatDate(asset.next_due_at)}</span>
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -919,7 +919,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
         organization_id: form.organization_id,
       };
       const created = await createAsset(body);
-      onCreated(created.id);
+      onCreated(created.asset_id);
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : t("errorCreate"));
     } finally {
@@ -942,7 +942,7 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
     setCopyError(null);
     try {
       const created = await duplicateAsset(selectedSource.id, newCopyId);
-      onCreated(created.id);
+      onCreated(created.asset_id);
     } catch (e: unknown) {
       setCopyError(e instanceof Error ? e.message : t("errorDuplicate"));
     } finally {
@@ -1000,11 +1000,11 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
         return;
       }
       const [only] = res.results;
-      if (only.status === "error" || !only.new_asset_pk) {
+      if (only.status === "error" || !only.asset_id) {
         setImportError(only.error_message ?? t("errorImportFailed"));
         return;
       }
-      onCreated(only.new_asset_pk);
+      onCreated(only.asset_id);
     } catch (e: unknown) {
       setImportError(e instanceof Error ? e.message : t("errorImportGeneric"));
     } finally {

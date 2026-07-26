@@ -13,7 +13,7 @@ export async function generateStaticParams() {
   if (process.env.NEXT_PUBLIC_DEMO_MODE !== "true") return [];
 
   const { listAssets } = await import("@/lib/demo/store");
-  return listAssets({}).map((asset) => ({ id: asset.id }));
+  return listAssets({}).map((asset) => ({ id: asset.asset_id }));
 }
 
 export default function Page() {
