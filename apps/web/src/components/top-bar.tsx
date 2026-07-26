@@ -282,7 +282,7 @@ export default function TopBar() {
           <button
             type="button"
             onClick={() => setAvatarOpen((v) => !v)}
-            className="rounded-full cursor-pointer transition-colors focus:outline-hidden focus:ring-2 focus:ring-og-accent/40"
+            className="rounded-full cursor-pointer transition-transform hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-og-accent/40"
             aria-haspopup="true"
             aria-expanded={avatarOpen}
           >

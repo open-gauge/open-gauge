@@ -268,6 +268,19 @@ instead of a raw `<input type="checkbox">`:
 
 ---
 
+## Scrollbars
+
+Scrollbars are themed globally in `globals.css` (`::-webkit-scrollbar` + the standard
+`scrollbar-width`/`scrollbar-color` properties for Firefox) rather than left as the browser
+default — a thin, fully rounded thumb in `--og-border-md`, transparent track, switching to the
+accent color on hover. This applies automatically to every scrollable element (panels,
+sidebars, dropdowns, code blocks) in both light and dark mode via the existing color tokens.
+
+**Rule: never add a bespoke `overflow-y-auto` scroll container without this global styling in
+mind — don't reintroduce a native/unstyled scrollbar with inline styles or a competing library.**
+
+---
+
 ## Color Rules (Summary)
 
 | Use case | Token |

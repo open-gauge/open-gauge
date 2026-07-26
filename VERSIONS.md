@@ -9,6 +9,39 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.6.1
+
+### Changed
+
+- **Scrollbars now match the app's own colors instead of the browser default** — themed
+  globally in `globals.css` (thin, fully rounded thumb in `--og-border-md`, transparent track,
+  accent color on hover), documented in `UI.md`'s new **Scrollbars** section.
+- **Notification bell button now hovers the same way as the language/theme buttons** (icon
+  color change only, no background pill) — it was the only one of the three top-bar icon
+  buttons with a `hover:bg-og-surface-alt` pill.
+- **User profile picture in the top bar enlarges on hover**, matching the affordance other
+  clickable avatars/pictures already have.
+
+### Fixed
+
+- **A user's profile picture on their `/users/{id}` detail page didn't open the preview modal
+  on click**, unlike every other picture in the app (asset picture, organization logo, the
+  user's own picture on `/settings`) — it rendered a bare `Avatar` instead of wrapping it in
+  the shared `ImageUploadField` (which owns the click-to-preview behavior even when
+  `editable={false}`).
+- **Tooltips inside a collapsed/collapsible panel's field rows (asset overview's Location,
+  Mechanical, Electrical, Commercial, Notes sections) were clipped**, hiding part of the
+  tooltip content. `CollapsibleSection` used `overflow-hidden` on its wrapper purely to keep
+  the header button's hover background inside the rounded corners — which also clipped any
+  absolutely-positioned tooltip popup inside the section. Replaced it with conditional
+  rounding on the header button itself (`rounded-xl` closed, `rounded-t-xl` open), so nothing
+  needs to be clipped.
+- **Tooltip "view documentation" links 404'd in demo mode.** `components/tooltip.tsx` imported
+  `Link` from `next/link` instead of the locale-aware `@/i18n/navigation` — the same
+  missing-locale-prefix issue fixed for the asset registry in 3.6.0, just in a different
+  component. Every tooltip's doc link now resolves correctly in both the normal app (where
+  middleware papered over it) and the demo's static export (which has no middleware to do so).
+
 ## 3.6.0
 
 ### Changed

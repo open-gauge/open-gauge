@@ -4,13 +4,33 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.6.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.6.1 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.6.1
+
+### Changed
+
+- **Scrollbars now match the app's own colors instead of the browser default**, documented in
+  `UI.md`'s new Scrollbars section.
+- **Notification bell button now hovers the same way as the language/theme buttons.**
+- **User profile picture in the top bar enlarges on hover.**
+
+### Fixed
+
+- **A user's profile picture on their `/users/{id}` detail page didn't open the preview modal
+  on click** — it now uses the shared `ImageUploadField` (read-only mode), matching every
+  other picture in the app.
+- **Tooltips inside a collapsed panel's field rows (asset overview) were clipped.**
+  `CollapsibleSection` no longer clips overflow to round its corners — the header button gets
+  conditional rounding instead.
+- **Tooltip "view documentation" links 404'd in demo mode** — `tooltip.tsx` now uses the
+  locale-aware `Link` from `@/i18n/navigation` instead of plain `next/link`.
 
 ## 3.6.0
 

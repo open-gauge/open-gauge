@@ -882,11 +882,11 @@ function CollapsibleSection({
   const isOpen = forceOpen || open;
 
   return (
-    <div className="bg-og-surface border border-og-border rounded-xl overflow-hidden">
+    <div className="bg-og-surface border border-og-border rounded-xl">
       <button
         type="button"
         onClick={() => { if (!forceOpen) setOpen((v) => !v); }}
-        className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${forceOpen ? "cursor-default" : "hover:bg-og-surface-alt"}`}
+        className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${isOpen ? "rounded-t-xl" : "rounded-xl"} ${forceOpen ? "cursor-default" : "hover:bg-og-surface-alt"}`}
       >
         <span className="text-sm font-semibold text-og-text">{title}</span>
         {!forceOpen && (

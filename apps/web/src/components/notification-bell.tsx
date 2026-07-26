@@ -107,7 +107,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={handleToggle}
-        className="relative p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-og-surface-alt transition-colors"
+        className="relative p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
         aria-label={t("ariaLabel")}
       >
         <BellIcon size={16} />

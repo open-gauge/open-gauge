@@ -13,6 +13,7 @@ import {
   WarningIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/avatar";
+import { ImageUploadField } from "@/components/image-upload-field";
 import { ROLE_COLORS } from "@/lib/roles";
 import { translateDynamic } from "@/lib/translate-dynamic";
 
@@ -76,7 +77,16 @@ export default function UserDetailClient() {
         <>
           {/* Header */}
           <div className="flex items-center gap-3">
-            <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={40} />
+            <ImageUploadField
+              imageUrl={user.profile_picture_url}
+              alt={user.name}
+              editable={false}
+              onUpload={() => {}}
+              onRemove={() => {}}
+              size={40}
+            >
+              <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={40} />
+            </ImageUploadField>
             <div>
               <h1 className="text-xl font-bold text-og-text">{user.name}</h1>
               <p className="text-sm text-gray-400">{user.email}</p>

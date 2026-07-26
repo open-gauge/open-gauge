@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { docsUrl } from "@/lib/docs-links";
 
 export function Tooltip({
