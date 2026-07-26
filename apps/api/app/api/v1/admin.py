@@ -192,9 +192,11 @@ def export_database(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ) -> Response:
-    """Download a full PostgreSQL dump (pg_dump custom format) of the entire
-    database — every organization, asset, calibration, and user. Superadmin
-    only. Restore it with POST /admin/database/import."""
+    """Download a full backup of the instance: a zip bundling a PostgreSQL dump
+    (pg_dump custom format) — every organization, asset, calibration, and
+    user — together with every file in MinIO (certificates, datasheets,
+    LaTeX templates, profile pictures). Superadmin only. Restore it with
+    POST /admin/database/import."""
     try:
         dump = db_admin_svc.export_database()
     except db_admin_svc.DatabaseAdminError as e:
@@ -202,7 +204,7 @@ def export_database(
 
     _log_database_action(db, request, current_user, "database.exported")
 
-    filename = f"opengauge-backup-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.dump"
+    filename = f"opengauge-backup-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.zip"
     return Response(
         content=dump,
         media_type="application/octet-stream",
@@ -217,9 +219,11 @@ def import_database(
     current_user: User = Depends(require_superadmin),
     file: UploadFile = File(...),
 ) -> None:
-    """Restore a pg_dump custom-format archive produced by GET /admin/database/export,
-    replacing every table's contents. Superadmin only — this overwrites the
-    entire database, including the account making the request."""
+    """Restore a backup produced by GET /admin/database/export, replacing
+    every table's contents and every file in MinIO. Also accepts a bare
+    pg_dump archive from before media bundling existed (database only, media
+    untouched). Superadmin only — this overwrites the entire instance,
+    including the account making the request."""
     dump = file.file.read()
     actor_email = current_user.email
     ip_address = request.client.host if request.client else None

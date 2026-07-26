@@ -955,7 +955,7 @@ function DangerZone() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `opengauge-backup-${new Date().toISOString().slice(0, 10)}.dump`;
+      a.download = `opengauge-backup-${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: unknown) {
@@ -1020,7 +1020,7 @@ function DangerZone() {
           <div>
             <p className="text-xs font-semibold text-og-text">Backup</p>
             <p className="text-[10px] text-gray-400 mt-0.5">
-              Download a full database dump to restore later.
+              Download a full backup to restore later.
             </p>
           </div>
         </div>
@@ -1028,7 +1028,8 @@ function DangerZone() {
           <div>
             <p className="text-xs font-medium text-og-text">Export database</p>
             <p className="text-[10px] text-gray-400 mt-0.5">
-              Downloads a complete PostgreSQL dump of every organization, asset, and record.
+              Downloads a zip with a complete PostgreSQL dump of every organization, asset, and
+              record, plus every certificate, datasheet, and template file.
             </p>
           </div>
           <button
@@ -1057,12 +1058,13 @@ function DangerZone() {
             <div>
               <p className="text-xs font-medium text-og-text">Import database</p>
               <p className="text-[10px] text-gray-400 mt-0.5">
-                Restores a backup file, replacing everything currently in the database.
+                Restores a backup file, replacing everything currently in the database and
+                every certificate, datasheet, and template file in storage.
               </p>
               <input
                 ref={importInputRef}
                 type="file"
-                accept=".dump"
+                accept=".zip,.dump"
                 onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
                 className="mt-2 text-[11px] text-gray-400 file:mr-2 file:px-2 file:py-1 file:rounded-md file:border file:border-og-border-md file:bg-og-surface-alt file:text-[11px] file:text-og-text"
               />

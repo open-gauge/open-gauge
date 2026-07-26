@@ -1,6 +1,7 @@
 import hashlib
 import io
 import uuid
+from collections.abc import Iterator
 from datetime import timedelta
 
 from minio import Minio
@@ -107,6 +108,30 @@ def download_file(storage_path: str, bucket: str | None = None) -> bytes | None:
             resp.release_conn()
     except S3Error:
         return None
+
+
+def download_all_objects(bucket: str | None = None) -> Iterator[tuple[str, bytes, str]]:
+    """Yield (object_name, data, content_type) for every object in the bucket.
+    Used by the admin database export to bundle every media file (certificates,
+    datasheets, LaTeX templates, profile pictures, ...) alongside the pg_dump,
+    so a restore on a fresh instance has the files its records point to."""
+    bucket = bucket or settings.minio_bucket
+    client = _upload_client()
+    try:
+        objects = client.list_objects(bucket, recursive=True)
+        for obj in objects:
+            if obj.object_name is None:
+                continue
+            resp = client.get_object(bucket, obj.object_name)
+            try:
+                data = resp.read()
+                content_type = resp.headers.get("Content-Type") or "application/octet-stream"
+            finally:
+                resp.close()
+                resp.release_conn()
+            yield obj.object_name, data, content_type
+    except S3Error:
+        return
 
 
 def delete_all_objects(bucket: str | None = None) -> None:

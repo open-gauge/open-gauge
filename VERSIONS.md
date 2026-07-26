@@ -37,6 +37,12 @@ fixes and incremental additions that landed between each minor version.
   procedures register had no URL-param filtering at all before this). The shared `PieSlice` chart
   primitive gained an optional `onClick` prop to support this, with no change to its many other
   (non-clickable) call sites.
+- **Admin → Dashboard → Export/Import database** now bundles every MinIO object (certificates,
+  datasheets, LaTeX templates, profile pictures) alongside the `pg_dump` archive in a single zip,
+  instead of dumping the database alone. Previously, restoring an export on a different instance
+  left every file reference pointing at media that only existed in the original instance's MinIO.
+  Import still accepts a bare `pg_dump` archive from before this change for backward compatibility
+  (database only, existing media untouched in that case).
 
 ### Fixed
 

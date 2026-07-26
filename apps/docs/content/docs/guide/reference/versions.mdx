@@ -33,6 +33,11 @@ fixes and incremental additions that landed between each minor version.
 - Clicking a dashboard pie chart segment now navigates to a filtered register: calibration status →
   assets filtered by status, sensor/DAQ type → assets filtered by that subtype, procedure physical
   quantity → the procedures register filtered accordingly.
+- **Admin → Dashboard → Export/Import database** now bundles every MinIO object (certificates,
+  datasheets, LaTeX templates, profile pictures) alongside the `pg_dump` archive in a single zip,
+  so restoring a backup on a different instance brings its media along instead of leaving file
+  references pointing at nothing. Import still accepts a bare `pg_dump` archive from older
+  backups (database only, in that case).
 
 ### Fixed
 

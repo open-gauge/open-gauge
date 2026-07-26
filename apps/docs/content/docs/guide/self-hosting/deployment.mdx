@@ -65,20 +65,30 @@ single file, [`infrastructure/docker/.env`](https://github.com/open-gauge/open-g
 
 ## Backups
 
-Two things need backing up:
+The easiest path is the **Dangerous zone** at the bottom of **Admin → Dashboard** (superadmin
+only): **Export database** downloads a single zip bundling a `pg_dump` custom-format archive of
+the whole database (assets, calibrations, users, audit logs) together with every file in MinIO
+(certificates, datasheets, LaTeX templates, profile pictures). The same panel's **Import
+database** button restores both from that one file — including on a *different* Open Gauge
+instance, since the media the restored records point to comes along with it instead of being left
+behind in the original instance's MinIO.
 
-1. **PostgreSQL** (`infrastructure/docker/data/postgres`) — everything structured: assets,
-   calibrations, users, audit logs. The easiest path is the **Dangerous zone** at the bottom of
-   **Admin → Dashboard** (superadmin only) — **Export database** streams a `pg_dump`
-   custom-format archive of the whole database, which the same panel's **Import database**
-   button restores. Equivalently, run `pg_dump`/`pg_restore` against the `db` service directly,
-   or back up the directory itself with any regular file-level tool.
-2. **MinIO** (`infrastructure/docker/data/minio`) — certificates, datasheets, and images. Back up
-   the directory directly, or use `mc mirror` against the MinIO S3 API.
+Equivalently, the two pieces can still be backed up separately with regular infrastructure tools:
 
-Losing MinIO data doesn't corrupt calibration records (regenerate certificates on demand via
-`GET /calibrations/{id}/certificate`), but losing PostgreSQL data loses everything — back it up
-on a real schedule, not just the volume snapshot that happens to exist.
+1. **PostgreSQL** (`infrastructure/docker/data/postgres`) — run `pg_dump`/`pg_restore` against the
+   `db` service directly, or back up the directory itself with any regular file-level tool.
+2. **MinIO** (`infrastructure/docker/data/minio`) — back up the directory directly, or use
+   `mc mirror` against the MinIO S3 API.
+
+Losing MinIO data doesn't corrupt calibration records (certificates can be regenerated on demand
+via `GET /calibrations/{id}/certificate`), but user-uploaded datasheets, raw calibration files,
+and custom certificate templates are not recoverable without a MinIO backup. Losing PostgreSQL
+data loses everything — back it up on a real schedule, not just the volume snapshot that happens
+to exist.
+
+**Import database** also still accepts a bare `pg_dump` archive — the format Export produced
+before it bundled media — for restoring older backups; in that case only the database is
+restored and existing MinIO files are left untouched.
 
 If you run `pg_dump`/`pg_restore` yourself instead of using the in-app Export/Import, use a
 client version matching the `db` service's Postgres major version (15 — see the `image:` tag in

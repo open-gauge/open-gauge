@@ -1,6 +1,9 @@
+import io
+import json
 import subprocess
 import tempfile
 import uuid
+import zipfile
 from pathlib import Path
 
 from sqlalchemy import inspect, text
@@ -15,9 +18,16 @@ class DatabaseAdminError(Exception):
     pass
 
 
-def export_database() -> bytes:
-    """Dump the whole database as a pg_dump custom-format archive (restorable
-    with import_database / pg_restore)."""
+# Bundle layout produced by export_database() / consumed by import_database():
+#   database.dump   - the pg_dump custom-format archive
+#   manifest.json    - {"<object_name>": "<content_type>", ...} for every media/ entry
+#   media/<object_name>  - one entry per MinIO object, path mirrors the object name
+_DUMP_ENTRY = "database.dump"
+_MANIFEST_ENTRY = "manifest.json"
+_MEDIA_PREFIX = "media/"
+
+
+def _pg_dump() -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".dump") as tmp:
         result = subprocess.run(
             ["pg_dump", settings.database_url, "-Fc", "-f", tmp.name],
@@ -29,11 +39,7 @@ def export_database() -> bytes:
         return Path(tmp.name).read_bytes()
 
 
-def import_database(dump_bytes: bytes) -> None:
-    """Restore a pg_dump custom-format archive, replacing all existing data
-    and objects in the database. Callers must close the SQLAlchemy session
-    beforehand — pg_restore connects independently and --clean will drop and
-    recreate objects out from under any open ORM session."""
+def _pg_restore(dump_bytes: bytes) -> None:
     with tempfile.NamedTemporaryFile(suffix=".dump") as tmp:
         Path(tmp.name).write_bytes(dump_bytes)
         result = subprocess.run(
@@ -51,6 +57,58 @@ def import_database(dump_bytes: bytes) -> None:
         )
         if result.returncode != 0:
             raise DatabaseAdminError(f"pg_restore failed: {result.stderr.strip()}")
+
+
+def export_database() -> bytes:
+    """Bundle a pg_dump of the whole database together with every MinIO
+    object (certificates, datasheets, LaTeX templates, profile pictures, ...)
+    into a single zip archive, restorable with import_database.
+
+    Without the media files, restoring the dump alone onto a fresh instance
+    would leave every certificate/datasheet/template reference pointing at
+    an object that doesn't exist in that instance's MinIO."""
+    dump_bytes = _pg_dump()
+    manifest: dict[str, str] = {}
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr(_DUMP_ENTRY, dump_bytes)
+        for object_name, data, content_type in storage.download_all_objects():
+            archive.writestr(_MEDIA_PREFIX + object_name, data)
+            manifest[object_name] = content_type
+        archive.writestr(_MANIFEST_ENTRY, json.dumps(manifest))
+    return buffer.getvalue()
+
+
+def import_database(dump_bytes: bytes) -> None:
+    """Restore a backup produced by export_database, replacing all existing
+    data, objects, and media files. Callers must close the SQLAlchemy session
+    beforehand — pg_restore connects independently and --clean will drop and
+    recreate objects out from under any open ORM session.
+
+    Also accepts a bare pg_dump custom-format archive — the format
+    export_database produced before it bundled media — for backward
+    compatibility with backups taken before this existed; in that case only
+    the database is restored and existing media is left untouched."""
+    if not zipfile.is_zipfile(io.BytesIO(dump_bytes)):
+        _pg_restore(dump_bytes)
+        return
+
+    with zipfile.ZipFile(io.BytesIO(dump_bytes)) as archive:
+        _pg_restore(archive.read(_DUMP_ENTRY))
+
+        try:
+            manifest = json.loads(archive.read(_MANIFEST_ENTRY))
+        except KeyError:
+            manifest = {}
+
+        storage.delete_all_objects()
+        for name in archive.namelist():
+            if not name.startswith(_MEDIA_PREFIX) or name == _MEDIA_PREFIX:
+                continue
+            object_name = name[len(_MEDIA_PREFIX):]
+            content_type = manifest.get(object_name, "application/octet-stream")
+            storage.upload_file(archive.read(name), content_type, object_name)
 
 
 def reset_to_clean_state(db: Session, current_user_id: uuid.UUID) -> None:

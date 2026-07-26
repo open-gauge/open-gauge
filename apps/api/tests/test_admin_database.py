@@ -7,6 +7,9 @@ database outside the test's rolled-back transaction, so they are not covered
 here (would leave real state behind / require a disposable database). Only
 reset_to_clean_state runs entirely through the injected ORM session and is
 safe to exercise: it's rolled back like every other test.
+
+See test_database_admin_service.py for coverage of the export/import zip
+bundling logic itself (pg_dump/pg_restore and MinIO mocked out there).
 """
 import uuid
 
