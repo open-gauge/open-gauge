@@ -1,6 +1,6 @@
 ---
 title: Language & localization
-description: Switching the app's display language, how the preference is stored, and what stays English-only.
+description: Switching the app's display language, how the preference is stored, and what stays untranslated by design.
 ---
 
 Open Gauge's web app is available in English (the canonical language), Spanish, French, and
@@ -33,27 +33,42 @@ locales gained a prefix, nothing changed for English.
 ## What's translated — and what isn't
 
 Every page and control in the authenticated app is translated: navigation, forms, tables, modals,
-error and empty states, the admin screens, and the sign-in/register/forgot-password/reset-password/
-verify-email flow.
+error and empty states, the admin screens, the sign-in/register/forgot-password/reset-password/
+verify-email flow, every enum-driven dropdown (physical quantities, sensor technologies,
+calibration status, roles, and so on), the activity log's action descriptions, and the Privacy
+Policy and Terms of Service pages.
 
-Two categories are deliberately **not** translated, on purpose rather than by omission:
+This Knowledge Center is translated too — both here on the standalone docs site and in the copy
+embedded inside the app at **Documentation** in the sidebar. Pages translate independently of one
+another: a guide page without a translation yet simply falls back to showing its English content,
+so translation coverage can grow over time without ever leaving a page blank.
 
-- **User-entered content** — asset names, calibration notes, audit-log free text, and anything
-  else a person typed in. Machine-translating someone else's data would silently change what they
-  wrote; it's shown back exactly as entered, regardless of the viewer's chosen language.
-- **The Privacy Policy and Terms of Service pages** — these are legal documents, shipped as an
-  editable template that operators are expected to have reviewed by their own counsel (see the
-  note at the bottom of each page). Machine-translating legal text carries real accuracy risk, so
-  both pages stay English-only for every viewer, independent of their selected app language.
+**User-entered content** is the one thing deliberately left untranslated: asset names, calibration
+notes, audit-log free text, and anything else a person typed in. Machine-translating someone else's
+data would silently change what they wrote, so it's always shown back exactly as entered, regardless
+of the viewer's chosen language.
+
+The Privacy Policy and Terms of Service are shipped as an editable template — see the note at the
+bottom of each page. Their translations are a starting point; like the English original, operators
+are expected to have them reviewed by their own counsel before relying on them, especially for a
+jurisdiction with specific legal-language requirements.
+
+## The documentation site
+
+The standalone docs site at [docs.opengauge.org](https://docs.opengauge.org) has its own language
+switcher in the top nav, next to the theme toggle. It follows the same URL scheme as the app:
+English pages are unprefixed (`/docs/guide`), Spanish/French/German carry a locale prefix
+(`/es/docs/guide`, `/fr/docs/guide`, `/de/docs/guide`). The auto-generated API Reference
+(`/docs/api/...`) stays English-only in every language, since it's machine-generated from the
+OpenAPI schema rather than hand-written prose.
 
 ## The marketing site
 
 The separate marketing site at [opengauge.org](https://opengauge.org) — a different codebase from
 the app itself — has its own matching language switcher next to its light/dark toggle, with full
-Spanish, French, and German versions of the homepage. First-time visitors are redirected based on
-their browser's `Accept-Language` header; picking a language explicitly overrides that for future
-visits. Its Privacy Policy and Terms of Service pages are English-only for the same reason as the
-app's.
+Spanish, French, and German versions of the homepage and its own Privacy Policy/Terms of Service
+pages. First-time visitors are redirected based on their browser's `Accept-Language` header;
+picking a language explicitly overrides that for future visits.
 
 ## Adding a language (for self-hosters modifying their own instance)
 
@@ -63,3 +78,7 @@ The app's locale list is a single config array
 `LocaleMeta` entry and the translated JSON files; no application code needs to change. This isn't
 something a running instance can do without rebuilding the app, though — it's a source change for
 whoever maintains the deployment, not an in-app setting.
+
+This Knowledge Center's locale list lives separately, in `apps/docs/src/lib/i18n.ts` — adding a
+guide-page translation is likewise content-only: drop a `page.{locale}.mdx` / `meta.{locale}.json`
+sibling next to the English source and it's picked up automatically, with no code change.

@@ -942,6 +942,7 @@ function Step1({
   onMeasuredUnitChange: (u: string) => void;
 }) {
   const t = useTranslations("assets.wizard");
+  const tQuantity = useTranslations("tokens.physicalQuantity");
   const set = (key: keyof Step1State) => (value: string | boolean) =>
     onChange({ ...state, [key]: value });
 
@@ -963,7 +964,7 @@ function Step1({
             }}
             options={profile.sensor_channels.map((c) => ({
               value: c.id,
-              label: `${c.channel_id} — ${c.physical_quantity}`,
+              label: `${c.channel_id} — ${translateDynamic(tQuantity, c.physical_quantity)}`,
             }))}
             required
           />

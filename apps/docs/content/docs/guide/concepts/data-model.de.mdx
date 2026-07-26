@@ -1,0 +1,98 @@
+---
+title: Datenmodell & Konzepte
+description: Organisationen, Standorte und Anlagen — wie die Kernentitäten von Open Gauge zusammenhängen.
+---
+
+Diese Seite gibt den groben Aufbau des Datenmodells von Open Gauge wieder. Für das vollständige
+Schema auf Spaltenebene siehe die SQLAlchemy-Modelle unter `apps/api/app/models/` — die Spalten,
+Typen und Constraints jeder Tabelle sind dort definiert und bilden die maßgebliche Referenz (diese
+Seite behandelt die Konzepte und Beziehungen, nicht jede einzelne Spalte).
+
+## Die Hierarchie
+
+```
+Organization                    tenant root
+ ├─ organization_members        many-to-many: which users belong, with an org-scoped role
+ ├─ organization_join_requests  pending/approved/rejected requests to join
+ ├─ Locations                   hierarchical tree: site → building → laboratory → ...
+ │   └─ (asset_locations)       every assignment of an asset to a location, over time
+ └─ Assets                      the instrumentation registry: sensors and DAQs — own an
+                                 organization_id directly (independent of their location)
+     ├─ Sensor channels         one per measured physical quantity (an asset can have several)
+     │   └─ Calibrations        immutable history, one row per calibration event
+     │       └─ Calibration data  the raw reference/measured points behind each calibration
+     └─ DAQ specification       hardware spec, for asset_type = "daq"
+```
+
+## Organisationen
+
+Eine **Organisation** ist die Mandanten-Wurzel — jede Anlage gehört genau einer, über eine direkte
+`organization_id` (unabhängig vom Standort der Anlage). Ein Benutzer kann einer beliebigen Anzahl
+von Organisationen angehören, jeweils mit seiner eigenen `member`-/`admin`-Rolle, die nur auf diese
+Organisation begrenzt ist — getrennt von der globalen RBAC-Rolle (`viewer`/`technician`/`admin`/
+`superadmin`, siehe [Authentifizierung](../self-hosting/authentication.mdx#roles-rbac)). Jeder
+Benutzer kann eine Organisation erstellen und wird automatisch deren erster Admin. Siehe
+[Organisationen](../organizations/index.mdx) für das vollständige Modell zu Mitgliedschaft,
+Sichtbarkeit und Beitrittsanfragen.
+
+E-Mails zu fälligen/überfälligen Kalibrier-Erinnerungen gehen an jeden aktiven Techniker, Admin und
+Super Admin, der Mitglied der Organisation der Anlage ist — siehe
+[E-Mail-Benachrichtigungen](../self-hosting/email-notifications.mdx).
+
+Eine Organisation kann ein **Logo** haben, das von einem Organisations-Admin auf der eigenen Seite
+der Organisation festgelegt wird (Bild hochladen, dieselbe 5-MB-/Nur-Bild-Validierung und
+MinIO-Speicherung wie beim [Profilbild eines Benutzers](../self-hosting/authentication.mdx#profile-picture)
+oder seiner [Signatur](../self-hosting/authentication.mdx#signatures)). Das Logo ist für die
+Verwendung auf generierten Zertifikaten zusammen mit dem Namen der Organisation vorgesehen.
+
+## Standorte
+
+**Standorte** bilden einen Baum (`parent_location_id` ist selbstreferenzierend): Organisation →
+Standort (Site) → Gebäude → Labor, oder welche Hierarchie auch immer für Ihre Einrichtungen sinnvoll
+ist. Ein Standort kann als `is_calibration_lab` markiert werden, was ihn als gültigen Ort zur
+*Durchführung* einer Kalibrierung kennzeichnet (im Kalibrier-Assistenten als Kalibrierort auswählbar).
+Siehe [Standorte](../locations/index.mdx) für den operativen Arbeitsablauf.
+
+Jedes Mal, wenn eine Anlage bewegt wird, zeichnet Open Gauge eine neue `asset_locations`-Zeile auf,
+statt lediglich den aktuellen Standort der Anlage an Ort und Stelle zu aktualisieren — sodass "wo
+befand sich dieser Sensor an einem bestimmten Datum" immer beantwortbar ist, nicht nur "wo befindet
+er sich jetzt."
+
+## Anlagen
+
+Eine **Anlage** ist die zentrale Registrierungsentität — ein physisches Messgerät. Ihr `asset_type`
+ist entweder `sensor` oder `daq`:
+
+- Eine **Sensor**-Anlage hat einen oder mehrere **Kanäle** (die Tabelle `sensors` ist trotz ihres
+  Namens tatsächlich "eine Zeile pro Messkanal einer Anlage"), jeweils mit eigener physikalischer
+  Größe, Messbereich, Genauigkeits-/Auflösungs-/Unsicherheitsangabe und Kalibrierhistorie. Siehe
+  [Sensoren & Anlagen](../sensors/asset-registry.mdx).
+- Eine **DAQ**-Anlage (Datenerfassungsgerät) hat eine einzelne Hardware-Spezifikationszeile
+  (Anzahl Eingangs-/Ausgangskanäle, Abtastrate, ADC-Auflösung, Kommunikationsprotokoll usw.) anstelle
+  von Messkanälen.
+
+Anlagen werden in einer aktiven Bereitstellung nie endgültig gelöscht — das Ausmustern einer Anlage
+setzt `is_active = false` sowie `retired_at`/`retired_by`/`retired_reason` und bewahrt so ihre
+vollständige Kalibrierhistorie zu Auditzwecken.
+
+## Kalibrierungen
+
+Eine **Kalibrierung** ist eine unveränderliche Zeile pro Kalibrierereignis, verknüpft mit dem
+konkreten Sensorkanal, den sie kalibriert hat. Neue Kalibrierungen erzeugen immer neue Zeilen —
+Open Gauge bearbeitet oder überschreibt nie einen vergangenen Kalibrierdatensatz, ebenso wenig, wie
+man einen Git-Commit umschreiben würde. Siehe [Kalibrierung](../calibration/overview.mdx) für den
+vollständigen Arbeitsablauf und die Mathematik hinter jeder von Open Gauge berechneten Zahl.
+
+## Verfahren
+
+Ein **Verfahren** ist eine wiederverwendbare Kalibrierverfahrensvorlage, die einer physikalischen
+Größe zugeordnet ist (Schritte, benötigte Ausrüstung, Materialien, Umgebungsbedingungen,
+Abnahmekriterien). Ein Sensorkanal kann über `calibration_method_id` auf ein Standardverfahren
+verweisen. Siehe [Verfahren](../procedures/index.mdx).
+
+## Audit-Protokolle
+
+Jede bedeutsame Zustandsänderung in Open Gauge — das Anlegen eines Sensors, das Bearbeiten eines
+Kanals, das Speichern einer Kalibrierung, das Ausmustern einer Anlage — wird in einer unveränderlichen
+`audit_logs`-Tabelle festgehalten, die den Akteur, den Zustand davor/danach und einen Zeitstempel
+erfasst. Nichts in Open Gauge überschreibt Historie stillschweigend, ohne eine Spur zu hinterlassen.

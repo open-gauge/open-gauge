@@ -121,13 +121,23 @@ function fileIcon(contentType: string): string {
   return "doc";
 }
 
-function actionLabel(action: string): string {
+function humanizeAction(action: string): string {
   return action
     .replace(/\./g, " ")
     .replace(/_/g, " ")
     .split(" ")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+/** Falls back to a humanized version of the raw action code for any value the
+ * catalog doesn't have a translation for yet (e.g. a newly added audit action). */
+function useActionLabel() {
+  const t = useTranslations("tokens.auditAction");
+  return (action: string) => {
+    const k = action as Parameters<typeof t>[0];
+    return t.has(k) ? t(k) : humanizeAction(action);
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -602,6 +612,10 @@ function PhysicalQuantityCascade({
   prefix: string;
 }) {
   const t = useTranslations("assets.fields");
+  const tQuantity = useTranslations("tokens.physicalQuantity");
+  const tTech = useTranslations("tokens.sensorTechnology");
+  const tTechSubtype = useTranslations("tokens.sensorTechSubtype");
+  const tMeasurementType = useTranslations("tokens.measurementType");
   const chanTips = useChanTips();
   const quantityDef = PHYSICAL_QUANTITIES.find((q) => q.value === physicalQuantity);
   const techs = quantityDef?.technologies ?? [];
@@ -631,7 +645,7 @@ function PhysicalQuantityCascade({
           label={t("physicalQuantity")}
           value={physicalQuantity}
           onChange={onQuantityChange}
-          options={PHYSICAL_QUANTITIES.map((q) => ({ value: q.value, label: q.label }))}
+          options={PHYSICAL_QUANTITIES.map((q) => ({ value: q.value, label: translateDynamic(tQuantity, q.value) }))}
           error={errors[`${prefix}physical_quantity`]}
           required
           tooltip={chanTips.physical_quantity}
@@ -642,7 +656,7 @@ function PhysicalQuantityCascade({
             label={t("technology")}
             value={techFamily}
             onChange={handleFamilyChange}
-            options={techs.map((tech) => ({ value: tech.value, label: tech.label }))}
+            options={techs.map((tech) => ({ value: tech.value, label: translateDynamic(tTech, tech.value) }))}
           />
         )}
       </div>
@@ -653,7 +667,7 @@ function PhysicalQuantityCascade({
               label={t("measurementType")}
               value={measurementType}
               onChange={onMeasurementTypeChange}
-              options={typeOptions}
+              options={typeOptions.map((o) => ({ value: o.value, label: translateDynamic(tMeasurementType, o.value) }))}
               tooltip={chanTips.measurement_type}
               tooltipDocsHref={CHAN_DOCS_LINKS.measurement_type}
             />
@@ -663,7 +677,7 @@ function PhysicalQuantityCascade({
               label={t("typeVariant")}
               value={techSubtypeVal}
               onChange={(v) => onTechChange(techFamily, v)}
-              options={selectedFamily.subtypes.map((s) => ({ value: s.value, label: s.label }))}
+              options={selectedFamily.subtypes.map((s) => ({ value: s.value, label: translateDynamic(tTechSubtype, s.value) }))}
             />
           )}
           {techFamily === "__other__" && (
@@ -736,6 +750,7 @@ function ChannelEditor({
   errors: Record<string, string>;
 }) {
   const t = useTranslations("assets.fields");
+  const tOutputType = useTranslations("tokens.outputType");
   const chanTips = useChanTips();
   const p = `ch_${index}_`;
   const set = (field: keyof EditChannelForm) => (v: string) =>
@@ -802,7 +817,7 @@ function ChannelEditor({
       <EditSelectWithOther label={t("outputType")} value={ch.output_type} onChange={(v) => {
         const units = getOutputUnits(v, ch.physical_quantity);
         onChange({ ...ch, output_type: v, output_signal_unit: units?.[0]?.value ?? "" });
-      }} options={OUTPUT_TYPE_OPTIONS} />
+      }} options={OUTPUT_TYPE_OPTIONS.map((o) => ({ value: o.value, label: translateDynamic(tOutputType, o.value) }))} />
       <div className="grid grid-cols-3 gap-3">
         <EditInput label={t("outputMin")} value={ch.output_signal_min} onChange={set("output_signal_min")} error={errors[`${p}output_signal_min`]} placeholder={t("outputMinPlaceholder")} />
         <EditInput label={t("outputMax")} value={ch.output_signal_max} onChange={set("output_signal_max")} error={errors[`${p}output_signal_max`]} placeholder={t("outputMaxPlaceholder")} />
@@ -966,7 +981,12 @@ function OverviewTab({
   locations: LocationOption[];
   myOrgs: OrganizationListItem[];
 }) {
-  const tSubtype = useTranslations("tokens.subtype");
+  const tQuantity = useTranslations("tokens.physicalQuantity");
+  const tTech = useTranslations("tokens.sensorTechnology");
+  const tMeasurementType = useTranslations("tokens.measurementType");
+  const tMountingType = useTranslations("tokens.mountingType");
+  const tHazardousArea = useTranslations("tokens.hazardousArea");
+  const tOutputType = useTranslations("tokens.outputType");
   const t = useTranslations("assets.detail");
   const daq = profile.daq_details;
 
@@ -1064,10 +1084,10 @@ function OverviewTab({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <EditInput label={t("dimensions")} value={form.dimensions} onChange={set("dimensions")} placeholder={t("dimensionsPlaceholder")} />
               <EditInput label={t("weightKg")} value={form.weight_kg} onChange={set("weight_kg")} error={errors.weight_kg} placeholder={t("weightKgPlaceholder")} />
-              <EditSelectWithOther label={t("mountingType")} value={form.mounting_type} onChange={set("mounting_type")} options={MOUNTING_TYPE_OPTIONS} />
+              <EditSelectWithOther label={t("mountingType")} value={form.mounting_type} onChange={set("mounting_type")} options={MOUNTING_TYPE_OPTIONS.map((o) => ({ value: o.value, label: translateDynamic(tMountingType, o.value) }))} />
               <EditInput label={t("connectionType")} value={form.connection_type} onChange={set("connection_type")} placeholder={t("connectionTypePlaceholder")} />
               <EditSelectWithOther label={t("ipRating")} value={form.ip_rating} onChange={set("ip_rating")} options={IP_RATING_OPTIONS} />
-              <EditSelectWithOther label={t("hazardousAreaRating")} value={form.hazardous_area_rating} onChange={set("hazardous_area_rating")} options={HAZARDOUS_AREA_OPTIONS} />
+              <EditSelectWithOther label={t("hazardousAreaRating")} value={form.hazardous_area_rating} onChange={set("hazardous_area_rating")} options={HAZARDOUS_AREA_OPTIONS.map((o) => ({ value: o.value, label: translateDynamic(tHazardousArea, o.value) }))} />
               <EditInput label={t("operatingTempMin")} value={form.operating_temperature_min} onChange={set("operating_temperature_min")} error={errors.operating_temperature_min} placeholder={t("operatingTempMinPlaceholder")} />
               <EditInput label={t("operatingTempMax")} value={form.operating_temperature_max} onChange={set("operating_temperature_max")} error={errors.operating_temperature_max} placeholder={t("operatingTempMaxPlaceholder")} />
               <EditInput label={t("operatingHumidityMin")} value={form.operating_humidity_min} onChange={set("operating_humidity_min")} error={errors.operating_humidity_min} placeholder={t("operatingHumidityMinPlaceholder")} />
@@ -1192,10 +1212,10 @@ function OverviewTab({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
               <SpecRow label={t("dimensions")} value={profile.dimensions} tooltip={t("tips.dimensions")} tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />
               {profile.weight_kg != null && <SpecRow label={t("weight")} value={`${profile.weight_kg} kg`} tooltip={t("tips.weight")} tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />}
-              <SpecRow label={t("mountingType")} value={profile.mounting_type} tooltip={t("tips.mountingType")} tooltipDocsHref={ASSET_DOCS_LINKS.mounting_type} />
+              <SpecRow label={t("mountingType")} value={profile.mounting_type ? translateDynamic(tMountingType, profile.mounting_type) : profile.mounting_type} tooltip={t("tips.mountingType")} tooltipDocsHref={ASSET_DOCS_LINKS.mounting_type} />
               <SpecRow label={t("connectionType")} value={profile.connection_type} tooltip={t("tips.connectionType")} tooltipDocsHref={ASSET_DOCS_LINKS.connection_type} />
               <SpecRow label={t("ipRating")} value={profile.ip_rating} tooltip={t("tips.ipRating")} tooltipDocsHref={ASSET_DOCS_LINKS.ip_rating} />
-              <SpecRow label={t("hazardousArea")} value={profile.hazardous_area_rating} tooltip={t("tips.hazardousArea")} tooltipDocsHref={ASSET_DOCS_LINKS.hazardous_area_rating} />
+              <SpecRow label={t("hazardousArea")} value={profile.hazardous_area_rating ? translateDynamic(tHazardousArea, profile.hazardous_area_rating) : profile.hazardous_area_rating} tooltip={t("tips.hazardousArea")} tooltipDocsHref={ASSET_DOCS_LINKS.hazardous_area_rating} />
               {operatingTemp && <SpecRow label={t("operatingTemperature")} value={operatingTemp} tooltip={t("tips.operatingTemperature")} tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
               {operatingHumidity && <SpecRow label={t("operatingHumidity")} value={operatingHumidity} tooltip={t("tips.operatingHumidity")} tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
             </div>
@@ -1269,14 +1289,14 @@ function OverviewTab({
                     <p className="text-[11px] font-semibold text-og-accent uppercase tracking-wide mb-1">
                       {ch.channel_id}
                     </p>
-                    <SpecRow label={t("physicalQuantity")} value={translateDynamic(tSubtype, ch.physical_quantity)} tooltip={t("tips.channelPhysicalQuantity")} tooltipDocsHref={CHAN_DOCS_LINKS.physical_quantity} />
+                    <SpecRow label={t("physicalQuantity")} value={translateDynamic(tQuantity, ch.physical_quantity)} tooltip={t("tips.channelPhysicalQuantity")} tooltipDocsHref={CHAN_DOCS_LINKS.physical_quantity} />
                     <SpecRow
                       label={t("measurementType")}
-                      value={getTypesForQuantity(ch.physical_quantity).find((mt) => mt.value === ch.measurement_type)?.label ?? ch.measurement_type}
+                      value={ch.measurement_type ? translateDynamic(tMeasurementType, ch.measurement_type) : ch.measurement_type}
                       tooltip={t("tips.channelMeasurementType")}
                       tooltipDocsHref={CHAN_DOCS_LINKS.measurement_type}
                     />
-                    <SpecRow label={t("technology")} value={ch.technology} tooltip={t("tips.channelTechnology")} tooltipDocsHref={CHAN_DOCS_LINKS.technology} />
+                    <SpecRow label={t("technology")} value={ch.technology ? translateDynamic(tTech, ch.technology) : ch.technology} tooltip={t("tips.channelTechnology")} tooltipDocsHref={CHAN_DOCS_LINKS.technology} />
                     {(ch.measurement_min != null || ch.measurement_max != null) && (
                       <SpecRow label={t("range")} value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} tooltip={t("tips.channelRange")} tooltipDocsHref={CHAN_DOCS_LINKS.measurement_range} />
                     )}
@@ -1294,7 +1314,7 @@ function OverviewTab({
                     )}
                     {ch.response_time_ms != null && <SpecRow label={t("responseTime")} value={`${ch.response_time_ms} ms`} tooltip={t("tips.channelResponseTime")} tooltipDocsHref={CHAN_DOCS_LINKS.response_time_ms} />}
                     {ch.bandwidth_hz != null && <SpecRow label={t("bandwidth")} value={`${ch.bandwidth_hz.toLocaleString()} Hz`} tooltip={t("tips.channelBandwidth")} tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />}
-                    <SpecRow label={t("outputType")} value={ch.output_type} tooltip={t("tips.channelOutputType")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
+                    <SpecRow label={t("outputType")} value={ch.output_type ? translateDynamic(tOutputType, ch.output_type) : ch.output_type} tooltip={t("tips.channelOutputType")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
                     {(ch.output_signal_min != null || ch.output_signal_max != null) && (
                       <SpecRow label={t("outputRange")} value={`${ch.output_signal_min ?? "—"} – ${ch.output_signal_max ?? "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`} tooltip={t("tips.channelOutputRange")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
                     )}
@@ -2461,6 +2481,7 @@ function FilesTab({
 
 function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
   const t = useTranslations("assets.activity");
+  const actionLabel = useActionLabel();
   return (
     <div className="bg-og-surface border border-og-border rounded-xl p-6">
       <h3 className="text-sm font-semibold text-og-text mb-4">{t("title")}</h3>

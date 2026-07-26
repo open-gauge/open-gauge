@@ -1,0 +1,29 @@
+---
+title: Prédictions
+description: Comment Open Gauge projette la dérive future, et ce que cela a (et n'a pas) à voir avec les dates d'échéance de calibration.
+---
+
+## Prédiction de dérive [#prediction]
+
+Open Gauge exécute une régression linéaire sur les valeurs historiques de
+[dérive maximale](./drift-metrics.mdx#max-drift) d'une voie, projetée vers l'avant à partir
+d'aujourd'hui. Cela donne une réponse approximative à « si cette tendance se poursuit, quand la
+dérive de ce capteur pourrait-elle devenir un problème ? » — utile pour la planification, pas une
+prévision certifiée.
+
+## Intervalle recommandé contre le certificat
+
+L'[intervalle recommandé](./overview.mdx#recommended-interval) affiché sur l'onglet Santé est une
+heuristique de planification interne à Open Gauge. Il n'est **jamais** imprimé sur un certificat
+de calibration — voir
+[Génération de certificats](../calibration/certificates.mdx#whats-deliberately-not-on-it) pour
+comprendre pourquoi l'ISO/IEC 17025 exige un accord explicite du client avant qu'un certificat
+puisse déclarer une recommandation d'intervalle.
+
+## Nécessite au moins deux calibrations
+
+Chaque prédiction et métrique de dérive de cette page nécessite au moins deux calibrations sur
+une voie pour calculer quoi que ce soit de significatif — une calibration unique n'a aucun
+historique sur lequel ajuster une tendance. Jusque-là, Open Gauge affiche un score de santé
+neutre de 100 %, une stabilité « Stable », et un taux de dérive de 0 plutôt qu'un nombre calculé à
+partir de données insuffisantes.

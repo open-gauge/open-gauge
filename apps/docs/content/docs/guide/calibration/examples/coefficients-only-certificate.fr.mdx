@@ -1,0 +1,91 @@
+---
+title: "Exemple 4 — Transmetteur de pression, certificat externe à coefficients uniquement"
+description: Le parcours de l'assistant « Coefficients uniquement (sans données brutes) », pour les capteurs qui arrivent avec un certificat indiquant directement le polynôme de calibration.
+---
+
+Exerce le parcours de l'assistant [à coefficients uniquement](../coefficients-only.mdx) — pour
+les capteurs qui arrivent avec un certificat de calibration indiquant directement le polynôme de
+calibration, sans points de données bruts référence/mesuré à réajuster.
+
+## 4.0 Configuration
+
+**Actif** (Actifs → Nouvel actif) :
+
+| Champ | Valeur |
+|---|---|
+| Nom | External Pressure Transmitter |
+| Fabricant / Modèle | n'importe lequel, par ex. WIKA / A-10 |
+| Type d'actif | capteur |
+
+Une voie :
+
+| Champ | Valeur |
+|---|---|
+| Identifiant de voie | CH1 |
+| Grandeur physique | Pression |
+| Plage min / max | 0 / 1000 |
+| Unité | kPa |
+
+Rien d'autre n'est requis — une calibration à coefficients uniquement ne consulte ni
+l'exactitude, ni la résolution, ni l'incertitude de mesure (il n'y a aucune analyse exécutée
+pour les y intégrer).
+
+## 4.1 Assistant — Étape 1 (Informations générales)
+
+| Champ | Valeur |
+|---|---|
+| Type de calibration | Externe |
+| Fournisseur de calibration | Any Cal Lab Inc. |
+| Numéro de certificat | ACL-2026-00842 |
+| Coefficients uniquement (sans données brutes) | **coché** |
+
+Cocher la case remplace l'étape 2 de saisie de données brutes par un formulaire de saisie de
+coefficients, et l'indicateur d'étape se relibelle en « Coefficients » / « Révision » au lieu de
+« Données brutes » / « Analyse ».
+
+## 4.2 Assistant — Étape 2 (Coefficients)
+
+Le certificat indique : *référence ≈ 1,0025 × mesuré − 0,42 kPa, valide 0–1000 kPa, incertitude
+élargie ±1,2 kPa (k=2)*.
+
+| Champ | Valeur |
+|---|---|
+| Ordre du polynôme | 1 |
+| Coefficient (× x) | 1,0025 |
+| Coefficient (Constante) | −0,42 |
+| Plage de validité min | 0 |
+| Plage de validité max | 1000 |
+| Incertitude déclarée sur le certificat | **coché** |
+| Incertitude élargie (±) | 1,2 |
+| Facteur d'élargissement k | 2 |
+
+L'aperçu de l'équation affiche : $f(x) = 1.0025x - 0.42\ \text{(kPa)}$.
+
+## 4.3 Assistant — Étape 3 (Révision) et ce qui est enregistré
+
+Il n'y a aucune analyse à exécuter, donc l'étape 3 restitue l'équation, la plage de validité, et
+l'incertitude déclarée pour une vérification finale avant l'enregistrement. Lors de
+l'enregistrement :
+
+- `poly_order = 1`, `poly_coefficients = [1.0025, -0.42]`, `range_min = 0`, `range_max = 1000`,
+  `valid_range_min = 0`, `valid_range_max = 1000`.
+- `expanded_uncertainty = 1.2`, `coverage_factor = 2`,
+  `combined_uncertainty = 1.2 / 2 = 0.6`.
+- `uncertainty_budget = [{ source: "external_certificate_stated", value: 1.2, divisor: 2,
+  standard_uncertainty: 0.6, ... }]` — une seule ligne, non décomposée en parties de Type A/B,
+  puisque le certificat ne donne qu'un seul chiffre global.
+- `r_squared`, `rmse`, `standard_error`, `max_error`, `decision_rule`, et
+  `conformity_statement` sont tous **null** — sans données brutes, il n'y a aucun ajustement à
+  noter et aucune erreur évaluée à comparer à une spécification, donc Open Gauge n'affiche pas de
+  badge CONFORME/NON CONFORME pour cet enregistrement (voir
+  [Calibrations à coefficients uniquement](../coefficients-only.mdx)).
+
+## Résultats attendus
+
+| Champ | Valeur |
+|---|---|
+| Équation | $f(x) = 1.0025x - 0.42$ |
+| Plage de validité | 0 – 1000 kPa |
+| Incertitude combinée | 0,6 kPa |
+| Incertitude élargie (±) | 1,2 kPa |
+| Déclaration de conformité | non affichée / non calculée |

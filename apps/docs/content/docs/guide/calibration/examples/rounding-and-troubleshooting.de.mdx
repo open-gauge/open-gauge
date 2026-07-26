@@ -1,0 +1,56 @@
+---
+title: Rundung, und wenn Ihre Zahlen nicht übereinstimmen
+description: Die zwei Anzeigerundungsregeln, die Open Gauge anwendet, und wie man ein durchgerechnetes Beispiel debuggt, das sich nicht reproduzieren lässt.
+---
+
+## Rundung — was Sie tatsächlich auf dem Bildschirm sehen
+
+Die rohen Zahlen in jedem [durchgerechneten Beispiel](./index.mdx) sind das, was die
+Berechnungs-Engine von Open Gauge intern erzeugt (und was in der Datenbank gespeichert wird, bereits
+serverseitig auf 8 Nachkommastellen gerundet — nicht dasselbe wie die untenstehende Anzeigeregel).
+Darüber hinaus gelten in der Oberfläche zwei unterschiedliche Rundungsregeln:
+
+1. **Kombinierte und erweiterte Unsicherheit werden für die Anzeige auf höchstens 2 signifikante
+   Stellen gerundet**, gemäß GUM §7.2.6 — im Assistenten, in der historischen
+   Kalibrieransicht und im Zertifikats-PDF. Dies ist der Wert "gerundet angezeigt: …" in jedem
+   durchgerechneten Beispiel.
+2. **Jede andere Kennzahl** ([R², RMSE, Maximalfehler, Hysterese, Wiederholbarkeit,
+   ...](../curve-fitting.mdx)) durchläuft einen allgemeinen Festkomma-Formatierer, der
+   nachfolgende Nullen entfernt. Die Live-Analyse des Assistenten verwendet standardmäßig
+   6 Nachkommastellen; die historische Kalibrieransicht auf der Anlagenseite standardmäßig 4 —
+   sodass derselbe gespeicherte Wert mit einer Nachkommastelle weniger angezeigt werden kann,
+   sobald eine Kalibrierung gespeichert wurde und Sie ihren Historieneintrag statt ihrer
+   Live-Analyse betrachten. So oder so wird `0,99999993` sowohl bei 6 als auch bei 4
+   Nachkommastellen zu `1` gerundet, und `0,43588989` wird im Assistenten als `0,43589`, in der
+   Historienansicht aber als `0,4359` angezeigt. Dass R² für eine nahezu perfekte Anpassung als
+   genau `1` angezeigt wird, ist dieses Aufrunden des Formatierers, kein Fehler — der gespeicherte
+   Wert bleibt weiterhin `0,99999993`, nicht exakt 1.
+
+Die Tabelle "Erwartete Ergebnisse" in jedem durchgerechneten Beispiel gibt durchgängig den
+vollständigen Rohwert an (zur Überprüfung der zugrunde liegenden Mathematik) und weist nur dort auf
+den gerundeten Wert hin, wo eine Regel tatsächlich ändert, was angezeigt wird (kombinierte/
+erweiterte Unsicherheit).
+
+## Wenn Ihre Zahlen nicht übereinstimmen
+
+- **Abweichung um einen Faktor in der Größenordnung einer Einheitenumrechnung (10, 100, 1000...)**
+  — prüfen Sie, ob die Genauigkeitseinheit des Kanals mit der Referenz-/Messeinheit übereinstimmt,
+  die Sie bei der Eingabe der Punkte verwendet haben. Open Gauge validiert derzeit nicht, ob diese
+  übereinstimmen.
+- **"% FS" erscheint nicht im Einheiten-Dropdown für Genauigkeit/Auflösung/Unsicherheit** — es
+  erscheint erst, sobald sowohl Bereich Min als auch Bereich Max bei diesem Kanal ausgefüllt sind;
+  siehe [Die "% FS"-Konvention](../../sensors/adding-a-sensor.mdx#the-fs-convention).
+- **Zeile "Referenznormal" fehlt** (Beispiel 1.2) — bestätigen Sie, dass die Kalibrierung von
+  Anlage A (1.1) tatsächlich *gespeichert* wurde, nicht nur analysiert, bevor Sie die Kalibrierung
+  von Anlage B starten, und dass beim Kanal von Anlage A
+  [Kalibrierrolle](../../sensors/adding-a-sensor.mdx#calibration-role) aktiviert ist (die Auswahl
+  der Referenz-Anlage listet nur Anlagen mit mindestens einem Kanal in der Referenzrolle auf).
+- **Anderer Polynomgrad** (Beispiel 2) — erhalten Sie einen anderen Grad als 2, versuchen Sie, die
+  Punkte genau wie aufgelistet erneut einzugeben; kleine Abschreibfehler verschieben, welchen Grad
+  AIC bevorzugt. Die Polynomanpassung reagiert empfindlicher auf exakte Eingabewerte als die
+  anderen Prüfungen.
+- **Kein Abzeichen KONFORM/NICHT KONFORM** (Beispiel 4) — das ist zu erwarten, kein Fehler. Eine
+  Kalibrierung nur mit Koeffizienten hat keine Rohdaten, aus denen ein ermittelter Fehler berechnet
+  werden könnte, daher gibt es nichts, das mit einer Spezifikation verglichen werden könnte.
+  Verwenden Sie eine reguläre (nicht Nur-Koeffizienten-)Kalibrierung, wenn Sie eine
+  Konformitätsaussage benötigen.

@@ -1,0 +1,103 @@
+---
+title: Kurvenanpassung & Regressionsstatistik
+description: Wie Open Gauge eine Kalibrierkurve anpasst und R², RMSE, Maximalfehler, Nichtlinearität, Wiederholbarkeit und Hysterese berechnet.
+---
+
+Open Gauge passt eine polynomiale Kalibrierkurve an Ihre (Referenz-, Mess-)Datenpunkte an und gibt
+dann eine Reihe von Standard-Regressionsstatistiken aus, die beschreiben, wie gut diese Anpassung ist.
+
+## Die Anpassung
+
+Open Gauge passt an:
+
+$$
+\text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
+$$
+
+über kleinste Quadrate (`np.polyfit`), Grad 1 bis 5. Standardmäßig wird der Grad **automatisch
+über AIC** (Akaike-Informationskriterium) ausgewählt, mit einer Sparsamkeitsregel: Open Gauge wählt den
+niedrigsten Grad, dessen AIC von einem höheren Grad nicht um mehr als 2 Punkte unterboten wird,
+damit unnötiges Anpassen höherer Ordnung an Rauschen vermieden wird. Sie können im Assistenten auch
+explizit einen bestimmten Grad festlegen.
+
+**Kovarianz der Koeffizienten.** Wenn mehr Datenpunkte als angepasste Parameter vorhanden sind,
+berechnet Open Gauge auch die Kovarianzmatrix der angepassten Koeffizienten (`np.polyfit(..., cov=True)`),
+gespeichert zusammen mit der Kalibrierung. Dies ist wichtig, weil die Auswertung der Kurve an einem
+Punkt unter Verwendung von zwei oder mehr angepassten Koeffizienten zusammen — ohne deren
+Kovarianz — die wahre Unsicherheit unterschätzt (GUM Anhang H.3 zeigt Unterschätzungen von über
+30 %, wenn sie weggelassen wird). Open Gauge speichert diese Matrix, damit eine korrekte Fortpflanzung
+möglich ist; es gibt noch keine Open-Gauge-Funktion, die die Kurve einer gespeicherten Kalibrierung bei
+einem Live-Messwert auswertet, aber die Kovarianz wird für diesen Fall bereits erfasst.
+
+Eine **entartete Anpassung** — ebenso viele oder weniger Datenpunkte wie angepasste Parameter
+(z. B. eine 2-Punkte-Geradenanpassung) — hat null Rest-Freiheitsgrade: Es wird keine
+Kovarianzmatrix gespeichert, und der Unsicherheitsterm aus den Anpassungsresiduen (siehe
+[Das Unsicherheitsbudget](./uncertainty-budget.mdx)) wird als ohne endliche Freiheitsgrade
+gekennzeichnet.
+
+## Residuen
+
+Für jeden Punkt ist das **Residuum**:
+
+$$
+\text{residual}_i = \text{reference}_i - f(\text{measured}_i)
+$$
+
+## R² [#r-squared]
+
+Das Bestimmtheitsmaß — wie viel der Varianz in den Referenzwerten die angepasste Kurve erklärt.
+**1,0 ist eine perfekte Anpassung.**
+
+## RMSE [#rmse]
+
+Root Mean Square Error (mittlere quadratische Abweichung) — die typische Größenordnung der
+Residuen:
+
+$$
+\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^n \text{residual}_i^2}
+$$
+
+## Maximalfehler [#max-error]
+
+Das einzelne größte absolute Residuum über alle Datenpunkte hinweg. Dies ist die Zahl, die Open Gauge
+bei der Entscheidung über Bestehen/Nichtbestehen gegen eine Spezifikation vergleicht — siehe
+[Entscheidungsregeln](./decision-rules.mdx).
+
+## %FS-Fehler [#full-scale-error]
+
+Maximalfehler ausgedrückt als Prozentsatz der Messspanne:
+
+$$
+\%\text{FS error} = \frac{\text{max error}}{\text{range max} - \text{range min}} \times 100\%
+$$
+
+## Nichtlinearität [#non-linearity]
+
+Für eine Anpassung vom Grad ≥ 2: wie weit die angepasste Kurve von ihrer eigenen bestangepassten
+*Geraden* abweicht, als Prozentsatz des Endwerts. Eine große Nichtlinearität ist ein Hinweis darauf,
+dass eine Anpassung höheren Grades die richtige Wahl war — nicht nur Rauschen, das die automatische
+Gradauswahl zufällig aufgegriffen hat.
+
+## Wiederholbarkeit [#repeatability]
+
+Die Standardabweichung der Messwerte an **wiederholten Referenzpunkten** (drei oder mehr Messungen
+beim selben Referenzwert):
+
+$$
+\text{repeatability} = \sqrt{\frac{1}{m-1}\sum_{j=1}^m (x_j - \bar{x})^2}
+$$
+
+wobei $x_1, \ldots, x_m$ die beim selben Referenzwert erfassten Messwerte sind. Erfordert
+mindestens 3 Punkte bei diesem Referenzwert zur Berechnung — Open Gauge gibt sie nur an, wenn die
+Daten dies hergeben.
+
+## Hysterese [#hysteresis]
+
+Die größte Streuung der beim *selben* Referenzwert erfassten Messwerte über einen **aufsteigenden
+und absteigenden Durchlauf** hinweg — d. h. wie weit der Messwert "beim Erreichen von X von unten"
+und der Messwert "beim Erreichen von X von oben" auseinanderliegen, für den Referenzwert mit der
+größten Lücke. Erfordert einen Auf-/Ab-Durchlauf in den Daten (derselbe Referenzwert aus beiden
+Richtungen angefahren) zur Berechnung.
+
+Siehe [Durchgerechnete Beispiele](./examples/index.mdx) für ein Wägezellen-Beispiel, das sowohl
+Wiederholbarkeit als auch Hysterese aus einem echten 12-Punkte-Auf-/Ab-Datensatz von Hand berechnet.

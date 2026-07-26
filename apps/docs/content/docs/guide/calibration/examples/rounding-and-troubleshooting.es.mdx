@@ -1,0 +1,52 @@
+---
+title: Redondeo, y si tus números no coinciden
+description: Las dos reglas de redondeo de visualización que aplica Open Gauge, y cómo depurar un ejemplo resuelto que no se reproduce.
+---
+
+## Redondeo — qué verás realmente en pantalla
+
+Los números en bruto de cada [ejemplo resuelto](./index.mdx) son lo que produce internamente el
+motor de cálculo de Open Gauge (y lo que se almacena en la base de datos, ya redondeado del lado
+del servidor a 8 decimales — no es lo mismo que la regla de visualización de abajo). Sobre eso se
+aplican dos reglas de redondeo diferentes en la interfaz:
+
+1. **La incertidumbre combinada y expandida se redondean a como máximo 2 cifras significativas**
+   para su visualización, según el GUM §7.2.6 — en el asistente, en la vista histórica de
+   calibración, y en el PDF del certificado. Este es el valor "mostrado redondeado: …" en cada
+   ejemplo resuelto.
+2. **Cualquier otra estadística** ([R², RMSE, error máximo, histéresis, repetibilidad,
+   ...](../curve-fitting.mdx)) pasa por un formateador genérico de decimales fijos que elimina
+   los ceros finales. El análisis en vivo del asistente usa por defecto 6 decimales; la vista de
+   calibración histórica en la página del activo usa por defecto 4 — así que el mismo valor
+   almacenado puede mostrarse con un dígito decimal menos una vez que se guarda una calibración y
+   estás viendo su entrada de historial en lugar de su análisis en vivo. De cualquier forma,
+   `0.99999993` se redondea a `1` tanto a 6 como a 4 decimales, y `0.43588989` se muestra como
+   `0.43589` en el asistente pero `0.4359` en la vista de historial. Ver que R² se muestra como
+   exactamente `1` para un ajuste casi perfecto es este formateador redondeando hacia arriba, no
+   un error — el valor almacenado sigue siendo `0.99999993`, no exactamente 1.
+
+La tabla "Resultados esperados" en cada ejemplo resuelto da el valor completo en bruto en todo
+momento (para verificar las matemáticas subyacentes) y señala el valor redondeado solo donde una
+regla realmente cambia lo que se muestra (incertidumbre combinada/expandida).
+
+## Si tus números no coinciden
+
+- **Diferencia por un factor del tamaño de una conversión de unidades (10, 100, 1000...)** —
+  comprueba que la unidad de Exactitud del canal coincida con la unidad de referencia/medido que
+  usaste al ingresar los puntos. Open Gauge actualmente no valida que estas coincidan.
+- **"% FS" no aparece en la lista desplegable de unidad de Exactitud/Resolución/Incertidumbre** —
+  solo aparece una vez que se completan tanto Rango mín como Rango máx en ese canal; consulta
+  [La convención "% FS"](../../sensors/adding-a-sensor.mdx#the-fs-convention).
+- **Falta la fila "Patrón de referencia"** (Ejemplo 1.2) — confirma que la calibración del Activo
+  A (1.1) realmente se *guardó*, no solo se analizó, antes de iniciar la calibración del Activo B,
+  y que el canal del Activo A tiene marcado [Rol de calibración](../../sensors/adding-a-sensor.mdx#calibration-role)
+  (el selector de activo de referencia solo lista activos con al menos un canal con rol de
+  referencia).
+- **Grado polinomial diferente** (Ejemplo 2) — si obtienes un grado diferente de 2, intenta
+  volver a ingresar los puntos exactamente como se indican; pequeños errores de transcripción
+  cambian qué grado prefiere el AIC. El ajuste polinomial es sensible a los valores de entrada
+  exactos de una manera que las otras comprobaciones no lo son.
+- **Sin insignia CONFORMA/NO CONFORMA** (Ejemplo 4) — esto es lo esperado, no un error. Una
+  calibración de solo coeficientes no tiene datos en bruto a partir de los cuales calcular un
+  error evaluado, así que no hay nada que comparar contra una especificación. Usa una calibración
+  regular (que no sea de solo coeficientes) si quieres un dictamen de conformidad.

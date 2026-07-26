@@ -1,0 +1,93 @@
+---
+title: Configurar el correo (SMTP)
+description: Configuración paso a paso de SMTP en Admin → Correo, ajustes de proveedor y solución de problemas.
+---
+
+Esta página es el recorrido práctico para activar el correo electrónico. Para saber para qué se usa el correo
+(verificación de cuenta, notificaciones de calibración) y cómo se comporta sin configurar, consulta
+[Notificaciones por correo electrónico](./email-notifications.mdx).
+
+## Requisitos previos
+
+- Debes haber iniciado sesión como un usuario con el rol `admin` o `superadmin`.
+- Una cuenta SMTP a través de la cual enviar: tu propio servidor de correo, el servidor de correo de tu organización, o un
+  proveedor de correo transaccional (Gmail, Office 365, SendGrid, Mailgun, Postmark, etc. funcionan todos —
+  Open Gauge habla SMTP estándar, nada específico de un proveedor).
+
+## Paso 1 — Abrir Admin → Correo
+
+Inicia sesión, ve a **Admin** en la barra lateral, y luego selecciona **Correo** en el menú de administración.
+Esta página solo es visible para administradores; a todos los demás se les redirige lejos de `/admin` por completo.
+
+## Paso 2 — Completar los campos SMTP
+
+| Campo | Qué ingresar |
+|---|---|
+| Host SMTP | El nombre de host de tu servidor de correo, p. ej. `smtp.gmail.com`, `smtp.office365.com`, `mail.yourcompany.com`. |
+| Puerto | `587` para STARTTLS (lo más común), o `465` para SSL implícito. |
+| Usar STARTTLS | Déjalo **marcado** para el puerto 587. **Desmárcalo** si usas el puerto 465 (SSL implícito) — ambos son mutuamente excluyentes. |
+| Usuario SMTP | Normalmente la dirección de buzón completa desde la que envías. Algunos proveedores usan un valor diferente — consulta la tabla de proveedores más abajo. |
+| Contraseña SMTP | La contraseña de la cuenta, o una contraseña específica de la aplicación (consulta las notas de Gmail/Office 365 más abajo). Este campo es de solo escritura: una vez guardado, la API solo informa si hay una contraseña establecida, nunca su valor. |
+| Dirección de origen | La dirección que verán los destinatarios como remitente, p. ej. `noreply@yourcompany.com`. Muchos proveedores requieren que coincida (o esté verificada) con la cuenta autenticada. |
+| Nombre de origen | Nombre mostrado en el correo saliente, p. ej. `Open Gauge` o `Acme Metrology Lab`. |
+| Tiempo de anticipación del recordatorio de calibración (días) | Cuántos días antes de la fecha de vencimiento de una calibración se dispara el correo de recordatorio "próximo a vencer". Por defecto 14. |
+
+Deja **Habilitado** desactivado hasta haber verificado que el correo de prueba funciona (siguiente paso) — esto evita
+enviar correos rotos a usuarios reales mientras ajustas la configuración.
+
+## Paso 3 — Enviar un correo de prueba
+
+Usa el cuadro **Enviar correo de prueba** en la parte inferior del panel: ingresa cualquier dirección que puedas revisar
+(p. ej. tu propia bandeja de entrada) y haz clic en **Enviar correo de prueba**. Esto usa lo que esté guardado actualmente,
+sin importar el estado del interruptor **Habilitado**, para que puedas validar la configuración antes de activarla
+para usuarios reales.
+
+- **Éxito** → recibirás "Open Gauge test email" en pocos segundos. Pasa al Paso 4.
+- **Fallo** → el panel muestra el error SMTP subyacente. Consulta Solución de problemas más abajo.
+
+## Paso 4 — Activarlo
+
+Una vez que llegue el correo de prueba, marca **Habilitado** y guarda. A partir de este momento:
+
+- Los nuevos registros requieren verificación por correo electrónico (consulta [Notificaciones por correo electrónico](./email-notifications.mdx#account-verification)).
+- Registrar una nueva calibración envía un correo a los técnicos y administradores de la organización propietaria del activo.
+- Un barrido diario (07:00 hora del servidor) envía un correo a las organizaciones sobre calibraciones próximas a vencer/vencidas.
+
+Volver a desactivar **Habilitado** en cualquier momento revierte de inmediato al comportamiento actual en todas partes
+(registro instantáneo, sin correos de notificación) — nada es destructivo ni difícil de deshacer.
+
+## Referencia rápida de proveedores
+
+| Proveedor | Host | Puerto | STARTTLS | Usuario | Notas |
+|---|---|---|---|---|---|
+| Gmail / Google Workspace | `smtp.gmail.com` | 587 | Sí | Dirección completa de Gmail | Requiere una **contraseña de aplicación** (Cuenta de Google → Seguridad → Verificación en 2 pasos → Contraseñas de aplicaciones) si la 2FA está activada — Google bloquea la contraseña normal de la cuenta para SMTP. |
+| Microsoft 365 / Outlook | `smtp.office365.com` | 587 | Sí | Dirección de buzón completa | Misma idea que Gmail si el tenant impone MFA — usa una contraseña de aplicación o una cuenta de servicio dedicada habilitada para correo. |
+| SendGrid | `smtp.sendgrid.net` | 587 | Sí | literalmente `apikey` | La contraseña es tu clave de API de SendGrid, no una contraseña de cuenta. |
+| Mailgun | `smtp.mailgun.org` | 587 | Sí | Usuario SMTP de Mailgun (desde el panel del dominio) | — |
+| Autoalojado (Postfix/Exim) | el nombre de host de tu servidor | 587 o 25 | Depende de la configuración | Depende de la configuración | Si tu relay no requiere autenticación, deja el usuario/contraseña en blanco. |
+
+## Solución de problemas
+
+**"Connection refused" / tiempo de espera de conexión agotado**
+El host/puerto no es alcanzable desde la máquina que ejecuta el contenedor `api` — revisa las reglas
+del firewall, y que el SMTP saliente no esté bloqueado por tu proveedor de hosting (muchos bloquean el puerto 25 por
+defecto; el 587 suele estar bien).
+
+**Fallo de autenticación**
+Usuario/contraseña incorrectos, o el proveedor necesita una contraseña específica de la aplicación en lugar de tu contraseña
+de cuenta normal (tanto Gmail como Office 365 hacen esto cuando la 2FA está habilitada — consulta la tabla de
+proveedores más arriba).
+
+**Errores de TLS / SSL**
+El puerto y el interruptor de STARTTLS no coinciden. El puerto 587 casi siempre quiere STARTTLS **marcado**; el puerto
+465 lo quiere **desmarcado** (TLS implícito desde el primer byte). Confundirlos produce un error de
+negociación TLS.
+
+**El correo de prueba funciona pero los correos reales nunca llegan**
+Revisa primero la carpeta de spam del destinatario. Si el dominio de la dirección de origen no tiene un registro SPF/DKIM
+que autorice a tu proveedor SMTP, los servidores de correo receptores pueden descartar silenciosamente o marcar como spam el
+mensaje — esto es un problema de configuración de DNS de tu dominio de envío, no una configuración de Open Gauge.
+
+**No pasa nada y no se muestra ningún error**
+Confirma que **Habilitado** esté marcado y guardado — el botón de correo de prueba funciona sin importar el estado del interruptor,
+pero los correos de registro/notificación solo se disparan cuando está activado.

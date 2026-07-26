@@ -1,0 +1,61 @@
+---
+title: Métriques de dérive
+description: Comment Open Gauge compare deux courbes de calibration — dérive max/moyenne/RMS, décalage, gain, et dérive résiduelle.
+---
+
+Pour mesurer à quel point un capteur a dérivé, Open Gauge compare deux de ses courbes de
+calibration — une calibration de référence (typiquement la première/celle de base) et une
+calibration actuelle — en évaluant les deux polynômes ajustés sur leur **plage de fonctionnement
+partagée** et en examinant la courbe de différence entre eux,
+$d(x) = f_{\text{current}}(x) - f_{\text{reference}}(x)$.
+
+## Dérive maximale [#max-drift]
+
+La plus grande différence absolue entre les courbes de référence et actuelle sur la plage de
+fonctionnement partagée :
+
+$$
+\text{max drift} = \max_x \left| d(x) \right|
+$$
+
+Le poids individuel le plus important dans le [score de santé](./overview.mdx#score) (30 %) — il
+répond à « à son pire point, de combien la calibration de ce capteur s'est-elle déplacée ? »
+
+## Dérive moyenne [#mean-drift]
+
+La différence absolue moyenne entre les deux courbes sur la plage partagée :
+
+$$
+\text{mean drift} = \frac{1}{n}\sum_{i=1}^n \left| d(x_i) \right|
+$$
+
+## Dérive RMS [#rms-drift]
+
+La différence quadratique moyenne entre les deux courbes — pénalise les écarts plus importants
+plus fortement que ne le fait la dérive moyenne, de la même façon que la
+[RMSE](../calibration/curve-fitting.mdx#rmse) pénalise les résidus importants plus qu'une simple
+moyenne ne le ferait :
+
+$$
+\text{RMS drift} = \sqrt{\frac{1}{n}\sum_{i=1}^n d(x_i)^2}
+$$
+
+## Décalage [#offset]
+
+La différence entre les courbes au *début* de la plage partagée — un décalage constant (au
+point zéro). Un capteur ayant dérivé d'une quantité à peu près constante sur toute sa plage,
+plutôt que de s'aggraver vers une extrémité, apparaît principalement comme un décalage.
+
+## Gain [#gain]
+
+La pente de la courbe de différence $d(x)$ — un changement de *sensibilité* (étendue) entre les
+deux calibrations, par opposition à un décalage constant. Un capteur dont l'étendue s'est étirée
+ou compressée (par ex. à cause d'un déplacement de jonction de référence ou de gain
+d'amplificateur) apparaît principalement comme un gain, pas comme un décalage.
+
+## Dérive résiduelle [#residual-drift]
+
+La différence entre les courbes à la *fin* de la plage moins la différence au *début* —
+c'est-à-dire la dérive qui n'est pas expliquée par un simple décalage constant. Combinée au
+[gain](#gain), cela sépare « toute la courbe s'est déplacée uniformément » de « la courbe s'est
+inclinée ».

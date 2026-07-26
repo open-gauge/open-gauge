@@ -1,0 +1,28 @@
+{
+  "title": "Dokumentation",
+  "description": "Anleitungen und Referenzen",
+  "root": true,
+  "pages": [
+    "index",
+    "---Übersicht---",
+    "overview",
+    "---Self-Hosting---",
+    "self-hosting",
+    "---Konzepte---",
+    "concepts",
+    "---Open Gauge betreiben---",
+    "organizations",
+    "notifications",
+    "language",
+    "sensors",
+    "locations",
+    "procedures",
+    "---Kalibrierung---",
+    "calibration",
+    "health-scoring",
+    "---Compliance---",
+    "compliance",
+    "---Referenz---",
+    "reference"
+  ]
+}

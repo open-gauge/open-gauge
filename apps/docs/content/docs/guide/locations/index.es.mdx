@@ -1,0 +1,38 @@
+---
+title: Ubicaciones
+description: Configurar la jerarquía de ubicaciones, marcar laboratorios de calibración y rastrear el movimiento de activos.
+---
+
+Las **ubicaciones** en Open Gauge forman un árbol jerárquico — organización → sitio → edificio → laboratorio →
+el nivel de detalle que tenga sentido para tus instalaciones. Gestiónalas desde la página
+**Ubicaciones** en la barra lateral.
+
+## Crear la jerarquía
+
+Cada ubicación tiene un **nombre**, un **código** opcional (único por organización, útil para
+referencias humanas breves), un **tipo** (p. ej. `site` / `building` / `laboratory`), y una
+**ubicación padre** opcional — elige un padre para anidarla bajo un nodo existente, o déjalo
+en blanco para crear un nuevo nodo raíz. La dirección y las coordenadas GPS (latitud/longitud) son opcionales
+y son útiles sobre todo para organizaciones con múltiples sitios.
+
+## Marcar un laboratorio de calibración
+
+Marca **"Laboratorio de calibración"** en cualquier ubicación que sea un lugar válido para *realizar* una calibración.
+Solo las ubicaciones marcadas de esta manera aparecen en el selector "Ubicación de calibración" del asistente
+de calibración — esto mantiene esa lista enfocada en bancos de laboratorio reales o estaciones de calibración de campo, en lugar de
+cada almacén u oficina en el árbol.
+
+## Asignar activos a una ubicación
+
+La ubicación actual de un activo se establece desde la página de detalle del activo. Cada vez que la ubicación de un activo
+cambia, Open Gauge registra una nueva entrada en su historial de ubicaciones (con una marca de tiempo, quién lo movió, y
+una razón/notas opcionales) en lugar de sobrescribir silenciosamente la ubicación anterior — así que "dónde
+estaba este instrumento en una fecha dada" sigue siendo respondible incluso después de haberse movido varias veces.
+Esto refleja el enfoque general de Open Gauge hacia el historial: consulta
+[Modelo de datos y conceptos](../concepts/data-model.mdx).
+
+## Retirar una ubicación
+
+Las ubicaciones usan el mismo patrón de borrado suave que los activos (`is_active` / `archived_at`, consulta
+[Modelo de datos y conceptos](../concepts/data-model.mdx)) — archivar una ubicación no elimina
+el registro histórico de ningún activo que alguna vez se le asignó.

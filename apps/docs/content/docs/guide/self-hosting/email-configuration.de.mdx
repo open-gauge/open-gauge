@@ -1,0 +1,100 @@
+---
+title: E-Mail konfigurieren (SMTP)
+description: Schritt-für-Schritt-Einrichtung von SMTP unter Admin → E-Mail, Anbietereinstellungen und Fehlerbehebung.
+---
+
+Diese Seite ist die praktische Anleitung, um E-Mail zu aktivieren. Wofür E-Mail verwendet wird
+(Kontobestätigung, Kalibrierbenachrichtigungen) und wie es sich verhält, wenn es nicht konfiguriert ist, siehe
+[E-Mail-Benachrichtigungen](./email-notifications.mdx).
+
+## Voraussetzungen
+
+- Sie müssen als Benutzer mit der Rolle `admin` oder `superadmin` angemeldet sein.
+- Ein SMTP-Konto zum Versenden: Ihr eigener Mailserver, der Mailserver Ihrer Organisation oder ein
+  transaktionaler E-Mail-Anbieter (Gmail, Office 365, SendGrid, Mailgun, Postmark usw. funktionieren alle —
+  Open Gauge spricht einfaches SMTP, nichts Anbieterspezifisches).
+
+## Schritt 1 — Admin → E-Mail öffnen
+
+Melden Sie sich an, gehen Sie in der Seitenleiste zu **Admin** und wählen Sie dann **E-Mail** aus dem
+Administrationsmenü. Diese Seite ist nur für Admins sichtbar; alle anderen werden von `/admin` vollständig
+weggeleitet.
+
+## Schritt 2 — Die SMTP-Felder ausfüllen
+
+| Feld | Was einzugeben ist |
+|---|---|
+| SMTP-Host | Der Hostname Ihres Mailservers, z. B. `smtp.gmail.com`, `smtp.office365.com`, `mail.ihrefirma.de`. |
+| Port | `587` für STARTTLS (am häufigsten), oder `465` für implizites SSL. |
+| STARTTLS verwenden | Für Port 587 **aktiviert** lassen. Bei Verwendung von Port 465 (implizites SSL) **deaktivieren** — die beiden schließen sich gegenseitig aus. |
+| SMTP-Benutzername | Meist die vollständige Postfachadresse, von der aus Sie senden. Manche Anbieter verwenden einen anderen Wert — siehe die Anbietertabelle unten. |
+| SMTP-Passwort | Das Passwort des Kontos oder ein anwendungsspezifisches Passwort (siehe die Hinweise zu Gmail/Office 365 unten). Dieses Feld ist nur zum Schreiben: Nach dem Speichern gibt die API nur an, ob ein Passwort gesetzt ist, niemals dessen Wert. |
+| Absenderadresse | Die Adresse, die Empfänger als Absender sehen, z. B. `noreply@ihrefirma.de`. Viele Anbieter verlangen, dass diese mit dem authentifizierten Konto übereinstimmt (oder dagegen verifiziert wird). |
+| Absendername | Anzeigename bei ausgehender Post, z. B. `Open Gauge` oder `Acme Metrology Lab`. |
+| Vorlaufzeit für Kalibrier-Erinnerung (Tage) | Wie viele Tage vor dem Fälligkeitsdatum einer Kalibrierung die "bald fällig"-Erinnerungs-E-Mail ausgelöst wird. Standard 14. |
+
+Lassen Sie **Aktiviert** ausgeschaltet, bis Sie überprüft haben, dass die Test-E-Mail funktioniert (nächster
+Schritt) — dies vermeidet, dass fehlerhafte E-Mails an echte Benutzer gesendet werden, während Sie die
+Konfiguration einstellen.
+
+## Schritt 3 — Eine Test-E-Mail senden
+
+Verwenden Sie das Feld **Test-E-Mail senden** am unteren Rand des Panels: Geben Sie eine beliebige Adresse
+ein, die Sie prüfen können (z. B. Ihren eigenen Posteingang), und klicken Sie auf **Test-E-Mail senden**. Dies
+verwendet das aktuell Gespeicherte, unabhängig vom **Aktiviert**-Schalter, sodass Sie die Konfiguration
+validieren können, bevor Sie sie für echte Benutzer aktivieren.
+
+- **Erfolg** → Sie erhalten innerhalb weniger Sekunden "Open Gauge test email". Weiter zu Schritt 4.
+- **Fehlschlag** → Das Panel zeigt den zugrunde liegenden SMTP-Fehler. Siehe Fehlerbehebung unten.
+
+## Schritt 4 — Aktivieren
+
+Sobald die Test-E-Mail ankommt, aktivieren Sie **Aktiviert** und speichern Sie. Ab diesem Zeitpunkt:
+
+- Erfordern neue Registrierungen eine E-Mail-Bestätigung (siehe [E-Mail-Benachrichtigungen](./email-notifications.mdx#account-verification)).
+- Erhalten die Techniker und Admins der Organisation, der eine Anlage gehört, beim Erfassen einer neuen
+  Kalibrierung eine E-Mail.
+- Werden Organisationen durch einen täglichen Durchlauf (07:00 Uhr Serverzeit) per E-Mail über bald fällige/
+  überfällige Kalibrierungen informiert.
+
+Das erneute Deaktivieren von **Aktiviert** stellt jederzeit sofort überall das heutige Verhalten wieder her
+(sofortige Registrierung, keine Benachrichtigungs-E-Mails) — nichts ist destruktiv oder schwer rückgängig zu
+machen.
+
+## Kurzreferenz für Anbieter
+
+| Anbieter | Host | Port | STARTTLS | Benutzername | Hinweise |
+|---|---|---|---|---|---|
+| Gmail / Google Workspace | `smtp.gmail.com` | 587 | Ja | Vollständige Gmail-Adresse | Erfordert ein **App-Passwort** (Google-Konto → Sicherheit → Bestätigung in zwei Schritten → App-Passwörter), wenn 2FA aktiv ist — Google blockiert das normale Kontopasswort für SMTP. |
+| Microsoft 365 / Outlook | `smtp.office365.com` | 587 | Ja | Vollständige Postfachadresse | Gleiches Prinzip wie bei Gmail, wenn der Mandant MFA erzwingt — ein App-Passwort oder ein dedizierter, mailfähiger Dienstbenutzer verwenden. |
+| SendGrid | `smtp.sendgrid.net` | 587 | Ja | wörtlich `apikey` | Das Passwort ist Ihr SendGrid-API-Schlüssel, kein Kontopasswort. |
+| Mailgun | `smtp.mailgun.org` | 587 | Ja | Mailgun-SMTP-Login (aus dem Dashboard der Domain) | — |
+| Selbst gehostet (Postfix/Exim) | Hostname Ihres Servers | 587 oder 25 | Abhängig von der Einrichtung | Abhängig von der Einrichtung | Wenn Ihr Relay keine Authentifizierung erfordert, Benutzername/Passwort leer lassen. |
+
+## Fehlerbehebung
+
+**"Connection refused" / Verbindungs-Timeout**
+Der Host/Port ist von der Maschine, auf der der `api`-Container läuft, nicht erreichbar — prüfen Sie
+Firewall-Regeln und ob ausgehendes SMTP nicht von Ihrem Hosting-Anbieter blockiert wird (viele blockieren
+Port 25 standardmäßig; 587 ist normalerweise unproblematisch).
+
+**Authentifizierung fehlgeschlagen**
+Falscher Benutzername/Passwort, oder der Anbieter benötigt ein anwendungsspezifisches Passwort statt Ihres
+normalen Kontopassworts (Gmail und Office 365 tun dies beide, wenn 2FA aktiviert ist — siehe die
+Anbietertabelle oben).
+
+**TLS-/SSL-Fehler**
+Port und der STARTTLS-Schalter widersprechen sich. Port 587 will fast immer STARTTLS **aktiviert**; Port
+465 will es **deaktiviert** (implizites TLS ab dem ersten Byte). Eine Verwechslung erzeugt einen
+TLS-Handshake-Fehler.
+
+**Test-E-Mail funktioniert, aber echte E-Mails kommen nie an**
+Prüfen Sie zuerst den Spam-Ordner des Empfängers. Wenn die Domain der Absenderadresse über keinen SPF-/DKIM-
+Eintrag verfügt, der Ihren SMTP-Anbieter autorisiert, können empfangende Mailserver die Nachricht
+stillschweigend verwerfen oder in den Spam-Ordner verschieben — dies ist ein DNS-Konfigurationsproblem Ihrer
+sendenden Domain, keine Open-Gauge-Einstellung.
+
+**Es passiert nichts, und es wird kein Fehler angezeigt**
+Bestätigen Sie, dass **Aktiviert** angehakt und gespeichert ist — die Schaltfläche für die Test-E-Mail
+funktioniert unabhängig vom Schalter, aber Registrierungs-/Benachrichtigungs-E-Mails werden nur ausgelöst,
+wenn er aktiviert ist.

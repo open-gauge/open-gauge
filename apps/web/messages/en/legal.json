@@ -1,0 +1,42 @@
+{
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "July 13, 2026",
+    "intro": "Open Gauge is self-hosted software: the organization that installed this instance (“the Operator”) runs its own copy of the application and database, and is the data controller for everything stored in it. The Open Gauge project itself does not operate this Instance, does not receive a copy of its data, and has no access to it.",
+    "section1Title": "1. What data is stored, and where",
+    "section1Body": "All data you enter — account details, asset and sensor records, calibration history, certificates, uploaded files, and audit logs — is stored entirely within the Operator’s own infrastructure: its PostgreSQL database and MinIO (or S3-compatible) object storage, as configured by the Operator. Open Gauge does not transmit this data to any third-party service by default.",
+    "section2Title": "2. Account information",
+    "section2Body": "To create an account you provide a name, email address, and password (stored as a salted hash, never in plain text). If email notifications are configured by an administrator, your email address is used to send account verification and password-reset links, and — for technicians and admins in your organization — calibration due-date reminders.",
+    "section3Title": "3. Email delivery",
+    "section3Body": "When an administrator configures SMTP (Admin → Email), outgoing mail is sent directly from the Instance to the SMTP server the Operator specifies. No email content passes through any Open-Gauge-operated infrastructure — there isn’t any.",
+    "section4Title": "4. Audit logs",
+    "section4Body": "Security- and traceability-sensitive actions (record creation, edits, calibration voids/restores, settings changes) are recorded in an immutable audit log, including the acting user, a timestamp, and — where applicable — the IP address and user agent of the request. This is a core feature for ISO/IEC 17025-style traceability, not data shared outside the Instance.",
+    "section5Title": "5. Cookies and local storage",
+    "section5Body": "Open Gauge stores your session token and theme preference in your browser’s local storage. It does not use third-party tracking cookies or analytics scripts.",
+    "section6Title": "6. Data retention and deletion",
+    "section6Body": "Calibration records are intentionally immutable for traceability — see the Instance’s documentation for how “voiding” a record works. Other records (assets, locations, procedures) support soft deletion. The Operator controls all retention periods and backup policies; contact your administrator to request deletion of your personal account data.",
+    "section7Title": "7. Your rights",
+    "section7Body": "Depending on the Operator’s jurisdiction and applicable law (e.g. GDPR), you may have rights to access, correct, or request deletion of your personal data. Since the Operator controls the Instance, direct any such request to your administrator.",
+    "section8Title": "8. Changes to this policy",
+    "section8Body": "This page is a template shipped with Open Gauge. Operators are encouraged to have it reviewed by their own counsel and adapted to their jurisdiction, industry, and compliance obligations before relying on it."
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "updated": "July 13, 2026",
+    "intro": "Open Gauge is free, open-source software licensed under the <link>GNU Affero General Public License v3.0 (AGPL-3.0)</link>. These Terms govern your use of a specific, self-hosted deployment of Open Gauge (the “Instance”) operated by the organization that installed it (“the Operator”) — not a hosted service provided by the Open Gauge project itself.",
+    "section1Title": "1. Who these terms are between",
+    "section1Body": "Open Gauge is not a SaaS product. There is no central Open Gauge company hosting your data or acting as a party to these terms. Each Instance is installed, configured, and operated independently by its Operator, using Open Gauge’s open-source code under the AGPL-3.0 license. Any agreement about using an Instance — including these Terms — is between you and the Operator, who is solely responsible for the Instance, its configuration, its data, and its users.",
+    "section2Title": "2. Acceptable use",
+    "section2Body": "Use the Instance only for lawful purposes consistent with your organization’s policies. Do not attempt to circumvent access controls, probe for vulnerabilities without authorization, or use the Instance to store or process data you are not authorized to hold.",
+    "section3Title": "3. Calibration and traceability data",
+    "section3Body": "Open Gauge is designed to keep calibration history immutable and traceable — records are versioned and never silently overwritten. While the software enforces this at the data-model level, the Operator is responsible for its own backup, retention, and disaster-recovery practices. Neither this document nor the Open Gauge software guarantees against data loss from infrastructure failure, misconfiguration, or Operator error.",
+    "section4Title": "4. No warranty",
+    "section4Body": "As stated in the AGPL-3.0 license, Open Gauge is provided <strong>“as is,”</strong> without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, and non-infringement. The Operator provides no additional warranty beyond what its own policies state.",
+    "section5Title": "5. Limitation of liability",
+    "section5Body": "To the maximum extent permitted by law, neither the Open Gauge project maintainers nor the Operator (unless the Operator’s own policy states otherwise) shall be liable for any indirect, incidental, special, or consequential damages arising from use of the software or an Instance.",
+    "section6Title": "6. Changes to these terms",
+    "section6Body": "The Operator may update these Terms for their Instance at any time. This page is a template shipped with Open Gauge — Operators are encouraged to have it reviewed by their own counsel and adapted to their jurisdiction and compliance requirements (e.g. ISO/IEC 17025) before relying on it.",
+    "section7Title": "7. Contact",
+    "section7Body": "For questions about these Terms as applied to a specific Instance, contact that Instance’s administrator directly."
+  }
+}

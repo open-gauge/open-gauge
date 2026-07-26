@@ -1,0 +1,98 @@
+---
+title: El presupuesto de incertidumbre
+description: Cómo construye Open Gauge un presupuesto de incertidumbre conforme al GUM, lo combina y lo expande en un valor ± reportado.
+---
+
+Open Gauge expresa la incertidumbre de medición como un **presupuesto detallado** (formato de tabla del
+Anexo H.1 del GUM), no como un único número opaco. Cada calibración almacena un arreglo de filas de
+presupuesto, una por contribución, cada una expresada como una *incertidumbre estándar* en las propias unidades
+del mensurando.
+
+## Tipo A frente a Tipo B
+
+Según el §0.7/§3.3.3 del GUM, "Tipo A" y "Tipo B" describen **cómo** se evaluó una incertidumbre, no
+si es "aleatoria" o "sistemática" (el GUM desaconseja explícitamente esa distinción más antigua):
+
+- **Tipo A** — evaluada mediante análisis estadístico de una serie de observaciones (p. ej. la dispersión
+  de los residuos del ajuste de calibración).
+- **Tipo B** — evaluada por cualquier otro medio: especificaciones del fabricante, certificados de
+  calibración, datos de manuales, resolución, juicio.
+
+## Contribuciones [#contributions]
+
+| Fuente | Tipo | Cómo se deriva |
+|---|---|---|
+| `fit_residuals` | A | Siempre presente. Desviación estándar de los residuos del ajuste de la curva de calibración. Grados de libertad = puntos − parámetros, o desconocido si eso es ≤ 0. |
+| `reference_standard` | B | Opcional. La propia incertidumbre expandida declarada del patrón de referencia, convertida a incertidumbre estándar mediante $u = U/k$ (GUM §4.3.3). Para calibraciones internas, se obtiene automáticamente de la calibración más reciente del activo de referencia seleccionado; de lo contrario, se ingresa manualmente. |
+| `resolution` | B | Incluida automáticamente siempre que el canal tenga un valor de resolución. Distribución rectangular según GUM §4.3.7 — ver abajo. |
+| `sensor_nominal_accuracy` | B | La incertidumbre declarada por el fabricante del canal, convertida mediante $u = U/k$. Se prellena desde el campo [Incertidumbre (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) del canal pero es libremente editable por calibración. **Solo por adhesión (opt-in)** — incluirla por defecto arriesga un doble conteo respecto a `fit_residuals`, ya que ambas pueden reflejar la misma imprecisión subyacente del instrumento. |
+| `external_certificate_stated` | B | Solo aparece en calibraciones [de solo coeficientes](./coefficients-only.mdx) que tienen una incertidumbre declarada por el laboratorio. Se registra como una sola fila que contiene la incertidumbre expandida del certificado y el factor de cobertura tal cual, sin descomponerse más. |
+
+### La resolución como una distribución rectangular
+
+La resolución de una lectura digital define un rango dentro del cual el valor verdadero podría caer con
+igual probabilidad — una distribución **rectangular** (uniforme), no normal. Según el GUM §4.3.7, su
+incertidumbre estándar es:
+
+$$
+u_{\text{resolution}} = \frac{\text{resolution}}{\sqrt{12}}
+$$
+
+## Combinación [#combined-uncertainty]
+
+Todas las filas del presupuesto se combinan mediante **suma de cuadrados y raíz** (root-sum-square, GUM
+Ec. 10), asumiendo que las contribuciones no están correlacionadas:
+
+$$
+u_c(y) = \sqrt{\sum_i u(x_i)^2}
+$$
+
+Esta es la **incertidumbre estándar combinada**, almacenada como `combined_uncertainty` ("Combinada
+(RSS)" en el asistente).
+
+## Expansión [#expanded-uncertainty]
+
+La **incertidumbre expandida** es:
+
+$$
+U = k \cdot u_c(y)
+$$
+
+lo que da un intervalo del que se espera que abarque una fracción declarada (el nivel de confianza) de los valores
+razonablemente atribuibles al mensurando.
+
+### Factor de cobertura [#coverage-factor]
+
+El factor de cobertura $k$ **siempre se deriva** del nivel de confianza solicitado y de la
+distribución — no hay ninguna entrada separada de "factor de cobertura" en ningún lugar de Open Gauge, porque un
+$k$ elegido por el usuario independiente del nivel de confianza y de la forma de la distribución no tendría
+sentido estadístico:
+
+- **Distribución normal** — el cuantil normal para el nivel de confianza solicitado (el "caso
+  simple" del GUM §6.3.3):
+
+  $$
+  k = \Phi^{-1}\!\left(0.5 + \frac{\text{confidence \%}}{200}\right)
+  $$
+
+  p. ej. 95% de confianza → $k \approx 1.96$, 99% → $k \approx 2.58$.
+
+- **Distribución t / distribución χ²** — $k$ se deriva de los **grados de libertad
+  efectivos** $\nu_{\text{eff}}$, mediante la **fórmula de Welch-Satterthwaite** (GUM Ec. G.2b):
+
+  $$
+  \nu_{\text{eff}} = \frac{u_c(y)^4}{\displaystyle\sum_i \frac{u(x_i)^4}{\nu_i}}
+  $$
+
+  Las filas con grados de libertad desconocidos (infinitos) — contribuciones de Tipo B exactamente
+  conocidas — quedan completamente fuera de esta suma. Si *ninguna* fila tiene grados de libertad
+  finitos, $\nu_{\text{eff}}$ queda indefinido y Open Gauge recurre al cuantil de la distribución normal
+  de arriba (el límite correcto cuando $\nu \to \infty$).
+
+## Redondeo para reportar
+
+Según el GUM §7.2.6, la incertidumbre combinada y expandida se redondean a **como máximo 2 cifras
+significativas** para su visualización y en el certificado — en el resto de los casos (R², RMSE, error
+máximo, histéresis, ...) se usa una visualización de decimales fijos simple. Consulta
+[Redondeo](./examples/rounding-and-troubleshooting.mdx) para ver exactamente cómo se aplica esto
+en la práctica.

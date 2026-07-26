@@ -1,0 +1,110 @@
+---
+title: EA-4/02
+description: Evaluación de la Incertidumbre de Medición en Calibración — la política europea de acreditación para aplicar el GUM en la práctica, y cómo la implementa Open Gauge.
+---
+
+## Resumen
+
+**EA-4/02** — *Expression of the Uncertainty of Measurement in Calibration* — se publica por la
+[European co-operation for Accreditation](https://european-accreditation.org) (EA, el organismo al
+que pertenecen los organismos de acreditación miembros de ILAC en Europa). A diferencia de JCGM
+100:2008 (GUM), que expone la teoría general de incertidumbre para cualquier campo de medición,
+EA-4/02 es el GUM especializado en una única política obligatoria para los laboratorios de
+calibración acreditados por un miembro de EA: fija las decisiones específicas que el GUM deja
+abiertas (qué factor de cobertura usar por defecto, exactamente qué enunciado debe contener un
+certificado, a cuántas cifras significativas redondear) para que los certificados de diferentes
+laboratorios acreditados por EA sean directamente comparables. Es de libre acceso y no tiene
+licencia comercial, a diferencia de las normas ISO de esta sección.
+
+Las secciones 2–4 (definiciones, evaluación Tipo A/B, combinación de incertidumbres) repiten el
+GUM directamente — consulta [ISO/IEC 17025 §7.6](./iso-17025.mdx#uncertainty-evaluation) y
+[Normas y glosario](../reference/standards-glossary.mdx) para saber cómo implementa Open Gauge esa
+base compartida; esta página cubre solo lo que EA-4/02 agrega encima: la política específica del
+factor de cobertura (§5) y el enunciado obligatorio del certificado (§6), más el concepto de Mejor
+Capacidad de Medición (Anexo A) que es específico de los alcances de acreditación.
+
+## Cumplimiento
+
+| Cláusula | Requisito | Estado | Dónde se aborda |
+|---|---|---|---|
+| [§4.1, Anexo D](#combining-uncertainties) | Combinar contribuciones no correlacionadas mediante suma de cuadrados y raíz; aplicar el término de covarianza para entradas correlacionadas | ⚠️ Parcial | Combinación RSS para términos Tipo A/B independientes; la covarianza solo se rastrea para los coeficientes del ajuste polinomial, no para entradas correlacionadas generales |
+| [§5.1–5.6](#coverage-factor-policy) | Factor de cobertura k=2 (≈95%) por defecto; un procedimiento riguroso (distribución t sobre grados de libertad efectivos) cuando no se cumplen las condiciones de fiabilidad | ✅ Cumplido | `distribution_type`/`confidence_level` seleccionables, el modo `t` usa grados de libertad efectivos (Welch-Satterthwaite) |
+| [§6.1–6.3](#certificate-statement) | El certificado indica el resultado como (y ± U), un enunciado explicativo fijo, y redondeo a 2 cifras significativas | ✅ Cumplido | `format_expanded_uncertainty_statement()`, impreso en cada certificado |
+| [Anexo A](#best-measurement-capability) | Mejor capacidad de medición indicada por entrada del alcance de acreditación | ❌ No cumplido | No existe hoy ningún concepto de BMC en Open Gauge |
+
+## Detalle
+
+### Combinación de incertidumbres [#combining-uncertainties]
+
+> "4.1 For uncorrelated input quantities the square of the standard uncertainty associated with
+> the output estimate y is given by $u^2(y) = \sum_i u_i^2(y)$... If input quantities are known to
+> be correlated, apply the procedure given in Annex D."
+
+Las contribuciones independientes Tipo A (residuos del ajuste) y Tipo B (patrón de referencia,
+resolución, especificación del sensor) se combinan mediante suma de cuadrados y raíz, coincidiendo
+directamente con §4.1. El único lugar donde Open Gauge rastrea explícitamente un **término de
+correlación** es la propia matriz de covarianza de los coeficientes del ajuste polinomial
+(`poly_coefficients_covariance`, según el Anexo H.3 del GUM-6) — necesaria cuando la pendiente y la
+ordenada al origen ajustadas se usan después juntas. Lo que no se maneja es el caso más general del
+Anexo D: dos magnitudes de entrada *diferentes* que resultan compartir una fuente común (p. ej. el
+mismo patrón de referencia reutilizado para determinar dos correcciones separadas en una
+calibración) — Open Gauge no tiene ningún mecanismo para declarar "estas dos entradas Tipo B están
+correlacionadas con coeficiente r," así que tales casos se tratan implícitamente (e
+incorrectamente, según el Anexo D) como independientes.
+
+### Política del factor de cobertura [#coverage-factor-policy]
+
+> "5.1 ...the standard coverage factor k = 2 shall be used [when a normal distribution can be
+> attributed to the measurand and the standard uncertainty...has sufficient reliability]... 5.3
+> The reliability...is determined by its effective degrees of freedom... the reliability criterion
+> is always met if none of the uncertainty contributions is obtained from a Type A evaluation
+> based on less than ten repeated observations. 5.4 If one of these conditions...is not fulfilled,
+> ...other procedures have to be followed [see Annex E: a t-distribution on the effective degrees
+> of freedom]."
+
+El `distribution_type` de una calibración puede ser `normal` (el valor por defecto — calcula el
+factor exacto de la función cuantil normal para el `confidence_level` elegido, p. ej. k≈1.96 al
+95%, en lugar del atajo redondeado k=2 de EA — una aplicación más estricta, no más laxa, del mismo
+objetivo de ≈95%), `t` (usa los [grados de libertad
+efectivos](./iso-17025.mdx#uncertainty-evaluation) de Welch-Satterthwaite para elegir un factor de
+Student-t — el mecanismo exacto que describe el Anexo E de EA-4/02 para el caso de baja
+fiabilidad), o `chi_squared`. Open Gauge no selecciona automáticamente entre estos según la regla
+de "menos de diez observaciones" del §5.3 de la manera en que lo describe EA-4/02 — el operador
+elige la distribución — pero las matemáticas subyacentes de ambas ramas están implementadas
+correctamente.
+
+### Enunciado del certificado [#certificate-statement]
+
+> "6.1 ...the estimate y of the measurand and the associated expanded uncertainty U shall be
+> given in the form (y ± U). To this an explanatory note must be added...'The reported expanded
+> uncertainty of measurement is stated as the standard uncertainty of measurement multiplied by
+> the coverage factor k = 2, which for a normal distribution corresponds to a coverage probability
+> of approximately 95%.' ... 6.3 The numerical value of the uncertainty of measurement should be
+> given to at most two significant figures."
+
+`format_expanded_uncertainty_statement()` construye el enunciado equivalente de oración completa —
+valor, incertidumbre combinada, factor de cobertura, la base de distribución (normal o t con sus
+grados de libertad efectivos) y el nivel de confianza resultante — impreso en cada certificado que
+tiene un resultado de incertidumbre, con tanto $U$ como $u_c$ redondeados a dos cifras
+significativas mediante `round_to_sig_figs()` según esta cláusula (y el GUM §7.2.6, la misma
+regla).
+
+### Mejor capacidad de medición [#best-measurement-capability]
+
+> "A1 Best measurement capability...is one of the parameters that is used to define the scope of
+> an accredited calibration laboratory... A10 The best measurement capability should normally be
+> stated numerically."
+
+**Brecha.** La Mejor Capacidad de Medición (BMC) — la incertidumbre más pequeña que un laboratorio
+puede alcanzar para una magnitud/método/rango dados bajo condiciones rutinarias "casi ideales" — es
+un concepto del alcance de acreditación, publicado por el organismo de acreditación por
+laboratorio, no calculado por calibración. Open Gauge no tiene ningún lugar estructurado para
+registrar o mostrar una BMC declarada por magnitud física/procedimiento, distinta de la
+incertidumbre realmente alcanzada en cualquier calibración individual. Un laboratorio que use Open
+Gauge necesitaría rastrear y publicar su BMC fuera del sistema por ahora.
+
+---
+
+*Verificado contra EA-4/02 (diciembre de 1999, rev00) y la base de código de Open Gauge
+(`apps/api/app/services/calibration_analysis.py`, `apps/api/app/utils/uncertainty_format.py`,
+`apps/api/app/models/calibration.py`) el 2026-07-29.*

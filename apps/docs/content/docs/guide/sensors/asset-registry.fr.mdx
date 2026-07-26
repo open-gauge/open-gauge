@@ -1,0 +1,189 @@
+---
+title: Bases du registre des actifs
+description: Ce qu'est un actif, capteurs contre DAQ, et le cycle de vie de l'actif.
+---
+
+Chaque instrument physique qu'Open Gauge suit — un capteur, un transmetteur, un enregistreur de
+données — est un **actif**. Les actifs se trouvent sous **Actifs → Nouvel actif** dans
+l'interface, et chacun reçoit un identifiant lisible par un humain (par ex. `OG-00042`) en plus de
+son identifiant interne en base de données.
+
+## Capteur contre DAQ
+
+Le type d'un actif est l'un des suivants :
+
+- **capteur** — un instrument de mesure. Possède une ou plusieurs **voies**, chacune
+  représentant une seule grandeur physique mesurée (température, pression, débit, ...). Voir
+  [Ajouter un capteur](./adding-a-sensor.mdx).
+- **daq** — un dispositif d'acquisition de données : un enregistreur de données, un
+  conditionneur de signal, ou une passerelle. Possède une unique spécification matérielle au
+  lieu de voies de mesure. Voir [Ajouter un DAQ](./adding-a-daq.mdx).
+
+## Champs communs
+
+Quel que soit le type, chaque actif porte les champs ci-dessous, plus un **score de santé**
+calculé (0–100) — voir [Score de santé](../health-scoring/overview.mdx). Chaque champ ici est
+également expliqué par une infobulle (ⓘ) directement dans l'interface — cliquer sur une infobulle
+vous ramène à la section correspondante de cette page.
+
+### Identifiant de l'actif [#asset-id]
+
+Un identifiant unique, lisible par un humain, généré automatiquement (par ex. `OG-00042`),
+distinct de l'identifiant interne de l'actif en base de données. Utilisé dans toute l'interface,
+sur les étiquettes QR/autocollants, et dans les lots exportés.
+
+### Nom, fabricant, modèle et numéro de série [#identity]
+
+Champs d'identité en texte libre. Le nom est ce qui s'affiche dans les listes et en-têtes ; le
+fabricant, le modèle et le numéro de série identifient l'unité physique.
+
+### Référence [#part-number]
+
+Le numéro de référence/catalogue propre au fabricant, distinct du numéro de série de l'actif —
+utile pour commander des pièces de rechange ou rechercher une fiche technique.
+
+### Description [#description]
+
+Notes en texte libre sur l'objectif ou le contexte de l'actif, affichées sous ses champs
+d'identité.
+
+### Organisation [#organization]
+
+L'organisation propriétaire de cet actif, choisie dans une liste déroulante des propres
+organisations de l'utilisateur créateur lors de la création de l'actif — obligatoire, et
+indépendante de l'emplacement de l'actif (les deux ne sont pas croisés). Voir
+[Organisations](../organizations/index.mdx).
+
+### Emplacement [#location]
+
+Où se trouve actuellement l'actif, choisi dans l'arborescence des emplacements de l'organisation —
+voir [Emplacements](../locations/index.mdx). Déplacer un actif enregistre une entrée d'historique
+d'emplacement journalisée dans l'audit plutôt que d'écraser silencieusement l'emplacement
+précédent.
+
+### Dimensions et poids [#dimensions-weight]
+
+Taille physique (texte libre, par ex. `150×30×30 mm`) et poids en kilogrammes — purement
+informatif.
+
+### Type de montage [#mounting-type]
+
+Comment l'actif est physiquement installé (par ex. mural, plafond, mât, rail DIN).
+
+### Type de connexion [#connection-type]
+
+Le connecteur physique ou l'interface de câblage (par ex. `M12 4 broches`).
+
+### Indice de protection IP [#ip-rating]
+
+Indice de protection (Ingress Protection, par ex. IP65) décrivant la résistance à la
+poussière/l'eau.
+
+### Classification de zone dangereuse [#hazardous-area-rating]
+
+La zone ATEX/zone à risque pour laquelle l'actif est certifié (ou « non dangereuse »).
+
+### Température et humidité de fonctionnement [#operating-range]
+
+La plage environnementale dans laquelle l'actif lui-même est certifié pour fonctionner — distincte
+de la plage de *mesure* d'une voie, qui est ce qu'elle mesure plutôt que ce qu'elle tolère.
+
+### Alimentation et consommation électrique [#power]
+
+Tension/type d'alimentation (par ex. `24 VCC`) et puissance consommée en watts.
+
+### Version du micrologiciel [#firmware-version]
+
+La chaîne de version du micrologiciel embarqué de l'actif, le cas échéant.
+
+### Date d'achat, prix et garantie [#commercial]
+
+Suivi comptable des achats : quand l'actif a été acheté, ce qu'il a coûté, et quand sa garantie
+expire.
+
+## Photo de l'actif
+
+Chaque actif peut avoir une photo de l'unité physique, affichée en aperçu circulaire à gauche de
+l'en-tête sur la page de détail de l'actif. Cliquez sur l'aperçu pour l'ouvrir en taille réelle
+dans une fenêtre modale. En mode édition, utilisez le bouton appareil photo sur l'image pour la
+téléverser ou la remplacer, et le bouton corbeille pour la supprimer — les changements prennent
+effet immédiatement, indépendamment du flux « Enregistrer les modifications » utilisé pour le
+reste des champs de l'actif. La photo est stockée dans MinIO comme tout autre fichier joint (voir
+[Modèle de données et concepts](../concepts/data-model.mdx)) et est distincte des images de
+référence en écriture unique `sensor_image_id`/`pinout_image_id`/`sensor_schematic_id` définies à
+la création de l'actif.
+
+## Étiquettes QR autocollantes
+
+Le bouton **Étiquette** sur la page de détail de l'actif ouvre une boîte de dialogue avec une
+étiquette imprimable en trois tailles, chacune téléchargeable en PNG, JPG ou PDF. Chaque taille
+encode une URL vers la page de détail de l'actif dans son code QR :
+
+- **1×0,5 po** — code QR sur la moitié gauche ; identifiant et nom de l'actif sur la moitié
+  droite. Dimensionné pour les petits composants où une étiquette 2×2 ou 4×2 ne tiendrait pas.
+- **2×2 po** — code QR avec l'identifiant de l'actif imprimé en dessous.
+- **4×2 po** — code QR, identifiant de l'actif, nom du capteur, dernières dates de
+  calibration/échéance, et le tableau des coefficients de calibration, côte à côte.
+
+## Import et export
+
+Tout actif peut être exporté sous forme de lot ZIP — depuis le bouton **Exporter** sur la page de
+détail de l'actif pour un actif unique, ou depuis le bouton **Exporter** sur la page du registre
+des actifs pour exporter en masse une sélection d'actifs (une fenêtre modale à cases à cocher
+permet de choisir des actifs individuels ou de tous les sélectionner à la fois). Les deux
+produisent la même structure de lot ; un export en masse n'est que plusieurs lots à actif unique
+à l'intérieur d'un ZIP englobant.
+
+Chaque actif obtient son propre dossier nommé d'après son `asset_id` (par ex. `OG-00042/`),
+contenant :
+
+- **`asset.yaml`** — chaque champ de l'actif, ses voies de capteur ou détails DAQ, et son
+  historique complet de calibration (incluant les points de données de calibration et les
+  statistiques calculées), dans un format lisible par un humain.
+- **`media/`** — les fichiers eux-mêmes : la photo de l'actif, la fiche technique, les images de
+  brochage/capteur et le schéma, tout fichier joint en masse, et le PDF de certificat de chaque
+  calibration (un sous-dossier par calibration, du plus ancien au plus récent).
+
+**Ce qui est délibérément exclu de `asset.yaml`** : les UUID internes de la base de données —
+l'identifiant propre de l'actif, son emplacement, `created_by`/`retired_by`, et l'identifiant de
+chaque fichier. Ceux-ci n'ont de sens que dans la base de données dont ils proviennent. Lorsque
+c'est utile, un nom lisible par un humain est inclus à la place, purement pour référence (par ex.
+`location_name`, `calibration_method_name`, `internal_procedure_name`) — les voies de capteur sont
+reliées par `channel_id` plutôt que par un UUID brut de capteur. Un champ n'a aucun substitut sûr
+et est entièrement omis : la référence d'une calibration à un autre actif
+(`internal_reference_asset_id`) n'est ni exportée ni relinkée.
+
+L'historique de calibration est exporté et réimporté **tel quel** (*verbatim*) — `calibration_version`
+et chaque statistique calculée sont copiés à l'identique, jamais recalculés, puisqu'ils
+représentent un fait historique (voir [Modèle de données et concepts](../concepts/data-model.mdx)).
+
+### Importer
+
+Importez un ZIP soit depuis **Actifs → + Nouvel actif → Importer depuis un fichier** (attend
+exactement un actif dans le fichier), soit depuis le bouton **Importer** du registre (accepte un
+ou plusieurs ZIP à la fois, chacun pouvant lui-même contenir un ou plusieurs dossiers d'actifs —
+pratique pour réimporter un export en masse antérieur). Les deux flux appellent le même point de
+terminaison backend et rapportent un résultat par dossier d'actif, de sorte qu'un problème avec un
+actif ne bloque jamais les autres dans le même fichier.
+
+À l'import, un tout nouvel actif est créé avec un nouvel identifiant interne. Son `location_id`
+n'est pas défini (le `location_name` exporté est purement informatif) jusqu'à ce que vous
+l'assigniez manuellement. `calibration_method_name`/`internal_procedure_name` sont mis en
+correspondance de manière insensible à la casse avec les procédures déjà enregistrées dans le
+système cible ; si aucune correspondance n'est trouvée, le lien est simplement laissé vide plutôt
+que de faire échouer l'import. Si l'`asset_id` exporté existe déjà dans le système cible, l'import
+de cet actif échoue avec une erreur claire — renommez-le dans le YAML et réessayez.
+
+## Cycle de vie
+
+Les actifs ne sont jamais supprimés définitivement tant qu'un déploiement est actif. Retirer un
+actif du service :
+
+- Définit `is_active = false` et enregistre `retired_at`, `retired_by`, et `retired_reason`.
+- Préserve l'historique complet de calibration de l'actif — les calibrations passées d'un actif
+  retiré restent visibles et auditables.
+
+Ceci correspond à la philosophie générale de base de données d'Open Gauge (voir
+[Modèle de données et concepts](../concepts/data-model.mdx)) : la traçabilité prime sur
+l'ordonnancement. Si vous avez besoin qu'un actif disparaisse des vues quotidiennes mais que son
+historique reste intact, retirez-le du service — ne le supprimez pas.

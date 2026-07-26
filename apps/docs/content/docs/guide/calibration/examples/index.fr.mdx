@@ -1,0 +1,23 @@
+---
+title: Exemples concrets
+description: Quatre exemples de calibration entièrement détaillés que vous pouvez reproduire dans l'interface pour vérifier le moteur de calcul d'Open Gauge.
+---
+
+Quatre exemples de calibration entièrement détaillés, chacun exerçant une partie différente du
+moteur de calibration d'Open Gauge. Chaque nombre qui y figure a été produit en exécutant le vrai
+code de production sur les données d'entrée présentées, puis redérivé indépendamment à la main à
+partir des formules sous-jacentes pour confirmer qu'ils correspondent. Si vous saisissez la même
+configuration d'actif/voie et les mêmes points de données via l'interface, vous devriez voir les
+mêmes nombres — voir [Arrondi](./rounding-and-troubleshooting.mdx) pour les règles de précision
+d'affichage.
+
+Lecture de fond : [Calibration](../overview.mdx) pour ce que signifie chaque nombre et pourquoi,
+[Normes et glossaire](../../reference/standards-glossary.mdx) pour les clauses GUM/ISO 17025 que
+ces formules mettent en œuvre.
+
+<Cards>
+  <Card title="Exemple 1 — RTD de température, ajustement linéaire" href="/docs/guide/calibration/examples/rtd-linear" description="Régression linéaire, un budget d'incertitude complet à quatre lignes, la récupération automatique de l'étalon de référence, et les trois règles de décision divergeant sur les mêmes données." />
+  <Card title="Exemple 2 — Capteur de pression, ajustement quadratique" href="/docs/guide/calibration/examples/pressure-quadratic" description="Sélection automatique du degré polynomial via l'AIC, détection de la non-linéarité, et le parcours du facteur d'élargissement à distribution t." />
+  <Card title="Exemple 3 — Cellule de charge, hystérésis + répétabilité" href="/docs/guide/calibration/examples/load-cell-hysteresis" description="Le détecteur d'hystérésis à balayage montée/descente et le détecteur de répétabilité à points triplés." />
+  <Card title="Exemple 4 — Certificat externe à coefficients uniquement" href="/docs/guide/calibration/examples/coefficients-only-certificate" description="Enregistrer un certificat de laboratoire indiquant directement le polynôme de calibration, sans données brutes." />
+</Cards>

@@ -1,0 +1,118 @@
+---
+title: Notificaciones por correo electrónico
+description: Configuración de SMTP para verificación de cuenta, restablecimiento de contraseña y recordatorios de calibración, gestionada íntegramente por un administrador.
+---
+
+Open Gauge puede enviar correo para cuatro cosas: confirmar cuentas nuevas, restablecer una
+contraseña olvidada, mantener informada a la organización propietaria de una calibración sobre su estado, y alertar
+a los administradores de la organización sobre una solicitud de ingreso. Al igual que Gogs/Gitea, SMTP es una única
+configuración gestionada por el administrador en lugar de algo que toca cada usuario.
+
+Cada uno de estos eventos (excepto la verificación de cuenta y el restablecimiento de contraseña, que no tienen
+equivalente dentro de la aplicación) también genera una notificación dentro de la aplicación — el ícono de campana en la barra superior — sin importar
+si SMTP está configurado; el correo electrónico es un extra encima de eso, no la única forma de enterarse. Consulta
+[Notificaciones](../notifications/index.mdx) para la lista completa de categorías, la propia bandeja de entrada, y
+cómo cada usuario elige qué canales quiere por categoría desde **Configuración → Notificaciones**. Consulta
+también [Organizaciones → Solicitudes de ingreso](../organizations/index.mdx#join-requests).
+
+## Configuración
+
+La configuración SMTP reside en la base de datos, no en variables de entorno — se edita desde
+**Admin → Correo** por cualquier usuario `admin` o `superadmin`, y tiene efecto de inmediato (no se requiere
+reinicio). Esto mantiene el correo configurable en tiempo de ejecución en un despliegue autoalojado sin reconstruir
+ni redesplegar el contenedor.
+
+Para el recorrido paso a paso (qué campos completar, configuraciones específicas de proveedor para Gmail /
+Office 365 / SendGrid / Mailgun, y solución de problemas), consulta
+[Configurar el correo (SMTP)](./email-configuration.mdx). La versión resumida: host, puerto, usuario/contraseña
+opcionales, una dirección/nombre de origen, un interruptor de habilitado y un tiempo de anticipación de recordatorio en días — más
+una acción **Enviar correo de prueba** para validar la configuración antes de activarla. Consulta
+[Admin](/docs/api/admin) en la Referencia de la API para los endpoints subyacentes de
+`/admin/email-settings`.
+
+### Comportamiento cuando el correo no está configurado
+
+Open Gauge debe seguir funcionando de fábrica en Docker Compose (consulta [Autoalojamiento: Despliegue](./deployment.mdx))
+incluso cuando ninguna instalación autoalojada tiene SMTP configurado por defecto. Así que cada ruta de código que envía
+correo comprueba primero si el correo está habilitado, y degrada a un mecanismo manual, mediado por un administrador,
+en lugar de fallar directamente:
+
+- **El registro** sigue creando la cuenta, pero comienza sin verificar — como no hay forma de
+  enviar por correo un enlace de verificación, un `admin`/`superadmin` debe activarla manualmente desde **Admin →
+  Usuarios** (allí aparecen una insignia "Pendiente de activación" y un botón **Activar**).
+- **Olvidé mi contraseña** no tiene ninguna ruta de autoservicio sin SMTP — la pantalla de inicio de sesión le indica al
+  usuario que contacte a su administrador, a quien se le puede pedir ayuda para recuperar el acceso.
+- **Las notificaciones y recordatorios de calibración** siguen generando su notificación dentro de la aplicación con normalidad —
+  solo se omite la parte del correo. Consulta [Notificaciones](../notifications/index.mdx).
+
+Nada de la creación de cuentas o los flujos de calibración se bloquea porque el correo no esté configurado —
+solo se omiten las partes automatizadas y de autoservicio.
+
+## Verificación de cuenta
+
+Toda cuenta autorregistrada (`POST /auth/register`) comienza sin verificar y no puede iniciar sesión hasta ser
+activada — no existe ninguna ruta en la que el autorregistro otorgue acceso instantáneo, sin importar la
+configuración de correo.
+
+**Excepción: la primerísima cuenta en una instalación nueva.** Con cero usuarios en la base de datos no hay
+ningún administrador que pueda activar a nadie, así que ese primer registro se crea verificado, con rol
+`superadmin`, y puede iniciar sesión de inmediato. Toda cuenta registrada después de esa sigue el flujo de
+activación normal descrito a continuación.
+
+Cómo se ve la activación para todos después de la primera cuenta depende de si el correo está
+habilitado:
+
+**Con el correo habilitado:**
+
+1. La cuenta se crea con `is_verified = false` y un token de verificación aleatorio
+   (con expiración de 24 horas).
+2. Se envía un correo de verificación con un enlace a `/auth/verify-email?token=...`.
+3. `POST /auth/login` rechaza las cuentas no verificadas hasta que se hace clic en el enlace.
+4. Hacer clic en el enlace llama a `GET /auth/verify-email`, que marca la cuenta como verificada y devuelve
+   un token de acceso — el usuario termina con la sesión iniciada.
+
+Si el correo nunca llega (p. ej. el administrador no ha terminado la configuración de SMTP), el usuario puede solicitar
+otro desde la pantalla de inicio de sesión (`POST /auth/resend-verification`), que siempre responde con
+éxito sin revelar si la dirección existe.
+
+**Sin el correo habilitado:** la cuenta se crea sin verificar y sin ningún token emitido (no hay dónde
+enviarlo). Un `admin`/`superadmin` la activa directamente desde **Admin → Usuarios** — esto establece
+`is_verified = true` sin ningún intercambio de correo.
+
+Las cuentas creadas directamente por un administrador (`POST /users`) no se ven afectadas por nada de esto — se
+verifican de inmediato, ya que un administrador ya dio fe de ellas al crear la cuenta.
+
+## Olvidé mi contraseña
+
+`POST /auth/forgot-password` siempre responde con éxito sin importar si la dirección
+existe, para evitar filtrar la existencia de la cuenta — el frontend muestra un mensaje genérico en ambos casos.
+
+**Con el correo habilitado:** si la dirección coincide con una cuenta, se genera un token de restablecimiento
+(con expiración de 1 hora) y se envía por correo con un enlace a `/auth/reset-password?token=...`. Enviar una nueva
+contraseña allí (`POST /auth/reset-password`) borra el token, actualiza la contraseña e inicia sesión al usuario.
+
+**Sin el correo habilitado:** nunca se genera ningún token — no existe ninguna ruta de restablecimiento por
+autoservicio. La pantalla de inicio de sesión lo indica explícitamente, dirigiendo al usuario hacia su
+administrador, quien puede restablecer la contraseña recreando las credenciales o ayudándolo de alguna otra forma fuera de banda.
+
+## Notificaciones de calibración
+
+Dos eventos notifican a todo Técnico, Administrador y Super Admin activo en la organización de un activo, mediante
+una notificación dentro de la aplicación y (si está configurado) correo electrónico — las propias preferencias de cada destinatario en
+**Configuración → Notificaciones** deciden qué canales realmente reciben (consulta
+[Notificaciones](../notifications/index.mdx)). Consulta
+[Modelo de datos y conceptos](../concepts/data-model.mdx) para saber cómo se relacionan los activos y las organizaciones;
+a los Visores nunca se les notifica, ya que no pueden actuar sobre una calibración:
+
+- **Nueva calibración registrada** — tan pronto como `POST /calibrations` tiene éxito, se notifica a los
+  técnicos y administradores de la organización (excepto a la persona que acaba de registrarla).
+- **Próxima a vencer / vencida** — un barrido diario (07:00 hora del servidor) revisa la última calibración de
+  cada activo activo. Se recuerda cada calibración como máximo una vez por umbral: una vez cuando entra en la
+  ventana de recordatorio configurada, y una vez más si cae en estado vencida. Una calibración solo se
+  marca como recordada una vez que al menos un canal realmente entrega para al menos un destinatario
+  (se creó una notificación dentro de la aplicación, o se envió un correo); si ninguno lo hace — p. ej. el correo no está
+  configurado y todos los destinatarios han optado por no recibir notificaciones dentro de la aplicación para esa categoría — se
+  reintenta en el barrido del día siguiente.
+
+Todo esto funciona con la mejor diligencia posible (best-effort): un envío fallido se registra y nunca bloquea que
+la calibración se registre, y el barrido diario en su conjunto nunca genera un error más allá de su propia entrada de registro.

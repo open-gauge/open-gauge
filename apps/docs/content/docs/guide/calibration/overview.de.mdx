@@ -1,0 +1,100 @@
+---
+title: Kalibrierübersicht
+description: Der durchgängige Kalibrier-Workflow — der Assistent, Analysieren vs. Speichern, und wo jedes Ergebnis landet.
+---
+
+Kalibrierung ist der Kern dessen, was Open Gauge leistet: die Messwerte eines Sensors gegen eine
+vertrauenswürdige Referenz vergleichen, eine Korrekturkurve anpassen, die Messunsicherheit bewerten
+und eine Bestanden/Nicht-bestanden-Aussage treffen — alles nach
+[JCGM 100:2008 (GUM)](../reference/standards-glossary.mdx) und
+[ISO/IEC 17025:2017](../reference/standards-glossary.mdx).
+
+## Zwei Backend-Berührungspunkte
+
+Ein Kalibrierereignis umfasst zwei API-Aufrufe:
+
+1. **`POST /calibrations/analyze`** — flüchtig. Nimmt rohe (Referenz-, Mess-)Punktpaare sowie
+   Anpassungs-/Unsicherheitsparameter entgegen, führt die vollständige Analyse durch und gibt das
+   Ergebnis zurück. **Es wird nichts gespeichert.** Der Kalibrier-Assistent ruft dies bei jeder
+   Eingabeänderung auf (entprellt), um beim Eingeben von Daten Live-Feedback zu geben.
+2. **`POST /calibrations`** — atomare Erstellung. Nimmt das bereits berechnete Ergebnis entgegen
+   (der Assistent leitet weiter, was `/analyze` zurückgegeben hat) sowie Metadaten und schreibt eine
+   `calibrations`-Zeile und ihre Datenpunktzeilen in einer einzigen Transaktion. Eine
+   Zertifikats-PDF wird nach bestem Bemühen in derselben Anfrage generiert.
+
+Diese Aufteilung existiert, damit Sie frei verschiedene Polynomgrade, Verteilungen und
+Entscheidungsregeln erkunden können, bevor Sie sich festlegen — der teure, persistierte Schritt
+geschieht nur einmal, beim Speichern.
+
+## Der Kalibrier-Assistent
+
+Starten Sie eine Kalibrierung vom Kanal einer Anlage aus. Der Assistent hat drei Schritte:
+
+1. **Allgemeine Informationen** — Kalibrierart (**intern**, gegen eine Referenz-Anlage, die Ihnen
+   gehört, oder **extern**, von einem externen Labor), Kalibrierdatum, wer sie durchgeführt hat,
+   Umgebungsbedingungen und (für interne Kalibrierungen) das verwendete Referenznormal und das
+   befolgte Verfahren. Dieser Schritt hat auch ein Kontrollkästchen **"Nur Koeffizienten (keine
+   Rohdaten)"** für extern ausgestellte Zertifikate, die direkt ein Polynom angeben — siehe
+   [Kalibrierungen nur mit Koeffizienten](./coefficients-only.mdx).
+2. **Rohdaten** — geben Sie (Referenz-, Mess-)Punktpaare ein. Siehe
+   [Kurvenanpassung](./curve-fitting.mdx) dazu, was Open Gauge damit macht.
+3. **Analyse/Überprüfung** — die live berechnete Anpassung, das Unsicherheitsbudget und die
+   Konformitätsaussage. Siehe [Das Unsicherheitsbudget](./uncertainty-budget.mdx) und
+   [Entscheidungsregeln](./decision-rules.mdx).
+
+Das Speichern wird nie durch ein nicht bestandenes (nicht konformes) Ergebnis blockiert — eine
+nicht bestandene Kalibrierung ist weiterhin ein wichtiger, echter Datensatz. Entspricht das Ergebnis
+nicht der Spezifikation des Kanals, zeigt die Speicherbestätigung eine explizite Warnung mit Nennung
+der Spezifikation und Entscheidungsregel, und die Speichern-Schaltfläche wird zu
+**"Trotzdem speichern"** umbenannt.
+
+## Interne vs. externe Kalibrierungen
+
+- **Intern** — im eigenen Haus durchgeführt, gegen eine der eigenen Anlagen, die als
+  [Referenznormal](../sensors/adding-a-sensor.mdx#calibration-role) gekennzeichnet ist. Wenn Sie
+  eine Referenz-Anlage auswählen, ruft Open Gauge automatisch die erweiterte Unsicherheit der letzten
+  Kalibrierung dieser Anlage ab und rechnet sie als `reference_standard`-Beitrag in das
+  Unsicherheitsbudget dieser Kalibrierung ein — siehe
+  [Das Unsicherheitsbudget](./uncertainty-budget.mdx#contributions).
+- **Extern** — von einem externen Kalibrierlabor durchgeführt. Sie erfassen den Namen des Labors
+  und die Zertifikatsnummer; gibt das Zertifikat des Labors direkt ein Polynom an statt Rohdaten,
+  verwenden Sie den Nur-Koeffizienten-Weg, statt eine Anpassung von Grund auf neu abzuleiten.
+
+## Wo Ergebnisse landen
+
+Historische Kalibrierungen sind auf der Detailseite der Anlage einsehbar — jede vergangene
+Kalibrierung für jeden Kanal, neueste zuerst, jeweils mit vollständiger Analyse, Unsicherheitsbudget
+und Zertifikat. Nichts wird jemals nachträglich bearbeitet; eine erneute Kalibrierung ist eine neue
+Zeile, keine Korrektur einer alten.
+
+## Versionsnummern
+
+Die **Version** jeder Kalibrierung (`v1`, `v2`, …) ist ein stets steigender, pro Anlage (bzw.
+Anlagenkanal) eindeutiger Zähler — die nächste Ganzzahl, beginnend bei 1, die beim Speichern des
+Datensatzes vergeben wird. Sie basiert **nicht** auf `calibration_date`: Das Nacherfassen einer
+Kalibrierung, deren Eingabe Sie früher vergessen haben, erhält weiterhin die nächste verfügbare
+Nummer, nicht eine Nummer, die ihre chronologische Einordnung widerspiegelt. Eine einmal vergebene
+Version ist dauerhaft — sie wird nie wiederverwendet (auch nicht die einer entwerteten Kalibrierung,
+siehe unten) und nie neu nummeriert.
+
+## Eine Kalibrierung entwerten
+
+Die Kalibrierhistorie wird nie zerstört — es gibt keine Löschen-Schaltfläche, nur **Entwerten**,
+beschränkt auf `admin`/`superadmin`. Das Entwerten eines Eintrags (über das Papierkorb-Symbol in
+seiner Zeile im Reiter Kalibrierung):
+
+- Markiert ihn als ungültig und hält optional fest, warum.
+- Blendet ihn standardmäßig aus der Liste der Kalibrierhistorie und der Anlagenübersicht aus (ein
+  Admin kann **Entwertete anzeigen** aktivieren, um ihn wieder zu sehen).
+- Schließt ihn von Fälligkeitsdatum-/Statusberechnungen aus, sodass ein ungültiger Eintrag eine
+  Anlage nicht als kalibriert erscheinen lassen kann, obwohl sie es nicht ist.
+- Schließt ihn von der Drift-/Stabilitätsanalyse im Reiter Zustand und dem Kurvenvergleichs-Dropdown aus.
+
+Der Datensatz, seine Datenpunkte und sein Zertifikat bleiben allesamt unverändert erhalten —
+das Entwerten schaltet nur ein Kennzeichen um. Ein Admin kann eine entwertete Kalibrierung jederzeit
+aus derselben Zeile **wiederherstellen**, was all das Obige rückgängig macht. Siehe
+[Kalibrierungen](/docs/api/calibrations) in der API-Referenz für die genauen Payloads von
+`DELETE /calibrations/{id}` und `POST /calibrations/{id}/restore`.
+
+Ein vollständiger Anlagenexport (die Aktion Exportieren auf der Anlagenseite) enthält immer
+entwertete Kalibrierungen — es ist ein vollständiges historisches Backup, keine gefilterte Ansicht.

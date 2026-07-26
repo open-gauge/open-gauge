@@ -1,0 +1,42 @@
+---
+title: Calibrations à coefficients uniquement
+description: Enregistrer un certificat de laboratoire externe qui indique directement le polynôme de calibration, sans points de données bruts.
+---
+
+Certains capteurs — principalement ceux envoyés à un laboratoire extérieur — reviennent avec un
+certificat de calibration qui indique directement les coefficients du polynôme de calibration,
+sans inclure de points de données bruts référence/mesuré. Pour ceux-ci, Open Gauge dispose d'un
+parcours dédié afin que vous n'ayez pas à fabriquer de faux points de données juste pour
+enregistrer le résultat.
+
+## Utilisation
+
+Sur une calibration **Externe**, cocher **« Coefficients uniquement (sans données brutes) »** à
+l'étape 1 remplace l'étape de données brutes de l'assistant par un formulaire de saisie manuelle
+des coefficients :
+
+- L'**ordre du polynôme** (1 à 5) et ses **coefficients**, saisis selon la même convention de
+  puissances décroissantes que le propre moteur de régression d'Open Gauge (degré le plus élevé
+  en premier, terme constant en dernier).
+- La **plage de validité** (min/max) sur laquelle le polynôme s'applique.
+- Optionnellement, **« Incertitude déclarée sur le certificat »** — si le certificat du
+  laboratoire indique une incertitude élargie et un facteur d'élargissement, saisissez-les ici
+  pour les stocker directement (plutôt que de fabriquer une valeur dérivée d'un ajustement),
+  produisant une seule ligne `external_certificate_stated` dans le
+  [budget d'incertitude](./uncertainty-budget.mdx#contributions).
+
+## Ce qui est délibérément laissé vide
+
+Comme il n'y a pas de données brutes, Open Gauge ne calcule pas (et n'affiche pas) d'ajustement —
+ce parcours laisse délibérément **R², RMSE**, la ligne de budget `fit_residuals`, et,
+essentiellement, **la règle de décision et la déclaration de conformité**, tous vides.
+
+Une déclaration de conformité (réussite/échec) nécessite une *erreur évaluée* à comparer à une
+spécification (GUM §6.3, ISO/IEC 17025 §7.8.6) — un enregistrement à coefficients uniquement n'a
+aucune erreur évaluée, seulement la fonction de calibration elle-même. Open Gauge n'affiche donc
+ni ne stocke de badge CONFORME/NON CONFORME fabriqué pour ces enregistrements. Si vous avez besoin
+d'une déclaration de conformité, utilisez plutôt une calibration classique (pas à coefficients
+uniquement) avec les données brutes réelles.
+
+Voir [l'exemple 4](./examples/coefficients-only-certificate.mdx) pour un cas complet détaillé, y
+compris ce qui est enregistré et affiché.

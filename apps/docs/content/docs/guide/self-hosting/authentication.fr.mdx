@@ -1,0 +1,104 @@
+---
+title: Authentification
+description: Utilisateurs locaux, OAuth2/OIDC, SSO d'entreprise, et contrôle d'accès basé sur les rôles.
+---
+
+L'authentification dans Open Gauge est conçue pour être auto-hébergeable de bout en bout — y
+compris dans des environnements entièrement hors ligne / isolés — et n'est jamais couplée à un
+fournisseur uniquement cloud.
+
+## Modes d'authentification pris en charge
+
+- **Utilisateurs et mots de passe locaux** — l'option par défaut pour les petites installations
+  auto-hébergées. Fonctionne entièrement hors ligne ; aucune dépendance externe. Chaque compte
+  auto-inscrit nécessite une activation avant de pouvoir se connecter — voir
+  [Notifications par e-mail](./email-notifications.mdx#account-verification) pour savoir comment
+  cela fonctionne avec et sans configuration SMTP. La seule exception est le tout premier compte
+  créé sur une installation neuve : comme aucun administrateur n'est encore disponible pour
+  activer qui que ce soit, il est créé vérifié et en tant que `superadmin` automatiquement, de
+  sorte qu'un nouveau déploiement démarre toujours vide et prêt à l'emploi plutôt que pré-rempli
+  de données de démonstration.
+- **OAuth2 / OpenID Connect** — pour les organisations qui exploitent déjà un fournisseur
+  d'identité.
+- **SSO d'entreprise** — via un fournisseur compatible OIDC. **Keycloak** est le choix recommandé
+  pour les déploiements d'entreprise qui souhaitent un SSO auto-hébergé sans dépendre d'un
+  service d'identité cloud.
+
+L'authentification repose sur une couche d'abstraction claire dans le backend, de sorte qu'un
+déploiement peut passer de l'authentification locale à Keycloak (ou un autre fournisseur OIDC)
+sans changer la moindre logique métier ailleurs dans Open Gauge.
+
+## Rôles (RBAC)
+
+Chaque utilisateur possède exactement un rôle, qui régit ce qu'il peut voir et modifier. C'est le
+seul indicateur de privilège du compte — il n'existe pas de bit « super-utilisateur » séparé ; la
+capacité Super Admin provient entièrement de `role == superadmin` :
+
+| Rôle | Usage typique |
+|---|---|
+| `viewer` | Accès en lecture seule — parcourir les actifs, calibrations et certificats. |
+| `technician` | Travail opérationnel quotidien : ajouter des capteurs, effectuer des calibrations, mettre à jour les emplacements. |
+| `admin` | Gère les comptes utilisateurs (création, désactivation, changement de rôle). Ne peut pas accéder à la Zone dangereuse. |
+| `superadmin` | Tout ce que peut faire Admin, plus la Zone dangereuse (export/import/réinitialisation de la base de données), et peut gérer n'importe quelle organisation quelle que soit son appartenance. |
+
+Il s'agit d'une attribution à l'échelle du système, distincte du **rôle d'organisation**
+(`member`/`admin`) qu'un utilisateur possède au sein d'une organisation spécifique — la gestion
+du profil, des membres et des demandes d'adhésion d'une organisation donnée est régie par ce rôle
+propre à l'organisation, pas par celui-ci (Super Admin est le seul rôle global disposant d'une
+dérogation vers la gestion des organisations). Voir [Organisations](../organizations/index.mdx).
+
+Les points de terminaison protégés rejettent les requêtes non authentifiées, et les
+vérifications de rôle sont appliquées côté backend (pas seulement masquées dans l'interface) —
+voir les sections [Auth](/docs/api/auth) et [Admin](/docs/api/admin) de la référence API pour les
+points de terminaison exacts accessibles à chaque rôle.
+
+## Photo de profil
+
+Chaque utilisateur peut définir une photo de profil depuis **Paramètres → Profil**. Elle apparaît
+dans l'avatar circulaire en haut à droite de la barre supérieure et sur la page de profil de
+l'utilisateur (`/users/{id}`, atteinte en cliquant sur un nom partout où il est mentionné —
+journaux d'audit, activité, etc.). Les utilisateurs sans photo affichent leurs initiales par
+défaut. Les téléversements sont limités aux fichiers image de moins de 5 Mo et sont stockés dans
+MinIO comme tout autre fichier joint (voir [Modèle de données et concepts](../concepts/data-model.mdx)).
+
+## Signatures
+
+Chaque utilisateur dont le rôle est différent de `viewer` peut définir une signature depuis
+**Paramètres → Profil**, soit en téléversant un PNG à fond transparent, soit en la dessinant
+directement avec la souris (ou le doigt/un stylet) sur un canevas — dans les deux cas, le
+résultat est stocké sous forme de PNG transparent. Pendant le dessin, **Annuler** annule le
+dernier trait et **Gommer** active un mode gomme qui efface l'encre sous le pointeur, de sorte
+qu'une portion mal dessinée peut être corrigée sans effacer tout le canevas (c'est toujours ce
+que fait **Effacer**).
+
+Contrairement à une photo de profil, une signature est cryptographiquement liée au compte :
+
+1. La première fois qu'un utilisateur définit une signature, Open Gauge génère pour lui une
+   **paire de clés Ed25519**. La clé privée est chiffrée au repos (AES-256-GCM, dérivée de la
+   `SECRET_KEY` de l'application) avant d'être stockée — cela protège contre une fuite limitée à
+   la base de données (un dump ou un vol de sauvegarde), mais ne protège pas contre une
+   compromission du processus applicatif en cours d'exécution lui-même, ce qui constitue le
+   plafond pratique pour un déploiement auto-hébergé sans service externe de gestion de clés.
+2. Open Gauge signe une enveloppe canonique — l'identifiant de l'utilisateur, le hachage SHA-256
+   des octets exacts de l'image, et un horodatage — avec cette clé privée. L'image de signature
+   et les octets de signature qui en résultent sont tous deux stockés.
+3. La **clé publique ne change jamais** une fois générée (remplacer l'image de signature
+   réutilise la même paire de clés) et est disponible pour tout utilisateur authentifié via
+   `GET /users/{id}/signature/public-key`, de sorte qu'un certificat — ou tout autre
+   consommateur — peut vérifier de manière indépendante qu'une image de signature est
+   authentique et non modifiée.
+
+Remplacer une signature ne supprime pas la précédente — elle est révoquée (conservée, marquée
+inactive) afin que les certificats historiques faisant référence à une version antérieure de la
+signature restent vérifiables de manière indépendante. Ceci reflète la façon dont
+l'[historique de calibration](../concepts/data-model.mdx) n'est jamais écrasé, seulement
+remplacé.
+
+Une signature définie de cette manière est ce que les certificats utiliseront pour attester
+visuellement et cryptographiquement de qui a effectué une calibration.
+
+## Jetons de session
+
+Une fois authentifié, le frontend et tout client API portent un jeton de session sur les
+requêtes suivantes. Voir [Auth](/docs/api/auth) dans la référence API pour les points de
+terminaison exacts de connexion/rafraîchissement/déconnexion et le format des charges utiles.

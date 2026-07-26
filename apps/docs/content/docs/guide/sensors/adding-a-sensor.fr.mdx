@@ -1,0 +1,205 @@
+---
+title: Ajouter un capteur
+description: Guide pas à pas pour enregistrer un actif capteur et configurer ses voies, champ par champ.
+---
+
+Cette page présente pas à pas l'enregistrement d'un actif capteur et la configuration de sa ou ses
+voies de mesure, champ par champ. Chaque champ décrit ici est également expliqué par une infobulle
+(ⓘ) directement dans l'interface — cliquer sur une infobulle vous ramène à la section
+correspondante de cette page.
+
+## 1. Créer l'actif
+
+Allez dans **Actifs → Nouvel actif**, choisissez le type d'actif **capteur**, et remplissez le
+nom, le fabricant/modèle, le numéro de série, et (optionnellement) une fiche technique et un
+emplacement. Enregistrer crée l'actif avec un identifiant généré automatiquement (par ex.
+`OG-00042`).
+
+## 2. Ajouter une voie
+
+Un actif capteur peut avoir une ou plusieurs **voies** — une par grandeur physique qu'il mesure.
+La plupart des capteurs à usage unique (un thermocouple, un transmetteur de pression) ont
+exactement une voie ; une sonde multiparamètre peut en avoir plusieurs. Sur la page de détail de
+l'actif, utilisez **Ajouter une voie** et donnez-lui un **identifiant de voie** (un libellé court
+unique pour cet actif, par ex. `CH1`).
+
+## 3. Configurer la voie
+
+### Grandeur physique [#physical-quantity]
+
+La grandeur physique définit le type de mesure (par ex. température, pression) et détermine les
+unités et procédures de calibration applicables. Choisissez celle qui correspond le mieux à la
+mesure principale du capteur — cela pilote quelles unités apparaissent dans chaque liste
+déroulante d'unités ci-dessous.
+
+Chaque grandeur physique prise en charge par Open Gauge, avec ses technologies de détection
+disponibles, les options de sa liste déroulante **Type** (seule la pression en a une aujourd'hui —
+voir [Type de mesure](#measurement-type) ci-dessous), et ses unités d'affichage sélectionnables :
+
+| Grandeur physique | Technologie | Type (le cas échéant) | Unités |
+|---|---|---|---|
+| Température | Thermocouple (J, K, T, E, N, R, S, B), RTD (PT100, PT1000, Autre), Thermistance (CTN, CTP, Autre), Infrarouge, Fibre optique, Semi-conducteur, Bilame | — | °C, °F, K |
+| Pression | Jauge de contrainte, Piézorésistif, Piézoélectrique, Capacitif, Inductif, Résonant, Optique, MEMS | Absolue, Relative (manométrique) | Pa, kPa, MPa, bar, psi, hPa, atm, mmHg, inHg, inH₂O |
+| Débit | Pression différentielle, Diaphragme (plaque à orifice), Venturi, Turbine, Déplacement positif, Électromagnétique, Vortex, Coriolis, Ultrasonique, Masse thermique | — | m³/h, L/min, gal/min, kg/h, g/min, lb/min |
+| Niveau | Flotteur, Hydrostatique, Capacitif, Conductif, Ultrasonique, Radar, Laser, Optique | — | mm, cm, m, in, ft, % |
+| Humidité | Capacitif, Résistif, Conductivité thermique, Miroir refroidi | — | %HR, g/m³, Point de rosée °C, Point de rosée °F |
+| Force | Jauge de contrainte, Piézoélectrique, Hydraulique, Pneumatique, Optique | — | N, kN, kgf, lbf |
+| Couple | Jauge de contrainte, Magnétoélastique, Optique, Piézoélectrique | — | N·m, kN·m, lbf·ft |
+| Masse | Jauge de contrainte, Compensation électromagnétique de force, Tube vibrant, Piézoélectrique | — | kg, g, mg, lb |
+| Déformation | Jauge à film métallique, Jauge à semi-conducteur, Réseau de Bragg sur fibre, Capacitif | — | µε, m/m |
+| Déplacement | Potentiométrique, LVDT, Inductif, Capacitif, Courants de Foucault, Laser, Codeur optique, Magnétostrictif | — | nm, µm, mm, cm, m, in, ft |
+| Angle | Potentiomètre, Codeur optique, Codeur magnétique, Résolveur, Inclinomètre, MEMS | — | °, rad |
+| Vitesse angulaire | Codeur optique, Effet Hall, Magnétorésistif, Tachymètre, Gyroscope MEMS | — | rpm, °/s, rad/s |
+| Accélération angulaire | Gyroscope MEMS, Codeur optique (dérivée) | — | °/s², rad/s² |
+| Vitesse | Radar Doppler, Doppler laser, À codeur, Tube de Pitot, Ultrasonique | — | mm/s, m/s, km/h, mph, nœuds |
+| Accélération | MEMS, Piézoélectrique, Piézorésistif, Capacitif, Accéléromètre asservi | — | m/s², g |
+| Pression acoustique | Microphone à condensateur, Microphone piézoélectrique, Microphone MEMS | — | Pa, dB, dB(A), dB(C) |
+| Tension | Diviseur résistif, Diviseur capacitif, Effet Hall, Amplificateur d'isolement | — | V, mV, kV |
+| Courant | Résistance shunt, Effet Hall, Transformateur de courant, Bobine de Rogowski | — | A, mA, kA |
+| Résistance | 2 fils, 3 fils, 4 fils, Mesure en pont | — | Ω, kΩ, MΩ |
+| Puissance | Wattmètre, Analyseur de puissance, Calculé (V×I) | — | W, kW, MW |
+| Énergie | Compteur d'énergie, Compteur intelligent | — | Wh, kWh, MWh |
+| Fréquence | Compteur à quartz, Compteur réciproque, Optique, Capteur magnétique | — | Hz, kHz, MHz, GHz, bpm |
+| Capacité | Pont, Charge/décharge, Résonant | — | F, µF, nF, pF |
+| Inductance | Pont, Résonant, Basé sur l'impédance | — | H, mH, µH |
+| Impédance | Analyseur d'impédance, Pont RLC (LCR-mètre) | — | Ω, kΩ, MΩ |
+| Champ magnétique | Effet Hall, Fluxgate, Magnétorésistif, RMN, SQUID | — | T, mT, µT, G |
+| Champ électrique | Moulin de champ, Sonde électrostatique, Sonde capacitive | — | V/m, kV/m |
+| Radiation | Geiger-Müller, Scintillation, Semi-conducteur, Chambre d'ionisation, Compteur proportionnel | — | Gy, Sv, rem, Bq |
+| Éclairement lumineux | Photodiode, Photorésistance, Luxmètre | — | lx, fc |
+| Luminance | Photomètre imageur, Photomètre ponctuel | — | cd/m² |
+| Concentration | Électrochimique, NDIR, PID, MOS, Bille catalytique, Zircone, Spectromètre de masse | — | ppm, ppb, %, mg/m³ |
+| pH | Électrode de verre, ISFET, Optique | — | pH |
+| Conductivité | À contact, Inductif, Toroïdal | — | S/m, mS/cm, µS/cm |
+| Salinité | Basé sur la conductivité, Réfractomètre | — | ppt, PSU, g/L |
+| Oxygène dissous | Galvanique, Polarographique, Optique / Luminescent | — | mg/L, % sat |
+| ORP / Potentiel redox | Électrode de platine, Électrode d'or | — | mV |
+| Masse volumique | Tube vibrant, Hydrostatique, Coriolis, Pycnomètre | — | kg/m³, g/cm³ |
+| Viscosité | Rotatif, Vibratoire, Capillaire, Bille tombante | — | Pa·s, cP |
+| Teneur en humidité | Capacitif, Micro-ondes, Infrarouge, Gravimétrique | — | %HR, %, g/g |
+| Concentration de particules | Compteur optique de particules, Diffusion laser, Compteur de particules par condensation | — | particules/m³, particules/ft³ |
+| Direction du vent | Girouette, Ultrasonique | — | ° |
+| Précipitations | Auget basculant, Pesée, Optique | — | mm, in |
+| Oxygène sanguin | Oxymétrie de pouls | — | % SpO₂ |
+| Rugosité de surface | Profilomètre à contact, Profilomètre optique, Balayage laser | — | Ra (µm), Rz (µm), Rt (µm), µm |
+
+*Gardez ce tableau synchronisé avec `PHYSICAL_QUANTITIES` dans
+`apps/web/src/lib/sensor-options.ts` — mettez-le à jour chaque fois qu'une nouvelle grandeur
+physique, technologie, ou unité y est ajoutée.*
+
+### Type de mesure [#measurement-type]
+
+Certaines grandeurs physiques ont plus d'un *mode* de mesure. L'exemple le plus clair est la
+pression : un capteur peut indiquer la pression **absolue** (par rapport au vide) ou la pression
+**relative** (par rapport à la pression atmosphérique). Lorsqu'une grandeur physique a des options
+définies, une liste déroulante **Type** apparaît sous Grandeur physique ; lorsqu'elle n'en a pas
+besoin (par ex. la température), le champ est entièrement masqué.
+
+### Plage et unité de mesure [#measurement-range]
+
+Saisissez la **plage de mesure** de la voie (min/max) et l'**unité** d'affichage. Une fois la
+plage définie, chaque option « % FS » (pourcentage de pleine échelle) ci-dessous devient
+disponible, puisqu'un pourcentage a besoin d'une étendue par rapport à laquelle se convertir.
+
+### Technologie [#technology]
+
+La technologie de détection (par ex. RTD, thermocouple, jauge de contrainte) se trouve à droite
+de la grandeur physique — un champ purement descriptif sans effet sur les calculs.
+
+### Signal de sortie [#output-signal]
+
+La sortie brute du capteur — type, plage de valeurs, et unité — se trouve directement sous la
+plage mesurable, dans la même disposition en colonnes min-max/unité. C'est ce que le capteur
+délivre réellement électriquement, ce qui peut différer de l'unité physique (par ex. une boucle
+de courant 4-20 mA représentant 0-100 °C).
+
+| Type de signal de sortie | Description | Unités |
+|---|---|---|
+| Analogique | Un signal électrique continu proportionnel à la valeur mesurée (par ex. une boucle de courant 4-20 mA). | mA, A, V, mV, kV |
+| Numérique | Une sortie encodée/discrète ; les options d'unité correspondent à la grandeur physique propre de la voie plutôt qu'à une unité électrique fixe. | Mêmes unités que la grandeur physique de la voie |
+| Fréquence | La valeur mesurée est encodée sous forme de fréquence de signal. | Hz, kHz, MHz, GHz |
+| Résistance | La sortie est une résistance variable proportionnelle à la valeur mesurée (par ex. un élément RTD au platine). | Ω, kΩ, MΩ |
+| Capacité | La sortie est une capacité variable proportionnelle à la valeur mesurée. | F, µF, nF, pF |
+| Ratiométrique | Sortie exprimée comme un ratio de la tension d'excitation du capteur plutôt qu'une valeur absolue (par ex. la sortie en mV/V d'une cellule de charge de type pont). | mV/V, V/V |
+
+*Gardez ce tableau synchronisé avec `OUTPUT_TYPE_OPTIONS`/`getOutputUnits` dans
+`apps/web/src/lib/sensor-options.ts` — mettez-le à jour chaque fois qu'un nouveau type de signal
+de sortie y est ajouté.*
+
+### Valeur d'exactitude [#accuracy-value]
+
+Écart maximal entre la sortie du capteur et la valeur vraie. Plus petit signifie plus exact.
+Choisissez **% FS** comme unité pour exprimer ceci en pourcentage de la plage mesurable plutôt
+qu'en valeur absolue — voir [La convention « % FS »](#the-fs-convention) ci-dessous. C'est la
+spécification d'exactitude nominale/du fabricant, et c'est ce à quoi Open Gauge compare l'erreur
+mesurée d'une calibration pour décider de la réussite/de l'échec — voir
+[Règles de décision](../calibration/decision-rules.mdx).
+
+### Résolution [#resolution]
+
+Le plus petit changement d'entrée que le capteur peut détecter et représenter dans sa sortie. La
+résolution alimente automatiquement le budget d'incertitude de chaque calibration comme une
+contribution de type B (rectangulaire) — voir
+[Le budget d'incertitude](../calibration/uncertainty-budget.mdx).
+
+### Incertitude (±) [#measurement-uncertainty]
+
+Quantifie le doute sur le résultat de mesure, exprimé sous forme ±valeur. C'est la spécification
+d'incertitude nominale/élargie du fabricant. Elle préremplit un champ « Exactitude nominale du
+capteur » par calibration dans l'assistant de calibration (toujours modifiable là-bas) comme
+contribution de type B *optionnelle* au budget d'incertitude de cette calibration — un choix
+explicite, car l'intégrer sans condition risquerait un double comptage avec le terme de résidu
+d'ajustement calculé à partir des propres données de la calibration.
+
+### Taux de dérive [#drift-rate]
+
+Vitesse à laquelle la sortie du capteur se décale dans le temps sans aucun changement de la
+grandeur mesurée. Purement informatif sur la voie — la *détection* de dérive propre à Open Gauge
+est calculée à partir de l'historique de calibration réel, pas à partir de cette spécification
+du fabricant ; voir [Métriques de dérive](../health-scoring/drift-metrics.mdx).
+
+### Temps de réponse (ms) [#response-time-ms]
+
+Temps nécessaire à la sortie du capteur pour atteindre un pourcentage défini de sa valeur finale
+après un changement d'entrée en échelon.
+
+### Bande passante (Hz) [#bandwidth-hz]
+
+Fréquence maximale des changements d'entrée que le capteur peut suivre avec exactitude.
+
+### Méthode de calibration [#calibration-method]
+
+La [procédure](../procedures/index.mdx) utilisée pour calibrer cette voie — en lier une ici
+permet à l'assistant de calibration de préremplir les bonnes étapes, l'équipement, et les
+critères d'acceptation pour cette voie spécifique.
+
+### Rôle de calibration [#calibration-role]
+
+Une case à cocher, **« Étalon de référence »** (par défaut : décochée/**Non**). Cochez-la pour
+marquer cette voie comme étalon de référence, afin qu'elle puisse être sélectionnée comme
+référence de traçabilité lors de la calibration d'autres actifs par rapport à elle — voir
+[Aperçu de la calibration](../calibration/overview.mdx) pour savoir comment les calibrations
+internes utilisent un actif de référence.
+
+## La convention « % FS » [#the-fs-convention]
+
+Exactitude, Résolution, et Incertitude associent chacune une valeur numérique à une **liste
+déroulante d'unités**. Cette liste déroulante propose les unités physiques compatibles de la voie
+(par ex. °C pour une voie de température) plus, une fois la plage min/max renseignée, une option
+**« % FS »** comme *premier* choix. Il n'y a pas de champ séparé « type d'exactitude » à
+définir — choisir une unité réelle (comme °C) signifie que la valeur est absolue ; choisir
+**% FS** signifie qu'il s'agit d'un pourcentage de l'étendue de la plage, et Open Gauge la
+convertit en valeur absolue en interne (`valeur/100 × (plage_max − plage_min)`) partout où elle
+est utilisée dans un calcul.
+
+## Après l'enregistrement
+
+Une fois une voie enregistrée, chaque valeur renseignée est visible directement dans la liste des
+voies sur la page de l'actif — pas besoin de rouvrir le formulaire d'édition pour vérifier ce qui
+a été configuré.
+
+## Étapes suivantes
+
+Une fois une voie configurée, vous êtes prêt à effectuer votre première calibration — voir
+[Aperçu de la calibration](../calibration/overview.mdx), ou parcourir un exemple numérique complet
+dans [Exemples concrets](../calibration/examples/index.mdx).

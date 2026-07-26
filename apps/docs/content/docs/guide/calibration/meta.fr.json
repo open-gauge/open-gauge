@@ -1,0 +1,14 @@
+{
+  "title": "Calibration",
+  "pages": [
+    "overview",
+    "curve-fitting",
+    "uncertainty-budget",
+    "decision-rules",
+    "coefficients-only",
+    "certificates",
+    "certificate-templates",
+    "certificate-signing",
+    "examples"
+  ]
+}

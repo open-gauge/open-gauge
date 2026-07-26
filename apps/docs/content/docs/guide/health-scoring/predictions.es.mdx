@@ -1,0 +1,28 @@
+---
+title: Predicciones
+description: Cómo proyecta Open Gauge la deriva futura, y qué relación tiene (y no tiene) eso con las fechas de vencimiento de calibración.
+---
+
+## Predicción de deriva [#prediction]
+
+Open Gauge ejecuta una regresión lineal sobre los valores históricos de [deriva
+máxima](./drift-metrics.mdx#max-drift) de un canal, proyectada hacia adelante desde hoy. Esto da
+una respuesta aproximada a "si esta tendencia continúa, ¿cuándo podría la deriva de este sensor
+convertirse en un problema?" — útil para planificar, no un pronóstico certificado.
+
+## Intervalo recomendado frente al certificado
+
+El [intervalo recomendado](./overview.mdx#recommended-interval) mostrado en la pestaña Estado es
+una heurística interna de planificación de Open Gauge. **Nunca** se imprime en un certificado de
+calibración — consulta
+[Generación de certificados](../calibration/certificates.mdx#whats-deliberately-not-on-it) para
+saber por qué ISO/IEC 17025 requiere un acuerdo explícito con el cliente antes de que un
+certificado pueda indicar una recomendación de intervalo.
+
+## Requiere al menos dos calibraciones
+
+Cada predicción y métrica de deriva de esta página necesita al menos dos calibraciones en un canal
+para calcular algo significativo — una sola calibración no tiene historial contra el cual ajustar
+una tendencia. Hasta entonces, Open Gauge muestra un estado de salud neutral del 100%, estabilidad
+"Estable", y una tasa de deriva de 0 en lugar de un número calculado a partir de datos
+insuficientes.

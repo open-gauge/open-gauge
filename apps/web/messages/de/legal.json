@@ -1,0 +1,42 @@
+{
+  "privacy": {
+    "title": "Datenschutzerklärung",
+    "updated": "13. Juli 2026",
+    "intro": "Open Gauge ist selbst gehostete Software: Die Organisation, die diese Instanz installiert hat („der Betreiber“), betreibt ihre eigene Kopie der Anwendung und der Datenbank und ist für alles darin gespeicherte Daten der Verantwortliche. Das Open-Gauge-Projekt selbst betreibt diese Instanz nicht, erhält keine Kopie ihrer Daten und hat keinen Zugriff darauf.",
+    "section1Title": "1. Welche Daten gespeichert werden und wo",
+    "section1Body": "Alle von Ihnen eingegebenen Daten — Kontodaten, Anlagen- und Sensordatensätze, Kalibrierhistorie, Zertifikate, hochgeladene Dateien und Audit-Protokolle — werden vollständig innerhalb der eigenen Infrastruktur des Betreibers gespeichert: seiner PostgreSQL-Datenbank und seinem MinIO- (oder S3-kompatiblen) Objektspeicher, so wie vom Betreiber konfiguriert. Open Gauge überträgt diese Daten standardmäßig nicht an einen Drittanbieter-Dienst.",
+    "section2Title": "2. Kontoinformationen",
+    "section2Body": "Zur Erstellung eines Kontos geben Sie einen Namen, eine E-Mail-Adresse und ein Passwort an (gespeichert als gesalzener Hash, niemals im Klartext). Wenn ein Administrator E-Mail-Benachrichtigungen konfiguriert hat, wird Ihre E-Mail-Adresse zum Versand von Konto-Bestätigungs- und Passwort-Reset-Links verwendet sowie — für Techniker und Administratoren in Ihrer Organisation — für Erinnerungen an fällige Kalibrierungen.",
+    "section3Title": "3. E-Mail-Versand",
+    "section3Body": "Wenn ein Administrator SMTP konfiguriert (Verwaltung → E-Mail), wird ausgehende Post direkt von der Instanz an den vom Betreiber angegebenen SMTP-Server gesendet. Kein E-Mail-Inhalt läuft über eine von Open Gauge betriebene Infrastruktur — eine solche existiert nicht.",
+    "section4Title": "4. Audit-Protokolle",
+    "section4Body": "Sicherheits- und rückverfolgbarkeitsrelevante Aktionen (Erstellung von Datensätzen, Bearbeitungen, Annullierungen/Wiederherstellungen von Kalibrierungen, Änderungen an Einstellungen) werden in einem unveränderlichen Audit-Protokoll erfasst, einschließlich des handelnden Benutzers, eines Zeitstempels und — soweit zutreffend — der IP-Adresse und des User-Agents der Anfrage. Dies ist eine Kernfunktion für Rückverfolgbarkeit im ISO/IEC-17025-Stil, keine Daten, die außerhalb der Instanz geteilt werden.",
+    "section5Title": "5. Cookies und lokaler Speicher",
+    "section5Body": "Open Gauge speichert Ihr Sitzungstoken und Ihre Design-Präferenz im lokalen Speicher Ihres Browsers. Es verwendet keine Tracking-Cookies von Drittanbietern oder Analyse-Skripte.",
+    "section6Title": "6. Datenaufbewahrung und -löschung",
+    "section6Body": "Kalibrierdatensätze sind aus Gründen der Rückverfolgbarkeit absichtlich unveränderlich — in der Dokumentation der Instanz finden Sie Details dazu, wie das „Annullieren“ eines Datensatzes funktioniert. Andere Datensätze (Anlagen, Standorte, Verfahren) unterstützen die reversible Löschung. Der Betreiber kontrolliert alle Aufbewahrungsfristen und Sicherungsrichtlinien; wenden Sie sich an Ihren Administrator, um die Löschung Ihrer persönlichen Kontodaten zu beantragen.",
+    "section7Title": "7. Ihre Rechte",
+    "section7Body": "Je nach Gerichtsstand des Betreibers und geltendem Recht (z. B. der DSGVO) haben Sie möglicherweise das Recht auf Zugriff, Berichtigung oder Löschung Ihrer personenbezogenen Daten. Da der Betreiber die Instanz kontrolliert, richten Sie derartige Anfragen an Ihren Administrator.",
+    "section8Title": "8. Änderungen dieser Richtlinie",
+    "section8Body": "Diese Seite ist eine mit Open Gauge ausgelieferte Vorlage. Betreibern wird empfohlen, sie von ihrer eigenen Rechtsberatung prüfen und an ihren Gerichtsstand, ihre Branche und ihre Compliance-Pflichten anpassen zu lassen, bevor sie sich darauf verlassen."
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen",
+    "updated": "13. Juli 2026",
+    "intro": "Open Gauge ist freie Open-Source-Software unter der Lizenz <link>GNU Affero General Public License v3.0 (AGPL-3.0)</link>. Diese Bedingungen regeln Ihre Nutzung einer bestimmten, selbst gehosteten Open-Gauge-Bereitstellung (die „Instanz“), die von der Organisation betrieben wird, die sie installiert hat („der Betreiber“) — kein vom Open-Gauge-Projekt selbst bereitgestellter gehosteter Dienst.",
+    "section1Title": "1. Zwischen wem diese Bedingungen gelten",
+    "section1Body": "Open Gauge ist kein SaaS-Produkt. Es gibt kein zentrales Open-Gauge-Unternehmen, das Ihre Daten hostet oder Partei dieser Bedingungen ist. Jede Instanz wird von ihrem Betreiber unabhängig installiert, konfiguriert und betrieben, unter Verwendung des Open-Source-Codes von Open Gauge unter der AGPL-3.0-Lizenz. Jede Vereinbarung über die Nutzung einer Instanz — einschließlich dieser Bedingungen — besteht zwischen Ihnen und dem Betreiber, der allein für die Instanz, ihre Konfiguration, ihre Daten und ihre Benutzer verantwortlich ist.",
+    "section2Title": "2. Zulässige Nutzung",
+    "section2Body": "Nutzen Sie die Instanz nur für rechtmäßige Zwecke im Einklang mit den Richtlinien Ihrer Organisation. Versuchen Sie nicht, Zugriffskontrollen zu umgehen, unautorisiert nach Schwachstellen zu suchen oder die Instanz zum Speichern oder Verarbeiten von Daten zu nutzen, zu deren Besitz Sie nicht berechtigt sind.",
+    "section3Title": "3. Kalibrier- und Rückverfolgbarkeitsdaten",
+    "section3Body": "Open Gauge ist so konzipiert, dass die Kalibrierhistorie unveränderlich und rückverfolgbar bleibt — Datensätze werden versioniert und nie stillschweigend überschrieben. Auch wenn die Software dies auf Datenmodellebene durchsetzt, ist der Betreiber für seine eigenen Sicherungs-, Aufbewahrungs- und Notfallwiederherstellungspraktiken verantwortlich. Weder dieses Dokument noch die Open-Gauge-Software garantieren Schutz vor Datenverlust durch Infrastrukturausfälle, Fehlkonfiguration oder Fehler des Betreibers.",
+    "section4Title": "4. Kein Gewährleistungsausschluss",
+    "section4Body": "Wie in der AGPL-3.0-Lizenz angegeben, wird Open Gauge <strong>„wie besehen“</strong> bereitgestellt, ohne Gewährleistung jeglicher Art, weder ausdrücklich noch stillschweigend, einschließlich, aber nicht beschränkt auf Gewährleistungen der Marktgängigkeit, der Eignung für einen bestimmten Zweck und der Nichtverletzung von Rechten Dritter. Der Betreiber bietet keine zusätzliche Gewährleistung über das hinaus, was seine eigenen Richtlinien festlegen.",
+    "section5Title": "5. Haftungsbeschränkung",
+    "section5Body": "Im gesetzlich zulässigen Umfang haften weder die Betreuer des Open-Gauge-Projekts noch der Betreiber (sofern die eigene Richtlinie des Betreibers nichts anderes vorsieht) für indirekte, beiläufig entstandene, besondere oder Folgeschäden, die aus der Nutzung der Software oder einer Instanz entstehen.",
+    "section6Title": "6. Änderungen dieser Bedingungen",
+    "section6Body": "Der Betreiber kann diese Bedingungen für seine Instanz jederzeit aktualisieren. Diese Seite ist eine mit Open Gauge ausgelieferte Vorlage — Betreibern wird empfohlen, sie von ihrer eigenen Rechtsberatung prüfen und an ihren Gerichtsstand und ihre Compliance-Anforderungen (z. B. ISO/IEC 17025) anpassen zu lassen, bevor sie sich darauf verlassen.",
+    "section7Title": "7. Kontakt",
+    "section7Body": "Bei Fragen zu diesen Bedingungen in Bezug auf eine bestimmte Instanz wenden Sie sich direkt an den Administrator dieser Instanz."
+  }
+}

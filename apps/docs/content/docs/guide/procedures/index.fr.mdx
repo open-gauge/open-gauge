@@ -1,0 +1,47 @@
+---
+title: Procédures
+description: Modèles de procédures de calibration réutilisables — étapes, équipement, matériaux, et critères d'acceptation.
+---
+
+Une **procédure** est un modèle de procédure de calibration réutilisable, limité à une grandeur
+physique (par ex. un processus documenté pour calibrer des RTD de température par rapport à une
+référence de type bloc sec). Gérez-les depuis la page **Procédures** dans la barre latérale.
+
+## Pourquoi les procédures existent
+
+L'ISO/IEC 17025 exige qu'un laboratoire documente et suive des procédures définies pour son
+travail de calibration. Les modèles de procédure d'Open Gauge capturent cette documentation une
+seule fois et vous permettent d'y faire référence depuis chaque calibration réalisée de la même
+manière, plutôt que de retaper des notes de méthodologie à chaque fois.
+
+## Champs
+
+| Champ | Objet |
+|---|---|
+| Nom et grandeur physique | Ce que cette procédure calibre, et pour quelle grandeur. |
+| Version | Chaîne de version en texte libre (par ex. `"1.0"`) — incrémentez-la lorsque la méthodologie change. |
+| Difficulté | Indication informative du niveau de compétence pour la personne qui l'exécute. |
+| Référence normative | Référence en texte libre à une norme externe (un numéro ISO/ASTM, etc.). |
+| Auteur, durée | Qui l'a rédigée, et environ combien de temps elle prend à exécuter. |
+| Étiquettes | Libellés libres pour la recherche/le filtrage. |
+| Équipement | Liste structurée de l'équipement requis. |
+| Matériaux | Liste structurée des matériaux/consommables requis. |
+| Environnement | Conditions environnementales requises (température, humidité, etc.) pour exécuter la procédure. |
+| Notes de sécurité | Liste en texte libre des considérations de sécurité. |
+| Étapes | Les étapes ordonnées de la procédure elle-même. |
+| Critères d'acceptation | Ce qui constitue une réussite pour cette procédure, documenté à ses côtés. |
+
+## Lier une procédure à une voie
+
+Sur une voie de capteur, définissez **méthode de calibration** sur une procédure enregistrée —
+elle devient la procédure *par défaut* de la voie, présélectionnée chaque fois que vous démarrez
+une nouvelle calibration interne pour cette voie. Ce n'est qu'une valeur par défaut : toute
+calibration peut référencer une procédure différente (ou aucune) si la situation l'exige.
+
+## Où les procédures apparaissent dans une calibration
+
+Une calibration **interne** (voir [Aperçu de la calibration](../calibration/overview.mdx)) peut
+référencer la procédure qui a été suivie (`internal_procedure_id`), et cette référence est
+imprimée sur le certificat résultant aux côtés de l'étalon de référence utilisé et des conditions
+environnementales enregistrées — la chaîne de traçabilité complète dont un certificat de
+calibration a besoin.

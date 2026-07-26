@@ -1,0 +1,225 @@
+---
+title: "Ejemplo 1 — RTD de temperatura, ajuste lineal, presupuesto de incertidumbre completo"
+description: Un ejemplo de dos calibraciones que ejercita la regresión lineal, las cuatro contribuciones de incertidumbre a la vez, y las tres reglas de decisión.
+---
+
+Ejercita: regresión lineal, las cuatro contribuciones de presupuesto Tipo A/B a la vez (residuos del
+ajuste, patrón de referencia, resolución, exactitud nominal del sensor), la función de obtención
+automática de la incertidumbre del patrón de referencia, y las tres reglas de decisión divergiendo
+sobre datos idénticos.
+
+Cada número de abajo fue producido ejecutando el motor de cálculo real de Open Gauge contra los datos
+de entrada mostrados, y luego rederivado de forma independiente a mano a partir de las fórmulas
+subyacentes para confirmar que coinciden. Si ingresas la misma configuración y los mismos datos a
+través de la interfaz, deberías ver los mismos números (salvo el
+[redondeo de visualización](./rounding-and-troubleshooting.mdx) descrito al final).
+
+Este ejemplo tiene **dos calibraciones**: primero calibras un termómetro de referencia (para que
+tenga una incertidumbre expandida registrada), y luego calibras el sensor de trabajo *contra* esa
+referencia — esto es lo que hace que Open Gauge autocomplete la fila de presupuesto "patrón de
+referencia".
+
+## 1.0 Configuración — dos activos
+
+**Activo A — patrón de referencia** (Activos → Nuevo activo):
+
+| Campo | Valor |
+|---|---|
+| Nombre | Reference PT100 Standard |
+| Fabricante / Modelo | cualquiera, p. ej. Fluke / 5628 |
+| Tipo de activo | sensor |
+
+Un canal:
+
+| Campo | Valor |
+|---|---|
+| ID de canal | CH1 |
+| Magnitud física | Temperatura |
+| Rango mín / máx | 0 / 100 |
+| Unidad | °C |
+| Rol de calibración | **marcado** (patrón de referencia) |
+
+Deja en blanco exactitud/resolución/incertidumbre en este activo — aquí solo importa la
+incertidumbre expandida del *registro de calibración* (calculada en 1.1).
+
+**Activo B — sensor de trabajo:**
+
+| Campo | Valor |
+|---|---|
+| Nombre | Process Line Thermometer |
+| Fabricante / Modelo | cualquiera, p. ej. Generic / PT100-A |
+| Tipo de activo | sensor |
+
+Un canal:
+
+| Campo | Valor |
+|---|---|
+| ID de canal | CH1 |
+| Magnitud física | Temperatura |
+| Rango mín / máx | 0 / 100 |
+| Unidad | °C |
+| Valor de exactitud | 0.5 |
+| Unidad de exactitud | °C (una unidad real significa "absoluta" — consulta [La convención "% FS"](../../sensors/adding-a-sensor.mdx#the-fs-convention)) |
+| Resolución | 0.1 |
+| Unidad de resolución | °C |
+| Incertidumbre de medición | 0.3 |
+| Unidad de incertidumbre | °C |
+| Rol de calibración | sin marcar (no es un patrón de referencia) |
+
+Deja en blanco "Unidad de señal de salida" en ambos canales para que la unidad del valor medido
+tome °C por defecto — esto evita la complejidad de conversión de unidades en este ejemplo.
+
+## 1.1 Calibrar primero el patrón de referencia
+
+En el Activo A, inicia una calibración: tipo **interna** (o externa — no importa aquí, no se
+necesita ningún activo de referencia), distribución **Normal**, confianza **95%**, no se necesita
+ninguna especificación de exactitud (omite la exactitud del canal — no está configurada en este
+canal).
+
+Puntos de datos (referencia = el valor de un patrón de nivel superior; medido = la lectura de este
+termómetro de referencia):
+
+| # | Referencia (°C) | Medido (°C) |
+|---|---|---|
+| 1 | 0.000 | 0.010 |
+| 2 | 50.000 | 50.020 |
+| 3 | 100.000 | 99.985 |
+
+### Las matemáticas
+
+Ajustar $\text{reference} = a \cdot \text{measured} + b$ (grado 1) a estos 3 puntos da
+$a = 1.00025$, $b = -0.01750$.
+
+Residuos (referencia − calculado):
+
+| Punto | Calculado | Residuo |
+|---|---|---|
+| 1 | −0.007498 | **+0.007498** |
+| 2 | 50.015004 | **−0.015004** |
+| 3 | 99.992495 | **+0.007505** |
+
+$n = 3$ puntos, $k = 2$ parámetros → grados de libertad residuales $= 1$.
+
+- **Incertidumbre estándar Tipo A** = desviación estándar muestral de los residuos ($\text{ddof}=1$)
+  = **0.012994 °C**.
+- No hay contribuciones Tipo B configuradas en este canal, así que el presupuesto tiene exactamente
+  una fila:
+
+| Fuente | Distribución | u | dof |
+|---|---|---|---|
+| fit_residuals (Tipo A) | normal | 0.012994 | 1 |
+
+- **Incertidumbre combinada**: $u_c = \sqrt{0.012994^2} = \mathbf{0.012994\ °C}$.
+- **Factor de cobertura**: para una distribución normal al 95% de confianza,
+  $k = \Phi^{-1}(0.975) \approx \mathbf{1.96}$.
+- **Incertidumbre expandida**: $U = k \cdot u_c = 1.96 \times 0.012994 = 0.025467 \approx
+  \mathbf{0.025\ °C}$ (2 cifras significativas).
+
+### Resultados esperados en el asistente (Paso 3)
+
+| Campo | Valor |
+|---|---|
+| R² | 0.99999993 |
+| RMSE | 0.010609 |
+| Error máximo | 0.015004 |
+| Incertidumbre combinada | 0.012994 (mostrado redondeado: **0.013**) |
+| Incertidumbre expandida (±) | 0.025467 (mostrado redondeado: **0.025**) |
+
+Guarda esta calibración. **Anota la incertidumbre expandida (0.025 °C)** — la calibración del
+Activo B la obtiene automáticamente en el siguiente paso.
+
+## 1.2 Calibrar el sensor de trabajo contra el patrón de referencia
+
+En el Activo B, inicia una calibración: tipo **interna**, activo de referencia **Reference PT100
+Standard** (Activo A) — tan pronto como lo elijas, el asistente debería mostrar "U del patrón de
+referencia: 0.025 °C (última calibración de Reference PT100 Standard)." Si en su lugar muestra un
+campo de ingreso manual, la obtención automática no encontró ninguna calibración en el Activo A —
+regresa y confirma que se guardó 1.1.
+
+Distribución **Normal**, confianza **95%**, regla de decisión **Banda de guarda (tolerancia − U)**, y
+marca **"Incl. exactitud nominal del sensor"** (incorpora la especificación del fabricante de 0.3 °C
+del canal).
+
+Puntos de datos:
+
+| # | Referencia (°C) | Medido (°C) |
+|---|---|---|
+| 1 | 0.00 | 0.05 |
+| 2 | 20.00 | 20.08 |
+| 3 | 40.00 | 39.95 |
+| 4 | 60.00 | 60.12 |
+| 5 | 80.00 | 79.90 |
+| 6 | 100.00 | 100.07 |
+
+### Las matemáticas
+
+Ajuste: $a = 1.00038$, $b = -0.04739$.
+
+| Punto | Calculado | Residuo |
+|---|---|---|
+| 1 | 0.002631 | −0.002631 |
+| 2 | 20.040260 | −0.040260 |
+| 3 | 39.917828 | +0.082172 |
+| 4 | 60.095510 | −0.095510 |
+| 5 | 79.883044 | +0.116956 |
+| 6 | 100.060727 | −0.060727 |
+
+$n = 6$, $k = 2$ → dof residuales $= 4$. Error máximo = **0.116956** (punto 5) → error %FS =
+$0.116956/100 \times 100\% = \mathbf{0.117\%}$.
+
+**Presupuesto de incertidumbre** (cuatro filas esta vez):
+
+| Fuente | Cómo se deriva | u |
+|---|---|---|
+| fit_residuals (Tipo A) | desviación estándar de los 6 residuos, dof = 4 | 0.083509 |
+| reference_standard (Tipo B) | 0.025467 (U del Activo A) ÷ k=2 | 0.012734 |
+| resolution (Tipo B) | $0.1/\sqrt{12}$ | 0.028868 |
+| sensor_nominal_accuracy (Tipo B) | 0.3 ÷ k=2 | 0.150000 |
+
+- **Combinada**: $u_c = \sqrt{0.083509^2 + 0.012734^2 + 0.028868^2 + 0.150000^2} =
+  \mathbf{0.174554\ °C}$.
+- **Grados de libertad efectivos** (Welch-Satterthwaite — solo `fit_residuals` tiene dof finitos;
+  las tres filas Tipo B son exactamente conocidas y quedan fuera de la suma):
+
+  $$
+  \nu_{\text{eff}} = \frac{u_c^4}{u_A^4 / \text{dof}_A} = \frac{0.174554^4}{0.083509^4/4}
+  \approx 76.4
+  $$
+
+- **Expandida** (distribución normal — $\nu_{\text{eff}}$ no se usa para "normal", solo para
+  "t"/"chi cuadrado"): $k = \Phi^{-1}(0.975) \approx 1.96$,
+  $U = 1.96 \times 0.174554 = 0.342120 \approx \mathbf{0.34\ °C}$ (2 cifras significativas).
+
+**Regla de decisión (banda de guarda, especificación = ±0.5 °C absoluta):**
+
+$$
+\text{guard} = U = 0.342120, \quad \text{max error} + \text{guard} = 0.116956 + 0.342120 =
+0.459076 \le 0.5 \implies \textbf{CONFORMA}
+$$
+
+### Resultados esperados
+
+| Campo | Valor |
+|---|---|
+| Incertidumbre combinada | mostrado redondeado: **0.17** |
+| Incertidumbre expandida (±) | mostrado redondeado: **0.34** |
+| ν_eff (en el tooltip de Expandida) | ≈ 76.4 |
+| Dictamen | **CONFORMA** con ±0.5 (absoluto), regla de decisión = Aceptación con banda de guarda |
+
+## 1.3 Comprobación adicional — observa cómo discrepan las tres reglas de decisión [#bonus-check]
+
+Repite 1.2 con el valor de Exactitud del canal cambiado a **0.4** (edita el canal, guarda, y luego
+vuelve a ejecutar los mismos 6 puntos a través del Paso 3 de una nueva calibración) y prueba las tres
+[reglas de decisión](../decision-rules.mdx) con "Incl. exactitud nominal del sensor" aún
+marcada. Todo lo anterior no cambia (mismo ajuste, mismo presupuesto, mismo $U = 0.342120$) —
+solo cambia el resultado de aprobado/rechazado:
+
+| Regla de decisión | Comprobación | Resultado |
+|---|---|---|
+| Aceptación simple | $0.116956 \le 0.4$ | **CONFORMA** |
+| Banda de guarda (− U) | $0.116956 + 0.342120 = 0.459076 \le 0.4$? No | **NO CONFORMA** |
+| Riesgo compartido (+ U) | $0.116956 - 0.342120 = -0.225164 \le 0.4$ | **CONFORMA** |
+
+Esta es la forma más clara de confirmar que la función de reglas de decisión está conectada
+correctamente: datos idénticos y especificación idéntica, tres veredictos diferentes dependiendo
+únicamente de qué regla esté seleccionada.

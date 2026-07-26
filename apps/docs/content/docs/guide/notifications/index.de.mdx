@@ -1,0 +1,65 @@
+---
+title: Benachrichtigungen
+description: Der In-App-Benachrichtigungsposteingang, seine Zustellkanäle und wie jeder Benutzer festlegt, was er erhält.
+---
+
+Open Gauge hält jeden Benutzer über die Dinge auf dem Laufenden, die seine Aufmerksamkeit
+erfordern — eine Beitrittsanfrage zu einer Organisation, eine Entscheidung über die eigene Anfrage
+oder den Kalibrierstatus einer Anlage — über einen In-App-Benachrichtigungsposteingang (das
+Glockensymbol in der oberen Leiste) und optional per E-Mail. Jeder Benutzer wählt unter
+**Einstellungen → Benachrichtigungen** aus, welche Kanäle er für jede Kategorie möchte.
+
+## Benachrichtigungskategorien
+
+Jede Benachrichtigung gehört zu einer dieser Kategorien:
+
+| Kategorie | Empfänger | Löst aus, wenn |
+|---|---|---|
+| Kalibrierung fällig | Aktive Techniker-/Admin-/Super-Admin-Mitglieder der Organisation der Anlage | Eine Kalibrierung tritt in das Erinnerungsfenster ein oder wird überfällig (täglicher Durchlauf) |
+| Neue Kalibrierung erfasst | Wie oben, ausgenommen wer sie erfasst hat | `POST /calibrations` erfolgreich ist |
+| Beitrittsanfragen zu Organisationen | Admins der Organisation | Ein Benutzer einen Beitritt beantragt |
+| Entscheidungen zu Beitrittsanfragen | Der Anfragende | Ein Admin die Anfrage genehmigt oder ablehnt |
+
+Viewer werden nie über Kalibrierungen benachrichtigt — sie können nicht darauf reagieren, daher
+wäre es nur Lärm. Siehe
+[Kalibrierbenachrichtigungen](../self-hosting/email-notifications.mdx#calibration-notifications)
+für die E-Mail-Seite derselben Ereignisse.
+
+## Zustellkanäle
+
+Jede Kategorie kann zugestellt werden über:
+
+- **Intern** — eine In-App-Benachrichtigung, immer verfügbar, unabhängig davon, ob E-Mail
+  konfiguriert ist. Dies ist der garantierte Kanal: Beitrittsanfragen zu Organisationen zum Beispiel
+  lösen immer eine aus, sodass eine Anfrage nie stillschweigend übersehen wird.
+- **E-Mail** — wird nur gesendet, wenn ein Administrator SMTP konfiguriert hat
+  (**Admin → E-Mail**) *und* der Empfänger für diese Kategorie nicht aus E-Mail abgemeldet ist.
+
+Ein Benutzer kann für eine bestimmte Kategorie beide, einen oder keinen aktivieren. Beide
+auszuschalten bedeutet, dass diese Kategorie für diesen Benutzer vollständig stummgeschaltet ist;
+andere Benutzer sind davon nicht betroffen, da die Einstellungen benutzerbezogen sind.
+
+## Einstellungen konfigurieren
+
+Unter **Einstellungen → Benachrichtigungen** zeigt jede Kategorie zwei Kontrollkästchen —
+**E-Mail** und **Intern** — die bei Änderung sofort gespeichert werden. Neue Benutzer (und jede
+Kategorie, die ein Benutzer noch nicht angefasst hat) haben standardmäßig beide Kanäle aktiviert,
+sodass Benachrichtigungen ohne jede Einrichtung von Haus aus funktionieren.
+
+## Der Benachrichtigungsposteingang
+
+Ein Klick auf das Glockensymbol in der oberen Leiste öffnet das Dropdown, das Benachrichtigungen
+nach Neuestem zuerst auflistet:
+
+- **Eine Benachrichtigung anklicken** — markiert sie als gelesen und navigiert, falls eine
+  zugehörige Seite existiert (z. B. eine Anlage oder Organisation), dorthin.
+- **Alle als gelesen markieren** — entfernt die Ungelesen-Anzeige, ohne zu navigieren oder etwas
+  zu löschen.
+- **Entfernen (×)** bei einer einzelnen Benachrichtigung, oder **Alle löschen** — löscht
+  Benachrichtigungen dauerhaft aus dem Posteingang. Dies ist getrennt vom Gelesen-/Ungelesen-Status:
+  eine Benachrichtigung kann gelesen, aber weiterhin vorhanden sein, oder ganz entfernt werden.
+
+Das Löschen einer Benachrichtigung entfernt sie nur aus dem eigenen Posteingang des Empfängers; es
+hat keine Auswirkung auf das zugrunde liegende Ereignis (z. B. löscht das Entfernen einer
+Beitrittsanfrage-Benachrichtigung nicht die Anfrage selbst — das wird weiterhin über die Seite der
+Organisation gehandhabt).

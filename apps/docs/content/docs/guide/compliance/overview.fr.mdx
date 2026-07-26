@@ -1,0 +1,72 @@
+---
+title: Aperçu de la conformité
+description: Comment les fonctionnalités de calibration et de traçabilité d'Open Gauge correspondent aux normes réglementaires et de certification auxquelles les laboratoires sont évalués.
+---
+
+Open Gauge est conçu pour être utilisable comme système d'enregistrement derrière un programme de
+qualité/métrologie accrédité ou certifié, pas seulement comme une base de données de capteurs.
+Cette section documente, norme par norme, exactement quelles clauses les fonctionnalités
+d'Open Gauge traitent aujourd'hui, lesquelles sont partiellement traitées, et lesquelles restent
+la responsabilité de l'organisation exploitante plutôt que du logiciel.
+
+## Comment lire ces pages
+
+Chaque norme a sa propre page en trois parties :
+
+1. **Résumé** — éditeur, édition, portée, et pourquoi elle est pertinente pour une plateforme de
+   calibration auto-hébergée.
+2. **Tableau de conformité** — une ligne par clause pertinente, avec un statut et un renvoi vers
+   l'endroit d'Open Gauge où cette clause est traitée.
+3. **Détail** — une section par clause, avec un court extrait de l'exigence et une explication de
+   la façon dont Open Gauge la traite (ou l'écart concret, si ce n'est pas encore le cas).
+
+### Légende des statuts
+
+| Statut | Signification |
+|---|---|
+| ✅ Satisfaite | La fonctionnalité existe aujourd'hui et satisfait la clause telle qu'écrite. |
+| ⚠️ Partielle | Open Gauge fournit une partie de ce que la clause exige, mais un véritable écart subsiste — décrit dans la section détaillée de la clause. |
+| ❌ Non satisfaite | Open Gauge ne traite actuellement pas cette clause. |
+| ➖ N/A | La clause régit quelque chose en dehors de ce qu'un système logiciel peut satisfaire par lui-même (voir ci-dessous). |
+
+### Portée : ce que ces pages couvrent et ne couvrent pas
+
+Les normes de certification et d'accréditation mélangent deux types d'exigences : des éléments
+qu'un **système logiciel** peut mettre en œuvre (chaînes de traçabilité, calcul d'incertitude,
+immuabilité des enregistrements, contenu des rapports, contrôle d'accès), et des éléments qui
+relèvent intrinsèquement d'une question **organisationnelle/de processus** — enregistrements de
+compétence du personnel, politique d'impartialité, programmes d'audit interne, installations et
+contrôle environnemental, traitement des réclamations. Les tableaux de conformité d'Open Gauge
+n'incluent que les clauses du premier type ; les clauses organisationnelles sont de véritables
+exigences qu'un laboratoire certifié doit tout de même satisfaire, simplement pas des exigences
+qu'une page de documentation sur un logiciel peut valablement marquer « satisfaite ».
+
+### Politique de citation
+
+Lorsque le libellé exact d'une clause importe, ces pages le citent — brièvement, une clause à la
+fois, dans le but d'expliquer comment Open Gauge la traite. Plusieurs des normes référencées ici
+(les documents ISO et SAE/IAQG) sont des publications sous licence commerciale, protégées par le
+droit d'auteur ; ces pages ne les reproduisent pas au-delà de ce qui est nécessaire pour étayer
+chaque explication. Pour le texte intégral faisant autorité, procurez-vous un exemplaire sous
+licence auprès de l'éditeur (ISO, SAE International, etc.) — les documents publiquement
+disponibles (guides JCGM/BIPM, publications EA, réglementations fédérales américaines) font
+exception.
+
+### Ceci n'est pas une certification
+
+Ces pages décrivent les capacités du logiciel telles qu'implémentées et vérifiées par rapport à
+la base de code actuelle à la date indiquée sur chaque page. Il s'agit de documentation
+technique, pas d'un avis juridique, d'une accréditation, ou d'une garantie qu'un déploiement
+spécifique quelconque est conforme — la conformité réelle dépend de la façon dont une organisation
+configure et exploite Open Gauge, et du reste de son système qualité.
+
+## Normes couvertes
+
+| Norme | Statut |
+|---|---|
+| [ISO/IEC 17025:2017](./iso-17025.mdx) — Exigences générales concernant la compétence des laboratoires d'essais et d'étalonnages | Publiée |
+| [EA-4/02](./ea-4-02.mdx) — Évaluation de l'incertitude de mesure en étalonnage | Publiée |
+| [ISO 9001:2015](./iso-9001.mdx) — Systèmes de management de la qualité | Publiée |
+| [ISO 10012:2003](./iso-10012.mdx) — Systèmes de management de la mesure | Publiée |
+| [ISO 13485:2016](./iso-13485.mdx) — Systèmes de management de la qualité pour les dispositifs médicaux | Publiée |
+| [Suite JCGM/GUM](./gum-uncertainty.mdx) — Incertitude de mesure | Publiée (GUM 100, GUM-6, JCGM 106 ; le VIM et la feuille de route GUM-1 sont du vocabulaire, intégrés dans [Normes et glossaire](../reference/standards-glossary.mdx)) |

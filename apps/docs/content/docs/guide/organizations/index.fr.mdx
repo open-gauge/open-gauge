@@ -1,0 +1,123 @@
+---
+title: Organisations
+description: Appartenance multi-organisation, rôles au niveau organisation, demandes d'adhésion, et propriété des actifs.
+---
+
+Les **organisations** constituent la frontière locataire (*tenant*) d'Open Gauge — chaque actif
+appartient à une seule, et chaque utilisateur peut appartenir à un nombre quelconque d'entre elles.
+Gérez-les depuis la page **Organisations** dans la barre latérale.
+
+## Créer une organisation
+
+Tout utilisateur authentifié autre qu'un **Lecteur** (Viewer) peut créer une organisation depuis
+**Organisations → Nouvelle organisation** — il n'y a aucune barrière d'administration au-delà de
+cela, de la même façon que créer une organisation GitHub ou Gogs ne nécessite pas d'être
+administrateur du site. Le créateur devient automatiquement le premier membre **admin** de cette
+organisation.
+
+Une organisation possède : un **nom**, une **raison sociale complète** optionnelle, une
+**description**, un **site web**, un **emplacement** (son emplacement principal/siège social,
+choisi dans l'arborescence des emplacements — voir [Emplacements](../locations/index.mdx)), un
+**e-mail**, un **téléphone**, un **logo**, et un indicateur **privé**.
+
+## Appartenance et rôles d'organisation
+
+Un utilisateur peut être membre d'un nombre quelconque d'organisations, avec un rôle limité à
+*cette* organisation uniquement :
+
+| Rôle | Peut faire |
+|---|---|
+| `member` | Voir les détails complets de l'organisation, la liste des membres, et ses actifs. |
+| `admin` | Tout ce qu'un membre peut faire, plus : modifier le profil/logo de l'organisation, gérer les membres (changer les rôles, retirer des membres), approuver/rejeter les demandes d'adhésion, et désactiver l'organisation. |
+
+Ceci est un concept distinct du rôle RBAC global sur le compte de l'utilisateur
+(`superadmin`/`admin`/`technician`/`viewer` — voir
+[Authentification](../self-hosting/authentication.mdx#roles-rbac)). Les deux ne se recoupent
+qu'avec une seule dérogation : **Super Admin** peut gérer n'importe quelle organisation quelle que
+soit son appartenance à celle-ci, comme filet de sécurité au niveau système (par ex. une
+organisation se retrouvant sans aucun administrateur). Le rôle global `admin` n'a aucun accès
+spécial à une organisation dont il n'est pas membre — la gestion d'organisation est sinon
+d'égal à égal, comme dans Gogs. La seule exception est le **Lecteur** (Viewer) : il lui est
+interdit de gérer *toute* organisation — en créer une, modifier son profil, téléverser un logo, ou
+toucher à ses membres — même s'il détient un rôle `admin` propre à une organisation. La
+restriction RBAC globale l'emporte ici sur celle au niveau organisation, de la même façon que le
+Lecteur est en lecture seule partout ailleurs dans Open Gauge.
+
+### Quitter et retirer des membres
+
+Un bouton **Rejoindre / Quitter** apparaît sur chaque ligne de la liste des organisations et sur sa
+page de détail — à côté de **Modifier** pour les administrateurs, à la place de Modifier pour tous
+les autres. Son libellé dépend du visiteur : « Demander à rejoindre », un « Demande en attente »
+désactivé pendant qu'une demande est en cours, ou un « Quitter » rouge pour les membres ; chacun
+ouvre une boîte de dialogue de confirmation avant de faire quoi que ce soit.
+
+Un membre peut quitter à tout moment — à moins qu'il ne soit le **dernier administrateur restant**
+de l'organisation. Dans ce cas, la boîte de dialogue Quitter le guide plutôt que d'échouer
+simplement : promouvoir d'abord un autre membre au rôle d'administrateur s'il y a d'autres
+membres, ou désactiver l'organisation à la place s'il est le seul membre restant. La même
+protection du dernier administrateur s'applique lorsqu'un administrateur tente de se retirer
+*lui-même*. Retirer (ou quitter) ne supprime pas l'enregistrement d'appartenance — il est marqué
+inactif, préservant l'historique de qui a un jour fait partie de l'organisation, conformément à
+la philosophie générale de suppression douce d'Open Gauge (voir
+[Modèle de données et concepts](../concepts/data-model.mdx)).
+
+Un administrateur peut également ajouter des membres directement depuis le bouton **Ajouter un
+membre** de la page de l'organisation (visible en mode édition, comme les contrôles de changement
+de rôle et de retrait), qui ouvre une liste multi-sélection consultable de tous les utilisateurs
+qui ne sont pas déjà membres actifs — les utilisateurs sélectionnés sont ajoutés avec le rôle
+`member`.
+
+## Visibilité
+
+- Les **organisations publiques** (`private: false`) affichent leur profil complet — nom, raison
+  sociale complète, description, site web, emplacement, e-mail, téléphone — à tout utilisateur
+  authentifié, qu'il en soit membre ou non.
+- Les **organisations privées** n'affichent que leur **nom** (avec une icône de cadenas) dans la
+  liste **Organisations**, de sorte qu'elles restent suffisamment découvrables pour qu'on puisse
+  demander à les rejoindre. Tout le reste — les détails du profil, la liste des membres, et ses
+  actifs — n'est visible que par les membres (et le Super Admin).
+- La **liste des membres** elle-même n'est jamais publique, même pour une organisation non privée —
+  seuls les membres peuvent voir qui d'autre en fait partie.
+- Un administrateur peut désactiver (« supprimer ») une organisation depuis la **Zone dangereuse**
+  de son formulaire d'édition, derrière une boîte de dialogue de confirmation. Une organisation
+  désactivée est invisible pour tout le monde sauf le Super Admin — elle disparaît de la liste des
+  organisations et sa page renvoie une erreur 404 pour tout autre utilisateur, le même traitement
+  qu'une organisation privée poussée à l'extrême.
+- Le Super Admin voit également les organisations désactivées dans la liste **Organisations**
+  (surlignées en rouge, étiquetées « Supprimée ») et peut en réactiver une avec le bouton
+  **Restaurer l'organisation** qui remplace « Supprimer l'organisation » dans la Zone dangereuse de
+  cette organisation une fois qu'elle est désactivée. Restaurer rend simplement l'organisation à
+  nouveau active et visible — cela ne réactive aucune des appartenances qui ont été effacées lors
+  de la désactivation ; réajoutez les membres via **Ajouter un membre** par la suite.
+
+## Demandes d'adhésion
+
+Un utilisateur qui n'est pas membre d'une organisation peut envoyer une **demande d'adhésion**
+depuis la page de cette organisation. Cela notifie chaque administrateur de l'organisation de deux
+façons :
+
+- Par **e-mail**, si le SMTP est configuré (voir
+  [Notifications par e-mail](../self-hosting/email-notifications.mdx)).
+- Par une **notification dans l'application** (l'icône de cloche dans la barre supérieure) —
+  toujours, que la messagerie soit configurée ou non. C'est le canal garanti ; l'e-mail est une
+  commodité en plus de celui-ci.
+
+Le demandeur apparaît directement dans la liste **Membres** de l'organisation avec un statut « En
+attente » — cliquer sur la notification dans l'application amène directement un administrateur à
+la page de l'organisation en mode édition afin que la nouvelle demande soit immédiatement visible.
+Un administrateur l'approuve ou la rejette depuis cette même ligne. Approuver ajoute le demandeur
+en tant que `member` ; les deux décisions notifient le demandeur de la même façon.
+
+## Les actifs appartiennent à une organisation
+
+Chaque actif possède un `organization_id` direct, choisi dans une liste déroulante des propres
+organisations de l'utilisateur créateur lors de la création de l'actif. Ceci est indépendant de
+l'**emplacement** de l'actif — l'organisation d'un actif et l'organisation de son emplacement ne
+sont pas croisées, donc choisissez les deux séparément. L'organisation est affichée sur la page de
+détail de l'actif (onglet Aperçu → panneau Général) et renvoie un lien vers la page de cette
+organisation.
+
+La page d'une organisation affiche un **nombre d'actifs** cliquable qui renvoie vers le registre
+des actifs, filtré sur les actifs de cette organisation (`/assets?organization_id=...`), le même
+schéma que celui utilisé par le nombre d'actifs d'un emplacement (voir
+[Emplacements](../locations/index.mdx)).

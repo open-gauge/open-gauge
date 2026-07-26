@@ -1,0 +1,31 @@
+---
+title: Agregar un DAQ
+description: Registrar un dispositivo de adquisición de datos — campos de especificación de hardware.
+---
+
+Un activo **DAQ** (dispositivo de adquisición de datos) representa un registrador de datos, acondicionador de
+señal o puerta de enlace — hardware que lee o enruta señales de sensores, en lugar de medir una magnitud
+física en sí mismo. Créalo mediante **Activos → Nuevo activo**, tipo de activo **daq**.
+
+A diferencia de un sensor, un DAQ tiene una única fila de especificación de hardware en lugar de canales de
+medición:
+
+| Campo | Notas |
+|---|---|
+| Tipo de DAQ | `data_logger` / `signal_conditioner` / `gateway` / `other` |
+| Canales de entrada / salida | Número de canales físicos disponibles. |
+| Tipos de señal de entrada / salida | p. ej. 4-20mA, 0-10V, termopar, RTD. |
+| Tasa de muestreo (Hz) | Agregada y por canal. |
+| Tipo y resolución del ADC (bits) | Las características del convertidor analógico-digital. |
+| Rango de voltaje de entrada | Mín/máx. |
+| Impedancia de entrada (Ω) | |
+| Piso de ruido (µV RMS) | |
+| Rango dinámico (dB) | |
+| Soporte de sincronización, fuente de reloj, precisión de sincronización horaria, jitter | Relevante para adquisición sincronizada multicanal o multidispositivo. |
+| Protocolo de comunicación, tipo de interfaz | p. ej. Modbus, Ethernet/IP, RS-485, USB. |
+| Modos de disparo (trigger) | |
+
+Un DAQ se puede vincular desde un registro de calibración (`daq_id`) para documentar qué hardware de
+adquisición se usó para tomar las lecturas de ese evento de calibración — útil cuando el mismo
+sensor se lee a través de diferentes DAQs en distintos momentos y quieres saber qué
+combinación produjo un dato dado.

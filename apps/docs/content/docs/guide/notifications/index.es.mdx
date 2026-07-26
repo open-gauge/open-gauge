@@ -1,0 +1,59 @@
+---
+title: Notificaciones
+description: La bandeja de entrada de notificaciones dentro de la aplicación, sus canales de entrega, y cómo cada usuario configura lo que recibe.
+---
+
+Open Gauge mantiene a cada usuario al tanto de las cosas que requieren su atención — una solicitud de ingreso a una
+organización, una decisión sobre su propia solicitud, o el estado de calibración de un activo — mediante una bandeja de
+entrada de notificaciones dentro de la aplicación (el ícono de campana en la barra superior) y, opcionalmente, correo electrónico. Cada usuario elige qué
+canales quiere para cada categoría desde **Configuración → Notificaciones**.
+
+## Categorías de notificación
+
+Cada notificación pertenece a una de estas categorías:
+
+| Categoría | Destinatarios | Se dispara cuando |
+|---|---|---|
+| Calibración próxima a vencer | Miembros activos Técnico/Administrador/Super Admin de la organización del activo | Una calibración entra en la ventana de recordatorio, o cae en estado vencida (barrido diario) |
+| Nueva calibración registrada | Igual que arriba, excluyendo a quien la registró | `POST /calibrations` tiene éxito |
+| Solicitudes de ingreso a la organización | Administradores de la organización | Un usuario solicita ingresar |
+| Decisiones de ingreso a la organización | El solicitante | Un administrador aprueba o rechaza su solicitud |
+
+A los Visores nunca se les notifica sobre calibraciones — no pueden actuar sobre una, así que sería ruido. Consulta
+[Notificaciones de calibración](../self-hosting/email-notifications.mdx#calibration-notifications) para
+el lado del correo electrónico de estos mismos eventos.
+
+## Canales de entrega
+
+Cada categoría se puede entregar mediante:
+
+- **Interno** — una notificación dentro de la aplicación, siempre disponible sin importar si el correo está
+  configurado. Este es el canal garantizado: las solicitudes de ingreso a una organización, por ejemplo, siempre
+  generan una para que una solicitud nunca pase desapercibida silenciosamente.
+- **Correo electrónico** — se envía solo si un administrador ha configurado SMTP (**Admin → Correo**) *y*
+  el destinatario no ha optado por no recibir correo para esa categoría.
+
+Un usuario puede habilitar ambos, uno solo, o ninguno para una categoría dada. Desactivar ambos significa que esa
+categoría queda completamente silenciada para ese usuario; los demás usuarios no se ven afectados, ya que las preferencias son por usuario.
+
+## Configurar preferencias
+
+Desde **Configuración → Notificaciones**, cada categoría muestra dos casillas — **Correo electrónico** e
+**Interno** — que se guardan de inmediato al cambiarlas. Los usuarios nuevos (y cualquier categoría que un usuario no haya
+tocado) tienen ambos canales habilitados por defecto, así que las notificaciones funcionan de fábrica sin ninguna configuración.
+
+## La bandeja de entrada de notificaciones
+
+Al hacer clic en el ícono de campana en la barra superior se abre el menú desplegable, que lista las notificaciones de más
+recientes a más antiguas:
+
+- **Hacer clic en una notificación** — la marca como leída y, si tiene una página asociada (p. ej. un activo u
+  organización), navega hasta allí.
+- **Marcar todo como leído** — borra el indicador de no leído sin navegar ni eliminar nada.
+- **Eliminar (×)** en una notificación individual, o **Borrar todo** — elimina permanentemente
+  notificaciones de la bandeja de entrada. Esto es independiente del estado leído/no leído: una notificación puede estar
+  leída pero seguir presente, o eliminada por completo.
+
+Eliminar una notificación solo la quita de la bandeja de entrada del propio destinatario; no tiene ningún efecto sobre
+el evento subyacente (p. ej. eliminar una notificación de solicitud de ingreso no rechaza la solicitud en sí —
+eso sigue gestionándose desde la página de la organización).

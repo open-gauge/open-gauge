@@ -29,13 +29,23 @@ const ENTITY_ICON: Record<string, ReactNode> = {
   location:    <MapPinIcon size={11} />,
 };
 
-function actionLabel(action: string): string {
+function humanizeAction(action: string): string {
   return action
     .replace(/\./g, " ")
     .replace(/_/g, " ")
     .split(" ")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+/** Falls back to a humanized version of the raw action code for any value the
+ * catalog doesn't have a translation for yet (e.g. a newly added audit action). */
+function useActionLabel() {
+  const t = useTranslations("tokens.auditAction");
+  return (action: string) => {
+    const k = action as Parameters<typeof t>[0];
+    return t.has(k) ? t(k) : humanizeAction(action);
+  };
 }
 
 function describeLog(log: AuditLogEntry): string {
@@ -62,6 +72,7 @@ function EntityBadge({ entityType }: { entityType: string }) {
 export default function ActivityPage() {
   const t = useTranslations("activity");
   const tEntity = useTranslations("tokens.auditEntity");
+  const actionLabel = useActionLabel();
   const searchParams = useSearchParams();
   const actorIdParam = searchParams.get("actor_id") ?? undefined;
 

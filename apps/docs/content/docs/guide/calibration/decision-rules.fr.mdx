@@ -1,0 +1,54 @@
+---
+title: Règles de décision et conformité
+description: Comment Open Gauge décide de la réussite/de l'échec une fois l'incertitude de mesure prise en compte — acceptation simple, bande de garde, et risque partagé.
+---
+
+L'ISO/IEC 17025 §7.1.3 et §7.8.6 exigent que chaque fois qu'un laboratoire émet une déclaration de
+réussite/échec, il documente **quelle règle de décision** a été appliquée — une simple comparaison
+« lecture dans la spécification » ne suffit plus une fois l'incertitude de mesure prise en
+compte. Open Gauge stocke la règle de décision et la déclaration de conformité résultante sur
+chaque calibration.
+
+## Les trois règles [#decision-rule]
+
+Soit $\text{error}$ l'[erreur maximale](./curve-fitting.mdx#max-error) de la calibration et
+$\text{tolerance}$ la spécification d'exactitude de la voie (par ex. ±0,5 °C, ou ±1 % FS
+converti en valeur absolue), et $U$ l'
+[incertitude élargie](./uncertainty-budget.mdx#expanded-uncertainty).
+
+| Règle | Réussit quand | Effet | Quand l'utiliser |
+|---|---|---|---|
+| **Acceptation simple** (par défaut) | $\text{error} \le \text{tolerance}$ | Ignore entièrement l'incertitude. | Aucune analyse de risque formelle encore effectuée, ou le client n'a pas accepté une règle différente. |
+| **Bande de garde** | $\text{error} + U \le \text{tolerance}$ | La zone d'acceptation se rétrécit vers l'intérieur de $U$. | Réduit le risque de fausse acceptation — à utiliser quand une fausse *réussite* est coûteuse. |
+| **Risque partagé** | $\text{error} - U \le \text{tolerance}$ | La zone d'acceptation s'élargit vers l'extérieur de $U$. | Réduit le risque de faux rejet, au prix d'un certain risque de fausse acceptation près de la limite — à utiliser quand un faux *échec* est coûteux. |
+
+Remarquez que ces trois règles peuvent véritablement être en désaccord sur le *même* ajustement
+et la *même* spécification — voir [l'exemple 1.3](./examples/rtd-linear.mdx#bonus-check) pour un
+cas détaillé où les trois règles produisent un verdict différent à partir des mêmes données
+d'entrée.
+
+## Ce qui est stocké
+
+Chaque calibration stocke une `conformity_statement` portant l'enregistrement complet : la règle
+de décision utilisée, un rendu lisible par un humain de la spécification (par ex.
+`"±0.5% of full scale"`), l'incertitude élargie appliquée (le cas échéant), si elle a réussi, et
+une raison (renseignée uniquement lorsqu'aucune spécification d'exactitude n'était configurée du
+tout, ce qui signifie que la conformité n'a pas été évaluée).
+
+## Enregistrer une calibration non conforme
+
+L'enregistrement n'est **jamais bloqué** par un résultat non conforme. Une calibration échouée
+est elle-même un enregistrement important — la
+[philosophie de calibration](../concepts/data-model.mdx) d'Open Gauge traite l'historique comme
+immuable et ne supprime jamais un résultat réel simplement parce qu'il est gênant. Lorsqu'un
+résultat n'est pas conforme, la boîte de dialogue de confirmation d'enregistrement nomme
+explicitement la spécification et la règle de décision, et le bouton d'enregistrement se
+relibelle en **« Enregistrer quand même »**.
+
+## Pas d'aperçu de tolérance autonome
+
+Il n'y a pas de champ de tolérance « et si » séparé côté client — une version antérieure de
+l'assistant en avait un, déconnecté de la spécification réelle de la voie et jamais persisté, ce
+qui pouvait contredire le résultat de conformité réellement enregistré. La déclaration de
+conformité affichée dans le panneau d'incertitude de l'assistant *est* celle qui est enregistrée
+et imprimée sur le certificat.

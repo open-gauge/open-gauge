@@ -1,0 +1,56 @@
+---
+title: Normas y glosario
+description: La nomenclatura GUM/VIM que usa Open Gauge, y las normas que implementa su motor de calibración.
+---
+
+Para un desglose cláusula por cláusula de qué requisitos cumple Open Gauge, cuáles cumple
+parcialmente, o cuáles todavía no aborda — con citas y referencias de código — consulta
+[Cumplimiento](../compliance/overview.mdx), comenzando con
+[ISO/IEC 17025:2017](../compliance/iso-17025.mdx).
+
+## Normas que implementa Open Gauge
+
+| Norma | Título | Relevancia para Open Gauge |
+|---|---|---|
+| **JCGM 100:2008 (GUM)** | Guide to the expression of uncertainty in measurement | El documento fundacional detrás de [el presupuesto de incertidumbre](../calibration/uncertainty-budget.mdx) — evaluación Tipo A/B, combinación, expansión, factores de cobertura. |
+| **JCGM GUM-6:2020** | Developing and using measurement models | El documento más directamente aplicable al modelo de datos de coeficientes de calibración de Open Gauge — covarianza de coeficientes, propagación de la incertidumbre a través de una curva ajustada. |
+| **ISO/IEC 17025:2017** | General requirements for the competence of testing and calibration laboratories | §7.1.3/§7.8.6 exigen documentar una [regla de decisión](../calibration/decision-rules.mdx) siempre que se emita un dictamen de aprobado/rechazado; §7.8.4.3 rige qué puede indicar un certificado sobre los intervalos de calibración. |
+| **JCGM GUM-1:2023** | Guide to the expression of uncertainty in measurement — Part 1: Introduction | Una hoja de ruta/panorama general del conjunto reorganizado de documentos del GUM. |
+| **JCGM 200:2012 (VIM)** | International vocabulary of metrology — Basic and general concepts and associated terms | El vocabulario fuente sobre el que se construyen tanto el GUM como ISO/IEC 17025 sin redefinirlo — consulta los términos abajo. Referenciado por ISO/IEC 17025 como "ISO/IEC Guide 99." |
+
+Consulta [Cumplimiento → Conjunto de incertidumbre GUM/JCGM](../compliance/gum-uncertainty.mdx) para
+el estado a nivel de cláusula de GUM-6 y JCGM 106; el VIM y la hoja de ruta GUM-1 son documentos de
+vocabulario/panorama general sin tabla de cumplimiento propia — su contenido vive aquí en su lugar.
+
+## Nomenclatura central (GUM / VIM)
+
+La interfaz de Open Gauge, los nombres de campo de la API, y el lenguaje del certificado usan estos
+términos con precisión — no son sinónimos intercambiables.
+
+| Término | Símbolo | Definición |
+|---|---|---|
+| Mensurando | $Y$ | La magnitud particular sujeta a medición. |
+| Magnitudes de entrada | $X_1, \ldots, X_N$ | Magnitudes de las que depende el mensurando: $Y = f(X_1, \ldots, X_N)$. |
+| Estimación de salida | $y$ | El resultado de medición calculado, $y = f(x_1, \ldots, x_N)$. |
+| Incertidumbre estándar | $u(x_i)$ | Incertidumbre de un resultado expresada como una desviación estándar. |
+| Evaluación Tipo A | — | Incertidumbre evaluada mediante análisis estadístico de una serie de observaciones (p. ej. la repetibilidad de los residuos de los puntos de calibración). |
+| Evaluación Tipo B | — | Incertidumbre evaluada por cualquier otro medio: especificaciones del fabricante, certificados de calibración, datos de manuales, resolución, juicio. Tipo A/B es una clasificación del *método de evaluación*, no de error "aleatorio" frente a "sistemático" — el GUM desaconseja explícitamente el término "incertidumbre sistemática." |
+| Incertidumbre estándar combinada | $u_c(y)$ | Incertidumbre estándar de un resultado derivada de otras varias magnitudes — la raíz cuadrada positiva de una suma de términos de varianza/covarianza ponderados por sensibilidad. |
+| Incertidumbre expandida | $U$ | $U = k \cdot u_c(y)$. Define un intervalo que se espera abarque una fracción declarada de los valores razonablemente atribuibles al mensurando. |
+| Factor de cobertura | $k$ | Multiplicador numérico aplicado a $u_c(y)$ para obtener $U$. Siempre debe indicarse junto a $U$. |
+| Coeficiente de sensibilidad | $c_i = \partial f/\partial x_i$ | Describe cómo varía $y$ con un pequeño cambio en $x_i$. |
+| Grados de libertad | $\nu$ | Indicador de fiabilidad de una estimación de incertidumbre estándar (p. ej. $\nu = n-1$ para una media de $n$ observaciones, $\nu = n-m$ para un ajuste por mínimos cuadrados con $m$ parámetros). |
+| Coeficiente de correlación | $r(x_i, x_j)$ | $r = u(x_i, x_j) / [u(x_i)u(x_j)]$, acotado en $[-1, 1]$. |
+| Corrección | — | Un valor sumado, o un factor aplicado, para compensar un efecto sistemático *reconocido*. El GUM asume que todas esas correcciones se aplican **antes** de la evaluación de la incertidumbre. |
+| Trazabilidad metrológica | — | (VIM, vía ISO/IEC Guide 99) "Propiedad de un resultado de medición por la cual el resultado puede relacionarse con una referencia a través de una cadena documentada e ininterrumpida de calibraciones, cada una contribuyendo a la incertidumbre de medición." Consulta [la cadena de trazabilidad](../compliance/iso-17025.mdx#traceability-chain). |
+| Verificación | — | (VIM, vía ISO/IEC Guide 99:2007, 2.44) "Aportación de evidencia objetiva de que un elemento dado cumple los requisitos especificados." Distinta de la *calibración* — la verificación es una comprobación de aprobado/rechazado contra un requisito; la calibración establece la relación entre la indicación y el valor de referencia. |
+| Regla de decisión | — | (ISO/IEC 17025, 3.7) "Regla que describe cómo se tiene en cuenta la incertidumbre de medición al declarar la conformidad con un requisito especificado." Consulta [Reglas de decisión](../calibration/decision-rules.mdx). |
+
+### Error ≠ Incertidumbre
+
+El **error** es una magnitud idealizada e incognoscible (resultado − valor verdadero). La
+**incertidumbre** es un parámetro *positivo* que caracteriza la dispersión de los valores
+razonablemente atribuibles al mensurando. Los nombres de campo de Open Gauge (`max_error`,
+`combined_uncertainty`, `expanded_uncertainty`) se eligen para ser coherentes con esta distinción
+— `max_error` es un error evaluado a partir de datos reales, mientras que los campos de
+incertidumbre describen la *duda* alrededor de un resultado, no el resultado en sí.

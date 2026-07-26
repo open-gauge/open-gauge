@@ -1,0 +1,82 @@
+---
+title: Langue et localisation
+description: Changer la langue d'affichage de l'application, comment la préférence est enregistrée, et ce qui reste volontairement non traduit.
+---
+
+L'application web d'Open Gauge est disponible en anglais (la langue canonique), en espagnol, en
+français et en allemand. Chaque utilisateur choisit sa propre langue d'affichage indépendamment
+des autres membres de son organisation.
+
+## Changer de langue
+
+Cliquez sur l'icône de globe à côté du sélecteur de thème clair/sombre dans la barre supérieure, et
+choisissez une langue dans le menu déroulant. La page se recharge immédiatement dans la nouvelle
+langue — il n'y a pas d'étape de sauvegarde séparée.
+
+## Où la préférence est enregistrée
+
+Le choix est enregistré à deux endroits afin de fonctionner correctement, que vous soyez connecté
+ou non :
+
+- **Un cookie**, défini au moment où vous choisissez une langue. C'est sur cela que repose le choix
+  d'un visiteur non connecté, et cela permet également un changement immédiat avant tout
+  aller-retour avec le serveur.
+- **Votre profil utilisateur** (une fois connecté) — la même requête `PATCH /users/me` utilisée
+  pour votre nom et votre e-mail accepte également un champ `language`. Lors de votre prochaine
+  connexion depuis un autre navigateur ou appareil, la langue enregistrée dans votre profil prime
+  sur le cookie ou la locale du navigateur de cet appareil, de sorte que votre préférence vous suit
+  plutôt que d'être liée à une seule machine.
+
+## Structure des URL
+
+Les pages en anglais ne portent aucun préfixe (`/dashboard`, `/assets`, …). Les pages en espagnol,
+français et allemand portent un préfixe de locale (`/es/dashboard`, `/fr/assets`, `/de/...`). Cela
+signifie que chaque lien et favori qui existait avant le lancement du support multilingue continue
+de fonctionner exactement comme avant — seules les locales autres que l'anglais ont gagné un
+préfixe, rien n'a changé pour l'anglais.
+
+## Ce qui est traduit — et ce qui ne l'est pas
+
+Chaque page et chaque contrôle de l'application authentifiée est traduit : navigation, formulaires,
+tableaux, fenêtres modales, états d'erreur et états vides, les écrans d'administration, le parcours
+connexion/inscription/mot de passe oublié/réinitialisation de mot de passe/vérification d'e-mail,
+chaque liste déroulante pilotée par une énumération (grandeurs physiques, technologies de capteurs,
+statut de calibration, rôles, etc.), les descriptions d'action du journal d'activité, ainsi que les
+pages Politique de confidentialité et Conditions d'utilisation.
+
+Ce centre de connaissances est également traduit — aussi bien ici, sur le site de documentation
+autonome, que dans la copie intégrée à l'application sous **Documentation** dans la barre latérale.
+Les pages se traduisent indépendamment les unes des autres : une page de guide qui n'a pas encore
+de traduction affiche simplement son contenu anglais par défaut, de sorte que la couverture de
+traduction peut croître au fil du temps sans jamais laisser une page vide.
+
+Le **contenu saisi par les utilisateurs** est le seul élément volontairement laissé non traduit :
+noms d'actifs, notes de calibration, texte libre du journal d'audit, et tout ce qu'une personne a
+tapé elle-même. Traduire automatiquement les données de quelqu'un d'autre changerait silencieusement
+ce qu'il a écrit ; ce contenu est donc toujours affiché exactement tel que saisi, quelle que soit la
+langue choisie par la personne qui le consulte.
+
+La Politique de confidentialité et les Conditions d'utilisation sont fournies comme un modèle
+modifiable — voir la note en bas de chaque page. Leurs traductions constituent un point de départ ;
+comme l'original en anglais, les opérateurs sont censés les faire réviser par leur propre conseil
+juridique avant de s'y fier, en particulier pour une juridiction ayant des exigences linguistiques
+spécifiques.
+
+## Le site marketing
+
+Le site marketing séparé sur [opengauge.org](https://opengauge.org) — une base de code différente
+de l'application elle-même — possède son propre sélecteur de langue correspondant à côté de son
+sélecteur clair/sombre, avec des versions complètes en espagnol, français et allemand de la page
+d'accueil et ses propres pages Politique de confidentialité/Conditions d'utilisation. Les visiteurs
+d'une première visite sont redirigés en fonction de l'en-tête `Accept-Language` de leur navigateur ;
+choisir une langue explicitement remplace ce comportement pour les visites suivantes.
+
+## Ajouter une langue (pour les auto-hébergeurs modifiant leur propre instance)
+
+La liste des locales de l'application est un unique tableau de configuration
+(`apps/web/src/i18n/locales.ts`) plus un fichier de messages JSON par domaine fonctionnel sous
+`apps/web/messages/{locale}/`. Prendre en charge une langue supplémentaire est un changement
+purement de contenu — ajoutez une entrée `LocaleMeta` et les fichiers JSON traduits ; aucun code
+applicatif n'a besoin d'être modifié. Ce n'est cependant pas quelque chose qu'une instance en
+cours d'exécution peut faire sans reconstruire l'application — c'est un changement de code source
+pour la personne qui maintient le déploiement, pas un paramètre disponible dans l'application.

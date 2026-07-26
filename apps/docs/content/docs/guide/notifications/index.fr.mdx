@@ -1,0 +1,66 @@
+---
+title: Notifications
+description: La boîte de réception des notifications dans l'application, ses canaux de diffusion, et comment chaque utilisateur configure ce qu'il reçoit.
+---
+
+Open Gauge tient chaque utilisateur informé des éléments nécessitant son attention — une demande
+d'adhésion à une organisation, une décision concernant sa propre demande, ou le statut de
+calibration d'un actif — via une boîte de réception de notifications dans l'application (l'icône
+de cloche dans la barre supérieure) et, optionnellement, par e-mail. Chaque utilisateur choisit
+les canaux qu'il souhaite pour chaque catégorie depuis **Paramètres → Notifications**.
+
+## Catégories de notifications
+
+Chaque notification appartient à l'une de ces catégories :
+
+| Catégorie | Destinataires | Se déclenche quand |
+|---|---|---|
+| Calibration due | Membres Technicien/Administrateur/Super Administrateur actifs de l'organisation de l'actif | Une calibration entre dans la fenêtre de rappel, ou bascule en retard (vérification quotidienne) |
+| Nouvelle calibration enregistrée | Identique à ci-dessus, à l'exclusion de la personne qui l'a enregistrée | `POST /calibrations` réussit |
+| Demandes d'adhésion à une organisation | Administrateurs de l'organisation | Un utilisateur demande à rejoindre |
+| Décisions sur une demande d'adhésion | Le demandeur | Un administrateur approuve ou rejette sa demande |
+
+Les Lecteurs (Viewers) ne sont jamais notifiés à propos des calibrations — ils ne peuvent agir sur
+aucune, ce serait donc du bruit. Voir
+[Notifications de calibration](../self-hosting/email-notifications.mdx#calibration-notifications)
+pour le volet e-mail de ces mêmes événements.
+
+## Canaux de diffusion
+
+Chaque catégorie peut être diffusée via :
+
+- **Interne** — une notification dans l'application, toujours disponible que l'e-mail soit
+  configuré ou non. C'est le canal garanti : les demandes d'adhésion à une organisation, par
+  exemple, en déclenchent toujours une afin qu'une demande ne soit jamais manquée silencieusement.
+- **E-mail** — envoyé uniquement si un administrateur a configuré le SMTP
+  (**Admin → E-mail**) *et* que le destinataire ne s'est pas désinscrit de l'e-mail pour cette
+  catégorie.
+
+Un utilisateur peut activer les deux, l'un ou l'autre, ou aucun pour une catégorie donnée.
+Désactiver les deux signifie que cette catégorie est entièrement muette pour cet utilisateur ; les
+autres utilisateurs ne sont pas affectés, puisque les préférences sont propres à chaque
+utilisateur.
+
+## Configurer les préférences
+
+Depuis **Paramètres → Notifications**, chaque catégorie affiche deux cases à cocher —
+**E-mail** et **Interne** — qui s'enregistrent immédiatement lors du changement. Les nouveaux
+utilisateurs (et toute catégorie qu'un utilisateur n'a pas touchée) ont par défaut les deux canaux
+activés, de sorte que les notifications fonctionnent prêtes à l'emploi sans aucune configuration.
+
+## La boîte de réception des notifications
+
+Cliquer sur l'icône de cloche dans la barre supérieure ouvre le menu déroulant, listant les
+notifications de la plus récente à la plus ancienne :
+
+- **Cliquer sur une notification** — la marque comme lue et, si elle a une page associée (par
+  ex. un actif ou une organisation), y navigue.
+- **Tout marquer comme lu** — efface l'indicateur de non-lu sans naviguer ni rien supprimer.
+- **Supprimer (×)** sur une notification individuelle, ou **Tout effacer** — supprime
+  définitivement des notifications de la boîte de réception. Ceci est distinct de l'état
+  lu/non lu : une notification peut être lue mais toujours présente, ou supprimée purement et
+  simplement.
+
+Supprimer une notification ne la retire que de la boîte de réception propre du destinataire ; cela
+n'a aucun effet sur l'événement sous-jacent (par ex. supprimer une notification de demande
+d'adhésion ne rejette pas la demande elle-même — cela reste géré depuis la page de l'organisation).

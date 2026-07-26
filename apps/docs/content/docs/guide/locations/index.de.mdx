@@ -1,0 +1,39 @@
+---
+title: Standorte
+description: Einrichten der Standorthierarchie, Kennzeichnen von Kalibrierlaboren und Verfolgen von Anlagenbewegungen.
+---
+
+**Standorte** bilden in Open Gauge einen hierarchischen Baum — Organisation → Standort (Site) →
+Gebäude → Labor → jede Detailebene, die für Ihre Einrichtungen sinnvoll ist. Verwalten Sie sie über
+die Seite **Standorte** in der Seitenleiste.
+
+## Die Hierarchie erstellen
+
+Jeder Standort hat einen **Namen**, einen optionalen **Code** (eindeutig pro Organisation, nützlich
+für kurze, menschenlesbare Referenzen), einen **Typ** (z. B. `site` / `building` / `laboratory`) und
+einen optionalen **übergeordneten Standort** — wählen Sie einen übergeordneten Standort, um ihn unter
+einem bestehenden Knoten einzuordnen, oder lassen Sie das Feld leer, um einen neuen Wurzelknoten zu
+erstellen. Adresse und GPS-Koordinaten (Breiten-/Längengrad) sind optional und vor allem für
+Organisationen mit mehreren Standorten nützlich.
+
+## Ein Kalibrierlabor kennzeichnen
+
+Aktivieren Sie **"Kalibrierlabor"** an jedem Standort, der ein gültiger Ort zur *Durchführung* einer
+Kalibrierung ist. Nur so gekennzeichnete Standorte erscheinen in der Auswahl "Kalibrierort" des
+Kalibrier-Assistenten — dies hält diese Liste auf tatsächliche Laborplätze oder Vor-Ort-Kalibrierstationen
+fokussiert, statt auf jedes Lager oder Büro im Baum.
+
+## Anlagen einem Standort zuweisen
+
+Der aktuelle Standort einer Anlage wird auf der Detailseite der Anlage festgelegt. Jedes Mal, wenn sich
+der Standort einer Anlage ändert, zeichnet Open Gauge einen neuen Eintrag in ihrer Standorthistorie auf (mit
+Zeitstempel, wer sie verschoben hat, und einem optionalen Grund/Notizen), statt den vorherigen Standort
+stillschweigend zu überschreiben — sodass "wo befand sich dieses Gerät an einem bestimmten Datum"
+auch nach mehrfachem Verschieben beantwortbar bleibt. Dies spiegelt den allgemeinen Umgang von Open Gauge
+mit Historie wider: siehe [Datenmodell & Konzepte](../concepts/data-model.mdx).
+
+## Einen Standort ausmustern
+
+Standorte verwenden dasselbe Muster der weichen Löschung wie Anlagen (`is_active` / `archived_at`,
+siehe [Datenmodell & Konzepte](../concepts/data-model.mdx)) — das Archivieren eines Standorts löscht
+nicht den historischen Datensatz einer Anlage, die ihm einst zugewiesen war.

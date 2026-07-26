@@ -1,0 +1,23 @@
+---
+title: Ejemplos resueltos
+description: Cuatro ejemplos de calibración completamente resueltos que puedes replicar a través de la interfaz para verificar el motor de cálculo de Open Gauge.
+---
+
+Cuatro ejemplos de calibración completamente resueltos, cada uno ejercitando una parte diferente del
+motor de calibración de Open Gauge. Cada número en ellos fue producido ejecutando el código real de
+producción contra los datos de entrada mostrados, y luego rederivado de forma independiente a mano a
+partir de las fórmulas subyacentes para confirmar que coinciden. Si ingresas la misma configuración de
+activo/canal y los mismos puntos de datos a través de la interfaz, deberías ver los mismos números —
+consulta [Redondeo](./rounding-and-troubleshooting.mdx) para las reglas de precisión de
+visualización.
+
+Lectura de referencia: [Calibración](../overview.mdx) para saber qué significa cada número y por qué,
+[Normas y glosario](../../reference/standards-glossary.mdx) para las cláusulas del GUM/ISO 17025 que
+implementan estas fórmulas.
+
+<Cards>
+  <Card title="Ejemplo 1 — RTD de temperatura, ajuste lineal" href="/docs/guide/calibration/examples/rtd-linear" description="Regresión lineal, un presupuesto de incertidumbre completo de cuatro filas, la obtención automática del patrón de referencia, y las tres reglas de decisión divergiendo sobre los mismos datos." />
+  <Card title="Ejemplo 2 — Transductor de presión, ajuste cuadrático" href="/docs/guide/calibration/examples/pressure-quadratic" description="Selección automática del grado polinomial mediante AIC, detección de no linealidad, y la ruta del factor de cobertura con distribución t." />
+  <Card title="Ejemplo 3 — Celda de carga, histéresis + repetibilidad" href="/docs/guide/calibration/examples/load-cell-hysteresis" description="El detector de histéresis de barrido ascendente/descendente y el detector de repetibilidad de puntos triplicados." />
+  <Card title="Ejemplo 4 — Certificado externo de solo coeficientes" href="/docs/guide/calibration/examples/coefficients-only-certificate" description="Registrar un certificado de laboratorio que indica el polinomio de calibración directamente, sin datos en bruto." />
+</Cards>

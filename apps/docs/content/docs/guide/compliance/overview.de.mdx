@@ -1,0 +1,71 @@
+---
+title: Compliance-Übersicht
+description: Wie die Kalibrier- und Rückführbarkeitsfunktionen von Open Gauge auf die regulatorischen und Zertifizierungsnormen abgebildet werden, gegen die Labore bewertet werden.
+---
+
+Open Gauge ist so aufgebaut, dass es als Referenzsystem hinter einem akkreditierten oder
+zertifizierten Qualitäts-/Metrologieprogramm nutzbar ist, nicht nur als Datenbank für Sensoren.
+Dieser Abschnitt dokumentiert, Norm für Norm, genau welche Klauseln die Funktionen von Open Gauge
+heute abdecken, welche teilweise abgedeckt sind und welche weiterhin in der Verantwortung der
+betreibenden Organisation liegen statt der Software.
+
+## Wie diese Seiten zu lesen sind
+
+Jede Norm erhält ihre eigene Seite mit drei Teilen:
+
+1. **Zusammenfassung** — Herausgeber, Ausgabe, Geltungsbereich und warum sie für eine selbst
+   gehostete Kalibrierplattform relevant ist.
+2. **Compliance-Tabelle** — eine Zeile pro relevanter Klausel, mit Status und einem Verweis darauf,
+   wo diese Klausel in Open Gauge behandelt wird.
+3. **Detail** — ein Abschnitt pro Klausel, mit einem kurzen Auszug der Anforderung und einer
+   Erläuterung, wie Open Gauge sie behandelt (oder der konkreten Lücke, falls noch nicht).
+
+### Statuslegende
+
+| Status | Bedeutung |
+|---|---|
+| ✅ Erfüllt | Die Funktion existiert heute und erfüllt die Klausel wie geschrieben. |
+| ⚠️ Teilweise | Open Gauge bietet einen Teil dessen, was die Klausel verlangt, aber eine echte Lücke bleibt bestehen — beschrieben im Detailabschnitt der Klausel. |
+| ❌ Nicht erfüllt | Open Gauge behandelt diese Klausel derzeit nicht. |
+| ➖ N/A | Die Klausel regelt etwas außerhalb dessen, was ein Softwaresystem allein erfüllen kann (siehe unten). |
+
+### Geltungsbereich: Was diese Seiten abdecken und was nicht
+
+Zertifizierungs- und Akkreditierungsnormen vermischen zwei Arten von Anforderungen: Dinge, die ein
+**Softwaresystem** umsetzen kann (Rückführbarkeitsketten, Unsicherheitsberechnung,
+Unveränderlichkeit von Datensätzen, Berichtsinhalt, Zugriffskontrolle), und Dinge, die von Natur aus
+eine **organisatorische/prozessbezogene** Angelegenheit sind — Aufzeichnungen zur Kompetenz des
+Personals, Unparteilichkeitspolitik, interne Auditprogramme, Einrichtungen und
+Umgebungskontrolle, Beschwerdebearbeitung. Die Compliance-Tabellen von Open Gauge enthalten nur
+Klauseln der ersten Art; die organisatorischen Klauseln sind echte Anforderungen, die ein
+zertifiziertes Labor weiterhin erfüllen muss, nur eben keine, die eine Dokumentationsseite über
+Software sinnvoll als "erfüllt" markieren kann.
+
+### Zitierrichtlinie
+
+Wo der genaue Wortlaut einer Klausel wichtig ist, zitieren diese Seiten ihn — kurz, eine Klausel
+nach der anderen, zu dem Zweck, zu erläutern, wie Open Gauge sie behandelt. Mehrere der hier
+referenzierten Normen (die ISO- und SAE/IAQG-Dokumente) sind kommerziell lizenzierte, urheberrechtlich
+geschützte Publikationen; diese Seiten geben sie nicht über das hinaus wieder, was zur Untermauerung
+jeder Erläuterung nötig ist. Für den maßgeblichen Volltext beziehen Sie eine lizenzierte Ausgabe vom
+Herausgeber (ISO, SAE International usw.) — öffentlich verfügbare Dokumente (JCGM-/BIPM-Leitfäden,
+EA-Publikationen, US-Bundesvorschriften) sind die Ausnahme.
+
+### Dies ist keine Zertifizierung
+
+Diese Seiten beschreiben die Fähigkeiten der Software, wie sie zum auf jeder Seite vermerkten Datum
+gegen die aktuelle Codebasis implementiert und verifiziert wurden. Es handelt sich um technische
+Dokumentation, keine Rechtsmeinung, keine Akkreditierung und keine Garantie, dass eine bestimmte
+Bereitstellung konform ist — die tatsächliche Konformität hängt davon ab, wie eine Organisation
+Open Gauge konfiguriert und betreibt, sowie vom Rest ihres Qualitätssystems.
+
+## Abgedeckte Normen
+
+| Norm | Status |
+|---|---|
+| [ISO/IEC 17025:2017](./iso-17025.mdx) — Allgemeine Anforderungen an die Kompetenz von Prüf- und Kalibrierlaboratorien | Veröffentlicht |
+| [EA-4/02](./ea-4-02.mdx) — Ermittlung der Messunsicherheit bei Kalibrierungen | Veröffentlicht |
+| [ISO 9001:2015](./iso-9001.mdx) — Qualitätsmanagementsysteme | Veröffentlicht |
+| [ISO 10012:2003](./iso-10012.mdx) — Messmanagementsysteme | Veröffentlicht |
+| [ISO 13485:2016](./iso-13485.mdx) — Qualitätsmanagementsysteme für Medizinprodukte | Veröffentlicht |
+| [JCGM/GUM-Reihe](./gum-uncertainty.mdx) — Messunsicherheit | Veröffentlicht (GUM 100, GUM-6, JCGM 106; das VIM und der GUM-1-Fahrplan sind Vokabular, zusammengefasst in [Normen & Glossar](../reference/standards-glossary.mdx)) |

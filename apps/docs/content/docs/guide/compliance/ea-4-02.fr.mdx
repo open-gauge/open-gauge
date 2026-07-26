@@ -1,0 +1,110 @@
+---
+title: EA-4/02
+description: Évaluation de l'incertitude de mesure en étalonnage — la politique d'accréditation européenne pour appliquer le GUM en pratique, et comment Open Gauge la met en œuvre.
+---
+
+## Résumé
+
+**EA-4/02** — *Expression de l'incertitude de mesure en étalonnage* — est publié par la
+[Coopération européenne pour l'accréditation](https://european-accreditation.org) (EA, l'organisme
+auquel appartiennent les organismes d'accréditation membres de l'ILAC en Europe). Contrairement au
+JCGM 100:2008 (GUM), qui expose la théorie générale de l'incertitude pour tout domaine de mesure,
+l'EA-4/02 est le GUM spécialisé en une politique unique et obligatoire pour les laboratoires
+d'étalonnage accrédités par un membre de l'EA : il fixe les choix spécifiques que le GUM laisse
+ouverts (quel facteur d'élargissement utiliser par défaut, exactement quelle phrase un certificat
+doit contenir, à combien de chiffres significatifs arrondir) afin que les certificats de
+différents laboratoires accrédités par l'EA soient directement comparables. Il est librement
+disponible et non soumis à licence commerciale, contrairement aux normes ISO de cette section.
+
+Les sections 2 à 4 (définitions, évaluation de Type A/B, combinaison des incertitudes)
+reformulent directement le GUM — voir
+[ISO/IEC 17025 §7.6](./iso-17025.mdx#uncertainty-evaluation) et
+[Normes et glossaire](../reference/standards-glossary.mdx) pour la façon dont Open Gauge met en
+œuvre ce socle commun ; cette page couvre uniquement ce que l'EA-4/02 ajoute par-dessus : la
+politique spécifique de facteur d'élargissement (§5) et la déclaration obligatoire du certificat
+(§6), plus le concept de meilleure capacité de mesure (annexe A) qui est spécifique aux portées
+d'accréditation.
+
+## Conformité
+
+| Clause | Exigence | Statut | Où elle est traitée |
+|---|---|---|---|
+| [§4.1, Annexe D](#combining-uncertainties) | Combiner les contributions non corrélées par somme quadratique ; appliquer le terme de covariance pour les entrées corrélées | ⚠️ Partielle | Combinaison RSS pour les termes de Type A/B indépendants ; la covariance n'est suivie que pour les coefficients d'ajustement polynomial, pas pour les entrées corrélées générales |
+| [§5.1–5.6](#coverage-factor-policy) | Facteur d'élargissement k=2 (≈95 %) par défaut ; une procédure rigoureuse (distribution t sur les degrés de liberté effectifs) lorsque les conditions de fiabilité ne sont pas remplies | ✅ Satisfaite | `distribution_type`/`confidence_level` sélectionnables, le mode `t` utilise les degrés de liberté effectifs (Welch-Satterthwaite) |
+| [§6.1–6.3](#certificate-statement) | Le certificat déclare le résultat sous la forme (y ± U), une phrase explicative fixe, et un arrondi à 2 chiffres significatifs | ✅ Satisfaite | `format_expanded_uncertainty_statement()`, imprimée sur chaque certificat |
+| [Annexe A](#best-measurement-capability) | Meilleure capacité de mesure déclarée par entrée de portée d'accréditation | ❌ Non satisfaite | Aucun concept de BMC dans Open Gauge aujourd'hui |
+
+## Détail
+
+### Combinaison des incertitudes [#combining-uncertainties]
+
+> "4.1 For uncorrelated input quantities the square of the standard uncertainty associated with
+> the output estimate y is given by $u^2(y) = \sum_i u_i^2(y)$... If input quantities are known to
+> be correlated, apply the procedure given in Annex D."
+
+Les contributions indépendantes de Type A (résidus d'ajustement) et de Type B (étalon de
+référence, résolution, spécification du capteur) sont combinées par somme quadratique,
+correspondant directement au §4.1. Le seul endroit où Open Gauge suit explicitement un **terme de
+corrélation** est la propre matrice de covariance des coefficients de l'ajustement polynomial
+(`poly_coefficients_covariance`, selon l'annexe H.3 du GUM-6) — nécessaire lorsque la pente et
+l'ordonnée à l'origine ajustées sont ensuite utilisées ensemble. Ce qui n'est pas géré est le cas
+plus général de l'annexe D : deux grandeurs d'entrée *différentes* qui partagent une source
+commune (par ex. le même étalon de référence réutilisé pour déterminer deux corrections séparées
+dans une calibration) — Open Gauge n'a aucun mécanisme pour déclarer « ces deux entrées de Type B
+sont corrélées avec un coefficient r », de sorte que de tels cas sont implicitement (et
+incorrectement, selon l'annexe D) traités comme indépendants.
+
+### Politique de facteur d'élargissement [#coverage-factor-policy]
+
+> "5.1 ...the standard coverage factor k = 2 shall be used [when a normal distribution can be
+> attributed to the measurand and the standard uncertainty...has sufficient reliability]... 5.3
+> The reliability...is determined by its effective degrees of freedom... the reliability criterion
+> is always met if none of the uncertainty contributions is obtained from a Type A evaluation
+> based on less than ten repeated observations. 5.4 If one of these conditions...is not fulfilled,
+> ...other procedures have to be followed [see Annex E: a t-distribution on the effective degrees
+> of freedom]."
+
+Le `distribution_type` d'une calibration peut être `normal` (le défaut — calcule le facteur exact
+de la fonction quantile normale pour le `confidence_level` choisi, par ex. k≈1,96 à 95 %, plutôt
+que le raccourci arrondi k=2 de l'EA — une application plus stricte, pas plus laxiste, de la même
+cible ≈95 %), `t` (utilise les [degrés de liberté effectifs](./iso-17025.mdx#uncertainty-evaluation)
+de Welch-Satterthwaite pour choisir un facteur de Student-t — le mécanisme exact que l'annexe E de
+l'EA-4/02 décrit pour le cas de faible fiabilité), ou `chi_squared`. Open Gauge ne sélectionne pas
+automatiquement entre ceux-ci selon la règle « moins de dix observations » du §5.3 comme le décrit
+l'EA-4/02 — l'opérateur choisit la distribution — mais les mathématiques sous-jacentes de chaque
+branche sont correctement implémentées.
+
+### Déclaration du certificat [#certificate-statement]
+
+> "6.1 ...the estimate y of the measurand and the associated expanded uncertainty U shall be
+> given in the form (y ± U). To this an explanatory note must be added...'The reported expanded
+> uncertainty of measurement is stated as the standard uncertainty of measurement multiplied by
+> the coverage factor k = 2, which for a normal distribution corresponds to a coverage probability
+> of approximately 95%.' ... 6.3 The numerical value of the uncertainty of measurement should be
+> given to at most two significant figures."
+
+`format_expanded_uncertainty_statement()` construit la phrase complète équivalente — valeur,
+incertitude combinée, facteur d'élargissement, la base de distribution (normale ou t avec ses
+degrés de liberté effectifs), et le niveau de confiance résultant — imprimée sur chaque
+certificat ayant un résultat d'incertitude, avec à la fois $U$ et $u_c$ arrondis à deux chiffres
+significatifs via `round_to_sig_figs()` selon cette clause (et le GUM §7.2.6, la même règle).
+
+### Meilleure capacité de mesure [#best-measurement-capability]
+
+> "A1 Best measurement capability...is one of the parameters that is used to define the scope of
+> an accredited calibration laboratory... A10 The best measurement capability should normally be
+> stated numerically."
+
+**Écart.** La meilleure capacité de mesure (*Best Measurement Capability*, BMC) — la plus petite
+incertitude qu'un laboratoire peut atteindre pour une grandeur/méthode/plage donnée dans des
+conditions de routine « presque idéales » — est un concept de portée d'accréditation, publié par
+l'organisme d'accréditation par laboratoire, pas calculé par calibration. Open Gauge n'a aucun
+endroit structuré pour enregistrer ou afficher une BMC déclarée par grandeur physique/procédure,
+distincte de l'incertitude effectivement atteinte sur une calibration individuelle quelconque. Un
+laboratoire utilisant Open Gauge devrait suivre et publier sa BMC en dehors du système aujourd'hui.
+
+---
+
+*Vérifié par rapport à l'EA-4/02 (décembre 1999, rév00) et à la base de code d'Open Gauge
+(`apps/api/app/services/calibration_analysis.py`, `apps/api/app/utils/uncertainty_format.py`,
+`apps/api/app/models/calibration.py`) le 2026-07-29.*

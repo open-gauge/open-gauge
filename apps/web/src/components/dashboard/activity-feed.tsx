@@ -26,8 +26,19 @@ function humanAction(action: string): string {
     .join(" ");
 }
 
+/** Falls back to a humanized version of the raw action code for any value the
+ * catalog doesn't have a translation for yet (e.g. a newly added audit action). */
+function useActionLabel() {
+  const t = useTranslations("tokens.auditAction");
+  return (action: string) => {
+    const k = action as Parameters<typeof t>[0];
+    return t.has(k) ? t(k) : humanAction(action);
+  };
+}
+
 export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
   const t = useTranslations("dashboard.activity");
+  const actionLabel = useActionLabel();
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 h-full flex flex-col">
       <div className="flex items-start justify-between mb-4 shrink-0">
@@ -56,7 +67,7 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
                 actorName={item.actor_name}
                 actorRole={item.actor_role}
               />{" "}
-              <span className="text-gray-500">{humanAction(item.action)}</span>
+              <span className="text-gray-500">{actionLabel(item.action)}</span>
               {item.entity_asset_id && (
                 <span className="ml-1 font-mono text-[10px] text-gray-400 bg-og-surface-alt px-1 rounded-sm">
                   {item.entity_asset_id}

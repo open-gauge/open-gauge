@@ -1,0 +1,90 @@
+---
+title: "Beispiel 4 — Druckmessumformer, externes Zertifikat nur mit Koeffizienten"
+description: Der Assistentenpfad "Nur Koeffizienten (keine Rohdaten)", für Sensoren, die mit einem Zertifikat ankommen, das das Kalibrierpolynom direkt angibt.
+---
+
+Trainiert den Assistentenpfad [Nur Koeffizienten](../coefficients-only.mdx) — für Sensoren, die mit
+einem Kalibrierzertifikat ankommen, das das Kalibrierpolynom direkt angibt, ohne rohe
+Referenz-/Messdatenpunkte, die neu angepasst werden könnten.
+
+## 4.0 Einrichtung
+
+**Anlage** (Anlagen → Neue Anlage):
+
+| Feld | Wert |
+|---|---|
+| Name | External Pressure Transmitter |
+| Hersteller / Modell | beliebig, z. B. WIKA / A-10 |
+| Anlagentyp | sensor |
+
+Ein Kanal:
+
+| Feld | Wert |
+|---|---|
+| Kanal-ID | CH1 |
+| Physikalische Größe | Druck |
+| Bereich Min / Max | 0 / 1000 |
+| Einheit | kPa |
+
+Nichts weiter ist erforderlich — eine Kalibrierung nur mit Koeffizienten zieht Genauigkeit,
+Auflösung oder Messunsicherheit nicht heran (es gibt keine durchgeführte Analyse, in die sie
+eingerechnet werden könnten).
+
+## 4.1 Assistent — Schritt 1 (Allgemeine Informationen)
+
+| Feld | Wert |
+|---|---|
+| Kalibrierart | Extern |
+| Kalibrieranbieter | Any Cal Lab Inc. |
+| Zertifikatsnummer | ACL-2026-00842 |
+| Nur Koeffizienten (keine Rohdaten) | **aktiviert** |
+
+Das Aktivieren des Kontrollkästchens tauscht Schritt 2 von der Rohdaten-Eingabe zu einem
+Koeffizienten-Eingabeformular, und die Schrittanzeige wird zu "Koeffizienten" / "Überprüfung" statt
+"Rohdaten" / "Analyse" umbenannt.
+
+## 4.2 Assistent — Schritt 2 (Koeffizienten)
+
+Das Zertifikat gibt an: *Referenz ≈ 1,0025 × Messwert − 0,42 kPa, gültig 0–1000 kPa, erweiterte
+Unsicherheit ±1,2 kPa (k=2)*.
+
+| Feld | Wert |
+|---|---|
+| Polynomgrad | 1 |
+| Koeffizient (× x) | 1,0025 |
+| Koeffizient (Konstante) | −0,42 |
+| Gültiger Bereich Min | 0 |
+| Gültiger Bereich Max | 1000 |
+| Auf Zertifikat angegebene Unsicherheit | **aktiviert** |
+| Erweiterte Unsicherheit (±) | 1,2 |
+| Erweiterungsfaktor k | 2 |
+
+Die Gleichungsvorschau zeigt: $f(x) = 1.0025x - 0.42\ \text{(kPa)}$.
+
+## 4.3 Assistent — Schritt 3 (Überprüfung) und was gespeichert wird
+
+Es gibt keine Analyse durchzuführen, daher gibt Schritt 3 die Gleichung, den gültigen Bereich und
+die angegebene Unsicherheit zur abschließenden Prüfung vor dem Speichern zurück. Beim Speichern:
+
+- `poly_order = 1`, `poly_coefficients = [1.0025, -0.42]`, `range_min = 0`, `range_max = 1000`,
+  `valid_range_min = 0`, `valid_range_max = 1000`.
+- `expanded_uncertainty = 1.2`, `coverage_factor = 2`,
+  `combined_uncertainty = 1.2 / 2 = 0.6`.
+- `uncertainty_budget = [{ source: "external_certificate_stated", value: 1.2, divisor: 2,
+  standard_uncertainty: 0.6, ... }]` — eine einzelne Zeile, nicht in Typ-A-/B-Teile zerlegt, da das
+  Zertifikat nur eine Gesamtzahl angibt.
+- `r_squared`, `rmse`, `standard_error`, `max_error`, `decision_rule` und
+  `conformity_statement` sind allesamt **null** — ohne Rohdaten gibt es keine Anpassung zu
+  bewerten und keinen ermittelten Fehler, der gegen eine Spezifikation geprüft werden könnte, daher
+  zeigt Open Gauge für diesen Datensatz kein Abzeichen KONFORM/NICHT KONFORM an (siehe
+  [Kalibrierungen nur mit Koeffizienten](../coefficients-only.mdx)).
+
+## Erwartete Ergebnisse
+
+| Feld | Wert |
+|---|---|
+| Gleichung | $f(x) = 1.0025x - 0.42$ |
+| Gültiger Bereich | 0 – 1000 kPa |
+| Kombinierte Unsicherheit | 0,6 kPa |
+| Erweiterte Unsicherheit (±) | 1,2 kPa |
+| Konformitätsaussage | nicht angezeigt / nicht berechnet |

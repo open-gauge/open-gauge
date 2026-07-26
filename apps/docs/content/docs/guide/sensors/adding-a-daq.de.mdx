@@ -1,0 +1,31 @@
+---
+title: Einen DAQ hinzufügen
+description: Registrierung eines Datenerfassungsgeräts — Felder der Hardware-Spezifikation.
+---
+
+Eine **DAQ**-Anlage (Datenerfassungsgerät) repräsentiert einen Datenlogger, Signalkonditionierer
+oder ein Gateway — Hardware, die Signale von Sensoren liest oder weiterleitet, statt selbst eine
+physikalische Größe zu messen. Erstellen Sie eine über **Anlagen → Neue Anlage**, Anlagentyp **daq**.
+
+Im Unterschied zu einem Sensor hat ein DAQ eine einzelne Hardware-Spezifikationszeile anstelle von
+Messkanälen:
+
+| Feld | Hinweise |
+|---|---|
+| DAQ-Typ | `data_logger` / `signal_conditioner` / `gateway` / `other` |
+| Eingangs-/Ausgangskanäle | Anzahl verfügbarer physischer Kanäle. |
+| Eingangs-/Ausgangssignaltypen | z. B. 4-20mA, 0-10V, Thermoelement, RTD. |
+| Abtastrate (Hz) | Gesamt und pro Kanal. |
+| ADC-Typ & Auflösung (Bit) | Die Eigenschaften des Analog-Digital-Wandlers. |
+| Eingangsspannungsbereich | Min/Max. |
+| Eingangsimpedanz (Ω) | |
+| Rauschgrund (µV RMS) | |
+| Dynamikbereich (dB) | |
+| Synchronisationsunterstützung, Taktquelle, Zeitsynchronisationsgenauigkeit, Jitter | Relevant für mehrkanalige oder gerätübergreifend synchronisierte Erfassung. |
+| Kommunikationsprotokoll, Schnittstellentyp | z. B. Modbus, Ethernet/IP, RS-485, USB. |
+| Trigger-Modi | |
+
+Ein DAQ kann von einem Kalibrierdatensatz aus verknüpft werden (`daq_id`), um zu dokumentieren,
+welche Erfassungshardware verwendet wurde, um die Messwerte für dieses Kalibrierereignis
+aufzunehmen — nützlich, wenn derselbe Sensor zu unterschiedlichen Zeiten über verschiedene DAQs
+ausgelesen wird und Sie wissen möchten, welche Kombination einen bestimmten Datenpunkt erzeugt hat.

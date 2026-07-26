@@ -1,0 +1,119 @@
+---
+title: "Beispiel 3 — Wägezelle, Hysterese + Wiederholbarkeit"
+description: Der Hysterese-Detektor für Auf-/Ab-Durchläufe, der Wiederholbarkeits-Detektor für Dreifachpunkte, und eine weitere Divergenz zwischen einfacher Annahme und geteiltem Risiko.
+---
+
+Trainiert: den Hysterese-Detektor für Auf-/Ab-Durchläufe ([Hysterese](../curve-fitting.mdx#hysteresis)),
+den Wiederholbarkeits-Detektor für Dreifachpunkte
+([Wiederholbarkeit](../curve-fitting.mdx#repeatability)) und eine weitere Divergenz zwischen
+einfacher Annahme und geteiltem Risiko.
+
+## 3.0 Einrichtung
+
+| Feld | Wert |
+|---|---|
+| Name | Test Bench Load Cell |
+| Physikalische Größe | Kraft |
+| Bereich Min / Max | 0 / 500 |
+| Einheit | N |
+| Genauigkeitswert | 0,15 |
+| Genauigkeitseinheit | **% FS** — zuerst Bereich Min/Max ausfüllen, dann "% FS" als erste Option wählen |
+| Auflösung | 0,2 |
+| Auflösungseinheit | N |
+
+## 3.1 Einstellungen des Kalibrier-Assistenten
+
+Typ **extern**, **Regressionsgrad: 1** (explizit — in diesem Beispiel geht es um
+Hysterese/Wiederholbarkeit, nicht um Gradauswahl), Verteilung **Normal**, Vertrauensniveau **95 %**,
+Entscheidungsregel **Geteiltes Risiko (Toleranz + U)**.
+
+Datenpunkte — ein aufsteigender Durchlauf, ein absteigender Durchlauf zurück (für die Hysterese)
+und eine zusätzliche Messung bei 0 N (insgesamt drei Messungen bei 0 N, für die Wiederholbarkeit):
+
+| # | Referenz (N) | Messwert (N) | Hinweise |
+|---|---|---|---|
+| 1 | 0 | 0,2 | Beginn aufsteigend |
+| 2 | 0 | 0,3 | Wiederholung bei 0 N (#1 des Wiederholbarkeits-Tripletts) |
+| 3 | 100 | 100,6 | aufsteigend |
+| 4 | 200 | 200,9 | aufsteigend |
+| 5 | 300 | 301,0 | aufsteigend |
+| 6 | 400 | 401,1 | aufsteigend |
+| 7 | 500 | 501,3 | oberes Ende des Durchlaufs |
+| 8 | 400 | 401,6 | absteigend |
+| 9 | 300 | 301,7 | absteigend |
+| 10 | 200 | 201,9 | absteigend |
+| 11 | 100 | 101,8 | absteigend |
+| 12 | 0 | 1,0 | zurück bei 0 N (Wiederholbarkeits-Triplett vollständig) |
+
+## Die Rechnung
+
+Anpassung (Grad 1, alle 12 Punkte): $a = 0{,}99833$, $b = -0{,}76668$.
+
+Maximalfehler = **0,863215 N**, bei Punkt 11 (Referenz 100 N, Messwert 101,8 N) → %FS-Fehler =
+$0{,}863215/500 \times 100\% = \mathbf{0{,}1726\%}$.
+
+**Hysterese** — Open Gauge gruppiert Punkte nach Referenzwert und nimmt die größte Streuung der
+Messwerte innerhalb jeder Gruppe, in der sich der Referenzwert wiederholt und sowohl ein
+aufsteigendes als auch ein absteigendes Segment vorhanden ist:
+
+| Referenz | Messwerte bei dieser Referenz | Spanne |
+|---|---|---|
+| 0 N | 0,2, 0,3, 1,0 | 0,8 |
+| 100 N | 100,6, 101,8 | 1,2 |
+| 200 N | 200,9, 201,9 | 1,0 |
+| 300 N | 301,0, 301,7 | 0,7 |
+| 400 N | 401,1, 401,6 | 0,5 |
+
+Größte Spanne = **1,2 N** (bei 100 N) → **Hysterese = 1,2**.
+
+**Wiederholbarkeit** — nur bei 0 N gibt es 3 oder mehr Messungen (0,2, 0,3, 1,0):
+
+$$
+\bar{x} = \frac{0.2 + 0.3 + 1.0}{3} = 0.5, \qquad
+s^2 = \frac{(0.2-0.5)^2 + (0.3-0.5)^2 + (1.0-0.5)^2}{3-1} = \frac{0.09+0.04+0.25}{2} = 0.19
+$$
+
+$$
+\text{repeatability} = \sqrt{0.19} = 0.435890\ \text{N}
+$$
+
+**Unsicherheitsbudget:**
+
+| Quelle | u |
+|---|---|
+| fit_residuals (Typ A, dof = 10) | 0,487526 |
+| resolution (Typ B) = $0{,}2/\sqrt{12}$ | 0,057735 |
+
+- Kombiniert: $u_c = \sqrt{0.487526^2 + 0.057735^2} = \mathbf{0{,}490933\ N}$.
+- $\nu_{\text{eff}} \approx \mathbf{10{,}3}$.
+- Erweiterungsfaktor $k = \Phi^{-1}(0.975) \approx 1{,}96$ (aus Vertrauensniveau 95 %, nicht
+  eingegeben).
+- Erweitert: $U = 0{,}490933 \times 1{,}96 = 0{,}962211 \approx \mathbf{0{,}96\ N}$
+  (2 signifikante Stellen).
+
+**Entscheidungsregel — beide ausprobieren und vergleichen.** Die Genauigkeitsspezifikation ist
+±0,15 % FS, sodass die Toleranz über den gesamten Bereich konstant ist:
+$\text{tolerance} = 0{,}0015 \times 500\ \text{N} = 0{,}75\ \text{N}$. Der größte Fehler des
+Durchlaufs (0,863215 N, bei Referenz 100 N) überschreitet diese:
+
+| Entscheidungsregel | Prüfung (Maximalfehler = 0,863215, Toleranz = 0,75) | Ergebnis |
+|---|---|---|
+| Einfache Annahme | $0{,}863215 \le 0{,}75$? Nein | **NICHT KONFORM** |
+| Geteiltes Risiko (+U) | $0{,}863215 - 0{,}962211 = -0{,}098996 \le 0{,}75$ | **KONFORM** |
+
+Dies ist ein wirklich realistischer Fall: eine Wägezelle, deren roher Fehler ihre enge
+±0,15-%-FS-Spezifikation überschreitet, deren gesamte Messunsicherheit aber groß genug ist, dass
+Labor und Kunde unter einer Geteiltes-Risiko-Regel übereinstimmen, dass sie dennoch akzeptabel ist.
+Ein guter Test sowohl für "echte Fehlschläge kommen vor" als auch für "die gewählte Regel verändert
+das Ergebnis".
+
+## Erwartete Ergebnisse
+
+| Feld | Wert |
+|---|---|
+| Hysterese | 1,2 |
+| Wiederholbarkeit | 0,435890 roh; angezeigt als **0,43589** im Assistenten, **0,4359** in der Historienansicht (unterschiedliche Festkomma-Anzeigepräzision — siehe [Rundung](./rounding-and-troubleshooting.mdx)) |
+| Kombinierte Unsicherheit | gerundet angezeigt: **0,49** |
+| Erweiterte Unsicherheit (±) | gerundet angezeigt: **0,96** |
+| Aussage (einfache Annahme) | NICHT KONFORM zu ±0,15 % des Endwerts |
+| Aussage (geteiltes Risiko) | KONFORM zu ±0,15 % des Endwerts |

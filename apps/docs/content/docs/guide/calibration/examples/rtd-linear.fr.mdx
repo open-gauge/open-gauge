@@ -1,0 +1,225 @@
+---
+title: "Exemple 1 — RTD de température, ajustement linéaire, budget d'incertitude complet"
+description: Un exemple à deux calibrations exerçant la régression linéaire, les quatre contributions d'incertitude à la fois, et les trois règles de décision.
+---
+
+Exerce : la régression linéaire, les quatre contributions de budget de Type A/B à la fois
+(résidus d'ajustement, étalon de référence, résolution, exactitude nominale du capteur), la
+fonctionnalité de récupération automatique de l'incertitude de l'étalon de référence, et les
+trois règles de décision divergeant sur des données identiques.
+
+Chaque nombre ci-dessous a été produit en exécutant le véritable moteur de calcul d'Open Gauge
+sur les données d'entrée présentées, puis redérivé indépendamment à la main à partir des formules
+sous-jacentes pour confirmer qu'ils correspondent. Si vous saisissez la même configuration et les
+mêmes données via l'interface, vous devriez voir les mêmes nombres (à l'
+[arrondi d'affichage](./rounding-and-troubleshooting.mdx) près, décrit à la fin).
+
+Cet exemple comporte **deux calibrations** : d'abord vous calibrez un thermomètre de référence
+(afin qu'il ait une incertitude élargie enregistrée), puis vous calibrez le capteur de travail
+*par rapport à* cette référence — c'est ce qui fait qu'Open Gauge préremplit automatiquement la
+ligne de budget « étalon de référence ».
+
+## 1.0 Configuration — deux actifs
+
+**Actif A — étalon de référence** (Actifs → Nouvel actif) :
+
+| Champ | Valeur |
+|---|---|
+| Nom | Reference PT100 Standard |
+| Fabricant / Modèle | n'importe lequel, par ex. Fluke / 5628 |
+| Type d'actif | capteur |
+
+Une voie :
+
+| Champ | Valeur |
+|---|---|
+| Identifiant de voie | CH1 |
+| Grandeur physique | Température |
+| Plage min / max | 0 / 100 |
+| Unité | °C |
+| Rôle de calibration | **coché** (étalon de référence) |
+
+Laissez exactitude/résolution/incertitude vides sur cet actif — seule l'incertitude élargie de
+*l'enregistrement de calibration* compte ici (calculée en 1.1).
+
+**Actif B — capteur de travail :**
+
+| Champ | Valeur |
+|---|---|
+| Nom | Process Line Thermometer |
+| Fabricant / Modèle | n'importe lequel, par ex. Generic / PT100-A |
+| Type d'actif | capteur |
+
+Une voie :
+
+| Champ | Valeur |
+|---|---|
+| Identifiant de voie | CH1 |
+| Grandeur physique | Température |
+| Plage min / max | 0 / 100 |
+| Unité | °C |
+| Valeur d'exactitude | 0,5 |
+| Unité d'exactitude | °C (une unité réelle signifie « absolue » — voir [La convention « % FS »](../../sensors/adding-a-sensor.mdx#the-fs-convention)) |
+| Résolution | 0,1 |
+| Unité de résolution | °C |
+| Incertitude de mesure | 0,3 |
+| Unité d'incertitude | °C |
+| Rôle de calibration | décoché (pas un étalon de référence) |
+
+Laissez « Unité du signal de sortie » vide sur les deux voies afin que l'unité de la valeur
+mesurée prenne par défaut °C — cela évite la complexité de conversion d'unités pour cet exemple.
+
+## 1.1 Calibrer d'abord l'étalon de référence
+
+Sur l'Actif A, démarrez une calibration : type **interne** (ou externe — cela n'a pas
+d'importance ici, aucun actif de référence n'est nécessaire), distribution **Normale**,
+confiance **95 %**, aucune spécification d'exactitude nécessaire (ignorez l'exactitude de la
+voie — elle n'est pas définie sur cette voie).
+
+Points de données (référence = valeur d'un étalon de niveau supérieur ; mesuré = lecture de ce
+thermomètre de référence) :
+
+| # | Référence (°C) | Mesuré (°C) |
+|---|---|---|
+| 1 | 0,000 | 0,010 |
+| 2 | 50,000 | 50,020 |
+| 3 | 100,000 | 99,985 |
+
+### Les mathématiques
+
+Ajuster $\text{reference} = a \cdot \text{measured} + b$ (degré 1) à ces 3 points donne
+$a = 1,00025$, $b = -0,01750$.
+
+Résidus (référence − calculé) :
+
+| Point | Calculé | Résidu |
+|---|---|---|
+| 1 | −0,007498 | **+0,007498** |
+| 2 | 50,015004 | **−0,015004** |
+| 3 | 99,992495 | **+0,007505** |
+
+$n = 3$ points, $k = 2$ paramètres → degrés de liberté résiduels $= 1$.
+
+- **Incertitude-type de Type A** = écart-type d'échantillon des résidus ($\text{ddof}=1$) =
+  **0,012994 °C**.
+- Aucune contribution de Type B n'est configurée sur cette voie, le budget comporte donc
+  exactement une ligne :
+
+| Source | Distribution | u | ddl |
+|---|---|---|---|
+| fit_residuals (Type A) | normale | 0,012994 | 1 |
+
+- **Incertitude combinée** : $u_c = \sqrt{0.012994^2} = \mathbf{0,012994\ °C}$.
+- **Facteur d'élargissement** : pour une distribution normale à 95 % de confiance,
+  $k = \Phi^{-1}(0,975) \approx \mathbf{1,96}$.
+- **Incertitude élargie** : $U = k \cdot u_c = 1,96 \times 0,012994 = 0,025467 \approx
+  \mathbf{0,025\ °C}$ (2 chiffres significatifs).
+
+### Résultats attendus dans l'assistant (étape 3)
+
+| Champ | Valeur |
+|---|---|
+| R² | 0,99999993 |
+| RMSE | 0,010609 |
+| Erreur maximale | 0,015004 |
+| Incertitude combinée | 0,012994 (affichée arrondie : **0,013**) |
+| Incertitude élargie (±) | 0,025467 (affichée arrondie : **0,025**) |
+
+Enregistrez cette calibration. **Notez l'incertitude élargie (0,025 °C)** — la calibration de
+l'Actif B la récupère automatiquement à l'étape suivante.
+
+## 1.2 Calibrer le capteur de travail par rapport à l'étalon de référence
+
+Sur l'Actif B, démarrez une calibration : type **interne**, actif de référence **Reference PT100
+Standard** (Actif A) — dès que vous le choisissez, l'assistant devrait afficher « Ref. standard
+U : 0,025 °C (dernière calibration de Reference PT100 Standard) ». S'il affiche plutôt un champ
+de saisie manuelle, la récupération n'a trouvé aucune calibration sur l'Actif A — revenez en
+arrière et confirmez que 1.1 a été enregistrée.
+
+Distribution **Normale**, confiance **95 %**, règle de décision **Bande de garde
+(tolérance − U)**, et cochez **« Incl. exactitude nominale du capteur »** (intègre la
+spécification du fabricant de 0,3 °C de la voie).
+
+Points de données :
+
+| # | Référence (°C) | Mesuré (°C) |
+|---|---|---|
+| 1 | 0,00 | 0,05 |
+| 2 | 20,00 | 20,08 |
+| 3 | 40,00 | 39,95 |
+| 4 | 60,00 | 60,12 |
+| 5 | 80,00 | 79,90 |
+| 6 | 100,00 | 100,07 |
+
+### Les mathématiques
+
+Ajustement : $a = 1,00038$, $b = -0,04739$.
+
+| Point | Calculé | Résidu |
+|---|---|---|
+| 1 | 0,002631 | −0,002631 |
+| 2 | 20,040260 | −0,040260 |
+| 3 | 39,917828 | +0,082172 |
+| 4 | 60,095510 | −0,095510 |
+| 5 | 79,883044 | +0,116956 |
+| 6 | 100,060727 | −0,060727 |
+
+$n = 6$, $k = 2$ → ddl résiduels $= 4$. Erreur maximale = **0,116956** (point 5) → erreur %FS =
+$0,116956/100 \times 100\% = \mathbf{0,117\%}$.
+
+**Budget d'incertitude** (quatre lignes cette fois) :
+
+| Source | Comment elle est dérivée | u |
+|---|---|---|
+| fit_residuals (Type A) | écart-type des 6 résidus, ddl = 4 | 0,083509 |
+| reference_standard (Type B) | 0,025467 (U de l'Actif A) ÷ k=2 | 0,012734 |
+| resolution (Type B) | $0,1/\sqrt{12}$ | 0,028868 |
+| sensor_nominal_accuracy (Type B) | 0,3 ÷ k=2 | 0,150000 |
+
+- **Combinée** : $u_c = \sqrt{0.083509^2 + 0.012734^2 + 0.028868^2 + 0.150000^2} =
+  \mathbf{0,174554\ °C}$.
+- **Degrés de liberté effectifs** (Welch-Satterthwaite — seul `fit_residuals` a un ddl fini ;
+  les trois lignes de Type B sont connues avec exactitude et sortent de la somme) :
+
+  $$
+  \nu_{\text{eff}} = \frac{u_c^4}{u_A^4 / \text{dof}_A} = \frac{0.174554^4}{0.083509^4/4}
+  \approx 76,4
+  $$
+
+- **Élargie** (distribution normale — $\nu_{\text{eff}}$ n'est pas utilisé pour « normale »,
+  seulement pour « t »/« chi carré ») : $k = \Phi^{-1}(0,975) \approx 1,96$,
+  $U = 1,96 \times 0,174554 = 0,342120 \approx \mathbf{0,34\ °C}$ (2 chiffres significatifs).
+
+**Règle de décision (bande de garde, spécification = ±0,5 °C absolue) :**
+
+$$
+\text{guard} = U = 0.342120, \quad \text{max error} + \text{guard} = 0.116956 + 0.342120 =
+0.459076 \le 0.5 \implies \textbf{CONFORMS}
+$$
+
+### Résultats attendus
+
+| Champ | Valeur |
+|---|---|
+| Incertitude combinée | affichée arrondie : **0,17** |
+| Incertitude élargie (±) | affichée arrondie : **0,34** |
+| ν_eff (dans l'infobulle Élargie) | ≈ 76,4 |
+| Déclaration | **CONFORME** à ±0,5 (absolue), règle de décision = Acceptation en bande de garde |
+
+## 1.3 Vérification bonus — observez les trois règles de décision diverger [#bonus-check]
+
+Reprenez 1.2 avec la valeur d'exactitude de la voie changée en **0,4** (modifiez la voie,
+enregistrez, puis relancez les mêmes 6 points à travers l'étape 3 d'une nouvelle calibration) et
+essayez les trois [règles de décision](../decision-rules.mdx) avec « Incl. exactitude nominale
+du capteur » toujours cochée. Tout ce qui précède est inchangé (même ajustement, même budget,
+même $U = 0,342120$) — seule la réussite/l'échec bascule :
+
+| Règle de décision | Vérification | Résultat |
+|---|---|---|
+| Acceptation simple | $0,116956 \le 0,4$ | **CONFORME** |
+| Bande de garde (− U) | $0,116956 + 0,342120 = 0,459076 \le 0,4$ ? Non | **NON CONFORME** |
+| Risque partagé (+ U) | $0,116956 - 0,342120 = -0,225164 \le 0,4$ | **CONFORME** |
+
+C'est la manière la plus claire de confirmer que la fonctionnalité de règle de décision est
+correctement câblée : données identiques et spécification identique, trois verdicts différents
+selon uniquement la règle sélectionnée.

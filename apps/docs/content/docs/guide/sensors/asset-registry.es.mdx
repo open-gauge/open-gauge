@@ -1,0 +1,174 @@
+---
+title: Fundamentos del registro de activos
+description: Qué es un activo, sensores frente a DAQs, y el ciclo de vida del activo.
+---
+
+Todo instrumento físico que Open Gauge rastrea — un sensor, un transmisor, un registrador de datos — es un
+**activo**. Los activos residen en **Activos → Nuevo activo** en la interfaz, y cada uno recibe un
+ID legible por humanos (p. ej. `OG-00042`) además de su ID interno de base de datos.
+
+## Sensor frente a DAQ
+
+El tipo de un activo es uno de:
+
+- **sensor** — un instrumento de medición. Tiene uno o más **canales**, cada uno representando una
+  única magnitud física medida (temperatura, presión, flujo, ...). Consulta
+  [Agregar un sensor](./adding-a-sensor.mdx).
+- **daq** — un dispositivo de adquisición de datos: un registrador de datos, acondicionador de señal o
+  puerta de enlace. Tiene una única especificación de hardware en lugar de canales de medición. Consulta
+  [Agregar un DAQ](./adding-a-daq.mdx).
+
+## Campos comunes
+
+Independientemente del tipo, cada activo lleva los campos siguientes, más un **estado de salud** calculado
+(0–100) — consulta [Puntuación de estado](../health-scoring/overview.mdx). Cada campo aquí también está
+explicado por un tooltip informativo (ⓘ) directamente en la interfaz — hacer clic en un tooltip te devuelve
+a la sección correspondiente de esta página.
+
+### ID del activo [#asset-id]
+
+Un identificador legible por humanos, único y generado automáticamente (p. ej. `OG-00042`), separado del
+id interno de base de datos del activo. Se usa en toda la interfaz, en etiquetas QR/adhesivas, y en los
+paquetes exportados.
+
+### Nombre, fabricante, modelo y número de serie [#identity]
+
+Campos de identidad de texto libre. Nombre es lo que se muestra en listas y encabezados; fabricante, modelo y
+número de serie identifican la unidad física.
+
+### Número de parte [#part-number]
+
+El número de parte/catálogo propio del fabricante, distinto del número de serie del activo — útil
+al pedir repuestos o buscar una hoja de datos.
+
+### Descripción [#description]
+
+Notas de texto libre sobre el propósito o contexto del activo, mostradas bajo sus campos de identidad.
+
+### Organización [#organization]
+
+La organización propietaria de este activo, elegida de una lista desplegable de las propias organizaciones
+del usuario creador cuando se crea el activo — obligatoria, e independiente de la ubicación del activo
+(las dos no se validan de forma cruzada). Consulta [Organizaciones](../organizations/index.mdx).
+
+### Ubicación [#location]
+
+Dónde está actualmente el activo, elegida del árbol de ubicaciones de la organización — consulta
+[Ubicaciones](../locations/index.mdx). Mover un activo registra una entrada de historial de ubicación
+auditada en lugar de sobrescribir silenciosamente la ubicación anterior.
+
+### Dimensiones y peso [#dimensions-weight]
+
+Tamaño físico (texto libre, p. ej. `150×30×30 mm`) y peso en kilogramos — puramente informativo.
+
+### Tipo de montaje [#mounting-type]
+
+Cómo está instalado físicamente el activo (p. ej. pared, techo, poste, riel DIN).
+
+### Tipo de conexión [#connection-type]
+
+El conector físico o interfaz de cableado (p. ej. `M12 4 pines`).
+
+### Grado de protección IP [#ip-rating]
+
+Grado de protección contra ingreso (Ingress Protection) (p. ej. IP65) que describe la resistencia al polvo/agua.
+
+### Clasificación de área peligrosa [#hazardous-area-rating]
+
+La zona ATEX/de ubicación peligrosa para la que está clasificado el activo (o "no peligrosa").
+
+### Temperatura y humedad de operación [#operating-range]
+
+El rango ambiental dentro del cual el activo mismo está clasificado para operar — distinto del rango de
+*medición* de un canal, que es lo que mide en lugar de lo que tolera.
+
+### Alimentación y consumo [#power]
+
+Voltaje/tipo de alimentación (p. ej. `24 VDC`) y consumo de energía en vatios.
+
+### Versión de firmware [#firmware-version]
+
+La cadena de versión del firmware integrado del activo, cuando corresponda.
+
+### Fecha de compra, precio y garantía [#commercial]
+
+Contabilidad de adquisición: cuándo se compró el activo, cuánto costó, y cuándo vence su garantía.
+
+## Foto del activo
+
+Cada activo puede tener una foto de la unidad física, mostrada como una vista previa circular a la izquierda
+del encabezado en la página de detalle del activo. Haz clic en la vista previa para abrirla a tamaño completo en un
+modal. En modo edición, usa el botón de cámara sobre la foto para subirla o reemplazarla, y el botón de papelera para
+eliminarla — los cambios surten efecto de inmediato, independientemente del flujo de "Guardar cambios" usado para
+el resto de los campos del activo. La foto se almacena en MinIO como cualquier otro archivo adjunto (consulta
+[Modelo de datos y conceptos](../concepts/data-model.mdx)) y es distinta de las imágenes de referencia de solo
+escritura única `sensor_image_id`/`pinout_image_id`/`sensor_schematic_id` establecidas al crear el activo.
+
+## Etiquetas adhesivas con código QR
+
+El botón **Etiqueta** en la página de detalle del activo abre un diálogo con una etiqueta imprimible en tres
+tamaños, cada uno descargable como PNG, JPG o PDF. Cada tamaño codifica una URL a la página de detalle del activo
+en su código QR:
+
+- **1×0.5 in** — código QR en la mitad izquierda; ID de activo y nombre de activo en la mitad derecha. Dimensionado
+  para componentes pequeños donde no cabe una etiqueta de 2×2 o 4×2.
+- **2×2 in** — código QR con el ID de activo impreso debajo.
+- **4×2 in** — código QR, ID de activo, nombre del sensor, fechas de la última calibración/vencimiento, y la
+  tabla de coeficientes de calibración, uno junto al otro.
+
+## Importación y exportación
+
+Cualquier activo se puede exportar como un paquete ZIP — desde el botón **Exportar** en la página de detalle del
+activo para un solo activo, o desde el botón **Exportar** en la página de registro de activos para exportar en
+bloque una selección de activos (un modal de lista de verificación te permite elegir activos individuales o seleccionar
+todos a la vez). Ambos producen la misma forma de paquete; una exportación en bloque es simplemente varios
+paquetes de un solo activo dentro de un ZIP exterior.
+
+Cada activo obtiene su propia carpeta con el nombre de su `asset_id` (p. ej. `OG-00042/`), que contiene:
+
+- **`asset.yaml`** — cada campo del activo, sus canales de sensor o detalles de DAQ, y su historial de
+  calibración completo (incluyendo los puntos de datos de calibración y las estadísticas calculadas), en un
+  formato legible por humanos.
+- **`media/`** — los archivos reales: la foto del activo, la hoja de datos, las imágenes de conexión/sensor y
+  el esquema, cualquier archivo adjunto en bloque, y el PDF del certificado de cada calibración (una subcarpeta por
+  calibración, de la más antigua a la más reciente).
+
+**Lo que se deja fuera de `asset.yaml` a propósito**: los UUID internos de base de datos — el propio id del activo,
+su ubicación, `created_by`/`retired_by`, y el id de cada archivo. Estos solo tienen sentido dentro de la
+base de datos de donde vinieron. Donde resulta útil, se incluye en su lugar un nombre legible por humanos solo
+como referencia (p. ej. `location_name`, `calibration_method_name`, `internal_procedure_name`) — los canales de
+sensor se vuelven a vincular por `channel_id` en lugar de un UUID de sensor en bruto. Un campo no tiene sustituto
+seguro y se omite por completo: la referencia de una calibración a otro activo
+(`internal_reference_asset_id`) no se exporta ni se vuelve a vincular.
+
+El historial de calibración se exporta y se vuelve a importar **textualmente** — `calibration_version` y cada
+estadística calculada se copian tal cual, nunca se recalculan, ya que representan un hecho histórico
+(consulta [Modelo de datos y conceptos](../concepts/data-model.mdx)).
+
+### Importar
+
+Importa un ZIP ya sea desde **Activos → + Nuevo activo → Importar desde archivo** (espera exactamente un activo
+en el archivo) o desde el botón **Importar** del registro (acepta uno o más ZIPs a la vez, cada uno de los
+cuales puede a su vez contener una o más carpetas de activo — útil para reimportar una exportación en bloque
+anterior). Ambos flujos llaman al mismo endpoint del backend e informan un resultado por carpeta de activo, de modo
+que un problema con un activo nunca bloquea a los demás en el mismo archivo.
+
+Al importar, se crea un activo completamente nuevo con un nuevo id interno. Su `location_id` se deja sin
+establecer (el `location_name` exportado es solo informativo) hasta que se asigne manualmente.
+`calibration_method_name`/`internal_procedure_name` se comparan sin distinguir mayúsculas/minúsculas contra los
+procedimientos ya registrados en el sistema de destino; si no se encuentra ninguna coincidencia, el vínculo simplemente se
+deja en blanco en lugar de hacer fallar la importación. Si el `asset_id` exportado ya existe en el sistema de
+destino, la importación de ese activo falla con un error claro — renómbralo en el YAML y vuelve a intentarlo.
+
+## Ciclo de vida
+
+Los activos nunca se eliminan de forma permanente mientras un despliegue está activo. Retirar un activo:
+
+- Establece `is_active = false` y registra `retired_at`, `retired_by` y `retired_reason`.
+- Preserva el historial completo de calibración del activo — las calibraciones pasadas de un activo retirado
+  siguen siendo visibles y auditables.
+
+Esto coincide con la filosofía general de base de datos de Open Gauge (consulta
+[Modelo de datos y conceptos](../concepts/data-model.mdx)): la trazabilidad tiene prioridad sobre el
+orden. Si necesitas que un activo desaparezca de las vistas diarias pero mantener su historial intacto,
+retíralo — no lo elimines.

@@ -1,0 +1,101 @@
+---
+title: Ajuste de curvas y estadísticas de regresión
+description: Cómo Open Gauge ajusta una curva de calibración y calcula R², RMSE, error máximo, no linealidad, repetibilidad e histéresis.
+---
+
+Open Gauge ajusta una curva de calibración polinomial a tus puntos de datos (referencia, medido), y luego
+reporta un conjunto de estadísticas de regresión estándar que describen qué tan bueno es ese ajuste.
+
+## El ajuste
+
+Open Gauge ajusta:
+
+$$
+\text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
+$$
+
+mediante mínimos cuadrados (`np.polyfit`), de grado 1 a 5. Por defecto, el grado se **selecciona
+automáticamente mediante AIC** (Criterio de Información de Akaike) con una regla de parsimonia: Open Gauge elige
+el grado más bajo cuyo AIC no sea superado por más de 2 puntos por un grado más alto, de modo que no
+ajuste una ondulación innecesaria de orden superior al ruido. También puedes fijar explícitamente un
+grado específico en el asistente.
+
+**Covarianza de coeficientes.** Cuando hay más puntos de datos que parámetros ajustados, Open Gauge también
+calcula la matriz de covarianza de los coeficientes ajustados (`np.polyfit(..., cov=True)`), almacenada
+junto con la calibración. Esto importa porque evaluar la curva en un punto usando dos o
+más coeficientes ajustados juntos — sin su covarianza — subestima la incertidumbre
+real (el Anexo H.3 del GUM muestra subestimaciones de más del 30% al omitirla). Open Gauge almacena esta
+matriz para que sea posible una propagación correcta; todavía no hay una función de Open Gauge que evalúe la curva
+de una calibración guardada en una lectura en vivo, pero la covarianza queda capturada para cuando la haya.
+
+Un **ajuste degenerado** — con tan pocos o menos puntos de datos que parámetros ajustados (p. ej. un ajuste de
+línea recta de 2 puntos) — tiene cero grados de libertad residuales: no se almacena ninguna matriz de covarianza, y
+el término de incertidumbre por residuo del ajuste (consulta
+[El presupuesto de incertidumbre](./uncertainty-budget.mdx)) se marca como sin
+grados de libertad finitos.
+
+## Residuos
+
+Para cada punto, el **residuo** es:
+
+$$
+\text{residual}_i = \text{reference}_i - f(\text{measured}_i)
+$$
+
+## R² [#r-squared]
+
+El coeficiente de determinación — cuánto de la varianza en los valores de referencia explica la
+curva ajustada. **1.0 es un ajuste perfecto.**
+
+## RMSE [#rmse]
+
+Error cuadrático medio (root mean square error) — la magnitud típica de los residuos:
+
+$$
+\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^n \text{residual}_i^2}
+$$
+
+## Error máximo [#max-error]
+
+El mayor residuo absoluto individual entre todos los puntos de datos. Este es el número que Open Gauge compara
+contra una especificación al decidir aprobado/rechazado — consulta
+[Reglas de decisión](./decision-rules.mdx).
+
+## Error %FS [#full-scale-error]
+
+Error máximo expresado como un porcentaje del intervalo de medición:
+
+$$
+\%\text{FS error} = \frac{\text{max error}}{\text{range max} - \text{range min}} \times 100\%
+$$
+
+## No linealidad [#non-linearity]
+
+Para un ajuste de grado ≥ 2: cuánto se desvía la curva ajustada de su propia mejor línea
+*recta* de ajuste, como un porcentaje de la escala completa. Una no linealidad grande es una señal de que un
+ajuste de grado superior fue la decisión correcta — no solo ruido que la selección automática de grado
+llegó a captar.
+
+## Repetibilidad [#repeatability]
+
+La desviación estándar de los valores medidos en **puntos de referencia repetidos** (tres o más
+lecturas en el mismo valor de referencia):
+
+$$
+\text{repeatability} = \sqrt{\frac{1}{m-1}\sum_{j=1}^m (x_j - \bar{x})^2}
+$$
+
+donde $x_1, \ldots, x_m$ son los valores medidos registrados en el mismo valor de referencia.
+Requiere al menos 3 puntos en esa referencia para calcularse — Open Gauge solo la reporta cuando los datos
+lo respaldan.
+
+## Histéresis [#hysteresis]
+
+La mayor dispersión de valores medidos registrados en el *mismo* valor de referencia a lo largo de un
+**barrido ascendente y descendente** — es decir, qué tan separadas están la lectura "subiendo hasta X" y la
+lectura "bajando hasta X", para cualquier valor de referencia que muestre la brecha más grande. Requiere
+un barrido de subida/bajada en los datos (el mismo valor de referencia visitado desde ambas direcciones) para
+calcularse.
+
+Consulta [Ejemplos resueltos](./examples/index.mdx) para un ejemplo de celda de carga que calcula
+tanto la repetibilidad como la histéresis a mano a partir de un conjunto de datos real de 12 puntos ascendente/descendente.

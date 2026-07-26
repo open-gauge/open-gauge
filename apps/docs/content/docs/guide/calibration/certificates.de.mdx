@@ -1,0 +1,101 @@
+---
+title: Zertifikatserstellung
+description: Was auf einem Open-Gauge-Kalibrierzertifikat steht und wie man es abruft.
+---
+
+Das Speichern einer Kalibrierung generiert nach bestem Bemühen in derselben Anfrage ein
+A4-PDF-Zertifikat — schlägt die Generierung aus irgendeinem Grund fehl, wird der
+Kalibrierdatensatz dennoch gespeichert; Sie können das Zertifikat später neu generieren.
+
+Zertifikate sind **keine** handgebauten PDFs — sie werden aus einer LaTeX-Vorlage (einer
+`.tex`-Datei mit Platzhaltern) gerendert, die von [Tectonic](https://tectonic-typesetting.github.io/),
+einer kleinen, eigenständigen LaTeX-Engine, zu PDF kompiliert wird. Jede Organisation erhält ohne
+jede Konfiguration ein funktionierendes Zertifikat (die eingebaute Standardvorlage), und ein Admin
+kann eine benutzerdefinierte Vorlage hochladen, um Layout, Wortlaut oder Branding ohne
+Codeänderungen zu ändern — siehe [Zertifikatsvorlagen](./certificate-templates.mdx).
+
+## Inhalt
+
+- **Briefkopf** — das Logo der Organisation (falls gesetzt, siehe
+  [Datenmodell & Konzepte](../concepts/data-model.mdx)) und ihr Name.
+- **Kopfzeile** — QR-Code und Zertifikatsnummer.
+- **Anlageninformationen** — die kalibrierte Anlage und der kalibrierte Kanal.
+- **Rückführbarkeit** — das befolgte Verfahren, das verwendete Referenznormal (interne
+  Kalibrierungen) und die erfassten Umgebungsbedingungen.
+- **Ergebnisse** — die angepassten Koeffizienten und die Gleichung, die Regressionsstatistiktabelle
+  (siehe [Kurvenanpassung](./curve-fitting.mdx)), die aufgeschlüsselte Unsicherheitsbudget-Tabelle
+  (siehe [Das Unsicherheitsbudget](./uncertainty-budget.mdx)) und die Konformitätsaussage (siehe
+  [Entscheidungsregeln](./decision-rules.mdx)).
+- **Datensatz** — die Rohpunkttabelle und ein Anpassungsdiagramm.
+- **Signatur** — das Signaturbild des ausführenden Benutzers, falls eines festgelegt wurde (siehe
+  [Signaturen](../self-hosting/authentication.mdx#signatures)), kryptografisch an sein Konto
+  gebunden und unabhängig überprüfbar. Wird angezeigt, wenn die Kalibrierung mit einem echten
+  Benutzerkonto verknüpft ist — das Feld "Durchgeführt von" im Kalibrier-Assistenten ist
+  standardmäßig auf den angemeldeten Benutzer eingestellt (was den Datensatz mit seinem Konto
+  verknüpft), kann aber auf Freitext für einen externen Ausführenden umgestellt werden; in diesem
+  Fall gibt es kein Konto, unter dem eine Signatur nachgeschlagen werden könnte. Als Fallback
+  (hauptsächlich für Kalibrierungen, die vor Einführung dieser Verknüpfung erfasst wurden) wird die
+  Signatur eines aktiven Benutzers dennoch verwendet, wenn der Datensatz nicht verknüpft ist, der
+  eingegebene Name "Durchgeführt von" aber genau mit dessen Anzeigenamen übereinstimmt.
+
+Dieses Signaturbild ist ein Bild auf der Seite, keine überprüfbare Signatur des *Dokuments* selbst —
+jedes generierte Zertifikats-PDF wird nach der Kompilierung zusätzlich und separat digital signiert
+(PAdES, von jedem PDF-Betrachter mit Signaturunterstützung direkt in das PDF eingebettet),
+unabhängig davon, welche Vorlage es erzeugt hat. Siehe
+[Digitale Zertifikatssignaturen](./certificate-signing.mdx).
+
+Der Unsicherheitsabschnitt druckt eine vollständige, im GUM-§7.2.4-Stil formulierte Aussage — Wert,
+Erweiterungsfaktor, Grundlage (Normal- vs. t-Verteilung), Vertrauensniveau und den gültigen Bereich,
+über den die Unsicherheit gilt —, angepasst für eine Kalibrier-*Funktion* statt für ein einzelnes
+Messergebnis, da genau das von Open Gauge zertifiziert wird.
+
+## Was bewusst nicht darauf steht
+
+Gemäß ISO/IEC 17025 §7.8.4.3 darf ein Kalibrierzertifikat **keine** Kalibrierintervall-Empfehlung
+drucken, sofern dies nicht ausdrücklich mit dem Kunden vereinbart wurde. Die eingebaute
+Standardvorlage druckt kein Fälligkeitsdatum und keinerlei Intervallformulierung — diese
+Kopfzeilenzelle zeigt stattdessen den Standort der Kalibrierung (siehe
+[ISO/IEC-17025-Konformität §7.8.4.3](../compliance/iso-17025.mdx#no-interval-recommendation) für
+die Historie; dies war vor v3.2.1 ein Fehler). `due_date` steht im Vorlagenkontext weiterhin für
+eine benutzerdefinierte hochgeladene Vorlage zur Verfügung, die es drucken möchte. Dies ist getrennt
+vom [empfohlenen Intervall](../health-scoring/predictions.mdx), das Open Gauge für seine eigene
+Zustandsbewertung berechnet — diese Zahl erscheint nie auf einem Zertifikat, nur in der eigenen
+Oberfläche der App.
+
+## Welche Vorlage verwendet wird
+
+Standardmäßig gilt: Der erste Treffer gewinnt, in dieser Reihenfolge:
+
+1. Die aktive Standardvorlage der Organisation der kalibrierten Anlage (über den Standort der
+   Anlage — siehe [Datenmodell & Konzepte](../concepts/data-model.mdx)).
+2. Die aktive Standardvorlage der Organisation des ausführenden Benutzers, falls die Anlage keinen
+   Standort hat.
+3. Die globale Standardvorlage, falls eine hochgeladen wurde.
+4. Die mit Open Gauge ausgelieferte eingebaute Vorlage — immer verfügbar, keine Konfiguration nötig.
+
+Die Schaltfläche **Zertifikat herunterladen** im Detailpanel einer Kalibrierung hat daneben ein
+Dropdown, das jede für diese Kalibrierung verfügbare Vorlage auflistet (die Vorlagen ihrer
+Organisation plus alle globalen) — die Auswahl einer Vorlage lädt ein mit dieser spezifischen
+Vorlage gerendertes Zertifikat herunter, statt der aufgelösten Standardvorlage, ohne das unten
+beschriebene kanonische gespeicherte Zertifikat zu beeinflussen.
+
+## Ein Zertifikat abrufen
+
+`GET /calibrations/{id}/certificate` gibt eine 1 Stunde gültige, vorsignierte MinIO-URL zu dem
+Zertifikat zurück, das beim Speichern der Kalibrierung generiert wurde (und generiert es bei
+Bedarf neu, falls es fehlt) — dies ist das kanonische, zwischengespeicherte Zertifikat der
+Kalibrierung.
+
+`GET /calibrations/{id}/certificate/download` (optional mit einem Query-Parameter
+`?template_id=`) rendert immer ein frisches PDF und streamt es direkt, ohne das zwischengespeicherte
+Zertifikat anzufassen — dies treibt den oben beschriebenen Vorlagenwähler an und wird von der
+Oberfläche für jeden Download-Klick verwendet, sodass das, was Sie sehen, exakt die aktuellen Daten
+der Kalibrierung und die gewählte Vorlage widerspiegelt. Es erfordert, dass die Kalibrierung
+Ergebnisse hat (eine angepasste Gleichung oder manuell eingegebene Koeffizienten); andernfalls wird
+400 zurückgegeben.
+
+`GET /calibrations/{id}/certificate-templates` listet die für die Anlage dieser Kalibrierung
+verfügbaren Vorlagen auf (die Vorlagen ihrer Organisation plus globale), um einen Vorlagenwähler
+wie den oben beschriebenen zu erstellen.
+
+Siehe [Kalibrierungen](/docs/api/calibrations) in der API-Referenz.

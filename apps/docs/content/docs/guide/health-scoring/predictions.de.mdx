@@ -1,0 +1,28 @@
+---
+title: Vorhersagen
+description: Wie Open Gauge zukünftige Drift projiziert, und was das mit Kalibrier-Fälligkeitsdaten zu tun hat (und was nicht).
+---
+
+## Driftvorhersage [#prediction]
+
+Open Gauge führt eine lineare Regression über die historischen
+[Maximaldrift](./drift-metrics.mdx#max-drift)-Werte eines Kanals durch, ausgehend von heute in die
+Zukunft projiziert. Dies gibt eine grobe Antwort auf "wenn sich dieser Trend fortsetzt, wann könnte
+die Drift dieses Sensors zu einem Problem werden?" — nützlich für die Planung, keine zertifizierte
+Prognose.
+
+## Empfohlenes Intervall vs. das Zertifikat
+
+Das im Reiter Zustand angezeigte [empfohlene Intervall](./overview.mdx#recommended-interval) ist
+eine Open-Gauge-interne Planungsheuristik. Es wird **nie** auf einem Kalibrierzertifikat gedruckt —
+siehe [Zertifikatserstellung](../calibration/certificates.mdx#whats-deliberately-not-on-it) dazu,
+warum ISO/IEC 17025 eine ausdrückliche Kundenvereinbarung verlangt, bevor ein Zertifikat eine
+Intervallempfehlung angeben darf.
+
+## Erfordert mindestens zwei Kalibrierungen
+
+Jede Vorhersage und Drift-Kennzahl auf dieser Seite benötigt mindestens zwei Kalibrierungen an
+einem Kanal, um überhaupt etwas Sinnvolles zu berechnen — eine einzelne Kalibrierung hat keine
+Historie, gegen die ein Trend angepasst werden könnte. Bis dahin zeigt Open Gauge einen neutralen
+Zustandswert von 100 %, die Stabilität "Stabil" und eine Driftrate von 0, statt einer aus
+unzureichenden Daten berechneten Zahl.

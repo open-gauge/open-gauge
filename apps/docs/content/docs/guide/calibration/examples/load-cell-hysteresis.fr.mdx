@@ -1,0 +1,119 @@
+---
+title: "Exemple 3 — Cellule de charge, hystérésis + répétabilité"
+description: Le détecteur d'hystérésis à balayage montée/descente, le détecteur de répétabilité à points triplés, et une divergence acceptation-simple contre risque-partagé.
+---
+
+Exerce : le détecteur d'[hystérésis](../curve-fitting.mdx#hysteresis) à balayage
+montée/descente, le détecteur de [répétabilité](../curve-fitting.mdx#repeatability) à points
+triplés, et une autre divergence acceptation-simple contre risque-partagé.
+
+## 3.0 Configuration
+
+| Champ | Valeur |
+|---|---|
+| Nom | Test Bench Load Cell |
+| Grandeur physique | Force |
+| Plage min / max | 0 / 500 |
+| Unité | N |
+| Valeur d'exactitude | 0,15 |
+| Unité d'exactitude | **% FS** — renseignez d'abord la plage min/max, puis choisissez « % FS » comme première option |
+| Résolution | 0,2 |
+| Unité de résolution | N |
+
+## 3.1 Paramètres de l'assistant de calibration
+
+Type **externe**, **Degré de régression : 1** (explicite — cet exemple porte sur
+l'hystérésis/la répétabilité, pas sur la sélection de degré), distribution **Normale**,
+confiance **95 %**, règle de décision **Risque partagé (tolérance + U)**.
+
+Points de données — un balayage ascendant, un balayage descendant retour vers le bas (pour
+l'hystérésis), et une lecture supplémentaire à 0 N (trois lectures au total à 0 N, pour la
+répétabilité) :
+
+| # | Référence (N) | Mesuré (N) | Notes |
+|---|---|---|---|
+| 1 | 0 | 0,2 | début ascendant |
+| 2 | 0 | 0,3 | répétition à 0 N (n° 1 du triplet de répétabilité) |
+| 3 | 100 | 100,6 | ascendant |
+| 4 | 200 | 200,9 | ascendant |
+| 5 | 300 | 301,0 | ascendant |
+| 6 | 400 | 401,1 | ascendant |
+| 7 | 500 | 501,3 | sommet du balayage |
+| 8 | 400 | 401,6 | descendant |
+| 9 | 300 | 301,7 | descendant |
+| 10 | 200 | 201,9 | descendant |
+| 11 | 100 | 101,8 | descendant |
+| 12 | 0 | 1,0 | retour à 0 N (triplet de répétabilité complet) |
+
+## Les mathématiques
+
+Ajustement (degré 1, les 12 points) : $a = 0,99833$, $b = -0,76668$.
+
+Erreur maximale = **0,863215 N**, au point 11 (référence 100 N, mesuré 101,8 N) → erreur %FS =
+$0,863215/500 \times 100\% = \mathbf{0,1726\%}$.
+
+**Hystérésis** — Open Gauge regroupe les points par valeur de référence et prend le plus grand
+écart des valeurs mesurées au sein de tout groupe où la valeur de référence se répète avec à la
+fois un segment ascendant et un segment descendant présents :
+
+| Référence | Valeurs mesurées à cette référence | Écart |
+|---|---|---|
+| 0 N | 0,2, 0,3, 1,0 | 0,8 |
+| 100 N | 100,6, 101,8 | 1,2 |
+| 200 N | 200,9, 201,9 | 1,0 |
+| 300 N | 301,0, 301,7 | 0,7 |
+| 400 N | 401,1, 401,6 | 0,5 |
+
+Écart le plus grand = **1,2 N** (à 100 N) → **hystérésis = 1,2**.
+
+**Répétabilité** — seul 0 N a 3 lectures ou plus (0,2, 0,3, 1,0) :
+
+$$
+\bar{x} = \frac{0.2 + 0.3 + 1.0}{3} = 0.5, \qquad
+s^2 = \frac{(0.2-0.5)^2 + (0.3-0.5)^2 + (1.0-0.5)^2}{3-1} = \frac{0.09+0.04+0.25}{2} = 0.19
+$$
+
+$$
+\text{repeatability} = \sqrt{0.19} = 0.435890\ \text{N}
+$$
+
+**Budget d'incertitude :**
+
+| Source | u |
+|---|---|
+| fit_residuals (Type A, ddl = 10) | 0,487526 |
+| resolution (Type B) = $0,2/\sqrt{12}$ | 0,057735 |
+
+- Combinée : $u_c = \sqrt{0.487526^2 + 0.057735^2} = \mathbf{0,490933\ N}$.
+- $\nu_{\text{eff}} \approx \mathbf{10,3}$.
+- Facteur d'élargissement $k = \Phi^{-1}(0,975) \approx 1,96$ (à partir de la confiance 95 %, non
+  saisi).
+- Élargie : $U = 0,490933 \times 1,96 = 0,962211 \approx \mathbf{0,96\ N}$ (2 chiffres
+  significatifs).
+
+**Règle de décision — essayez les deux et comparez.** La spécification d'exactitude est ±0,15 %
+FS, la tolérance est donc constante sur toute la plage : $\text{tolerance} = 0,0015 \times 500\
+\text{N} = 0,75\ \text{N}$. La plus grande erreur du balayage (0,863215 N, à la référence 100 N)
+dépasse cette valeur :
+
+| Règle de décision | Vérification (erreur max = 0,863215, tolérance = 0,75) | Résultat |
+|---|---|---|
+| Acceptation simple | $0,863215 \le 0,75$ ? Non | **NON CONFORME** |
+| Risque partagé (+U) | $0,863215 - 0,962211 = -0,098996 \le 0,75$ | **CONFORME** |
+
+C'est un cas véritablement réaliste : une cellule de charge dont l'erreur brute dépasse sa
+spécification serrée de ±0,15 % FS, mais dont l'incertitude de mesure globale est suffisamment
+grande pour que, selon une règle de risque partagé, le laboratoire et le client conviennent
+qu'elle reste acceptable. Un bon test à la fois de « de vrais échecs se produisent » et de
+« la règle choisie change le résultat ».
+
+## Résultats attendus
+
+| Champ | Valeur |
+|---|---|
+| Hystérésis | 1,2 |
+| Répétabilité | 0,435890 brut ; affiché comme **0,43589** dans l'assistant, **0,4359** dans la vue d'historique (précision d'affichage décimal fixe différente — voir [Arrondi](./rounding-and-troubleshooting.mdx)) |
+| Incertitude combinée | affichée arrondie : **0,49** |
+| Incertitude élargie (±) | affichée arrondie : **0,96** |
+| Déclaration (acceptation simple) | NON CONFORME à ±0,15 % de pleine échelle |
+| Déclaration (risque partagé) | CONFORME à ±0,15 % de pleine échelle |

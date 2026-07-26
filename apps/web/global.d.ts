@@ -11,6 +11,7 @@ import type sites from "./messages/en/sites.json";
 import type procedures from "./messages/en/procedures.json";
 import type organizations from "./messages/en/organizations.json";
 import type auth from "./messages/en/auth.json";
+import type legal from "./messages/en/legal.json";
 import type { routing } from "./src/i18n/routing";
 
 type Messages = {
@@ -27,6 +28,7 @@ type Messages = {
   procedures: typeof procedures;
   organizations: typeof organizations;
   auth: typeof auth;
+  legal: typeof legal;
 };
 
 // Typed message keys: useTranslations("nav") etc. are now checked against the

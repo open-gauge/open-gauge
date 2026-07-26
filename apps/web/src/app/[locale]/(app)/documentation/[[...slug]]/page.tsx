@@ -24,18 +24,18 @@ function DocLink(source: typeof docsSource, page: Page) {
 }
 
 interface PageParams {
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ locale: string; slug?: string[] }>;
 }
 
 export default async function DocumentationPage({ params }: PageParams) {
-  const { slug } = await params;
+  const { locale, slug } = await params;
 
   if (!slug || slug.length === 0) {
-    const first = docsSource.getPages()[0];
+    const first = docsSource.getPages(locale)[0];
     redirect(first ? first.url : "/dashboard");
   }
 
-  const page = docsSource.getPage(slug);
+  const page = docsSource.getPage(slug, locale);
   if (!page) notFound();
 
   const MDX = page.data.body;
@@ -85,15 +85,15 @@ export default async function DocumentationPage({ params }: PageParams) {
   );
 }
 
-export function generateStaticParams() {
-  return docsSource.generateParams();
+export function generateStaticParams({ params }: { params: { locale: string } }) {
+  return docsSource.getPages(params.locale).map((page) => ({ slug: page.slugs }));
 }
 
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   if (!slug || slug.length === 0) return {};
 
-  const page = docsSource.getPage(slug);
+  const page = docsSource.getPage(slug, locale);
   if (!page) notFound();
 
   return {

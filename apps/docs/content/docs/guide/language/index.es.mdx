@@ -1,0 +1,66 @@
+---
+title: Idioma y localización
+description: Cómo cambiar el idioma de visualización de la aplicación, cómo se guarda la preferencia y qué queda sin traducir por diseño.
+---
+
+La aplicación web de Open Gauge está disponible en inglés (el idioma canónico), español, francés y
+alemán. Cada usuario elige su propio idioma de visualización de forma independiente del resto de
+su organización.
+
+## Cambiar de idioma
+
+Haz clic en el ícono de globo junto al selector de tema claro/oscuro en la barra superior, y elige un idioma en
+el menú desplegable. La página se recarga de inmediato en el nuevo idioma — no hay un paso de guardado aparte.
+
+## Dónde se guarda la preferencia
+
+La elección se guarda en dos lugares para que funcione correctamente hayas iniciado sesión o no:
+
+- **Una cookie**, que se establece en el momento en que eliges un idioma. En esto se basa la elección
+  de un visitante sin sesión iniciada, y también permite un cambio inmediato antes de cualquier ida y vuelta con el servidor.
+- **Tu perfil de usuario** (una vez que has iniciado sesión) — la misma solicitud `PATCH /users/me` usada para tu nombre
+  y correo electrónico también acepta un campo `language`. En tu siguiente inicio de sesión desde un navegador o
+  dispositivo diferente, el idioma guardado en tu perfil prevalece sobre la cookie o la configuración regional del navegador de ese dispositivo, de modo que tu
+  preferencia te acompaña en lugar de quedar atada a una sola máquina.
+
+## Estructura de URL
+
+Las páginas en inglés no llevan prefijo (`/dashboard`, `/assets`, …). Las páginas en español, francés y alemán llevan
+un prefijo de configuración regional (`/es/dashboard`, `/fr/assets`, `/de/...`). Esto significa que todo enlace y marcador que
+existía antes de que se lanzara el soporte multilingüe sigue funcionando exactamente igual — solo los idiomas
+que no son inglés obtuvieron un prefijo, nada cambió para el inglés.
+
+## Qué está traducido — y qué no
+
+Cada página y control de la aplicación autenticada está traducido: navegación, formularios, tablas, modales,
+estados de error y vacíos, las pantallas de administración, el flujo de inicio de sesión/registro/olvidé mi contraseña/restablecer contraseña/
+verificar correo, cada menú desplegable basado en enumeraciones (magnitudes físicas, tecnologías de sensores,
+estado de calibración, roles, etc.), las descripciones de acciones del registro de actividad, y las páginas de Política de
+Privacidad y Términos de Servicio.
+
+**El contenido ingresado por el usuario** es lo único que se deja sin traducir a propósito: nombres de activos, notas
+de calibración, texto libre del registro de auditoría, y cualquier otra cosa que una persona haya escrito. Traducir automáticamente
+los datos de otra persona cambiaría silenciosamente lo que escribió, así que siempre se muestra exactamente como se ingresó, sin importar
+el idioma elegido por quien lo ve.
+
+La Política de Privacidad y los Términos de Servicio se distribuyen como una plantilla editable — consulta la nota al
+final de cada página. Sus traducciones son un punto de partida; al igual que el original en inglés, se espera que los
+operadores las hagan revisar por su propio asesor legal antes de basarse en ellas, especialmente para una
+jurisdicción con requisitos legales específicos de idioma.
+
+## El sitio de marketing
+
+El sitio de marketing independiente en [opengauge.org](https://opengauge.org) — una base de código distinta de la
+propia aplicación — tiene su propio selector de idioma equivalente junto a su alternador de tema claro/oscuro, con versiones completas
+en español, francés y alemán de la página de inicio y sus propias páginas de Política de Privacidad/Términos de Servicio.
+Los visitantes primerizos son redirigidos según el encabezado `Accept-Language` de su navegador;
+elegir un idioma explícitamente anula eso para futuras visitas.
+
+## Agregar un idioma (para quienes autoalojan y modifican su propia instancia)
+
+La lista de configuraciones regionales de la aplicación es un único arreglo de configuración
+(`apps/web/src/i18n/locales.ts`) más un archivo JSON de mensajes por área funcional en
+`apps/web/messages/{locale}/`. Añadir soporte para un idioma adicional es un cambio de solo contenido — agrega una
+entrada `LocaleMeta` y los archivos JSON traducidos; no es necesario cambiar ningún código de la aplicación. Sin embargo, esto no es
+algo que una instancia en ejecución pueda hacer sin reconstruir la aplicación — es un cambio de código fuente para
+quien mantiene el despliegue, no una configuración dentro de la aplicación.

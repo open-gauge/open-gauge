@@ -1,0 +1,197 @@
+---
+title: Agregar un sensor
+description: Guía paso a paso para registrar un activo de tipo sensor y configurar sus canales, campo por campo.
+---
+
+Esta página recorre el registro de un activo de tipo sensor y la configuración de su(s) canal(es) de
+medición, campo por campo. Cada campo descrito aquí también está explicado por un tooltip informativo (ⓘ) directamente
+en la interfaz — hacer clic en un tooltip te devuelve a la sección correspondiente de esta página.
+
+## 1. Crear el activo
+
+Ve a **Activos → Nuevo activo**, elige el tipo de activo **sensor**, y completa nombre,
+fabricante/modelo, número de serie y (opcionalmente) una hoja de datos y una ubicación.
+Al guardar se crea el activo con un ID generado automáticamente (p. ej. `OG-00042`).
+
+## 2. Agregar un canal
+
+Un activo de tipo sensor puede tener uno o más **canales** — uno por cada magnitud física que mide. La mayoría
+de los sensores de propósito único (un termopar, un transmisor de presión) tienen exactamente un canal; una
+sonda multiparamétrica podría tener varios. En la página de detalle del activo, usa **Agregar canal** y
+dale un **ID de canal** (una etiqueta corta única para este activo, p. ej. `CH1`).
+
+## 3. Configurar el canal
+
+### Magnitud física [#physical-quantity]
+
+La magnitud física define el tipo de medición (p. ej. temperatura, presión) y
+determina las unidades y procedimientos de calibración aplicables. Elige la que mejor coincida con
+la medición principal del sensor — esto determina qué unidades aparecen en cada lista desplegable de unidades
+más abajo.
+
+Cada magnitud física que admite Open Gauge, con sus tecnologías de detección disponibles, las opciones de su
+lista desplegable **Tipo** (hoy en día solo presión tiene una — consulta [Tipo de
+medición](#measurement-type) más abajo), y sus unidades de visualización seleccionables:
+
+| Magnitud física | Tecnología | Tipo (si aplica) | Unidades |
+|---|---|---|---|
+| Temperatura | Termopar (J, K, T, E, N, R, S, B), RTD (PT100, PT1000, Otro), Termistor (NTC, PTC, Otro), Infrarrojo, Fibra óptica, Semiconductor, Bimetálico | — | °C, °F, K |
+| Presión | Galga extensométrica, Piezorresistivo, Piezoeléctrico, Capacitivo, Inductivo, Resonante, Óptico, MEMS | Absoluta, Manométrica (relativa) | Pa, kPa, MPa, bar, psi, hPa, atm, mmHg, inHg, inH₂O |
+| Caudal | Presión diferencial, Placa de orificio, Venturi, Turbina, Desplazamiento positivo, Electromagnético, Vórtice, Coriolis, Ultrasónico, Masa térmica | — | m³/h, L/min, gal/min, kg/h, g/min, lb/min |
+| Nivel | Flotador, Hidrostático, Capacitivo, Conductivo, Ultrasónico, Radar, Láser, Óptico | — | mm, cm, m, in, ft, % |
+| Humedad | Capacitivo, Resistivo, Conductividad térmica, Espejo enfriado | — | %RH, g/m³, Punto de rocío °C, Punto de rocío °F |
+| Fuerza | Galga extensométrica, Piezoeléctrico, Hidráulico, Neumático, Óptico | — | N, kN, kgf, lbf |
+| Par | Galga extensométrica, Magnetoelástico, Óptico, Piezoeléctrico | — | N·m, kN·m, lbf·ft |
+| Masa | Galga extensométrica, Restitución de fuerza electromagnética, Tubo vibrante, Piezoeléctrico | — | kg, g, mg, lb |
+| Deformación | Galga extensométrica de lámina, Galga extensométrica semiconductora, Rejilla de Bragg en fibra, Capacitivo | — | µε, m/m |
+| Desplazamiento | Potenciométrico, LVDT, Inductivo, Capacitivo, Corrientes de Foucault, Láser, Codificador óptico, Magnetoestrictivo | — | nm, µm, mm, cm, m, in, ft |
+| Ángulo | Potenciómetro, Codificador óptico, Codificador magnético, Resolver, Inclinómetro, MEMS | — | °, rad |
+| Velocidad angular | Codificador óptico, Efecto Hall, Magnetorresistivo, Tacómetro, Giroscopio MEMS | — | rpm, °/s, rad/s |
+| Aceleración angular | Giroscopio MEMS, Codificador óptico (derivada) | — | °/s², rad/s² |
+| Velocidad | Radar Doppler, Láser Doppler, Basado en codificador, Tubo de Pitot, Ultrasónico | — | mm/s, m/s, km/h, mph, knots |
+| Aceleración | MEMS, Piezoeléctrico, Piezorresistivo, Capacitivo, Acelerómetro servo | — | m/s², g |
+| Presión sonora | Micrófono de condensador, Micrófono piezoeléctrico, Micrófono MEMS | — | Pa, dB, dB(A), dB(C) |
+| Voltaje | Divisor resistivo, Divisor capacitivo, Efecto Hall, Amplificador de aislamiento | — | V, mV, kV |
+| Corriente | Resistencia shunt, Efecto Hall, Transformador de corriente, Bobina de Rogowski | — | A, mA, kA |
+| Resistencia | 2 hilos, 3 hilos, 4 hilos, Medición por puente | — | Ω, kΩ, MΩ |
+| Potencia | Vatímetro, Analizador de potencia, Calculado (V×I) | — | W, kW, MW |
+| Energía | Medidor de energía, Medidor inteligente | — | Wh, kWh, MWh |
+| Frecuencia | Contador de cristal, Contador recíproco, Óptico, Captador magnético | — | Hz, kHz, MHz, GHz, bpm |
+| Capacitancia | Puente, Carga/descarga, Resonante | — | F, µF, nF, pF |
+| Inductancia | Puente, Resonante, Basado en impedancia | — | H, mH, µH |
+| Impedancia | Analizador de impedancia, Medidor LCR | — | Ω, kΩ, MΩ |
+| Campo magnético | Efecto Hall, Fluxgate, Magnetorresistivo, RMN, SQUID | — | T, mT, µT, G |
+| Campo eléctrico | Molino de campo, Sonda electrostática, Sonda capacitiva | — | V/m, kV/m |
+| Radiación | Geiger-Müller, Centelleo, Semiconductor, Cámara de ionización, Contador proporcional | — | Gy, Sv, rem, Bq |
+| Iluminancia | Fotodiodo, Fotorresistor, Luxómetro | — | lx, fc |
+| Luminancia | Fotómetro de imagen, Fotómetro puntual | — | cd/m² |
+| Concentración | Electroquímico, NDIR, PID, MOS, Perla catalítica, Zirconia, Espectrómetro de masas | — | ppm, ppb, %, mg/m³ |
+| pH | Electrodo de vidrio, ISFET, Óptico | — | pH |
+| Conductividad | Por contacto, Inductivo, Toroidal | — | S/m, mS/cm, µS/cm |
+| Salinidad | Basado en conductividad, Refractómetro | — | ppt, PSU, g/L |
+| Oxígeno disuelto | Galvánico, Polarográfico, Óptico / Luminiscente | — | mg/L, % sat |
+| ORP / Potencial redox | Electrodo de platino, Electrodo de oro | — | mV |
+| Densidad | Tubo vibrante, Hidrostático, Coriolis, Picnómetro | — | kg/m³, g/cm³ |
+| Viscosidad | Rotacional, Vibracional, Capilar, Bola en caída | — | Pa·s, cP |
+| Contenido de humedad | Capacitivo, Microondas, Infrarrojo, Gravimétrico | — | %RH, %, g/g |
+| Concentración de partículas | Contador óptico de partículas, Dispersión láser, Contador de partículas por condensación | — | particles/m³, particles/ft³ |
+| Dirección del viento | Veleta, Ultrasónico | — | ° |
+| Precipitación | Cubeta basculante, Pesaje, Óptico | — | mm, in |
+| Oxígeno en sangre | Oximetría de pulso | — | % SpO₂ |
+| Rugosidad superficial | Perfilómetro de contacto, Perfilómetro óptico, Escaneo láser | — | Ra (µm), Rz (µm), Rt (µm), µm |
+
+*Mantén esta tabla sincronizada con `PHYSICAL_QUANTITIES` en `apps/web/src/lib/sensor-options.ts` —
+actualízala cada vez que se agregue allí una nueva magnitud física, tecnología o unidad.*
+
+### Tipo de medición [#measurement-type]
+
+Algunas magnitudes físicas tienen más de un *modo* de medición. El ejemplo más claro es
+la presión: un sensor puede reportar presión **absoluta** (relativa al vacío) o presión
+**manométrica** (relativa a la presión atmosférica). Donde una magnitud física tiene opciones definidas,
+aparece una lista desplegable **Tipo** bajo Magnitud física; donde no se necesita una (p. ej.
+temperatura), el campo se oculta por completo.
+
+### Rango de medición y unidad [#measurement-range]
+
+Ingresa el **rango de medición** del canal (mín/máx) y la **unidad** de visualización. Una vez establecido un
+rango, cada opción "% FS" (porcentaje de escala completa) de más abajo queda disponible, ya que un porcentaje necesita
+un intervalo contra el cual convertirse.
+
+### Tecnología [#technology]
+
+La tecnología de detección (p. ej. RTD, termopar, galga extensométrica) se ubica a la derecha de magnitud
+física — un campo puramente descriptivo sin efecto en los cálculos.
+
+### Señal de salida [#output-signal]
+
+La salida en bruto del sensor — tipo, rango de valor y unidad — se ubica directamente bajo el
+rango medible, en el mismo diseño de columna mín-máx/unidad. Esto es lo que el sensor realmente emite
+eléctricamente, que puede diferir de la unidad física (p. ej. un lazo de corriente de 4–20 mA que representa
+0–100 °C).
+
+| Tipo de señal de salida | Descripción | Unidades |
+|---|---|---|
+| Analógica | Una señal eléctrica continua proporcional al valor medido (p. ej. un lazo de corriente de 4–20 mA). | mA, A, V, mV, kV |
+| Digital | Una salida codificada/discreta; las opciones de unidad coinciden con la magnitud física propia del canal en lugar de una unidad eléctrica fija. | Las mismas unidades que la magnitud física del canal |
+| Frecuencia | El valor medido se codifica como una frecuencia de señal. | Hz, kHz, MHz, GHz |
+| Resistencia | La salida es una resistencia variable proporcional al valor medido (p. ej. un elemento RTD de platino). | Ω, kΩ, MΩ |
+| Capacitancia | La salida es una capacitancia variable proporcional al valor medido. | F, µF, nF, pF |
+| Ratiométrica | La salida se expresa como una razón respecto al voltaje de excitación del sensor en lugar de un valor absoluto (p. ej. la salida en mV/V de una celda de carga de tipo puente). | mV/V, V/V |
+
+*Mantén esta tabla sincronizada con `OUTPUT_TYPE_OPTIONS`/`getOutputUnits` en
+`apps/web/src/lib/sensor-options.ts` — actualízala cada vez que se agregue allí un nuevo tipo de señal de
+salida.*
+
+### Valor de exactitud [#accuracy-value]
+
+Desviación máxima entre la salida del sensor y el valor verdadero. Cuanto menor, más exacto.
+Elige **% FS** como unidad para expresar esto como un porcentaje del rango medible en lugar de
+un valor absoluto — consulta [La convención "% FS"](#the-fs-convention) más abajo. Esta es la
+especificación de exactitud nominal/del fabricante, y es contra lo que Open Gauge compara el error medido de una
+calibración para decidir aprobado/rechazado — consulta
+[Reglas de decisión](../calibration/decision-rules.mdx).
+
+### Resolución [#resolution]
+
+El cambio más pequeño en la entrada que el sensor puede detectar y representar en su salida. La resolución
+alimenta automáticamente el presupuesto de incertidumbre de cada calibración como una contribución Tipo B
+(rectangular) — consulta [El presupuesto de incertidumbre](../calibration/uncertainty-budget.mdx).
+
+### Incertidumbre (±) [#measurement-uncertainty]
+
+Cuantifica la duda sobre el resultado de la medición, expresada como ±valor. Esta es la especificación de
+incertidumbre nominal/expandida del fabricante. Prellena un campo "Exactitud nominal del sensor" por calibración
+en el asistente de calibración (aún editable allí) como una contribución Tipo B *opcional* al
+presupuesto de incertidumbre de esa calibración — es opcional porque incluirla incondicionalmente arriesga
+un doble conteo respecto al término de residuo del ajuste calculado a partir de los propios datos de la calibración.
+
+### Tasa de deriva [#drift-rate]
+
+Tasa a la que la salida del sensor se desplaza con el tiempo sin ningún cambio en la magnitud medida.
+Puramente informativa en el canal — la propia *detección* de deriva de Open Gauge se calcula a partir del historial
+real de calibración, no de esta especificación del fabricante; consulta
+[Métricas de deriva](../health-scoring/drift-metrics.mdx).
+
+### Tiempo de respuesta (ms) [#response-time-ms]
+
+Tiempo para que la salida del sensor alcance un porcentaje definido de su valor final tras un cambio de
+entrada tipo escalón.
+
+### Ancho de banda (Hz) [#bandwidth-hz]
+
+Frecuencia máxima de cambios en la entrada que el sensor puede seguir con exactitud.
+
+### Método de calibración [#calibration-method]
+
+El [procedimiento](../procedures/index.mdx) usado para calibrar este canal — vincular uno aquí
+permite que el asistente de calibración prellene los pasos, el equipo y los criterios de aceptación correctos
+para este canal específico.
+
+### Rol de calibración [#calibration-role]
+
+Una casilla, **"Patrón de referencia"** (por defecto: sin marcar/**No**). Márcala para
+señalar este canal como un patrón de referencia, de modo que se pueda seleccionar como la referencia de
+trazabilidad al calibrar otros activos contra él — consulta
+[Resumen de calibración](../calibration/overview.mdx) para saber cómo las calibraciones internas usan un
+activo de referencia.
+
+## La convención "% FS" [#the-fs-convention]
+
+Exactitud, Resolución e Incertidumbre emparejan cada una un valor numérico con una **lista desplegable de
+unidad**. Esa lista desplegable ofrece las unidades físicas compatibles del canal (p. ej. °C para un canal de
+temperatura) más, una vez que se completan Rango mín/máx, una opción **"% FS"** como la *primera*
+opción. No hay un campo separado de "tipo de exactitud" para configurar — elegir una unidad real (como °C)
+significa que el valor es absoluto; elegir **% FS** significa que es un porcentaje del intervalo del rango,
+y Open Gauge lo convierte internamente a un valor absoluto (`value/100 × (range_max − range_min)`) donde sea que se
+use en un cálculo.
+
+## Después de guardar
+
+Una vez que se guarda un canal, cada valor completado es visible directamente en la lista de canales en la
+página del activo — no es necesario volver a abrir el formulario de edición para comprobar qué se configuró.
+
+## Próximos pasos
+
+Con un canal configurado, estás listo para ejecutar tu primera calibración — consulta
+[Resumen de calibración](../calibration/overview.mdx), o trabaja a través de un ejemplo numérico
+completo en [Ejemplos resueltos](../calibration/examples/index.mdx).

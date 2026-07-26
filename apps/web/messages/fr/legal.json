@@ -1,0 +1,42 @@
+{
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "updated": "13 juillet 2026",
+    "intro": "Open Gauge est un logiciel auto-hébergé : l'organisation qui a installé cette instance (« l'Opérateur ») exécute sa propre copie de l'application et de la base de données, et est responsable du traitement de tout ce qui y est stocké. Le projet Open Gauge lui-même n'exploite pas cette Instance, ne reçoit pas de copie de ses données et n'y a aucun accès.",
+    "section1Title": "1. Quelles données sont stockées, et où",
+    "section1Body": "Toutes les données que vous saisissez — informations de compte, fiches d'actifs et de capteurs, historique de calibration, certificats, fichiers téléversés et journaux d'audit — sont stockées entièrement au sein de la propre infrastructure de l'Opérateur : sa base de données PostgreSQL et son stockage d'objets MinIO (ou compatible S3), tels que configurés par l'Opérateur. Open Gauge ne transmet pas ces données à un service tiers par défaut.",
+    "section2Title": "2. Informations de compte",
+    "section2Body": "Pour créer un compte, vous fournissez un nom, une adresse e-mail et un mot de passe (stocké sous forme de hachage salé, jamais en texte brut). Si les notifications par e-mail sont configurées par un administrateur, votre adresse e-mail est utilisée pour envoyer les liens de vérification de compte et de réinitialisation de mot de passe, ainsi que — pour les techniciens et administrateurs de votre organisation — les rappels d'échéance de calibration.",
+    "section3Title": "3. Envoi des e-mails",
+    "section3Body": "Lorsqu'un administrateur configure le SMTP (Admin → E-mail), le courrier sortant est envoyé directement depuis l'Instance vers le serveur SMTP indiqué par l'Opérateur. Aucun contenu d'e-mail ne transite par une infrastructure exploitée par Open Gauge — il n'en existe aucune.",
+    "section4Title": "4. Journaux d'audit",
+    "section4Body": "Les actions sensibles en matière de sécurité et de traçabilité (création d'enregistrements, modifications, annulations/restaurations de calibrations, changements de paramètres) sont enregistrées dans un journal d'audit immuable, incluant l'utilisateur ayant agi, un horodatage et, le cas échéant, l'adresse IP et l'user agent de la requête. Il s'agit d'une fonctionnalité essentielle pour la traçabilité de type ISO/IEC 17025, et non de données partagées en dehors de l'Instance.",
+    "section5Title": "5. Cookies et stockage local",
+    "section5Body": "Open Gauge stocke votre jeton de session et votre préférence de thème dans le stockage local de votre navigateur. Il n'utilise pas de cookies de suivi tiers ni de scripts d'analyse.",
+    "section6Title": "6. Conservation et suppression des données",
+    "section6Body": "Les enregistrements de calibration sont volontairement immuables à des fins de traçabilité — consultez la documentation de l'Instance pour savoir comment fonctionne l'« annulation » d'un enregistrement. Les autres enregistrements (actifs, emplacements, procédés) prennent en charge la suppression réversible. L'Opérateur contrôle toutes les durées de conservation et politiques de sauvegarde ; contactez votre administrateur pour demander la suppression des données personnelles de votre compte.",
+    "section7Title": "7. Vos droits",
+    "section7Body": "Selon la juridiction de l'Opérateur et le droit applicable (par ex. le RGPD), vous pouvez disposer de droits d'accès, de rectification ou de suppression de vos données personnelles. L'Opérateur contrôlant l'Instance, adressez toute demande de ce type à votre administrateur.",
+    "section8Title": "8. Modifications de cette politique",
+    "section8Body": "Cette page est un modèle fourni avec Open Gauge. Les Opérateurs sont invités à la faire examiner par leur propre conseil juridique et à l'adapter à leur juridiction, leur secteur et leurs obligations de conformité avant de s'y fier."
+  },
+  "terms": {
+    "title": "Conditions d'utilisation",
+    "updated": "13 juillet 2026",
+    "intro": "Open Gauge est un logiciel libre et open source sous licence <link>GNU Affero General Public License v3.0 (AGPL-3.0)</link>. Les présentes Conditions régissent votre utilisation d'un déploiement spécifique et auto-hébergé d'Open Gauge (l'« Instance ») exploité par l'organisation qui l'a installé (l'« Opérateur ») — et non un service hébergé fourni par le projet Open Gauge lui-même.",
+    "section1Title": "1. Entre qui ces conditions s'appliquent",
+    "section1Body": "Open Gauge n'est pas un produit SaaS. Il n'existe aucune société centrale Open Gauge hébergeant vos données ou partie à ces conditions. Chaque Instance est installée, configurée et exploitée de manière indépendante par son Opérateur, à l'aide du code open source d'Open Gauge sous licence AGPL-3.0. Tout accord relatif à l'utilisation d'une Instance — y compris les présentes Conditions — est conclu entre vous et l'Opérateur, seul responsable de l'Instance, de sa configuration, de ses données et de ses utilisateurs.",
+    "section2Title": "2. Usage autorisé",
+    "section2Body": "N'utilisez l'Instance qu'à des fins licites conformes aux politiques de votre organisation. Ne tentez pas de contourner les contrôles d'accès, de rechercher des vulnérabilités sans autorisation, ni d'utiliser l'Instance pour stocker ou traiter des données que vous n'êtes pas autorisé à détenir.",
+    "section3Title": "3. Données de calibration et de traçabilité",
+    "section3Body": "Open Gauge est conçu pour conserver un historique de calibration immuable et traçable — les enregistrements sont versionnés et jamais écrasés silencieusement. Bien que le logiciel impose cela au niveau du modèle de données, l'Opérateur est responsable de ses propres pratiques de sauvegarde, de conservation et de reprise après sinistre. Ni ce document ni le logiciel Open Gauge ne garantissent contre la perte de données due à une défaillance d'infrastructure, une mauvaise configuration ou une erreur de l'Opérateur.",
+    "section4Title": "4. Absence de garantie",
+    "section4Body": "Comme indiqué dans la licence AGPL-3.0, Open Gauge est fourni <strong>« en l'état »</strong>, sans garantie d'aucune sorte, expresse ou implicite, y compris, sans s'y limiter, les garanties de qualité marchande, d'adéquation à un usage particulier et de non-contrefaçon. L'Opérateur n'offre aucune garantie supplémentaire au-delà de ce qu'indiquent ses propres politiques.",
+    "section5Title": "5. Limitation de responsabilité",
+    "section5Body": "Dans toute la mesure permise par la loi, ni les mainteneurs du projet Open Gauge ni l'Opérateur (sauf si la politique propre de l'Opérateur indique le contraire) ne pourront être tenus responsables de dommages indirects, accessoires, spéciaux ou consécutifs découlant de l'utilisation du logiciel ou d'une Instance.",
+    "section6Title": "6. Modifications de ces conditions",
+    "section6Body": "L'Opérateur peut mettre à jour ces Conditions pour son Instance à tout moment. Cette page est un modèle fourni avec Open Gauge — les Opérateurs sont invités à la faire examiner par leur propre conseil juridique et à l'adapter à leur juridiction et à leurs exigences de conformité (par ex. ISO/IEC 17025) avant de s'y fier.",
+    "section7Title": "7. Contact",
+    "section7Body": "Pour toute question concernant ces Conditions telles qu'appliquées à une Instance spécifique, contactez directement l'administrateur de cette Instance."
+  }
+}

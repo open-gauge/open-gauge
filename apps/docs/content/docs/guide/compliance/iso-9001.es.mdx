@@ -1,0 +1,138 @@
+---
+title: ISO 9001:2015
+description: Sistemas de gestión de calidad — Requisitos. Las cláusulas generales de SGC relevantes para un sistema de calibración/activos, y cómo las aborda Open Gauge.
+---
+
+## Resumen
+
+**ISO 9001:2015** — *Sistemas de gestión de calidad — Requisitos* — se publica por ISO. Es la
+norma genérica de gestión de calidad sobre la que ISO/IEC 17025 §8 Opción B se apoya
+explícitamente ("un laboratorio que ha establecido y mantiene un sistema de gestión de acuerdo
+con...ISO 9001...también cumple al menos la intención" de las propias cláusulas del sistema de
+gestión de la 17025) — consulta [ISO/IEC 17025](./iso-17025.mdx). A diferencia de la 17025, ISO
+9001 no es específica de laboratorios: se aplica a cualquier organización que proporcione
+productos o servicios, y la mayor parte de su contenido (compromiso del liderazgo, enfoque al
+cliente, registros de competencia de RR. HH., auditorías internas, revisión por la dirección,
+planificación basada en riesgos) rige cómo la *organización* dirige su negocio, no algo que un LIMS
+pueda satisfacer por sí solo — el mismo límite de alcance explicado en el
+[resumen](./overview.mdx).
+
+Las cláusulas de abajo son las que tienen un componente operativo/de mantenimiento de registros
+directo que un sistema de software realmente implementa: equipos de seguimiento y medición (7.1.5
+— efectivamente una versión condensada de lo que ISO/IEC 17025 cubre en su totalidad), control de
+la información documentada (7.5), identificación/trazabilidad de las salidas (8.5.2), liberación y
+manejo de no conformidades (8.6, 8.7), y seguimiento del desempeño / acción correctiva (9.1, 10.2).
+
+## Cumplimiento
+
+| Cláusula | Requisito | Estado | Dónde se aborda |
+|---|---|---|---|
+| [7.1.5](#monitoring-and-measuring-resources) | Equipo de medición trazable, con estado identificado, protegido contra manipulación; se evalúa retroactivamente el impacto de un fallo descubierto después | ⚠️ Parcial | Los mismos mecanismos de trazabilidad/identificación/protección contra manipulación que [ISO/IEC 17025 §6.4–6.5](./iso-17025.mdx); sin flujo de evaluación de impacto retroactiva |
+| [7.5.1–7.5.3](#documented-information) | Información documentada identificada, versionada, revisada, con acceso controlado, retenida, protegida contra alteración no intencional | ✅ Cumplido | Registros de calibración inmutables, registro de auditoría, versionado de certificados, RBAC |
+| [8.5.2](#identification-and-traceability) | Salidas identificadas de forma única; trazabilidad mantenida donde se requiera | ✅ Cumplido | IDs de activo, códigos QR, números de certificado, vínculo con el patrón de referencia |
+| [8.6](#release-of-outputs) | Evidencia de conformidad con los criterios de aceptación retenida; liberación trazable a la persona autorizante | ✅ Cumplido | `conformity_statement` + identidad/firma de quien realizó la calibración en cada certificado |
+| [8.7](#nonconforming-outputs) | Salidas no conformes identificadas y controladas, sin uso no intencional; documentadas | ✅ Cumplido | Las calibraciones fallidas nunca se bloquean ni se ocultan — la regla de decisión y el aprobado/rechazado se registran e imprimen |
+| [9.1](#monitoring-and-measurement) | Determinar qué se supervisa/mide y evaluar los resultados | ⚠️ Parcial | La [puntuación de estado](../health-scoring/overview.mdx) supervisa el desempeño de activos/calibraciones; sin supervisión a nivel de SGC (proceso de toda la organización) |
+| [10.2](#corrective-action) | No conformidades rastreadas hasta una acción correctiva documentada y una revisión de eficacia | ❌ No cumplido | No hay ninguna función de seguimiento de CAPA (acción correctiva/preventiva) |
+
+## Detalle
+
+### Recursos de seguimiento y medición [#monitoring-and-measuring-resources]
+
+> "7.1.5.2 ...measuring equipment shall be: a) calibrated or verified...against measurement
+> standards traceable to international or national measurement standards...; b) identified in
+> order to determine their status; c) safeguarded from adjustments, damage or deterioration that
+> would invalidate the calibration status... The organization shall determine if the validity of
+> previous measurement results has been adversely affected when measuring equipment is found to be
+> unfit for its intended purpose, and shall take appropriate action as necessary."
+
+Esta es una versión condensada de lo que [ISO/IEC 17025 §6.4–6.5](./iso-17025.mdx#traceability-chain)
+cubre en todo detalle, y Open Gauge la aborda de la misma manera: registros de calibración y
+trazabilidad por activo, identificación de estado con código QR, e historial de calibración
+inmutable (nada puede invalidar silenciosamente un resultado pasado). La última oración —
+reevaluar si las mediciones *previas* tomadas con un instrumento que después se descubre fuera de
+tolerancia ahora son sospechosas — es la misma brecha señalada para
+[17025 §6.4.9](./iso-17025.mdx#equipment-out-of-service): Open Gauge no marca automáticamente las
+calibraciones ni los datos posteriores que preceden a un fallo descubierto.
+
+### Información documentada [#documented-information]
+
+> "7.5.3.2 ...the organization shall address...c) control of changes (e.g. version control)...
+> Documented information retained as evidence of conformity shall be protected from unintended
+> alterations."
+
+Los registros de calibración son inmutables (una corrección crea una versión nueva, nunca
+sobrescribe — consulta [ISO/IEC 17025 §7.5](./iso-17025.mdx#technical-records)), los certificados
+llevan una versión incremental en su número de certificado, y cada cambio se captura en el
+[registro de auditoría](../concepts/data-model.mdx) con actor, marca de tiempo, y estado
+antes/después — satisfaciendo juntos tanto el requisito de control de versiones como el de
+alteración no intencional.
+
+### Identificación y trazabilidad [#identification-and-traceability]
+
+> "8.5.2 ...The organization shall control the unique identification of the outputs when
+> traceability is a requirement, and shall retain the documented information necessary to enable
+> traceability."
+
+Cada activo tiene un `asset_id` único y un código QR; cada calibración produce un certificado
+numerado de forma única (`OG-CAL-{asset_id}-v{version}`) vinculado al patrón de referencia usado —
+el mismo mecanismo documentado en la
+[cadena de trazabilidad de ISO/IEC 17025](./iso-17025.mdx#traceability-chain).
+
+### Liberación de las salidas [#release-of-outputs]
+
+> "8.6 ...The organization shall retain documented information on the release of products and
+> services. The documented information shall include: a) evidence of conformity with the
+> acceptance criteria; b) traceability to the person(s) authorizing the release."
+
+Un certificado de calibración **es** el registro de liberación de una calibración: lleva el
+[dictamen de conformidad](./iso-17025.mdx#conformity-statement) (los criterios de aceptación y si
+se cumplieron) y la identidad de quien realizó la calibración más la firma digital — ambos
+requeridos por (a) y (b) juntos, en el mismo documento.
+
+### Salidas no conformes [#nonconforming-outputs]
+
+> "8.7.1 The organization shall ensure that outputs that do not conform to their requirements are
+> identified and controlled to prevent their unintended use or delivery... 8.7.2 The organization
+> shall retain documented information that: a) describes the nonconformity; ...d) identifies the
+> authority deciding the action."
+
+Una calibración fallida nunca se bloquea de guardarse ni se oculta silenciosamente — consulta
+[Reglas de decisión y conformidad](../calibration/decision-rules.mdx#decision-rule): guardar una
+requiere una confirmación explícita de "Guardar de todos modos" que nombra la especificación y la
+regla de decisión, y el `conformity_statement` resultante (qué especificación, qué regla,
+aprobado/rechazado) se retiene y se imprime en el certificado exactamente como necesitaría hacerlo
+un registro de no conformidad.
+
+### Seguimiento y medición [#monitoring-and-measurement]
+
+> "9.1.1 The organization shall determine: a) what needs to be monitored and measured; ...The
+> organization shall evaluate the performance and the effectiveness of the quality management
+> system."
+
+La [puntuación de estado](../health-scoring/overview.mdx) y el panel de control supervisan
+continuamente el desempeño a nivel de activo y calibración (deriva, tasas de vencimiento,
+tendencias de estado) — pero esto es supervisión de los *activos gestionados*, no del propio
+sistema de gestión de calidad de la organización (resultados de auditoría, eficacia de procesos,
+logro de objetivos), que es de lo que realmente trata 9.1. Open Gauge no tiene ninguna función que
+aborde esto último; no está dentro del alcance de un sistema de activos/calibración.
+
+### Acción correctiva [#corrective-action]
+
+> "10.2.1 When a nonconformity occurs...the organization shall: a) react...and correct it; b)
+> evaluate the need for action to eliminate the cause(s)...10.2.2 The organization shall retain
+> documented information as evidence of: a) the nature of the nonconformities and any subsequent
+> actions taken; b) the results of any corrective action."
+
+**Brecha.** Open Gauge registra que ocurrió una no conformidad (una calibración fallida, un
+registro anulado) pero no tiene ningún flujo de CAPA: no hay forma de abrir una acción correctiva
+contra una no conformidad, asignar un responsable, registrar un análisis de causa raíz, o
+rastrearla hasta un cierre documentado y revisado. Hoy esto tiene que gestionarse completamente
+fuera de Open Gauge.
+
+---
+
+*Verificado contra ISO 9001:2015(E) y la base de código de Open Gauge
+(`apps/api/app/models/calibration.py`, `apps/api/app/models/asset.py`,
+`apps/api/app/services/certificate_service.py`, `apps/api/app/models/audit_log.py`,
+`apps/api/app/health/`) el 2026-07-29.*

@@ -1,0 +1,23 @@
+---
+title: Durchgerechnete Beispiele
+description: Vier vollständig durchgerechnete Kalibrierbeispiele, die Sie über die Oberfläche nachvollziehen können, um die Berechnungs-Engine von Open Gauge zu überprüfen.
+---
+
+Vier vollständig durchgerechnete Kalibrierbeispiele, jedes trainiert einen anderen Teil der
+Kalibrier-Engine von Open Gauge. Jede Zahl darin wurde erzeugt, indem der echte Produktionscode gegen
+die gezeigten Eingabedaten ausgeführt wurde, und anschließend unabhängig von Hand aus den
+zugrunde liegenden Formeln neu abgeleitet, um zu bestätigen, dass sie übereinstimmen. Wenn Sie
+dieselbe Anlagen-/Kanalkonfiguration und dieselben Datenpunkte über die Oberfläche eingeben, sollten
+Sie dieselben Zahlen sehen — siehe [Rundung](./rounding-and-troubleshooting.mdx) für die
+Anzeigepräzisionsregeln.
+
+Hintergrundlektüre: [Kalibrierung](../overview.mdx) dafür, was jede Zahl bedeutet und warum,
+[Normen & Glossar](../../reference/standards-glossary.mdx) für die GUM-/ISO-17025-Klauseln, die
+diese Formeln umsetzen.
+
+<Cards>
+  <Card title="Beispiel 1 — Temperatur-RTD, lineare Anpassung" href="/docs/guide/calibration/examples/rtd-linear" description="Lineare Regression, ein vollständiges vierzeiliges Unsicherheitsbudget, das automatische Abrufen des Referenznormals, und alle drei Entscheidungsregeln, die bei denselben Daten auseinandergehen." />
+  <Card title="Beispiel 2 — Druckmessumformer, quadratische Anpassung" href="/docs/guide/calibration/examples/pressure-quadratic" description="Automatische Polynomgrad-Auswahl über AIC, Nichtlinearitätserkennung und der Erweiterungsfaktor-Pfad über die t-Verteilung." />
+  <Card title="Beispiel 3 — Wägezelle, Hysterese + Wiederholbarkeit" href="/docs/guide/calibration/examples/load-cell-hysteresis" description="Der Hysterese-Detektor für Auf-/Ab-Durchläufe und der Wiederholbarkeits-Detektor für Dreifachpunkte." />
+  <Card title="Beispiel 4 — Externes Zertifikat nur mit Koeffizienten" href="/docs/guide/calibration/examples/coefficients-only-certificate" description="Erfassen eines Laborzertifikats, das das Kalibrierpolynom direkt angibt, ohne Rohdaten." />
+</Cards>

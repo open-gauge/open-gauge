@@ -1,0 +1,41 @@
+---
+title: Emplacements
+description: Configurer la hiérarchie des emplacements, marquer les laboratoires de calibration, et suivre les déplacements d'actifs.
+---
+
+Les **emplacements** dans Open Gauge forment une arborescence hiérarchique — organisation → site →
+bâtiment → laboratoire → tout niveau de détail qui a du sens pour vos installations. Gérez-les
+depuis la page **Emplacements** dans la barre latérale.
+
+## Créer la hiérarchie
+
+Chaque emplacement possède un **nom**, un **code** optionnel (unique par organisation, utile pour
+des références courtes lisibles par un humain), un **type** (par ex. `site` / `building` /
+`laboratory`), et un **emplacement parent** optionnel — choisissez un parent pour l'imbriquer sous
+un nœud existant, ou laissez ce champ vide pour créer un nouveau nœud racine. L'adresse et les
+coordonnées GPS (latitude/longitude) sont optionnelles et surtout utiles pour les organisations
+multi-sites.
+
+## Marquer un laboratoire de calibration
+
+Cochez **« Laboratoire de calibration »** sur tout emplacement qui est un endroit valide pour
+*effectuer* une calibration. Seuls les emplacements marqués ainsi apparaissent dans le
+sélecteur « Lieu de calibration » de l'assistant de calibration — cela garde cette liste centrée
+sur les véritables paillasses de laboratoire ou stations de calibration sur le terrain plutôt que
+sur chaque entrepôt ou bureau de l'arborescence.
+
+## Assigner des actifs à un emplacement
+
+L'emplacement actuel d'un actif est défini depuis la page de détail de l'actif. Chaque fois que
+l'emplacement d'un actif change, Open Gauge enregistre une nouvelle entrée dans son historique
+d'emplacements (avec un horodatage, qui l'a déplacé, et une raison/des notes optionnelles) plutôt
+que d'écraser silencieusement l'emplacement précédent — de sorte que « où se trouvait cet
+instrument à une date donnée » reste une question à laquelle on peut répondre, même après
+plusieurs déplacements. Ceci reflète l'approche générale d'Open Gauge en matière d'historique :
+voir [Modèle de données et concepts](../concepts/data-model.mdx).
+
+## Retirer un emplacement du service
+
+Les emplacements utilisent le même schéma de suppression douce que les actifs (`is_active` /
+`archived_at`, voir [Modèle de données et concepts](../concepts/data-model.mdx)) — archiver un
+emplacement ne supprime pas l'enregistrement historique d'un actif qui y a été un jour assigné.

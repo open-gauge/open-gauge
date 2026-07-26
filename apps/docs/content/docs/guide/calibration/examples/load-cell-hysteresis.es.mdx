@@ -1,0 +1,116 @@
+---
+title: "Ejemplo 3 — Celda de carga, histéresis + repetibilidad"
+description: El detector de histéresis de barrido ascendente/descendente, el detector de repetibilidad de puntos triplicados, y una divergencia entre aceptación simple y riesgo compartido.
+---
+
+Ejercita: el detector de [histéresis](../curve-fitting.mdx#hysteresis) de barrido
+ascendente/descendente, el detector de [repetibilidad](../curve-fitting.mdx#repeatability) de
+puntos triplicados, y otra divergencia entre aceptación simple y riesgo compartido.
+
+## 3.0 Configuración
+
+| Campo | Valor |
+|---|---|
+| Nombre | Test Bench Load Cell |
+| Magnitud física | Fuerza |
+| Rango mín / máx | 0 / 500 |
+| Unidad | N |
+| Valor de exactitud | 0.15 |
+| Unidad de exactitud | **% FS** — completa primero Rango mín/máx, luego elige "% FS" como la primera opción |
+| Resolución | 0.2 |
+| Unidad de resolución | N |
+
+## 3.1 Configuración del asistente de calibración
+
+Tipo **externa**, **Grado de regresión: 1** (explícito — este ejemplo trata sobre
+histéresis/repetibilidad, no sobre selección de grado), distribución **Normal**, confianza **95%**,
+regla de decisión **Riesgo compartido (tolerancia + U)**.
+
+Puntos de datos — un barrido ascendente, un barrido descendente de vuelta (para histéresis), y una
+lectura adicional en 0 N (tres lecturas en total en 0 N, para repetibilidad):
+
+| # | Referencia (N) | Medido (N) | Notas |
+|---|---|---|---|
+| 1 | 0 | 0.2 | inicio ascendente |
+| 2 | 0 | 0.3 | repetición en 0 N (#1 del triplete de repetibilidad) |
+| 3 | 100 | 100.6 | ascendente |
+| 4 | 200 | 200.9 | ascendente |
+| 5 | 300 | 301.0 | ascendente |
+| 6 | 400 | 401.1 | ascendente |
+| 7 | 500 | 501.3 | cima del barrido |
+| 8 | 400 | 401.6 | descendente |
+| 9 | 300 | 301.7 | descendente |
+| 10 | 200 | 201.9 | descendente |
+| 11 | 100 | 101.8 | descendente |
+| 12 | 0 | 1.0 | de vuelta a 0 N (triplete de repetibilidad completo) |
+
+## Las matemáticas
+
+Ajuste (grado 1, los 12 puntos): $a = 0.99833$, $b = -0.76668$.
+
+Error máximo = **0.863215 N**, en el punto 11 (referencia 100 N, medido 101.8 N) → error %FS =
+$0.863215/500 \times 100\% = \mathbf{0.1726\%}$.
+
+**Histéresis** — Open Gauge agrupa los puntos por valor de referencia y toma la mayor dispersión de
+valores medidos dentro de cualquier grupo donde el valor de referencia se repite con un segmento
+tanto ascendente como descendente presente:
+
+| Referencia | Valores medidos en esta referencia | Intervalo |
+|---|---|---|
+| 0 N | 0.2, 0.3, 1.0 | 0.8 |
+| 100 N | 100.6, 101.8 | 1.2 |
+| 200 N | 200.9, 201.9 | 1.0 |
+| 300 N | 301.0, 301.7 | 0.7 |
+| 400 N | 401.1, 401.6 | 0.5 |
+
+Mayor intervalo = **1.2 N** (en 100 N) → **histéresis = 1.2**.
+
+**Repetibilidad** — solo 0 N tiene 3 o más lecturas (0.2, 0.3, 1.0):
+
+$$
+\bar{x} = \frac{0.2 + 0.3 + 1.0}{3} = 0.5, \qquad
+s^2 = \frac{(0.2-0.5)^2 + (0.3-0.5)^2 + (1.0-0.5)^2}{3-1} = \frac{0.09+0.04+0.25}{2} = 0.19
+$$
+
+$$
+\text{repeatability} = \sqrt{0.19} = 0.435890\ \text{N}
+$$
+
+**Presupuesto de incertidumbre:**
+
+| Fuente | u |
+|---|---|
+| fit_residuals (Tipo A, dof = 10) | 0.487526 |
+| resolution (Tipo B) = $0.2/\sqrt{12}$ | 0.057735 |
+
+- Combinada: $u_c = \sqrt{0.487526^2 + 0.057735^2} = \mathbf{0.490933\ N}$.
+- $\nu_{\text{eff}} \approx \mathbf{10.3}$.
+- Factor de cobertura $k = \Phi^{-1}(0.975) \approx 1.96$ (a partir de Confianza 95%, no ingresado).
+- Expandida: $U = 0.490933 \times 1.96 = 0.962211 \approx \mathbf{0.96\ N}$ (2 cifras
+  significativas).
+
+**Regla de decisión — prueba ambas y compara.** La especificación de exactitud es ±0.15% FS, así que
+la tolerancia es constante a lo largo del rango: $\text{tolerance} = 0.0015 \times 500\ \text{N} =
+0.75\ \text{N}$. El mayor error del barrido (0.863215 N, en referencia 100 N) supera eso:
+
+| Regla de decisión | Comprobación (error máximo = 0.863215, tolerancia = 0.75) | Resultado |
+|---|---|---|
+| Aceptación simple | $0.863215 \le 0.75$? No | **NO CONFORMA** |
+| Riesgo compartido (+U) | $0.863215 - 0.962211 = -0.098996 \le 0.75$ | **CONFORMA** |
+
+Este es un caso genuinamente realista: una celda de carga cuyo error en bruto supera su
+especificación ajustada de ±0.15% FS, pero cuya incertidumbre de medición global es lo
+suficientemente grande como para que, bajo una regla de riesgo compartido, el laboratorio y el
+cliente acuerden que sigue siendo aceptable. Una buena prueba tanto de que "los fallos reales
+ocurren" como de que "la regla que elijas cambia el resultado."
+
+## Resultados esperados
+
+| Campo | Valor |
+|---|---|
+| Histéresis | 1.2 |
+| Repetibilidad | 0.435890 en bruto; se muestra como **0.43589** en el asistente, **0.4359** en la vista de historial (diferente precisión de visualización de decimales fijos — consulta [Redondeo](./rounding-and-troubleshooting.mdx)) |
+| Incertidumbre combinada | mostrado redondeado: **0.49** |
+| Incertidumbre expandida (±) | mostrado redondeado: **0.96** |
+| Dictamen (aceptación simple) | NO CONFORMA con ±0.15% de escala completa |
+| Dictamen (riesgo compartido) | CONFORMA con ±0.15% de escala completa |

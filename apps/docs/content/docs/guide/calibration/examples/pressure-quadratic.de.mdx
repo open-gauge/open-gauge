@@ -1,0 +1,110 @@
+---
+title: "Beispiel 2 — Druckmessumformer, quadratische Anpassung (automatische Gradauswahl)"
+description: Automatische Polynomgrad-Auswahl über AIC, Nichtlinearitätserkennung und der Erweiterungsfaktor-Pfad über die t-Verteilung.
+---
+
+Trainiert: automatische Polynomgrad-Auswahl (AIC), Nichtlinearitätserkennung und den
+t-Verteilung-/Welch-Satterthwaite-Erweiterungsfaktor-Pfad.
+
+## 2.0 Einrichtung
+
+Eine Anlage, ein Kanal:
+
+| Feld | Wert |
+|---|---|
+| Name | Line Pressure Transmitter |
+| Physikalische Größe | Druck |
+| Messtyp | Absolut (für dieses Beispiel spielt es keine Rolle, welcher) |
+| Bereich Min / Max | 0 / 700 |
+| Einheit | kPa |
+| Genauigkeitswert | 1,0 |
+| Genauigkeitseinheit | **% FS** — zuerst Bereich Min/Max ausfüllen, dann "% FS" als erste Option wählen |
+| Auflösung | 0,5 |
+| Auflösungseinheit | kPa |
+
+Lassen Sie `measurement_uncertainty` leer (in diesem Beispiel nicht verwendet).
+
+## 2.1 Einstellungen des Kalibrier-Assistenten
+
+Typ **extern** (keine Referenz-Anlage nötig), **Regressionsgrad: Automatisch** (der Kern dieses
+Beispiels), Verteilung **t-Verteilung**, Vertrauensniveau **95 %** (der t-Verteilungs-Pfad leitet
+seinen eigenen Erweiterungsfaktor aus dem Vertrauensniveau und den effektiven Freiheitsgraden der
+Anpassung ab), Entscheidungsregel **Einfache Annahme**.
+
+Datenpunkte — ein Messumformer mit einer kleinen, aber echten quadratischen Nichtlinearität über
+seinen Bereich:
+
+| # | Referenz (kPa) | Messwert (kPa) |
+|---|---|---|
+| 1 | 0,60 | 0 |
+| 2 | 102,35 | 100 |
+| 3 | 212,62 | 200 |
+| 4 | 330,42 | 300 |
+| 5 | 456,64 | 400 |
+| 6 | 590,40 | 500 |
+| 7 | 732,59 | 600 |
+| 8 | 882,38 | 700 |
+
+## Die Rechnung
+
+Open Gauge probiert die Grade 1 bis 5 und wählt den niedrigsten Grad, dessen AIC von einem höheren
+Grad nicht um mehr als 2 Punkte unterboten wird (die Sparsamkeitsregel). Für diese Daten wählt es
+**Grad 2**:
+
+$$
+\text{reference} = 0.00040 \cdot \text{measured}^2 + 0.98014 \cdot \text{measured} + 0.50917
+$$
+
+(Versuchen Sie, "Regressionsgrad: 2" explizit zu erzwingen — Sie sollten dieselben Koeffizienten
+wie beim automatisch gewählten Ergebnis erhalten, was bestätigt, dass AIC denselben Grad gewählt
+hat, den Sie auch mit bloßem Auge aus den Daten wählen würden.)
+
+| Punkt | Berechnet | Residuum |
+|---|---|---|
+| 1 | 0,509167 | +0,090833 |
+| 2 | 102,519881 | −0,169881 |
+| 3 | 212,523929 | +0,096071 |
+| 4 | 330,521310 | −0,101310 |
+| 5 | 456,512024 | +0,127976 |
+| 6 | 590,496071 | −0,096071 |
+| 7 | 732,473452 | +0,116548 |
+| 8 | 882,444167 | −0,064167 |
+
+$n = 8$, $k = 3$ (Grad 2 → 3 Koeffizienten) → Rest-Freiheitsgrade $= 5$. Maximalfehler =
+**0,169881** (Punkt 2); Spanne $= 882{,}38 - 0{,}6 = 881{,}78$ → %FS-Fehler
+$= 0{,}169881/881{,}78 \times 100\% = \mathbf{0{,}0193\%}$.
+
+**Nichtlinearität = 3,17 % FS** — die Abweichung der quadratischen Anpassung von ihrer eigenen
+bestangepassten Geraden. Diese Zahl bestätigt "ja, eine Gerade wäre eine merklich schlechtere
+Anpassung gewesen" — dass Grad 2 die richtige Wahl war, nicht Grad 1.
+
+**Unsicherheitsbudget:**
+
+| Quelle | u |
+|---|---|
+| fit_residuals (Typ A, dof = 5) | 0,119470 |
+| resolution (Typ B) = $0{,}5/\sqrt{12}$ | 0,144338 |
+
+- Kombiniert: $u_c = \sqrt{0.119470^2 + 0.144338^2} = \mathbf{0{,}187367\ kPa}$.
+- $\nu_{\text{eff}} = u_c^4 / (u_A^4/5) \approx \mathbf{30{,}2}$ (nur `fit_residuals` hat
+  endliche dof).
+- Erweitert (t-Verteilung): $k = t_{0.975,\,\nu=30.2} \approx 2{,}042 \Rightarrow U = 0{,}187367
+  \times 2{,}042 = 0{,}382523 \approx \mathbf{0{,}38\ kPa}$ (2 signifikante Stellen).
+
+**Entscheidungsregel (einfache Annahme, Spezifikation = ±1,0 % FS = ±8,818 kPa):**
+
+$$
+\text{max error} = 0.169881 \le 8.818 \implies \textbf{CONFORMS}
+$$
+
+(deutlich — dies ist ein Beispiel für eine "gute" Kalibrierung).
+
+## Erwartete Ergebnisse
+
+| Feld | Wert |
+|---|---|
+| Polynomgrad | 2 (automatisch gewählt) |
+| Nichtlinearität | 3,17 % |
+| Kombinierte Unsicherheit | gerundet angezeigt: **0,19** |
+| Erweiterte Unsicherheit (±) | gerundet angezeigt: **0,38** |
+| Aussage | KONFORM zu ±1,0 % des Endwerts, Entscheidungsregel = Einfache Annahme |

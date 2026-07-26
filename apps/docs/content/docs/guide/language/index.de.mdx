@@ -1,0 +1,66 @@
+---
+title: Sprache & Lokalisierung
+description: Umschalten der Anzeigesprache der App, wie die Einstellung gespeichert wird und was bewusst unübersetzt bleibt.
+---
+
+Die Web-App von Open Gauge ist auf Englisch (die maßgebliche Sprache), Spanisch, Französisch und
+Deutsch verfügbar. Jeder Benutzer wählt seine eigene Anzeigesprache unabhängig von allen anderen
+in seiner Organisation.
+
+## Sprache wechseln
+
+Klicken Sie auf das Globus-Symbol neben dem Hell/Dunkel-Umschalter in der oberen Leiste und wählen Sie eine Sprache aus
+dem Dropdown-Menü. Die Seite wird sofort in der neuen Sprache neu geladen — es gibt keinen separaten Speicherschritt.
+
+## Wo die Einstellung gespeichert wird
+
+Die Wahl wird an zwei Stellen gespeichert, damit sie sich korrekt verhält, unabhängig davon, ob Sie angemeldet sind:
+
+- **Ein Cookie**, das in dem Moment gesetzt wird, in dem Sie eine Sprache auswählen. Darauf verlässt sich die Wahl
+  eines abgemeldeten Besuchers, und es ermöglicht außerdem ein sofortiges Umschalten vor jedem Server-Roundtrip.
+- **Ihr Benutzerprofil** (sobald angemeldet) — dieselbe `PATCH /users/me`-Anfrage, die für Ihren Namen
+  und Ihre E-Mail-Adresse verwendet wird, akzeptiert auch ein `language`-Feld. Bei Ihrer nächsten Anmeldung von einem
+  anderen Browser oder Gerät hat die in Ihrem Profil gespeicherte Sprache Vorrang vor dem Cookie oder der Browser-Locale
+  dieses Geräts, sodass Ihre Einstellung Ihnen folgt, statt an eine Maschine gebunden zu sein.
+
+## URL-Struktur
+
+Englische Seiten haben kein Präfix (`/dashboard`, `/assets`, …). Spanische, französische und deutsche Seiten tragen
+ein Locale-Präfix (`/es/dashboard`, `/fr/assets`, `/de/...`). Das bedeutet, dass jeder Link und jedes Lesezeichen, das
+vor der Einführung der Mehrsprachigkeit existierte, weiterhin genau wie zuvor funktioniert — nur die
+nicht-englischen Locales haben ein Präfix erhalten, für Englisch hat sich nichts geändert.
+
+## Was übersetzt ist — und was nicht
+
+Jede Seite und jedes Steuerelement in der authentifizierten App ist übersetzt: Navigation, Formulare, Tabellen, Modale,
+Fehler- und Leerzustände, die Admin-Bildschirme, der Anmelde-/Registrierungs-/Passwort-vergessen-/Passwort-zurücksetzen-/
+E-Mail-bestätigen-Ablauf, jedes enum-gesteuerte Dropdown (physikalische Größen, Sensortechnologien,
+Kalibrierstatus, Rollen usw.), die Aktionsbeschreibungen des Aktivitätsprotokolls sowie die Datenschutzerklärung
+und die Nutzungsbedingungen.
+
+**Von Benutzern eingegebene Inhalte** sind das Einzige, das bewusst unübersetzt bleibt: Anlagennamen, Kalibriernotizen,
+Freitext im Audit-Protokoll und alles andere, was jemand eingetippt hat. Die maschinelle Übersetzung der Daten einer
+anderen Person würde stillschweigend verändern, was diese geschrieben hat, daher wird es immer genau so angezeigt,
+wie es eingegeben wurde, unabhängig von der gewählten Sprache des Betrachters.
+
+Die Datenschutzerklärung und die Nutzungsbedingungen werden als bearbeitbare Vorlage ausgeliefert — siehe den Hinweis am
+Ende jeder Seite. Ihre Übersetzungen sind ein Ausgangspunkt; wie beim englischen Original wird von Betreibern erwartet,
+dass sie diese von ihrem eigenen Rechtsbeistand prüfen lassen, bevor sie sich darauf verlassen, insbesondere bei
+Rechtsordnungen mit spezifischen Anforderungen an die Rechtssprache.
+
+## Die Marketing-Website
+
+Die separate Marketing-Website unter [opengauge.org](https://opengauge.org) — eine andere Codebasis als
+die App selbst — verfügt über einen eigenen, passenden Sprachumschalter neben ihrem Hell/Dunkel-Umschalter, mit
+vollständigen spanischen, französischen und deutschen Versionen der Startseite und eigenen Seiten für Datenschutzerklärung
+und Nutzungsbedingungen. Erstbesucher werden anhand des `Accept-Language`-Headers ihres Browsers weitergeleitet;
+die explizite Auswahl einer Sprache überschreibt dies für zukünftige Besuche.
+
+## Eine Sprache hinzufügen (für Selbst-Hoster, die ihre eigene Instanz anpassen)
+
+Die Locale-Liste der App ist ein einziges Konfigurationsarray
+(`apps/web/src/i18n/locales.ts`) plus eine JSON-Nachrichtendatei pro Funktionsbereich unter
+`apps/web/messages/{locale}/`. Eine weitere Sprache zu unterstützen ist eine reine Inhaltsänderung — fügen Sie einen
+`LocaleMeta`-Eintrag und die übersetzten JSON-Dateien hinzu; es muss kein Anwendungscode geändert werden. Dies ist
+jedoch nichts, was eine laufende Instanz ohne Neubau der App tun kann — es ist eine Quelländerung für denjenigen, der
+die Bereitstellung betreut, keine In-App-Einstellung.

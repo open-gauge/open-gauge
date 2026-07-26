@@ -1,0 +1,117 @@
+---
+title: Organisationen
+description: Mitgliedschaft in mehreren Organisationen, Rollen auf Organisationsebene, Beitrittsanfragen und Anlagenzuordnung.
+---
+
+**Organisationen** sind die Mandantengrenze von Open Gauge — jede Anlage gehört einer, und jeder
+Benutzer kann einer beliebigen Anzahl von ihnen angehören. Verwalten Sie sie über die Seite
+**Organisationen** in der Seitenleiste.
+
+## Eine Organisation erstellen
+
+Jeder authentifizierte Benutzer außer einem **Viewer** kann über **Organisationen → Neue
+Organisation** eine Organisation erstellen — darüber hinaus gibt es keine Admin-Sperre, ebenso wenig
+wie das Erstellen einer GitHub- oder Gogs-Organisation erfordert, Seiten-Admin zu sein. Der
+Ersteller wird automatisch zum ersten **admin**-Mitglied dieser Organisation.
+
+Eine Organisation hat: **Name**, einen optionalen **vollständigen Rechtsnamen**, **Beschreibung**,
+**Website**, **Standort** (ihren primären Standort/Hauptsitz, ausgewählt aus dem Standortbaum —
+siehe [Standorte](../locations/index.mdx)), **E-Mail**, **Telefon**, ein **Logo** und ein
+**Privat**-Kennzeichen.
+
+## Mitgliedschaft und Organisationsrollen
+
+Ein Benutzer kann Mitglied einer beliebigen Anzahl von Organisationen sein, mit einer Rolle, die nur
+auf *diese* Organisation begrenzt ist:
+
+| Rolle | Kann |
+|---|---|
+| `member` | Vollständige Organisationsdetails, die Mitgliederliste und ihre Anlagen einsehen. |
+| `admin` | Alles, was ein Mitglied kann, zusätzlich: das Profil/Logo der Organisation bearbeiten, Mitglieder verwalten (Rollen ändern, Mitglieder entfernen), Beitrittsanfragen genehmigen/ablehnen und die Organisation deaktivieren. |
+
+Dies ist ein von der globalen RBAC-Rolle des Benutzerkontos getrenntes Konzept
+(`superadmin`/`admin`/`technician`/`viewer` — siehe
+[Authentifizierung](../self-hosting/authentication.mdx#roles-rbac)). Die beiden überschneiden sich
+nicht, mit einer Ausnahme: **Super Admin** kann jede Organisation verwalten, unabhängig von seiner
+Mitgliedschaft darin, als systemweites Sicherheitsnetz (z. B. eine Organisation, die ohne Admins
+dasteht). Die globale `admin`-Rolle hat keinen besonderen Zugriff auf eine Organisation, in der sie
+kein Mitglied ist — die Organisationsverwaltung erfolgt ansonsten gleichberechtigt, wie bei Gogs. Die
+eine Ausnahme ist **Viewer**: Ihm ist es untersagt, *irgendeine* Organisation zu verwalten — eine zu
+erstellen, ihr Profil zu bearbeiten, ein Logo hochzuladen oder ihre Mitglieder anzufassen — selbst
+wenn er eine `admin`-Rolle innerhalb dieser Organisation innehat. Die globale RBAC-Einschränkung
+gewinnt hier gegenüber der auf Organisationsebene, ebenso wie Viewer überall sonst in Open Gauge
+nur lesenden Zugriff hat.
+
+### Austreten und Mitglieder entfernen
+
+Eine Schaltfläche **Beitreten / Verlassen** erscheint in jeder Listenzeile einer Organisation und auf
+ihrer Detailseite — neben **Bearbeiten** für Admins, an Stelle von Bearbeiten für alle anderen. Ihre
+Beschriftung hängt vom Betrachter ab: "Beitritt anfragen", ein deaktiviertes "Anfrage ausstehend"
+während eine Anfrage offen ist, oder ein rotes "Verlassen" für Mitglieder; jede öffnet einen
+Bestätigungsdialog, bevor etwas geschieht.
+
+Ein Mitglied kann jederzeit austreten — außer es ist der **letzte verbleibende Admin** der
+Organisation. In diesem Fall leitet der Verlassen-Dialog es stattdessen an, statt einfach
+fehlzuschlagen: zunächst ein anderes Mitglied zum Admin befördern, falls es weitere Mitglieder gibt,
+oder stattdessen die Organisation deaktivieren, falls es das einzige verbliebene Mitglied ist. Dieselbe
+Schutzmaßnahme für den letzten Admin greift, wenn ein Admin versucht, *sich selbst* zu entfernen. Das
+Entfernen (oder Verlassen) löscht den Mitgliedschaftsdatensatz nicht — er wird als inaktiv markiert
+und bewahrt so die Historie, wer jemals Teil der Organisation war, im Einklang mit der allgemeinen
+Philosophie der weichen Löschung von Open Gauge (siehe [Datenmodell & Konzepte](../concepts/data-model.mdx)).
+
+Ein Admin kann Mitglieder auch direkt über die Schaltfläche **Mitglied hinzufügen** der
+Organisationsseite hinzufügen (sichtbar im Bearbeitungsmodus, ebenso wie die Steuerelemente für
+Rollenänderung und Entfernen), die eine durchsuchbare Mehrfachauswahlliste jedes Benutzers öffnet,
+der noch kein aktives Mitglied ist — ausgewählte Benutzer werden mit der Rolle `member` hinzugefügt.
+
+## Sichtbarkeit
+
+- **Öffentliche Organisationen** (`private: false`) zeigen ihr vollständiges Profil — Name,
+  vollständiger Name, Beschreibung, Website, Standort, E-Mail, Telefon — jedem authentifizierten
+  Benutzer, ob Mitglied oder nicht.
+- **Private Organisationen** zeigen in der Liste **Organisationen** nur ihren **Namen** (mit einem
+  Schlosssymbol), sodass sie noch auffindbar genug bleiben, um einen Beitritt zu beantragen. Alles
+  andere — die Profildetails, die Mitgliederliste und ihre Anlagen — ist nur für Mitglieder (und
+  Super Admin) sichtbar.
+- Die **Mitgliederliste** selbst ist nie öffentlich, auch nicht für eine nicht-private Organisation —
+  nur Mitglieder können sehen, wer sonst dazugehört.
+- Ein Admin kann eine Organisation über die **Gefahrenzone** ihres Bearbeitungsformulars
+  deaktivieren ("löschen"), hinter einem Bestätigungsdialog. Eine deaktivierte Organisation ist für
+  jeden außer Super Admin unsichtbar — sie fällt aus der Liste Organisationen heraus, und ihre Seite
+  liefert für alle anderen einen 404-Fehler, dieselbe Behandlung wie eine private Organisation, nur
+  auf die Spitze getrieben.
+- Super Admin sieht deaktivierte Organisationen ebenfalls in der Liste **Organisationen** (rot
+  hervorgehoben, mit "Gelöscht" beschriftet) und kann eine mit der Schaltfläche
+  **Organisation wiederherstellen** reaktivieren, die "Organisation löschen" in der Gefahrenzone
+  dieser Organisation ersetzt, sobald sie deaktiviert ist. Das Wiederherstellen macht die
+  Organisation nur wieder aktiv und sichtbar — es reaktiviert keine Mitgliedschaften, die bei der
+  Deaktivierung gelöscht wurden; fügen Sie Mitglieder danach über **Mitglied hinzufügen** erneut hinzu.
+
+## Beitrittsanfragen
+
+Ein Benutzer, der nicht Mitglied einer Organisation ist, kann von der Seite dieser Organisation aus
+eine **Beitrittsanfrage** senden. Dies benachrichtigt jeden Admin der Organisation auf zwei Wegen:
+
+- **E-Mail**, falls SMTP konfiguriert ist (siehe [E-Mail-Benachrichtigungen](../self-hosting/email-notifications.mdx)).
+- Eine **In-App-Benachrichtigung** (das Glockensymbol in der oberen Leiste) — immer, unabhängig
+  davon, ob Mail konfiguriert ist. Dies ist der garantierte Kanal; E-Mail ist eine Annehmlichkeit
+  obendrauf.
+
+Der Anfragende erscheint direkt in der **Mitglieder**-Liste der Organisation mit dem Status
+"Ausstehend" — ein Klick auf die In-App-Benachrichtigung führt einen Admin direkt zur
+Organisationsseite im Bearbeitungsmodus, sodass die neue Anfrage sofort sichtbar ist. Ein Admin
+genehmigt oder lehnt sie aus derselben Zeile ab. Genehmigen fügt den Anfragenden als `member` hinzu;
+beide Entscheidungen benachrichtigen den Anfragenden auf demselben Weg.
+
+## Anlagen gehören zu einer Organisation
+
+Jede Anlage hat eine direkte `organization_id`, ausgewählt aus einem Dropdown der eigenen
+Organisationen des erstellenden Benutzers, wenn die Anlage angelegt wird. Dies ist unabhängig vom
+**Standort** der Anlage — die Organisation einer Anlage und die Organisation ihres Standorts werden
+nicht gegeneinander validiert, wählen Sie also beide separat. Die Organisation wird auf der
+Detailseite der Anlage angezeigt (Reiter Übersicht → Panel Allgemein) und verlinkt zurück auf die
+Seite dieser Organisation.
+
+Die Seite einer Organisation zeigt eine anklickbare **Anlagenanzahl**, die zum Anlagenregister
+verlinkt, gefiltert auf die Anlagen dieser Organisation (`/assets?organization_id=...`), dasselbe
+Muster, das für die Anlagenanzahl eines Standorts verwendet wird (siehe [Standorte](../locations/index.mdx)).

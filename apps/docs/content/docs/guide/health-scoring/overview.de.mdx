@@ -1,0 +1,66 @@
+---
+title: Zustandswert & Stabilität
+description: Wie sich der 0-100-Zustandswert von Open Gauge zusammensetzt und was "Stabilität" und "empfohlenes Intervall" bedeuten.
+---
+
+Jede Anlage mit mindestens zwei Kalibrierungen an einem Kanal erhält einen berechneten
+**Zustandswert** (0–100), sichtbar im Reiter Zustand der Anlage. Bei nur einer Kalibrierung gibt es
+noch keinen Trend zu bewerten — Open Gauge zeigt einen neutralen Zustandswert von 100 %, die
+Stabilität "Stabil" und eine Driftrate von 0, statt eines irreführenden, aus einem einzigen Punkt
+berechneten Ergebnisses.
+
+## Zustandswert [#score]
+
+Eine gewichtete Zusammensetzung aus sechs Eingaben, jede einzeln normalisiert und dann kombiniert:
+
+| Eingabe | Gewichtung |
+|---|---|
+| Maximale Drift | 30 % |
+| RMS-Drift | 20 % |
+| RMSE | 15 % |
+| Unsicherheit | 10 % |
+| Hysterese | 10 % |
+| Linearität | 10 % |
+| Trend | 5 % |
+
+Maximale und RMS-Drift dominieren den Zustandswert (zusammen 50 %), weil sie am direktesten die
+Frage beantworten, für die ein Zustandswert überhaupt existiert: *Misst dieses Gerät noch das, was
+es zu messen vorgibt?* Siehe [Drift-Kennzahlen](./drift-metrics.mdx) dazu, was jeder Driftbegriff
+mathematisch bedeutet.
+
+## Stabilität [#stability]
+
+Eine Klassifizierung (z. B. Stabil / Driftend / Instabil), abgeleitet aus der langfristigen
+[Driftrate](#average-drift) — relativ zur Endwertspanne des Kanals — und der
+Anpassungsgüte des Drifttrends. Ein Sensor kann heute einen "guten" (hohen) Zustandswert haben und
+dennoch als driftend klassifiziert werden, wenn sich der Trend in eine besorgniserregende Richtung
+bewegt, auch wenn er noch keine Schwelle überschritten hat.
+
+## Durchschnittliche Drift [#average-drift]
+
+Die langfristige Driftrate aus einer linearen Regression über die vollständige Kalibrierhistorie
+dieses Kanals — wie schnell der Fehler dieses Sensors im Durchschnitt über die Zeit wächst
+(unabhängig vom individuellen [Maximalfehler](../calibration/curve-fitting.mdx#max-error) einer
+einzelnen Kalibrierung).
+
+## Empfohlenes Intervall [#recommended-interval]
+
+Ein heuristischer Vorschlag für das nächste Kalibrierintervall, basierend auf der aktuellen
+[Stabilitäts](#stability)-Klassifizierung, ausgehend vom konfigurierten Standard-Kalibrierintervall
+des Sensors. Dies ist eine Open-Gauge-interne Empfehlung nur zu Planungszwecken — sie wird nie auf
+dem Kalibrierzertifikat selbst gedruckt; gemäß ISO/IEC 17025 §7.8.4.3 gibt ein Zertifikat eine
+Intervallempfehlung nur an, wenn dies ausdrücklich mit dem Kunden vereinbart wurde, und Open Gauge
+hat diesen Vereinbarungs-Workflow noch nicht (siehe
+[Zertifikatserstellung](../calibration/certificates.mdx#whats-deliberately-not-on-it)).
+
+## Die Diagramme
+
+- **Driftentwicklung** — maximale Drift jeder Kalibrierung gegenüber der Basis-(ersten)
+  Kalibrierung, mit einer linearen Trendlinie. Die primäre Ansicht der Sensoralterung über die Zeit.
+- **Kalibrierstabilität** — die historische Entwicklung von RMSE, Maximalfehler, erweiterter
+  Unsicherheit, Hysterese und R² über alle Kalibrierungen dieses Kanals, gemeinsam dargestellt,
+  damit Sie korrelierte Verschiebungen erkennen können (z. B. wachsende Unsicherheit zusammen mit
+  wachsendem RMSE).
+- **Kalibrierkurvenvergleich** — wertet die angepassten Polynome zweier Kalibrierungen an rund
+  200 Punkten über ihren gemeinsamen Betriebsbereich aus und isoliert, wie sich die Form der Kurve
+  selbst verändert hat — unabhängig vom Fehler eines einzelnen Punkts.

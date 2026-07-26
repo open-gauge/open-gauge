@@ -1,0 +1,57 @@
+---
+title: Normen & Glossar
+description: Die GUM-/VIM-Nomenklatur, die Open Gauge verwendet, und die Normen, die seine Kalibrier-Engine umsetzt.
+---
+
+Für eine Klausel-für-Klausel-Aufschlüsselung, welche Anforderungen Open Gauge erfüllt, teilweise
+erfüllt oder noch nicht behandelt — mit Zitaten und Codeverweisen — siehe
+[Compliance](../compliance/overview.mdx), beginnend mit
+[ISO/IEC 17025:2017](../compliance/iso-17025.mdx).
+
+## Von Open Gauge umgesetzte Normen
+
+| Norm | Titel | Relevanz für Open Gauge |
+|---|---|---|
+| **JCGM 100:2008 (GUM)** | Guide to the expression of uncertainty in measurement | Das grundlegende Dokument hinter [dem Unsicherheitsbudget](../calibration/uncertainty-budget.mdx) — Typ-A-/B-Bewertung, Kombination, Erweiterung, Erweiterungsfaktoren. |
+| **JCGM GUM-6:2020** | Developing and using measurement models | Das Dokument, das am direktesten auf das Kalibrierkoeffizienten-Datenmodell von Open Gauge anwendbar ist — Koeffizienten-Kovarianz, Fortpflanzung der Unsicherheit durch eine angepasste Kurve. |
+| **ISO/IEC 17025:2017** | General requirements for the competence of testing and calibration laboratories | §7.1.3/§7.8.6 verlangen die Dokumentation einer [Entscheidungsregel](../calibration/decision-rules.mdx), wann immer eine Bestanden/Nicht-bestanden-Aussage ausgestellt wird; §7.8.4.3 regelt, was ein Zertifikat über Kalibrierintervalle angeben darf. |
+| **JCGM GUM-1:2023** | Guide to the expression of uncertainty in measurement — Part 1: Introduction | Ein Fahrplan/Überblick über die neu strukturierte GUM-Dokumentenreihe. |
+| **JCGM 200:2012 (VIM)** | International vocabulary of metrology — Basic and general concepts and associated terms | Das Quellvokabular, auf dem sowohl der GUM als auch ISO/IEC 17025 aufbauen, ohne es neu zu definieren — siehe die Begriffe unten. Von ISO/IEC 17025 als "ISO/IEC Guide 99" bezeichnet. |
+
+Siehe [Compliance → GUM-/JCGM-Unsicherheitsreihe](../compliance/gum-uncertainty.mdx) für den
+klauselgenauen Status von GUM-6 und JCGM 106; das VIM und der GUM-1-Fahrplan sind
+Vokabular-/Überblicksdokumente ohne eigene Compliance-Tabelle — ihr Inhalt befindet sich stattdessen
+hier.
+
+## Kernnomenklatur (GUM / VIM)
+
+Die Oberfläche, die API-Feldnamen und die Zertifikatssprache von Open Gauge verwenden diese Begriffe
+präzise — sie sind keine austauschbaren Synonyme.
+
+| Begriff | Symbol | Definition |
+|---|---|---|
+| Messgröße (Measurand) | $Y$ | Die konkrete Größe, die Gegenstand der Messung ist. |
+| Eingangsgrößen | $X_1, \ldots, X_N$ | Größen, von denen die Messgröße abhängt: $Y = f(X_1, \ldots, X_N)$. |
+| Ausgangsschätzwert | $y$ | Das berechnete Messergebnis, $y = f(x_1, \ldots, x_N)$. |
+| Standardunsicherheit | $u(x_i)$ | Unsicherheit eines Ergebnisses, ausgedrückt als eine Standardabweichung. |
+| Typ-A-Bewertung | — | Unsicherheit, bewertet durch statistische Analyse einer Reihe von Beobachtungen (z. B. Wiederholbarkeit der Residuen an Kalibrierpunkten). |
+| Typ-B-Bewertung | — | Unsicherheit, auf jede andere Weise bewertet: Herstellerangaben, Kalibrierzertifikate, Tabellenwerke, Auflösung, fachliches Urteil. Typ A/B ist eine Klassifizierung der *Bewertungsmethode*, nicht von "zufälligem" gegenüber "systematischem" Fehler — der GUM verwirft den Begriff "systematische Unsicherheit" ausdrücklich. |
+| Kombinierte Standardunsicherheit | $u_c(y)$ | Standardunsicherheit eines Ergebnisses, abgeleitet aus mehreren anderen Größen — die positive Quadratwurzel einer Summe von Varianz-/Kovarianztermen, gewichtet nach Empfindlichkeit. |
+| Erweiterte Unsicherheit | $U$ | $U = k \cdot u_c(y)$. Definiert ein Intervall, von dem erwartet wird, dass es einen angegebenen Anteil der der Messgröße vernünftigerweise zuzuordnenden Werte umfasst. |
+| Erweiterungsfaktor | $k$ | Numerischer Multiplikator, angewendet auf $u_c(y)$, um $U$ zu erhalten. Muss immer zusammen mit $U$ angegeben werden. |
+| Empfindlichkeitskoeffizient | $c_i = \partial f/\partial x_i$ | Beschreibt, wie sich $y$ bei einer kleinen Änderung von $x_i$ ändert. |
+| Freiheitsgrade | $\nu$ | Zuverlässigkeitsindikator einer Standardunsicherheits-Schätzung (z. B. $\nu = n-1$ für einen Mittelwert aus $n$ Beobachtungen, $\nu = n-m$ für eine Kleinste-Quadrate-Anpassung mit $m$ Parametern). |
+| Korrelationskoeffizient | $r(x_i, x_j)$ | $r = u(x_i, x_j) / [u(x_i)u(x_j)]$, begrenzt auf $[-1, 1]$. |
+| Korrektion | — | Ein addierter Wert oder angewendeter Faktor zur Kompensation eines *erkannten* systematischen Effekts. Der GUM geht davon aus, dass alle solchen Korrektionen **vor** der Unsicherheitsbewertung angewendet werden. |
+| Metrologische Rückführbarkeit | — | (VIM, über ISO/IEC Guide 99) "Eigenschaft eines Messergebnisses, wonach das Ergebnis über eine dokumentierte ununterbrochene Kalibrierkette, deren jedes Glied zur Messunsicherheit beiträgt, auf eine Referenz bezogen werden kann." Siehe [die Rückführbarkeitskette](../compliance/iso-17025.mdx#traceability-chain). |
+| Verifizierung | — | (VIM, über ISO/IEC Guide 99:2007, 2.44) "Bereitstellung eines objektiven Nachweises, dass ein gegebenes Element festgelegte Anforderungen erfüllt." Zu unterscheiden von *Kalibrierung* — Verifizierung ist eine Bestanden/Nicht-bestanden-Prüfung gegen eine Anforderung; Kalibrierung stellt die Beziehung zwischen Anzeige und Referenzwert her. |
+| Entscheidungsregel | — | (ISO/IEC 17025, 3.7) "Regel, die beschreibt, wie die Messunsicherheit berücksichtigt wird, wenn die Konformität mit einer festgelegten Anforderung angegeben wird." Siehe [Entscheidungsregeln](../calibration/decision-rules.mdx). |
+
+### Fehler ≠ Unsicherheit
+
+**Fehler** ist eine idealisierte, unbekannbare Größe (Ergebnis − wahrer Wert). **Unsicherheit** ist
+ein *positiver* Parameter, der die Streuung der der Messgröße vernünftigerweise zuzuordnenden Werte
+charakterisiert. Die Feldnamen von Open Gauge (`max_error`, `combined_uncertainty`,
+`expanded_uncertainty`) sind so gewählt, dass sie mit dieser Unterscheidung übereinstimmen —
+`max_error` ist ein aus echten Daten ermittelter Fehler, während die Unsicherheitsfelder den
+*Zweifel* rund um ein Ergebnis beschreiben, nicht das Ergebnis selbst.

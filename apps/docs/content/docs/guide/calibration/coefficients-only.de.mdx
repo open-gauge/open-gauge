@@ -1,0 +1,41 @@
+---
+title: Kalibrierungen nur mit Koeffizienten
+description: Erfassen eines externen Laborzertifikats, das das Kalibrierpolynom direkt angibt, ohne Rohdatenpunkte.
+---
+
+Manche Sensoren — hauptsächlich solche, die an ein externes Labor geschickt wurden — kommen mit
+einem Kalibrierzertifikat zurück, das die Koeffizienten des Kalibrierpolynoms direkt angibt, ohne
+enthaltene rohe Referenz-/Messdatenpunkte. Für diese Fälle hat Open Gauge einen eigenen Weg, damit Sie
+nicht künstliche Datenpunkte erfinden müssen, nur um das Ergebnis zu erfassen.
+
+## Verwendung
+
+Bei einer **externen** Kalibrierung ersetzt das Aktivieren von **"Nur Koeffizienten (keine
+Rohdaten)"** in Schritt 1 den Rohdaten-Schritt des Assistenten durch ein manuelles
+Koeffizienten-Eingabeformular:
+
+- Der **Polynomgrad** (1–5) und seine **Koeffizienten**, eingegeben in derselben Konvention
+  absteigender Potenzen, die auch die eigene Regressions-Engine von Open Gauge verwendet (höchster Grad
+  zuerst, konstanter Term zuletzt).
+- Der **gültige Bereich** (Min/Max), über den das Polynom gilt.
+- Optional **"Auf dem Zertifikat angegebene Unsicherheit"** — gibt das Zertifikat des Labors eine
+  erweiterte Unsicherheit und einen Erweiterungsfaktor an, geben Sie diese hier ein, um sie direkt
+  zu speichern (statt einen aus einer Anpassung abgeleiteten Wert zu erfinden), was eine einzelne
+  `external_certificate_stated`-Zeile im
+  [Unsicherheitsbudget](./uncertainty-budget.mdx#contributions) erzeugt.
+
+## Was bewusst leer bleibt
+
+Da es keine Rohdaten gibt, berechnet (und zeigt) Open Gauge keine Anpassung — dieser Weg lässt
+bewusst **R², RMSE**, die Budgetzeile `fit_residuals` und, entscheidend, **die Entscheidungsregel
+und die Konformitätsaussage** leer.
+
+Eine Konformitätsaussage (Bestanden/Nicht bestanden) erfordert einen *ermittelten Fehler*, gegen
+den mit einer Spezifikation verglichen wird (GUM §6.3, ISO/IEC 17025 §7.8.6) — ein Datensatz mit nur
+Koeffizienten hat keinen ermittelten Fehler, nur die Kalibrierfunktion selbst. Open Gauge zeigt oder
+speichert daher für diese Datensätze kein erfundenes Abzeichen KONFORM/NICHT KONFORM. Benötigen Sie
+eine Konformitätsaussage, verwenden Sie stattdessen eine reguläre (nicht Nur-Koeffizienten-)
+Kalibrierung mit den tatsächlichen Rohdaten.
+
+Siehe [Beispiel 4](./examples/coefficients-only-certificate.mdx) für einen vollständig
+durchgerechneten Fall, einschließlich dessen, was gespeichert und angezeigt wird.

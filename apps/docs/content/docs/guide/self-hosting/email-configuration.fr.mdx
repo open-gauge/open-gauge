@@ -1,0 +1,102 @@
+---
+title: Configurer l'e-mail (SMTP)
+description: Configuration pas à pas du SMTP dans Admin → E-mail, paramètres des fournisseurs, et dépannage.
+---
+
+Cette page est le guide pratique pour activer l'e-mail. Pour savoir à quoi sert l'e-mail
+(vérification de compte, notifications de calibration) et comment il se comporte lorsqu'il n'est
+pas configuré, voir [Notifications par e-mail](./email-notifications.mdx).
+
+## Prérequis
+
+- Vous devez être connecté en tant qu'utilisateur avec le rôle `admin` ou `superadmin`.
+- Un compte SMTP par lequel envoyer : votre propre serveur de messagerie, celui de votre
+  organisation, ou un fournisseur d'e-mail transactionnel (Gmail, Office 365, SendGrid, Mailgun,
+  Postmark, etc. fonctionnent tous — Open Gauge parle du SMTP standard, rien de spécifique à un
+  fournisseur).
+
+## Étape 1 — Ouvrir Admin → E-mail
+
+Connectez-vous, allez dans **Admin** dans la barre latérale, puis sélectionnez **E-mail** dans le
+menu d'administration. Cette page n'est visible que par les administrateurs ; tous les autres
+utilisateurs sont redirigés hors de `/admin` entièrement.
+
+## Étape 2 — Remplir les champs SMTP
+
+| Champ | Que saisir |
+|---|---|
+| Hôte SMTP | Le nom d'hôte de votre serveur de messagerie, par ex. `smtp.gmail.com`, `smtp.office365.com`, `mail.yourcompany.com`. |
+| Port | `587` pour STARTTLS (le plus courant), ou `465` pour SSL implicite. |
+| Utiliser STARTTLS | Laissez **coché** pour le port 587. **Décochez**-le si vous utilisez le port 465 (SSL implicite) — les deux sont mutuellement exclusifs. |
+| Nom d'utilisateur SMTP | Généralement l'adresse de boîte mail complète depuis laquelle vous envoyez. Certains fournisseurs utilisent une valeur différente — voir le tableau des fournisseurs ci-dessous. |
+| Mot de passe SMTP | Le mot de passe du compte, ou un mot de passe spécifique à l'application (voir les notes Gmail/Office 365 ci-dessous). Ce champ est en écriture seule uniquement : une fois enregistré, l'API indique seulement si un mot de passe est défini, jamais sa valeur. |
+| Adresse d'expéditeur | L'adresse que les destinataires verront comme expéditeur, par ex. `noreply@yourcompany.com`. De nombreux fournisseurs exigent que celle-ci corresponde (ou soit vérifiée par rapport) au compte authentifié. |
+| Nom d'expéditeur | Nom d'affichage sur les e-mails sortants, par ex. `Open Gauge` ou `Acme Metrology Lab`. |
+| Délai de rappel de calibration (jours) | Combien de jours avant la date d'échéance d'une calibration l'e-mail de rappel « bientôt due » se déclenche. Par défaut 14. |
+
+Laissez **Activé** désactivé jusqu'à ce que vous ayez vérifié que l'e-mail de test fonctionne
+(étape suivante) — cela évite d'envoyer des e-mails défectueux à de vrais utilisateurs pendant que
+vous ajustez la configuration.
+
+## Étape 3 — Envoyer un e-mail de test
+
+Utilisez le champ **Envoyer un e-mail de test** en bas du panneau : saisissez une adresse que vous
+pouvez consulter (par ex. votre propre boîte de réception) et cliquez sur **Envoyer un e-mail de
+test**. Ceci utilise ce qui est actuellement enregistré, indépendamment du bouton **Activé**, afin
+que vous puissiez valider la configuration avant de l'activer pour de vrais utilisateurs.
+
+- **Succès** → vous recevrez « Open Gauge test email » en quelques secondes. Passez à l'étape 4.
+- **Échec** → le panneau affiche l'erreur SMTP sous-jacente. Voir Dépannage ci-dessous.
+
+## Étape 4 — Activer
+
+Une fois l'e-mail de test reçu, cochez **Activé** et enregistrez. À partir de ce moment :
+
+- Les nouvelles inscriptions nécessitent une vérification par e-mail (voir
+  [Notifications par e-mail](./email-notifications.mdx#account-verification)).
+- Enregistrer une nouvelle calibration envoie un e-mail aux techniciens et administrateurs de
+  l'organisation propriétaire de l'actif.
+- Une vérification quotidienne (07:00 heure du serveur) envoie un e-mail aux organisations
+  concernant les calibrations bientôt dues/en retard.
+
+Désactiver **Activé** à tout moment rétablit immédiatement le comportement d'aujourd'hui partout
+(inscription instantanée, aucun e-mail de notification) — rien n'est destructeur ni difficile à
+annuler.
+
+## Référence rapide des fournisseurs
+
+| Fournisseur | Hôte | Port | STARTTLS | Nom d'utilisateur | Notes |
+|---|---|---|---|---|---|
+| Gmail / Google Workspace | `smtp.gmail.com` | 587 | Oui | Adresse Gmail complète | Nécessite un **mot de passe d'application** (Compte Google → Sécurité → Validation en 2 étapes → Mots de passe des applications) si la 2FA est activée — Google bloque le mot de passe normal du compte pour le SMTP. |
+| Microsoft 365 / Outlook | `smtp.office365.com` | 587 | Oui | Adresse de boîte mail complète | Même principe que Gmail si le tenant impose le MFA — utilisez un mot de passe d'application ou un compte de service dédié activé pour la messagerie. |
+| SendGrid | `smtp.sendgrid.net` | 587 | Oui | littéralement `apikey` | Le mot de passe est votre clé API SendGrid, pas un mot de passe de compte. |
+| Mailgun | `smtp.mailgun.org` | 587 | Oui | Identifiant SMTP Mailgun (depuis le tableau de bord du domaine) | — |
+| Auto-hébergé (Postfix/Exim) | nom d'hôte de votre serveur | 587 ou 25 | Selon la configuration | Selon la configuration | Si votre relais n'exige pas d'authentification, laissez le nom d'utilisateur/mot de passe vides. |
+
+## Dépannage
+
+**« Connexion refusée » / délai de connexion dépassé**
+L'hôte/port est inaccessible depuis la machine exécutant le conteneur `api` — vérifiez les règles
+de pare-feu, et que le SMTP sortant n'est pas bloqué par votre hébergeur (beaucoup bloquent le
+port 25 par défaut ; le 587 fonctionne généralement bien).
+
+**Échec de l'authentification**
+Nom d'utilisateur/mot de passe incorrect, ou le fournisseur nécessite un mot de passe spécifique à
+l'application plutôt que votre mot de passe de compte habituel (Gmail et Office 365 font tous les
+deux cela lorsque la 2FA est activée — voir le tableau des fournisseurs ci-dessus).
+
+**Erreurs TLS / SSL**
+Le port et le bouton STARTTLS sont en désaccord. Le port 587 souhaite presque toujours STARTTLS
+**coché** ; le port 465 le souhaite **décoché** (TLS implicite dès le premier octet). Les confondre
+produit une erreur de négociation TLS.
+
+**L'e-mail de test fonctionne mais les e-mails réels n'arrivent jamais**
+Vérifiez d'abord le dossier spam du destinataire. Si le domaine de l'adresse d'expéditeur n'a pas
+d'enregistrement SPF/DKIM autorisant votre fournisseur SMTP, les serveurs de messagerie
+destinataires peuvent silencieusement rejeter ou classer en spam le message — il s'agit d'un
+problème de configuration DNS de votre domaine d'envoi, pas d'un paramètre d'Open Gauge.
+
+**Rien ne se passe et aucune erreur n'est affichée**
+Confirmez que **Activé** est coché et enregistré — le bouton d'e-mail de test fonctionne
+indépendamment de ce bouton, mais les e-mails d'inscription/notification ne se déclenchent que
+lorsqu'il est activé.

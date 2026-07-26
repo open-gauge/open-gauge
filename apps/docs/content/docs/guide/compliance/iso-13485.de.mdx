@@ -1,0 +1,141 @@
+---
+title: ISO 13485:2016
+description: Medizinprodukte — Qualitätsmanagementsysteme — Anforderungen für regulatorische Zwecke. Wie Open Gauge die Kalibrier- und QMS-Software-Pflichten eines Medizinprodukteherstellers unterstützt.
+---
+
+## Zusammenfassung
+
+**ISO 13485:2016** — *Medical devices — Quality management systems — Requirements for regulatory
+purposes* — wird von ISO herausgegeben. Es ist die QMS-Norm, gegen die Medizinproduktehersteller
+zertifiziert werden (und auf die sich Regulierungsbehörden wie die FDA im Rahmen der
+QMSR-Harmonisierung von 2024 zunehmend direkt beziehen). Open Gauge ist hier in derselben Rolle
+relevant wie unter [ISO 10012](./iso-10012.mdx): Die betriebseigene Instrumentierung eines
+Herstellers — Produktionsprüfmittel, Umgebungsüberwachung, Prüflehren — benötigt Kalibrier- und
+Rückführbarkeitsdatensätze zur Unterstützung der Produktkonformität, und ISO 13485 §7.6 sagt dies
+ausdrücklich und verweist namentlich auf ISO 10012 ("HINWEIS Weitere Informationen finden sich in
+ISO 10012").
+
+Der größte Teil der Norm (Entwurfskontrollen, Risikomanagement, Produktkennzeichnung,
+Beschwerdebearbeitung, Marktbeobachtung nach Inverkehrbringen, Medizinprodukteakten) regelt die
+eigenen regulierten Prozesse des Geräteherstellers und hat keine Entsprechung in Open Gauge — es
+liegt außerhalb des Geltungsbereichs, ebenso wie Personal-/Audit-/Managementbewertungs-Klauseln von
+den anderen Seiten dieses Abschnitts ausgeschlossen wurden. Zwei Dinge sind spezifisch für diese
+Norm und erwähnenswert: **§4.1.6**, eine ausdrückliche Anforderung, dass die QMS-Software selbst
+validiert werden muss (strenger als das Äquivalent in ISO 10012, da es für *jede* Software gilt, die
+das QMS berührt, nicht nur Messsoftware), und die an die Lebensdauer des Produkts gekoppelte
+Mindestaufbewahrungsfrist in **§4.2.5**.
+
+## Compliance
+
+| Klausel | Anforderung | Status | Wo behandelt |
+|---|---|---|---|
+| [4.1.6, 7.6](#software-validation) | Im QMS oder für Messungen verwendete Computersoftware wird vor Gebrauch und nach Änderungen validiert | ✅ Erfüllt | Der getestete, versionierte Release-Prozess von Open Gauge — wie bei [ISO 10012 §6.2.2](./iso-10012.mdx#measurement-software) |
+| [4.2.4–4.2.5](#document-and-record-control) | Dokumente/Datensätze gekennzeichnet, versionskontrolliert, sicher, mindestens über die Produktlebensdauer aufbewahrt (min. 2 Jahre) | ✅ Erfüllt | Unveränderliche Datensätze, Audit-Protokoll, kein Bereinigungs-/endgültiger Löschpfad |
+| [4.2.5](#confidential-health-information) | Vertrauliche Gesundheitsinformationen in Datensätzen gemäß regulatorischen Anforderungen geschützt | ➖ N/A | Open Gauge erfasst Instrumenten-/Kalibrierdaten, keine Patientengesundheitsinformationen |
+| [7.6(a–e)](#measuring-equipment-control) | Messmittel rückführbar, gekennzeichnet, manipulationsgeschützt, vor Beschädigung geschützt | ✅ Erfüllt | Dieselben Mechanismen wie [ISO/IEC 17025 §6.4–6.5](./iso-17025.mdx#traceability-chain) |
+| [7.6](#retroactive-validity-assessment) | Gültigkeit früherer Messergebnisse bewertet und erfasst, wenn Ausrüstung später als nichtkonform festgestellt wird | ⚠️ Teilweise | Dieselbe Lücke wie [ISO/IEC 17025 §6.4.9](./iso-17025.mdx#equipment-out-of-service) |
+| [8.3](#nonconforming-product) | Nichtkonformes Produkt/Ergebnis gekennzeichnet, kontrolliert und dokumentiert; Zugeständnisse autorisiert und erfasst | ✅ Erfüllt | Dieselbe Behandlung von [Entscheidungsregel/Konformitätsaussage](./iso-17025.mdx#conformity-statement) wie bei ISO/IEC 17025 und ISO 9001 |
+| [8.5.2–8.5.3](#corrective-and-preventive-action) | Korrektur- und Vorbeugungsmaßnahmen, dokumentiert, geprüft, dass sie die Produktsicherheit nicht beeinträchtigen, auf Wirksamkeit überprüft | ❌ Nicht erfüllt | Dieselbe Lücke wie [ISO 9001 §10.2](./iso-9001.mdx#corrective-action) / [ISO 10012 §8.4](./iso-10012.mdx#corrective-and-preventive-action) |
+
+## Detail
+
+### Softwarevalidierung [#software-validation]
+
+> "4.1.6 The organization shall document procedures for the validation of the application of
+> computer software used in the quality management system. Such software applications shall be
+> validated prior to initial use and, as appropriate, after changes to such software or its
+> application... 7.6 The organization shall document procedures for the validation of the
+> application of computer software used for the monitoring and measurement of requirements."
+
+Diese Klausel ist in einer Hinsicht strenger als [ISO 10012 §6.2.2](./iso-10012.mdx#measurement-software):
+Sie gilt für jede Software, die das QMS berührt, nicht nur für Mess-Berechnungssoftware — was für
+eine Open-Gauge-Bereitstellung die gesamte Anwendung bedeutet, nicht nur
+`calibration_analysis.py`. Die Validierungspflicht selbst liegt bei der betreibenden Organisation
+(sie ist es, die nach ISO 13485 zertifiziert ist, nicht Open Gauge als Anbieter), aber Open Gauge
+liefert das Material, auf dem eine Validierung aufbaut: eine einzige verfolgte Version pro Release
+([die Versionierungsrichtlinie in `CONTRIBUTING.md`](https://github.com/open-gauge/open-gauge/blob/main/docs/CONTRIBUTING.md#versioning)),
+ein Änderungsprotokoll dessen, was sich geändert hat und warum
+([VERSIONS.md](../reference/versions.mdx)), und eine automatisierte Testsuite, die den
+Mess-Berechnungspfad abdeckt (siehe [Berechnungsprüfungen](./iso-17025.mdx#calculation-checks)), auf
+der die eigene Validierung eines Kunden aufbauen kann, statt bei null zu beginnen.
+
+### Dokumenten- und Datensatzkontrolle [#document-and-record-control]
+
+> "4.2.5 ...The organization shall document procedures to define the controls needed for the
+> identification, storage, security and integrity, retrieval, retention time and disposition of
+> records... The organization shall retain the records for at least the lifetime of the medical
+> device as defined by the organization...but not less than two years from the medical device
+> release."
+
+Kalibrier- und Anlagendatensätze werden nie endgültig gelöscht — nur weich entwertet und
+umkehrbar (siehe [Technische Aufzeichnungen](./iso-17025.mdx#technical-records)) —, sodass es
+keinen Codepfad gibt, der einen Datensatz bereinigen könnte, bevor die eigene Aufbewahrungsrichtlinie
+einer Organisation dies für unbedenklich erklärt. Kennzeichnung, Versionskontrolle und Integrität
+werden durch dieselben Audit-Protokoll- und Unveränderlichkeitsmechanismen abgedeckt, die im
+gesamten Abschnitt dokumentiert sind.
+
+### Vertrauliche Gesundheitsinformationen [#confidential-health-information]
+
+> "4.2.5 ...The organization shall define and implement methods for protecting confidential health
+> information contained in records in accordance with the applicable regulatory requirements."
+
+Nicht anwendbar: Das Datenmodell von Open Gauge deckt Instrumentierung, Kalibrierung und
+organisatorische Datensätze ab — es hat kein Konzept für Patienten- oder Gesundheitsinformationen,
+sodass diese Klausel innerhalb des Systems selbst auf nichts anzuwenden ist.
+
+### Kontrolle der Messmittel [#measuring-equipment-control]
+
+> "7.6 ...measuring equipment shall be: a) calibrated or verified...against measurement standards
+> traceable to international or national measurement standards...; c) have identification in order
+> to determine its calibration status; d) be safeguarded from adjustments that would invalidate the
+> measurement result; e) be protected from damage and deterioration."
+
+In der Substanz identisch mit [ISO/IEC 17025 §6.4](./iso-17025.mdx#equipment-records) und
+[ISO 10012 §6.3](./iso-10012.mdx#confirmation-records), auf dieselbe Weise behandelt: anlagenspezifische
+Kalibrier- und Rückführbarkeitsdatensätze, QR-codierte Statuskennzeichnung und unveränderliche
+Kalibrierhistorie.
+
+### Rückwirkende Gültigkeitsbewertung [#retroactive-validity-assessment]
+
+> "7.6 ...the organization shall assess and record the validity of the previous measuring results
+> when the equipment is found not to conform to requirements. The organization shall take
+> appropriate action in regard to the equipment and any product affected."
+
+Dieselbe Lücke, die bereits bei [ISO/IEC 17025 §6.4.9](./iso-17025.mdx#equipment-out-of-service)
+und [ISO 10012 §8.3.3](./iso-10012.mdx#nonconforming-equipment) festgestellt wurde: Die
+Feststellung, dass ein Instrument außerhalb der Toleranz liegt, löst keine automatische Überprüfung
+der Kalibrierungen oder nachgelagerten Messwerte aus, die der Entdeckung vorausgingen — diese
+Bewertung muss manuell, außerhalb von Open Gauge, erfolgen.
+
+### Nichtkonformes Produkt [#nonconforming-product]
+
+> "8.3.1 The organization shall ensure that product which does not conform to product
+> requirements is identified and controlled to prevent its unintended use or delivery... 8.3.2
+> ...nonconforming product is accepted by concession only if the justification is provided,
+> approval is obtained... Records of the acceptance by concession and the identity of the person
+> authorizing the concession shall be maintained."
+
+Eine nicht bestandene Kalibrierung wird hierauf auf dieselbe Weise abgebildet wie bei der
+[Konformitätsaussage von ISO/IEC 17025](./iso-17025.mdx#conformity-statement) und den
+[nichtkonformen Ergebnissen von ISO 9001](./iso-9001.mdx#nonconforming-outputs): Sie wird nie
+verborgen oder blockiert, die Entscheidungsregel und das Ergebnis werden erfasst, und die Identität
+des Ausführenden wird beigefügt — womit "gekennzeichnet", "kontrolliert" (über die explizite
+Bestätigung "Trotzdem speichern") und "dokumentiert" gemeinsam abgedeckt sind.
+
+### Korrektur- und Vorbeugungsmaßnahmen [#corrective-and-preventive-action]
+
+> "8.5.2 ...The organization shall document a procedure to define requirements for: a) reviewing
+> nonconformities...; b) determining the causes...; ...e) verifying that the corrective action does
+> not adversely affect the ability to meet applicable regulatory requirements or the safety and
+> performance of the medical device; f) reviewing the effectiveness of corrective action taken."
+
+Dieselbe Lücke wie [ISO 9001 §10.2](./iso-9001.mdx#corrective-action) und
+[ISO 10012 §8.4.2–8.4.3](./iso-10012.mdx#corrective-and-preventive-action): Es gibt keinen
+CAPA-Workflow, um eine Nichtkonformität durch Ursachenanalyse, eine dokumentierte Maßnahme, eine
+Prüfung auf Nebenwirkungen und einen überprüften, abgeschlossenen Abschluss zu verfolgen.
+
+---
+
+*Verifiziert gegen ISO 13485:2016(E) und die Open-Gauge-Codebasis
+(`apps/api/app/models/calibration.py`, `apps/api/app/models/audit_log.py`,
+`apps/web/package.json`, `VERSIONS.md`) am 2026-07-29.*

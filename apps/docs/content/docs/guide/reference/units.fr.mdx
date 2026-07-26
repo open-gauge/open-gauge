@@ -1,0 +1,63 @@
+---
+title: Unités et conversions
+description: Chaque grandeur physique prise en charge par Open Gauge, son unité de stockage SI, et les facteurs de conversion d'unités d'affichage.
+---
+
+Toutes les valeurs numériques stockées dans la base de données d'Open Gauge sont en **unités
+SI**. L'unité que vous choisissez dans l'interface (par ex. °C, kPa, psi) est une unité
+*d'affichage* — Open Gauge convertit vers/depuis le SI à la frontière, et stocke l'unité
+d'affichage aux côtés de la valeur afin qu'elle puisse être restituée correctement.
+
+| Grandeur physique | Unité SI | Unités d'affichage → SI |
+|---|---|---|
+| Température | K | °C → `K = °C + 273.15` · °F → `K = (°F − 32) × 5/9 + 273.15` |
+| Pression | Pa | kPa ×1 000 · MPa ×1 000 000 · bar ×100 000 · psi ×6 894,757 · hPa ×100 · atm ×101 325 · mmHg ×133,322 · inHg ×3 386,389 · inH₂O ×249,0889 |
+| Débit (volumique) | m³/s | m³/h ÷3 600 · L/min ÷60 000 · gal/min (US) ×6,309×10⁻⁵ |
+| Débit (massique) | kg/s | kg/h ÷3 600 · g/min ÷60 000 · lb/min ×0,00755987 |
+| Niveau | m | mm ÷1 000 · cm ÷100 · in ×0,0254 · ft ×0,3048 · % (selon l'application) |
+| Humidité | %HR | g/m³ (aucune conversion universelle) · point de rosée (nécessite un calcul psychrométrique) |
+| Force | N | kN ×1 000 · kgf ×9,80665 · lbf ×4,44822 |
+| Couple | N·m | kgf·m ×9,80665 · lbf·ft ×1,35582 |
+| Masse | kg | g ÷1 000 · mg ÷1 000 000 · lb ×0,45359237 |
+| Déformation | m/m | µε ×10⁻⁶ |
+| Déplacement | m | nm ×10⁻⁹ · µm ×10⁻⁶ · mm ×10⁻³ · cm ×10⁻² · in ×0,0254 · ft ×0,3048 |
+| Angle | rad | ° × π/180 |
+| Vitesse angulaire | rad/s | rpm × 2π/60 · °/s × π/180 |
+| Accélération angulaire | rad/s² | °/s² × π/180 |
+| Vitesse | m/s | km/h ÷3,6 · mph ×0,44704 · nœuds ×0,514444 |
+| Accélération | m/s² | g ×9,80665 |
+| Pression acoustique | Pa | dB/dBA/dBC sont des échelles logarithmiques — non directement convertibles sans une pression de référence |
+| Tension | V | mV ÷1 000 · kV ×1 000 |
+| Courant | A | mA ÷1 000 · kA ×1 000 |
+| Résistance | Ω | kΩ ×1 000 · MΩ ×1 000 000 |
+| Puissance | W | kW ×1 000 · MW ×1 000 000 |
+| Énergie | J | Wh ×3 600 · kWh ×3 600 000 · MWh ×3 600 000 000 |
+| Fréquence | Hz | kHz ×1 000 · MHz ×1 000 000 · GHz ×1 000 000 000 · bpm ÷60 |
+| Capacité | F | µF ×10⁻⁶ · nF ×10⁻⁹ · pF ×10⁻¹² |
+| Inductance | H | mH ×10⁻³ · µH ×10⁻⁶ |
+| Impédance | Ω | kΩ ×1 000 · MΩ ×1 000 000 |
+| Champ magnétique | T | mT ×10⁻³ · µT ×10⁻⁶ · G ×10⁻⁴ |
+| Champ électrique | V/m | kV/m ×1 000 |
+| Radiation | Gy (dose absorbée) | Sv est une dose équivalente (non directement convertible) · rem → Sv ×0,01 · Bq est une activité (une grandeur différente) |
+| Éclairement lumineux | lx | pied-bougie ×10,7639 |
+| Luminance | cd/m² | — |
+| Concentration | mol/m³ | ppm, ppb, %, mg/m³ dépendent de la substance — nécessite le poids moléculaire et les conditions |
+| pH | sans dimension | — |
+| Conductivité | S/m | mS/cm ×0,1 · µS/cm ×0,0001 |
+| Salinité | kg/m³ | g/L (numériquement identique) |
+| Oxygène dissous | mg/L | % de saturation nécessite la température et la pression |
+| Potentiel d'oxydoréduction | V | mV ÷1 000 |
+| Masse volumique | kg/m³ | g/cm³ ×1 000 |
+| Viscosité | Pa·s | cP ×0,001 |
+| Teneur en humidité | kg/kg | % ÷100 |
+| Concentration de particules | particules/m³ | particules/ft³ ×35,3147 |
+| Direction du vent | rad | ° × π/180 |
+| Précipitations | m | mm ÷1 000 · in ×0,0254 |
+| Oxygène sanguin | % | — |
+| Rugosité de surface | m | µm ×10⁻⁶ |
+
+Certaines grandeurs (pression acoustique, radiation, concentration) sont notées ci-dessus comme
+**non** universellement convertibles — Open Gauge stocke ce que l'utilisateur a saisi pour
+celles-ci sans tenter une conversion avec perte, puisqu'une conversion correcte nécessite un
+contexte supplémentaire (une valeur de référence, un poids moléculaire, des conditions de mesure)
+qui n'est pas toujours disponible.

@@ -1,0 +1,134 @@
+---
+title: Notifications par e-mail
+description: Configuration SMTP pour la vérification de compte, la réinitialisation de mot de passe, et les rappels de calibration, gérée entièrement par un administrateur.
+---
+
+Open Gauge peut envoyer des e-mails pour quatre choses : confirmer de nouveaux comptes,
+réinitialiser un mot de passe oublié, tenir informée l'organisation propriétaire d'une calibration
+de son statut, et alerter les administrateurs d'une organisation d'une demande d'adhésion. Comme
+Gogs/Gitea, le SMTP est une configuration unique gérée par un administrateur, plutôt que quelque
+chose que chaque utilisateur configure lui-même.
+
+Chacun de ces événements (à l'exception de la vérification de compte et de la réinitialisation de
+mot de passe, qui n'ont pas d'équivalent dans l'application) déclenche également une notification
+dans l'application — l'icône de cloche dans la barre supérieure — que le SMTP soit configuré ou
+non ; l'e-mail est un bonus en plus de cela, pas le seul moyen d'être informé. Voir
+[Notifications](../notifications/index.mdx) pour la liste complète des catégories, la boîte de
+réception elle-même, et comment chaque utilisateur choisit les canaux qu'il souhaite par catégorie
+depuis **Paramètres → Notifications**. Voir aussi
+[Organisations → Demandes d'adhésion](../organizations/index.mdx#join-requests).
+
+## Configuration
+
+Les paramètres SMTP résident dans la base de données, et non dans des variables d'environnement —
+ils sont modifiés depuis **Admin → E-mail** par tout utilisateur `admin` ou `superadmin`, et
+prennent effet immédiatement (aucun redémarrage requis). Cela permet de configurer la messagerie à
+l'exécution dans un déploiement auto-hébergé sans reconstruire ni redéployer le conteneur.
+
+Pour le guide pas à pas (quels champs remplir, paramètres spécifiques aux fournisseurs pour
+Gmail / Office 365 / SendGrid / Mailgun, et le dépannage), voir
+[Configurer l'e-mail (SMTP)](./email-configuration.mdx). En résumé : hôte, port, nom
+d'utilisateur/mot de passe optionnels, une adresse/un nom d'expéditeur, un bouton d'activation, et
+un délai de rappel en jours — plus une action **Envoyer un e-mail de test** pour valider la
+configuration avant de l'activer. Voir [Admin](/docs/api/admin) dans la référence API pour les
+points de terminaison `/admin/email-settings` sous-jacents.
+
+### Comportement lorsque la messagerie n'est pas configurée
+
+Open Gauge doit continuer à fonctionner prêt à l'emploi sous Docker Compose (voir
+[Auto-hébergement : Déploiement](./deployment.mdx)) même si aucune installation auto-hébergée n'a
+de SMTP configuré par défaut. Ainsi, chaque chemin de code envoyant un e-mail vérifie d'abord si la
+messagerie est activée, et se dégrade vers un mécanisme manuel médié par un administrateur au lieu
+d'échouer purement et simplement :
+
+- **L'inscription** crée toujours le compte, mais celui-ci démarre non vérifié — comme il n'y a
+  aucun moyen d'envoyer un lien de vérification par e-mail, un `admin`/`superadmin` doit l'activer
+  manuellement depuis **Admin → Utilisateurs** (un badge « En attente d'activation » et un bouton
+  **Activer** y apparaissent).
+- **Mot de passe oublié** n'a aucun parcours en libre-service sans SMTP — l'écran de connexion
+  indique à l'utilisateur de contacter son administrateur, à qui il peut être demandé de l'aider à
+  récupérer l'accès.
+- **Les notifications et rappels de calibration** déclenchent toujours leur notification dans
+  l'application normalement — seule la partie e-mail est ignorée. Voir
+  [Notifications](../notifications/index.mdx).
+
+Rien dans la création de compte ou les flux de calibration n'est bloqué par une messagerie non
+configurée — seules les parties automatisées en libre-service le sont.
+
+## Vérification de compte
+
+Chaque compte auto-inscrit (`POST /auth/register`) démarre non vérifié et ne peut pas se connecter
+tant qu'il n'est pas activé — il n'existe aucun chemin où l'auto-inscription accorde un accès
+instantané, quelle que soit la configuration de la messagerie.
+
+**Exception : le tout premier compte sur une installation neuve.** Avec zéro utilisateur dans la
+base de données, il n'y a aucun administrateur qui pourrait activer qui que ce soit, donc cette
+première inscription est créée vérifiée, avec le rôle `superadmin`, et peut se connecter
+immédiatement. Chaque compte inscrit après cela suit le flux d'activation normal ci-dessous.
+
+Ce à quoi ressemble l'activation pour tout le monde après le premier compte dépend de si la
+messagerie est activée :
+
+**Avec la messagerie activée :**
+
+1. Le compte est créé avec `is_verified = false` et un jeton de vérification aléatoire
+   (expiration de 24 heures).
+2. Un e-mail de vérification est envoyé avec un lien vers `/auth/verify-email?token=...`.
+3. `POST /auth/login` rejette les comptes non vérifiés jusqu'à ce que le lien soit cliqué.
+4. Cliquer sur le lien appelle `GET /auth/verify-email`, qui marque le compte comme vérifié et
+   renvoie un jeton d'accès — l'utilisateur se retrouve connecté.
+
+Si l'e-mail n'arrive jamais (par ex. l'administrateur n'a pas terminé la configuration SMTP),
+l'utilisateur peut en demander un autre depuis l'écran de connexion
+(`POST /auth/resend-verification`), qui répond toujours avec succès sans révéler si l'adresse
+existe.
+
+**Sans la messagerie activée :** le compte est créé non vérifié sans jeton émis (il n'y a nulle
+part où l'envoyer). Un `admin`/`superadmin` l'active directement depuis
+**Admin → Utilisateurs** — cela définit `is_verified = true` sans aller-retour par e-mail.
+
+Les comptes créés directement par un administrateur (`POST /users`) ne sont affectés par rien de
+tout cela — ils sont vérifiés immédiatement, puisqu'un administrateur a déjà attesté d'eux en
+créant le compte.
+
+## Mot de passe oublié
+
+`POST /auth/forgot-password` répond toujours avec succès, que l'adresse existe ou non, afin
+d'éviter de révéler l'existence d'un compte — le frontend affiche un message générique unique dans
+les deux cas.
+
+**Avec la messagerie activée :** si l'adresse correspond à un compte, un jeton de réinitialisation
+(expiration d'1 heure) est généré et envoyé par e-mail avec un lien vers
+`/auth/reset-password?token=...`. Soumettre un nouveau mot de passe là-bas
+(`POST /auth/reset-password`) efface le jeton, met à jour le mot de passe, et connecte
+l'utilisateur.
+
+**Sans la messagerie activée :** aucun jeton n'est jamais généré — il n'y a aucun parcours de
+réinitialisation en libre-service. Le message de l'écran de connexion le dit explicitement, dirigeant
+l'utilisateur vers son administrateur, qui peut réinitialiser le mot de passe en recréant les
+identifiants ou en l'aidant autrement hors bande.
+
+## Notifications de calibration
+
+Deux événements notifient chaque Technicien, Administrateur et Super Administrateur actif de
+l'organisation d'un actif, via une notification dans l'application et (si configuré) un e-mail —
+les préférences propres à chaque destinataire depuis **Paramètres → Notifications** déterminent
+quels canaux ils reçoivent réellement (voir [Notifications](../notifications/index.mdx)). Voir
+[Modèle de données et concepts](../concepts/data-model.mdx) pour la relation entre actifs et
+organisations ; les Lecteurs (Viewers) ne sont jamais notifiés puisqu'ils ne peuvent agir sur une
+calibration :
+
+- **Nouvelle calibration enregistrée** — dès que `POST /calibrations` réussit, les techniciens et
+  administrateurs de l'organisation sont notifiés (sauf la personne qui vient de l'enregistrer).
+- **Bientôt due / en retard** — une vérification quotidienne (07:00 heure du serveur) contrôle la
+  dernière calibration de chaque actif actif. Chaque calibration n'est rappelée qu'une fois au
+  maximum par seuil : une fois lorsqu'elle entre dans la fenêtre de rappel configurée, et une fois
+  de plus si elle bascule en retard. Une calibration n'est marquée comme rappelée qu'une fois qu'au
+  moins un canal a effectivement délivré la notification à au moins un destinataire (notification
+  dans l'application créée, ou e-mail envoyé) ; si aucun ne le fait — par ex. la messagerie n'est
+  pas configurée et chaque destinataire s'est désinscrit de la notification interne pour cette
+  catégorie — elle est retentée lors de la vérification du jour suivant.
+
+Tout ceci est réalisé au mieux : un envoi échoué est journalisé et ne bloque jamais
+l'enregistrement de la calibration, et la vérification quotidienne dans son ensemble ne remonte
+jamais d'erreur au-delà de sa propre entrée de journal.

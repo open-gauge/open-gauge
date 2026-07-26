@@ -1,0 +1,4 @@
+{
+  "title": "Score de santé",
+  "pages": ["overview", "drift-metrics", "predictions"]
+}

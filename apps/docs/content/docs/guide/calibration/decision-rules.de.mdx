@@ -1,0 +1,53 @@
+---
+title: Entscheidungsregeln & Konformität
+description: Wie Open Gauge über Bestehen/Nichtbestehen entscheidet, sobald die Messunsicherheit ins Bild kommt — einfache Annahme, Guard-Banding und geteiltes Risiko.
+---
+
+ISO/IEC 17025 §7.1.3 und §7.8.6 verlangen, dass ein Labor, wann immer es eine
+Bestanden/Nicht-bestanden-Aussage trifft, dokumentiert, **welche Entscheidungsregel** angewendet
+wurde — ein bloßer Vergleich "Messwert innerhalb der Spezifikation" reicht nicht mehr aus, sobald
+die Messunsicherheit berücksichtigt wird. Open Gauge speichert die Entscheidungsregel und die
+resultierende Konformitätsaussage bei jeder Kalibrierung.
+
+## Die drei Regeln [#decision-rule]
+
+Sei $\text{error}$ der [Maximalfehler](./curve-fitting.mdx#max-error) der Kalibrierung und
+$\text{tolerance}$ die Genauigkeitsspezifikation des Kanals (z. B. ±0,5 °C oder ±1 % FS,
+umgerechnet in einen Absolutwert), und $U$ die
+[erweiterte Unsicherheit](./uncertainty-budget.mdx#expanded-uncertainty).
+
+| Regel | Besteht, wenn | Wirkung | Wann zu verwenden |
+|---|---|---|---|
+| **Einfache Annahme** (Standard) | $\text{error} \le \text{tolerance}$ | Ignoriert die Unsicherheit vollständig. | Noch keine formale Risikoanalyse durchgeführt, oder der Kunde hat keiner anderen Regel zugestimmt. |
+| **Guard Band** | $\text{error} + U \le \text{tolerance}$ | Die Annahmezone schrumpft nach innen um $U$. | Verringert das Risiko einer fälschlichen Annahme — verwenden, wenn ein fälschliches *Bestehen* kostspielig ist. |
+| **Geteiltes Risiko** | $\text{error} - U \le \text{tolerance}$ | Die Annahmezone erweitert sich nach außen um $U$. | Verringert das Risiko einer fälschlichen Ablehnung, auf Kosten eines gewissen Risikos fälschlicher Annahme nahe der Grenze — verwenden, wenn ein fälschliches *Nichtbestehen* kostspielig ist. |
+
+Beachten Sie, dass diese drei Regeln bei derselben Anpassung und derselben Spezifikation
+tatsächlich zu unterschiedlichen Ergebnissen kommen können — siehe
+[Beispiel 1.3](./examples/rtd-linear.mdx#bonus-check) für einen durchgerechneten Fall, in dem
+alle drei Regeln aus identischen Eingabedaten ein unterschiedliches Urteil ergeben.
+
+## Was gespeichert wird
+
+Jede Kalibrierung speichert eine `conformity_statement`, die den vollständigen Datensatz trägt:
+die verwendete Entscheidungsregel, eine menschenlesbare Darstellung der Spezifikation (z. B.
+`"±0.5% of full scale"`), die angewendete erweiterte Unsicherheit (falls vorhanden), ob sie
+bestanden wurde, und einen Grund (nur ausgefüllt, wenn überhaupt keine Genauigkeitsspezifikation
+konfiguriert war, was bedeutet, dass die Konformität nicht bewertet wurde).
+
+## Speichern einer nicht konformen Kalibrierung
+
+Das Speichern wird **nie** durch ein nicht konformes Ergebnis blockiert. Eine nicht bestandene
+Kalibrierung ist selbst ein wichtiger Datensatz — die
+[Kalibrierphilosophie](../concepts/data-model.mdx) von Open Gauge behandelt Historie als unveränderlich
+und unterdrückt nie ein echtes Ergebnis nur, weil es ungelegen ist. Entspricht ein Ergebnis nicht
+der Konformität, benennt der Speicherbestätigungsdialog die Spezifikation und Entscheidungsregel
+ausdrücklich, und die Speichern-Schaltfläche wird zu **"Trotzdem speichern"** umbenannt.
+
+## Keine eigenständige Toleranzvorschau
+
+Es gibt kein separates clientseitiges "Was-wäre-wenn"-Toleranzfeld — eine frühere Version des
+Assistenten hatte eines, losgelöst von der tatsächlichen Spezifikation des Kanals und nie
+gespeichert, was dem tatsächlich gespeicherten Konformitätsergebnis widersprechen konnte. Die im
+Unsicherheitspanel des Assistenten angezeigte Konformitätsaussage *ist* diejenige, die gespeichert
+und auf dem Zertifikat gedruckt wird.

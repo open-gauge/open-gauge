@@ -23,15 +23,28 @@ fixes and incremental additions that landed between each minor version.
   and, once signed in, to the user's profile (`PATCH /users/me` gained a validated `language`
   field) so it follows a returning user across devices and browsers. Every page and shared
   component in the authenticated app, the login/register/forgot-password/reset-password/verify-email
-  flow, and admin/settings screens are translated; user-entered content (asset names, notes, audit
-  free text) and the Privacy Policy/Terms of Service pages are deliberately left English-only —
-  machine-translating legal text or user data isn't appropriate here. The separate marketing site
-  (`landing/`, a static HTML/CSS/JS Cloudflare Worker project) gained its own matching language
-  switcher next to its light/dark toggle, full Spanish/French/German copies of the marketing
-  homepage, and a first-visit `Accept-Language`-based redirect in its Worker.
+  flow, admin/settings screens, the Privacy Policy and Terms of Service (both the app's and the
+  marketing site's), and every enum-driven dropdown (physical quantities, sensor technologies,
+  calibration status, roles, etc.) are translated. The activity log and audit trail translate each
+  action (`asset.created`, `calibration.voided`, …) instead of showing the raw event code, and the
+  dashboard calibration calendar's date tooltip shows the weekday name in the viewer's language.
+  User-entered content (asset names, notes, audit free text) stays untranslated by design — it's
+  shown back exactly as entered, since machine-translating someone else's data would silently
+  change what they wrote. The separate marketing site (`landing/`, a static HTML/CSS/JS Cloudflare
+  Worker project) gained its own matching language switcher next to its light/dark toggle, full
+  Spanish/French/German copies of the marketing homepage and legal pages, and a first-visit
+  `Accept-Language`-based redirect in its Worker.
 - Backend: `User` gained a `language` column (`SUPPORTED_LANGUAGES`-validated, defaults to `en`),
   migrated via `028_add_user_language.py`, with test coverage for valid/invalid values on
   `UserSelfUpdate`.
+- The Knowledge Center (`apps/docs`, and the same content embedded in-app at **Documentation**) is
+  now translated too, using Fumadocs' built-in i18n: each guide page's Spanish/French/German
+  translation lives as a `page.{locale}.mdx` sibling next to its English source, with automatic
+  fallback to English for any page not yet translated so coverage can grow incrementally. The
+  standalone docs site follows the same unprefixed-English/prefixed-others URL scheme as the app
+  (`/docs/guide`, `/es/docs/guide`, …) and gained its own language switcher in the top nav. The
+  auto-generated API Reference stays English-only in every language, since it's generated directly
+  from the OpenAPI schema rather than hand-written.
 
 ## 3.2.1
 

@@ -1,0 +1,53 @@
+---
+title: Arrondi, et si vos nombres ne correspondent pas
+description: Les deux règles d'arrondi d'affichage qu'Open Gauge applique, et comment déboguer un exemple concret qui ne se reproduit pas.
+---
+
+## Arrondi — ce que vous verrez réellement à l'écran
+
+Les nombres bruts de chaque [exemple concret](./index.mdx) sont ce que le moteur de calcul
+d'Open Gauge produit en interne (et ce qui est stocké dans la base de données, déjà arrondi côté
+serveur à 8 décimales — ce qui n'est pas la même chose que la règle d'affichage ci-dessous). Deux
+règles d'arrondi différentes s'appliquent par-dessus dans l'interface :
+
+1. **L'incertitude combinée et élargie sont arrondies à au plus 2 chiffres significatifs** pour
+   l'affichage, selon le GUM §7.2.6 — dans l'assistant, la vue d'historique de calibration, et le
+   PDF de certificat. C'est la valeur « affichée arrondie : … » dans chaque exemple concret.
+2. **Toute autre statistique** ([R², RMSE, erreur maximale, hystérésis, répétabilité,
+   ...](../curve-fitting.mdx)) passe par un formateur décimal fixe à usage général qui supprime
+   les zéros de fin. L'analyse en direct de l'assistant utilise par défaut 6 décimales ; la vue
+   d'historique de calibration sur la page de l'actif utilise par défaut 4 — de sorte que la même
+   valeur stockée peut s'afficher avec un chiffre décimal de moins une fois une calibration
+   enregistrée et que vous consultez son entrée d'historique par rapport à son analyse en direct.
+   Dans les deux cas, `0.99999993` s'arrondit à `1` à la fois à 6 et à 4 décimales, et
+   `0.43588989` s'affiche comme `0.43589` dans l'assistant mais `0.4359` dans la vue
+   d'historique. Voir le R² s'afficher comme exactement `1` pour un ajustement quasi parfait est
+   un arrondi de ce formateur, pas un bogue — la valeur stockée reste `0.99999993`, pas
+   exactement 1.
+
+Le tableau « Résultats attendus » de chaque exemple concret donne la valeur brute complète tout
+du long (pour vérifier les mathématiques sous-jacentes) et ne signale la valeur arrondie que là
+où une règle change réellement ce qui est affiché (incertitude combinée/élargie).
+
+## Si vos nombres ne correspondent pas
+
+- **Décalé d'un facteur de la taille d'une conversion d'unité (10, 100, 1000...)** — vérifiez que
+  l'unité d'exactitude de la voie correspond à l'unité référence/mesuré que vous avez utilisée en
+  saisissant les points. Open Gauge ne valide actuellement pas que ces unités concordent.
+- **« % FS » n'apparaît pas dans la liste déroulante d'unité Exactitude/Résolution/Incertitude** —
+  elle n'apparaît qu'une fois que la plage min et la plage max sont toutes deux renseignées sur
+  cette voie ; voir
+  [La convention « % FS »](../../sensors/adding-a-sensor.mdx#the-fs-convention).
+- **Ligne « étalon de référence » manquante** (exemple 1.2) — confirmez que la calibration de
+  l'Actif A (1.1) a bien été *enregistrée*, pas seulement analysée, avant de démarrer la
+  calibration de l'Actif B, et que la voie de l'Actif A a
+  [Rôle de calibration](../../sensors/adding-a-sensor.mdx#calibration-role) coché (le sélecteur
+  d'actif de référence ne liste que les actifs ayant au moins une voie à rôle de référence).
+- **Degré polynomial différent** (exemple 2) — si vous obtenez un degré différent de 2, essayez
+  de ressaisir les points exactement comme listés ; de petites erreurs de transcription
+  déplacent le degré que l'AIC préfère. L'ajustement polynomial est sensible aux valeurs d'entrée
+  exactes d'une façon dont les autres vérifications ne le sont pas.
+- **Aucun badge CONFORME/NON CONFORME** (exemple 4) — c'est attendu, pas un bogue. Une calibration
+  à coefficients uniquement n'a aucune donnée brute à partir de laquelle calculer une erreur
+  évaluée, il n'y a donc rien à comparer à une spécification. Utilisez une calibration classique
+  (pas à coefficients uniquement) si vous voulez une déclaration de conformité.

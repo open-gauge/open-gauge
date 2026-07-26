@@ -1,0 +1,47 @@
+---
+title: Reglas de decisión y conformidad
+description: Cómo decide Open Gauge aprobado/rechazado una vez que la incertidumbre de medición entra en juego — aceptación simple, bandas de guarda y riesgo compartido.
+---
+
+ISO/IEC 17025 §7.1.3 y §7.8.6 exigen que, siempre que un laboratorio emita un dictamen de
+aprobado/rechazado, documente **qué regla de decisión** se aplicó — una simple comparación de "lectura
+dentro de la especificación" no es suficiente una vez que se tiene en cuenta la incertidumbre de medición. Open Gauge
+almacena la regla de decisión y el dictamen de conformidad resultante en cada calibración.
+
+## Las tres reglas [#decision-rule]
+
+Sea $\text{error}$ el [error máximo](./curve-fitting.mdx#max-error) de la calibración
+y $\text{tolerance}$ la especificación de exactitud del canal (p. ej. ±0.5 °C, o ±1% FS convertido a un
+valor absoluto), y $U$ la [incertidumbre expandida](./uncertainty-budget.mdx#expanded-uncertainty).
+
+| Regla | Aprueba cuando | Efecto | Cuándo usarla |
+|---|---|---|---|
+| **Aceptación simple** (por defecto) | $\text{error} \le \text{tolerance}$ | Ignora la incertidumbre por completo. | Aún no se ha hecho un análisis de riesgo formal, o el cliente no ha acordado una regla diferente. |
+| **Banda de guarda** | $\text{error} + U \le \text{tolerance}$ | La zona de aceptación se reduce hacia adentro en $U$. | Reduce el riesgo de aceptación falsa — úsala cuando un aprobado falso es costoso. |
+| **Riesgo compartido** | $\text{error} - U \le \text{tolerance}$ | La zona de aceptación se expande hacia afuera en $U$. | Reduce el riesgo de rechazo falso, a costa de algo de riesgo de aceptación falsa cerca del límite — úsala cuando un rechazo falso es costoso. |
+
+Nótese que estas tres reglas pueden discrepar genuinamente sobre el *mismo* ajuste y la *misma*
+especificación — consulta el [Ejemplo 1.3](./examples/rtd-linear.mdx#bonus-check) para un caso
+resuelto donde las tres reglas producen un veredicto diferente a partir de los mismos datos de entrada.
+
+## Qué se almacena
+
+Cada calibración almacena un `conformity_statement` que lleva el registro completo: la regla de decisión
+usada, una representación legible por humanos de la especificación (p. ej. `"±0.5% of full scale"`), la
+incertidumbre expandida aplicada (si la hay), si aprobó o no, y una razón (poblada solo cuando no se
+configuró ninguna especificación de exactitud en absoluto, lo que significa que no se evaluó la conformidad).
+
+## Guardar una calibración no conforme
+
+Guardar **nunca se bloquea** por un resultado no conforme. Una calibración fallida es en sí misma un
+registro importante — la [filosofía de calibración](../concepts/data-model.mdx) de Open Gauge trata
+el historial como inmutable y nunca suprime un resultado real solo porque sea inconveniente. Cuando un
+resultado no cumple, el diálogo de confirmación de guardado nombra la especificación y la regla de decisión
+explícitamente, y el botón de guardar cambia su etiqueta a **"Guardar de todos modos."**
+
+## Sin vista previa de tolerancia independiente
+
+No hay ningún campo separado de tolerancia "qué pasaría si" del lado del cliente — una versión anterior del
+asistente tenía uno, desconectado de la especificación real del canal y nunca persistido, lo que podía
+contradecir el resultado de conformidad realmente guardado. El dictamen de conformidad mostrado en el
+panel de incertidumbre del asistente *es* el que se guarda y se imprime en el certificado.

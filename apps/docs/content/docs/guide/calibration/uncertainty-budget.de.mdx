@@ -1,0 +1,98 @@
+---
+title: Das Unsicherheitsbudget
+description: Wie Open Gauge ein GUM-konformes Unsicherheitsbudget aufstellt, kombiniert und zu einem berichteten ±-Wert erweitert.
+---
+
+Open Gauge drückt die Messunsicherheit als **aufgeschlüsseltes Budget** aus (Tabellenformat gemäß
+GUM Anhang H.1), nicht als einzelne undurchsichtige Zahl. Jede Kalibrierung speichert ein Array von
+Budgetzeilen, eine pro Beitrag, jede ausgedrückt als *Standardunsicherheit* in den Einheiten der
+Messgröße selbst.
+
+## Typ A vs. Typ B
+
+Gemäß GUM §0.7/§3.3.3 beschreiben "Typ A" und "Typ B", **wie** eine Unsicherheit ermittelt wurde,
+nicht ob sie "zufällig" oder "systematisch" ist (der GUM verwirft diese ältere Unterscheidung
+ausdrücklich):
+
+- **Typ A** — ermittelt durch statistische Analyse einer Reihe von Beobachtungen (z. B. die
+  Streuung der Anpassungsresiduen der Kalibrierkurve).
+- **Typ B** — auf jede andere Weise ermittelt: Herstellerangaben, Kalibrierzertifikate,
+  Tabellenwerke, Auflösung, fachliches Urteil.
+
+## Beiträge [#contributions]
+
+| Quelle | Typ | Wie sie abgeleitet wird |
+|---|---|---|
+| `fit_residuals` | A | Immer vorhanden. Standardabweichung der Anpassungsresiduen der Kalibrierkurve. Freiheitsgrade = Punkte − Parameter, oder unbekannt, falls das ≤ 0 ist. |
+| `reference_standard` | B | Optional. Die eigene angegebene erweiterte Unsicherheit des Referenznormals, umgerechnet in eine Standardunsicherheit über $u = U/k$ (GUM §4.3.3). Bei internen Kalibrierungen automatisch aus der letzten Kalibrierung der ausgewählten Referenz-Anlage abgerufen; andernfalls manuell eingegeben. |
+| `resolution` | B | Wird automatisch einbezogen, sobald der Kanal einen Auflösungswert hat. Rechteckverteilung gemäß GUM §4.3.7 — siehe unten. |
+| `sensor_nominal_accuracy` | B | Die vom Hersteller angegebene Unsicherheit des Kanals, umgerechnet über $u = U/k$. Wird aus dem Feld [Unsicherheit (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) des Kanals vorausgefüllt, ist jedoch pro Kalibrierung frei bearbeitbar. **Nur Opt-in** — das standardmäßige Einrechnen birgt die Gefahr einer Doppelzählung gegenüber `fit_residuals`, da beide dieselbe zugrunde liegende Geräteungenauigkeit widerspiegeln können. |
+| `external_certificate_stated` | B | Erscheint nur bei [Nur-Koeffizienten](./coefficients-only.mdx)-Kalibrierungen, die eine vom Labor angegebene Unsicherheit haben. Wird als einzelne Zeile erfasst, die die erweiterte Unsicherheit und den Erweiterungsfaktor des Zertifikats unverändert enthält, nicht weiter zerlegt. |
+
+### Auflösung als Rechteckverteilung
+
+Die Auflösung eines digitalen Messwerts definiert einen Bereich, innerhalb dessen der wahre Wert mit
+gleicher Wahrscheinlichkeit liegen könnte — eine **rechteckige** (gleichförmige) Verteilung, nicht
+normal. Gemäß GUM §4.3.7 ist ihre Standardunsicherheit:
+
+$$
+u_{\text{resolution}} = \frac{\text{resolution}}{\sqrt{12}}
+$$
+
+## Kombination [#combined-uncertainty]
+
+Alle Budgetzeilen werden über die **quadratische Summierung** (RSS, GUM Gl. 10) kombiniert, unter
+der Annahme, dass die Beiträge unkorreliert sind:
+
+$$
+u_c(y) = \sqrt{\sum_i u(x_i)^2}
+$$
+
+Dies ist die **kombinierte Standardunsicherheit**, gespeichert als `combined_uncertainty`
+("Kombiniert (RSS)" im Assistenten).
+
+## Erweiterung [#expanded-uncertainty]
+
+Die **erweiterte Unsicherheit** ist:
+
+$$
+U = k \cdot u_c(y)
+$$
+
+was ein Intervall ergibt, von dem erwartet wird, dass es einen angegebenen Anteil (das
+Vertrauensniveau) der der Messgröße vernünftigerweise zuzuordnenden Werte umfasst.
+
+### Erweiterungsfaktor [#coverage-factor]
+
+Der Erweiterungsfaktor $k$ wird **immer abgeleitet**, aus dem angeforderten Vertrauensniveau und der
+Verteilung — es gibt nirgendwo in Open Gauge ein separates Eingabefeld für den "Erweiterungsfaktor", weil
+ein vom Benutzer gewähltes $k$, unabhängig von Vertrauensniveau und Verteilungsform, statistisch
+nicht aussagekräftig wäre:
+
+- **Normalverteilung** — das Normalquantil für das angeforderte Vertrauensniveau (der "einfache
+  Fall" nach GUM §6.3.3):
+
+  $$
+  k = \Phi^{-1}\!\left(0.5 + \frac{\text{confidence \%}}{200}\right)
+  $$
+
+  z. B. 95 % Vertrauensniveau → $k \approx 1{,}96$, 99 % → $k \approx 2{,}58$.
+
+- **t-Verteilung / χ²-Verteilung** — $k$ wird aus den **effektiven Freiheitsgraden**
+  $\nu_{\text{eff}}$ über die **Welch-Satterthwaite-Formel** (GUM Gl. G.2b) abgeleitet:
+
+  $$
+  \nu_{\text{eff}} = \frac{u_c(y)^4}{\displaystyle\sum_i \frac{u(x_i)^4}{\nu_i}}
+  $$
+
+  Zeilen mit unbekannten (unendlichen) Freiheitsgraden — exakt bekannte Typ-B-Beiträge — fallen
+  vollständig aus dieser Summe heraus. Hat *keine* Zeile endliche Freiheitsgrade, ist
+  $\nu_{\text{eff}}$ undefiniert, und Open Gauge greift auf das obige Normalverteilungsquantil zurück
+  (der korrekte Grenzwert für $\nu \to \infty$).
+
+## Rundung bei der Berichterstattung
+
+Gemäß GUM §7.2.6 werden kombinierte und erweiterte Unsicherheit für die Anzeige und auf dem
+Zertifikat auf **höchstens 2 signifikante Stellen** gerundet — überall sonst (R², RMSE,
+Maximalfehler, Hysterese, ...) wird eine einfache Festkomma-Anzeige verwendet. Siehe
+[Rundung](./examples/rounding-and-troubleshooting.mdx) dazu, wie sich das in der Praxis genau auswirkt.

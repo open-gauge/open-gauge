@@ -1,0 +1,47 @@
+---
+title: Procedimientos
+description: Plantillas reutilizables de procedimiento de calibración — pasos, equipo, materiales y criterios de aceptación.
+---
+
+Un **procedimiento** es una plantilla reutilizable de procedimiento de calibración, delimitada a una magnitud física
+(p. ej. un proceso documentado para calibrar RTDs de temperatura contra una referencia de bloque seco).
+Gestiónalos desde la página **Procedimientos** en la barra lateral.
+
+## Por qué existen los procedimientos
+
+ISO/IEC 17025 exige que un laboratorio documente y siga procedimientos definidos para su trabajo de
+calibración. Las plantillas de procedimiento de Open Gauge capturan esa documentación una sola vez y te permiten
+referenciarla desde cada calibración realizada de la misma manera, en lugar de volver a escribir las notas de
+metodología cada vez.
+
+## Campos
+
+| Campo | Propósito |
+|---|---|
+| Nombre y magnitud física | Qué calibra este procedimiento, y para qué magnitud. |
+| Versión | Cadena de texto libre de versión (p. ej. `"1.0"`) — increméntala cuando cambie la metodología. |
+| Dificultad | Guía informativa de nivel de habilidad para quien lo realice. |
+| Referencia de norma | Referencia de texto libre a una norma externa (un número ISO/ASTM, etc.). |
+| Autor, duración | Quién lo escribió, y aproximadamente cuánto tiempo toma realizarlo. |
+| Etiquetas | Etiquetas de formato libre para búsqueda/filtrado. |
+| Equipo | Lista estructurada del equipo requerido. |
+| Materiales | Lista estructurada de materiales/consumibles requeridos. |
+| Entorno | Condiciones ambientales requeridas (temperatura, humedad, etc.) bajo las cuales realizar el procedimiento. |
+| Notas de seguridad | Lista de texto libre de consideraciones de seguridad. |
+| Pasos | Los pasos ordenados del procedimiento en sí. |
+| Criterios de aceptación | Qué cuenta como aprobado para este procedimiento, documentado junto a él. |
+
+## Vincular un procedimiento a un canal
+
+En un canal de sensor, establece **método de calibración** a un procedimiento guardado — esto se convierte en el
+procedimiento *por defecto* del canal, preseleccionado cada vez que inicias una nueva calibración interna para
+ese canal. Es solo un valor por defecto: cualquier calibración puede referenciar un procedimiento diferente (o
+ninguno) si la situación lo requiere.
+
+## Dónde aparecen los procedimientos en una calibración
+
+Una calibración **interna** (consulta
+[Resumen de calibración](../calibration/overview.mdx)) puede referenciar el procedimiento que se
+siguió (`internal_procedure_id`), y esa referencia se imprime en el certificado resultante junto al
+patrón de referencia utilizado y las condiciones ambientales registradas — la cadena de trazabilidad
+completa que necesita un certificado de calibración.

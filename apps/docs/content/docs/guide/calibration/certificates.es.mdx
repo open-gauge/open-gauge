@@ -1,0 +1,98 @@
+---
+title: Generación de certificados
+description: Qué contiene un certificado de calibración de Open Gauge, y cómo obtenerlo.
+---
+
+Guardar una calibración genera, con la mejor diligencia posible (best-effort), un certificado PDF A4 en la
+misma solicitud — si la generación falla por algún motivo, el registro de calibración se sigue guardando;
+puedes regenerar el certificado más tarde.
+
+Los certificados **no** son PDFs construidos a mano — se renderizan a partir de una plantilla LaTeX (un
+archivo `.tex` con marcadores de posición) compilada a PDF por [Tectonic](https://tectonic-typesetting.github.io/),
+un motor LaTeX pequeño y autocontenido. Cada organización obtiene un certificado funcional sin ninguna
+configuración (la plantilla predeterminada integrada), y un administrador puede subir una plantilla
+personalizada para cambiar el diseño, el texto o la identidad visual sin ningún cambio de código — consulta
+[Plantillas de certificado](./certificate-templates.mdx).
+
+## Contenido
+
+- **Membrete** — el logotipo de la organización (si está configurado, consulta
+  [Modelo de datos y conceptos](../concepts/data-model.mdx)) y su nombre.
+- **Encabezado** — código QR y número de certificado.
+- **Información del activo** — el activo y el canal calibrado.
+- **Trazabilidad** — el procedimiento seguido, el patrón de referencia usado (calibraciones
+  internas), y las condiciones ambientales registradas.
+- **Resultados** — los coeficientes ajustados y la ecuación, la tabla de estadísticas de regresión
+  (consulta [Ajuste de curvas](./curve-fitting.mdx)), la tabla de presupuesto de incertidumbre
+  detallado (consulta [El presupuesto de incertidumbre](./uncertainty-budget.mdx)), y el
+  dictamen de conformidad (consulta [Reglas de decisión](./decision-rules.mdx)).
+- **Conjunto de datos** — la tabla de puntos en bruto y un gráfico de ajuste.
+- **Firma** — la imagen de firma del usuario que realizó la calibración, si ha configurado una
+  (consulta [Firmas](../self-hosting/authentication.mdx#signatures)), vinculada
+  criptográficamente a su cuenta y verificable de forma independiente. Se muestra cuando la calibración
+  está asociada a una cuenta de usuario real — el campo "Realizada por" en el asistente de calibración
+  toma por defecto al usuario con la sesión iniciada (vinculando el registro a su cuenta) pero se puede
+  cambiar a texto libre para quien la realizó externamente, en cuyo caso no hay ninguna cuenta en la
+  cual buscar una firma. Como respaldo (principalmente para calibraciones registradas antes de que
+  existiera esta vinculación), si el registro no está vinculado pero el nombre escrito en "Realizada por"
+  coincide exactamente con el nombre de visualización de un usuario activo, igual se usa la firma de ese
+  usuario.
+
+Esta imagen de firma es una imagen en la página, no una firma verificable del *documento* —
+cada PDF de certificado generado se firma digital y adicionalmente por separado (PAdES, incrustado
+en el propio PDF por cualquier visor de PDF con soporte de firma) después de la compilación, sin
+importar qué plantilla lo haya producido. Consulta [Firmas digitales del certificado](./certificate-signing.mdx).
+
+La sección de incertidumbre imprime un enunciado completo estilo GUM §7.2.4 — valor, factor de
+cobertura, base (distribución normal frente a t), nivel de confianza, y el rango válido sobre el que
+aplica la incertidumbre — adaptado para una *función* de calibración en lugar de un único resultado de
+medición, ya que eso es lo que certifica Open Gauge.
+
+## Qué deliberadamente no aparece
+
+Según ISO/IEC 17025 §7.8.4.3, un certificado de calibración **no debe** imprimir una recomendación
+de intervalo de calibración a menos que se haya acordado explícitamente con el cliente. La plantilla
+predeterminada integrada no imprime una fecha de vencimiento ni ningún texto sobre el intervalo — esa
+celda del encabezado muestra la ubicación de la calibración en su lugar (consulta
+[Cumplimiento de ISO/IEC 17025 §7.8.4.3](../compliance/iso-17025.mdx#no-interval-recommendation) para
+conocer el historial; esto fue un error antes de la v3.2.1). `due_date` sigue estando disponible en el
+contexto de la plantilla para una plantilla personalizada subida que quiera imprimirlo. Esto es
+independiente del [intervalo recomendado](../health-scoring/predictions.mdx) que Open Gauge calcula
+para su propia puntuación de estado — ese número nunca aparece en un certificado, solo en la propia
+interfaz de la aplicación.
+
+## Qué plantilla se usa
+
+Por defecto, el orden de resolución es que la primera coincidencia gana:
+
+1. La plantilla predeterminada activa de la organización del activo calibrado (a través de la
+   ubicación del activo — consulta [Modelo de datos y conceptos](../concepts/data-model.mdx)).
+2. La plantilla predeterminada activa de la organización del usuario que realizó la calibración, si el
+   activo no tiene ubicación.
+3. La plantilla predeterminada global, si se ha subido una.
+4. La plantilla integrada incluida con Open Gauge — siempre disponible, sin necesidad de configuración.
+
+El botón **Descargar certificado** en el panel de detalle de una calibración tiene una lista
+desplegable junto a él que enumera cada plantilla disponible para esa calibración (las plantillas de su
+organización más cualquier plantilla global) — elegir una descarga un certificado renderizado con esa
+plantilla específica en lugar de la predeterminada resuelta, sin afectar el certificado canónico
+almacenado descrito abajo.
+
+## Obtener un certificado
+
+`GET /calibrations/{id}/certificate` devuelve una URL prefirmada de MinIO válida por 1 hora hacia el
+certificado generado cuando se guardó la calibración (generándolo bajo demanda si falta) — este es
+el certificado canónico y en caché de la calibración.
+
+`GET /calibrations/{id}/certificate/download` (opcionalmente con un parámetro de consulta
+`?template_id=`) siempre renderiza un PDF nuevo y lo transmite directamente, sin tocar el certificado
+en caché — esto es lo que impulsa el selector de plantillas mencionado arriba, y lo que usa la interfaz
+para cada clic de descarga, así que lo que ves refleja exactamente los datos actuales de la calibración
+y la plantilla elegida. Requiere que la calibración tenga resultados (una ecuación ajustada o
+coeficientes ingresados manualmente); de lo contrario devuelve 400.
+
+`GET /calibrations/{id}/certificate-templates` enumera las plantillas disponibles para el activo de
+esa calibración (las plantillas de su organización más las globales), para construir un selector de
+plantillas como el descrito arriba.
+
+Consulta [Calibraciones](/docs/api/calibrations) en la Referencia de la API.

@@ -23,7 +23,7 @@ import {
   CALIBRATION_STATUS_STYLE,
   CALIBRATION_STATUSES,
 } from "@/lib/tokens";
-import { translateDynamic } from "@/lib/translate-dynamic";
+import { translateDynamic, translateDynamicAny } from "@/lib/translate-dynamic";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -159,12 +159,14 @@ function SortIndicator({ col, sortCol, sortDir }: { col: string; sortCol: SortKe
 
 function TypeCell({ subtype, technology }: { subtype: string | null; technology: string | null }) {
   const t = useTranslations("tokens.subtype");
-  const label = subtype ? translateDynamic(t, subtype) : "—";
+  const tQuantity = useTranslations("tokens.physicalQuantity");
+  const tTech = useTranslations("tokens.sensorTechnology");
+  const label = subtype ? translateDynamicAny([t, tQuantity], subtype) : "—";
   const capitalised = label.charAt(0).toUpperCase() + label.slice(1);
   return (
     <div>
       <p className="text-sm text-og-text leading-snug">{capitalised}</p>
-      {technology && <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{technology}</p>}
+      {technology && <p className="text-[10px] text-gray-400 mt-0.5 leading-snug">{translateDynamic(tTech, technology)}</p>}
     </div>
   );
 }
@@ -285,6 +287,8 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
   const t = useTranslations("assets.filter");
   const tStatus = useTranslations("tokens.calibrationStatus");
   const tSubtype = useTranslations("tokens.subtype");
+  const tQuantity = useTranslations("tokens.physicalQuantity");
+  const tTech = useTranslations("tokens.sensorTechnology");
   if (!open) return null;
 
   function toggle(key: "statuses" | "subtypes" | "technologies", value: string) {
@@ -331,7 +335,7 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
         {options.subtypes.length > 0 && (
           <FilterSection title={t("type")}>
             {options.subtypes.map((sub) => (
-              <CheckRow key={sub} label={translateDynamic(tSubtype, sub)}
+              <CheckRow key={sub} label={translateDynamicAny([tSubtype, tQuantity], sub)}
                 checked={filters.subtypes.includes(sub)}
                 onChange={() => toggle("subtypes", sub)} />
             ))}
@@ -342,7 +346,7 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
         {options.technologies.length > 0 && (
           <FilterSection title={t("technology")}>
             {options.technologies.map((tech) => (
-              <CheckRow key={tech} label={tech}
+              <CheckRow key={tech} label={translateDynamic(tTech, tech)}
                 checked={filters.technologies.includes(tech)}
                 onChange={() => toggle("technologies", tech)} />
             ))}
@@ -554,8 +558,10 @@ function AssetRow({ asset, expanded, onToggle }: RowProps) {
 function AssetCard({ asset }: { asset: AssetListItem }) {
   const tRow = useTranslations("assets.row");
   const tSubtype = useTranslations("tokens.subtype");
+  const tTech = useTranslations("tokens.sensorTechnology");
   const isMulti = asset.asset_type === "sensor" && asset.channels.length > 1;
   const subtypeLabel = asset.subtype ? translateDynamic(tSubtype, asset.subtype) : null;
+  const technologyLabel = asset.technology ? translateDynamic(tTech, asset.technology) : null;
   const range = isMulti ? null : formatRange(asset.range_min, asset.range_max, asset.range_unit);
   return (
     <a href={`/assets/${asset.id}`} className="block bg-og-surface border border-og-border rounded-xl p-4 hover:border-og-border-md hover:shadow-xs transition-all cursor-pointer">
@@ -569,7 +575,7 @@ function AssetCard({ asset }: { asset: AssetListItem }) {
         <span>
           {isMulti
             ? tRow("channelsCount", { count: asset.channels.length })
-            : `${subtypeLabel ?? asset.asset_type.toUpperCase()}${asset.technology ? ` · ${asset.technology}` : ""}`}
+            : `${subtypeLabel ?? asset.asset_type.toUpperCase()}${technologyLabel ? ` · ${technologyLabel}` : ""}`}
         </span>
         <span>{asset.site_name ?? "—"}</span>
       </div>
@@ -1368,6 +1374,8 @@ export default function AssetsPage() {
   const t = useTranslations("assets.page");
   const tSortCols = useTranslations("assets.sortCols");
   const tStatus = useTranslations("tokens.calibrationStatus");
+  const tSubtype = useTranslations("tokens.subtype");
+  const tQuantity = useTranslations("tokens.physicalQuantity");
   const { user } = useAuth();
   const canEdit = user.role !== "viewer";
   const [assets, setAssets]       = useState<AssetListItem[]>([]);
@@ -1758,7 +1766,7 @@ export default function AssetsPage() {
       {subtypeFilter && (
         <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
           <span className="text-xs text-og-accent font-medium">
-            {t("filteredByType")} <span className="font-semibold">{subtypeFilter.label}</span>
+            {t("filteredByType")} <span className="font-semibold">{translateDynamicAny([tSubtype, tQuantity], subtypeFilter.value)}</span>
           </span>
           <button
             type="button"

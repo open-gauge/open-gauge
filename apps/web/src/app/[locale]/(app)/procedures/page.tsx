@@ -1266,6 +1266,7 @@ function EmptyDetail() {
 
 export default function ProceduresPage() {
   const t = useTranslations("procedures.page");
+  const tPhysicalQuantity = useTranslations("tokens.physicalQuantity");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -1362,7 +1363,7 @@ export default function ProceduresPage() {
       {physicalQuantityFilter && (
         <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
           <span className="text-xs text-og-accent font-medium">
-            {t("filteredBy", { label: physicalQuantityFilter.label })}
+            {t("filteredBy", { label: translateDynamic(tPhysicalQuantity, physicalQuantityFilter.value) })}
           </span>
           <button
             type="button"

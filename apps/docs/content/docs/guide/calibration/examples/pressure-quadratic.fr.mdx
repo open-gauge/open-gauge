@@ -1,0 +1,110 @@
+---
+title: "Exemple 2 — Transducteur de pression, ajustement quadratique (sélection automatique du degré)"
+description: Sélection automatique du degré polynomial via l'AIC, détection de la non-linéarité, et le parcours du facteur d'élargissement à distribution t.
+---
+
+Exerce : la sélection automatique du degré polynomial (AIC), la détection de la non-linéarité, et
+le parcours du facteur d'élargissement à distribution t / Welch-Satterthwaite.
+
+## 2.0 Configuration
+
+Un actif, une voie :
+
+| Champ | Valeur |
+|---|---|
+| Nom | Line Pressure Transmitter |
+| Grandeur physique | Pression |
+| Type de mesure | Absolue (l'une ou l'autre convient pour cet exemple) |
+| Plage min / max | 0 / 700 |
+| Unité | kPa |
+| Valeur d'exactitude | 1,0 |
+| Unité d'exactitude | **% FS** — renseignez d'abord la plage min/max, puis choisissez « % FS » comme première option |
+| Résolution | 0,5 |
+| Unité de résolution | kPa |
+
+Laissez `measurement_uncertainty` vide (non utilisé dans cet exemple).
+
+## 2.1 Paramètres de l'assistant de calibration
+
+Type **externe** (aucun actif de référence nécessaire), **Degré de régression : Auto** (l'objet
+de cet exemple), distribution **distribution t**, confiance **95 %** (le parcours à distribution
+t dérive son propre facteur d'élargissement à partir du niveau de confiance et des degrés de
+liberté effectifs de l'ajustement), règle de décision **Acceptation simple**.
+
+Points de données — un transducteur avec une petite mais réelle non-linéarité quadratique sur
+toute sa plage :
+
+| # | Référence (kPa) | Mesuré (kPa) |
+|---|---|---|
+| 1 | 0,60 | 0 |
+| 2 | 102,35 | 100 |
+| 3 | 212,62 | 200 |
+| 4 | 330,42 | 300 |
+| 5 | 456,64 | 400 |
+| 6 | 590,40 | 500 |
+| 7 | 732,59 | 600 |
+| 8 | 882,38 | 700 |
+
+## Les mathématiques
+
+Open Gauge essaie les degrés 1 à 5 et choisit le degré le plus bas dont l'AIC n'est pas dépassé de
+plus de 2 points par un degré supérieur (la règle de parcimonie). Pour ces données, il
+sélectionne le **degré 2** :
+
+$$
+\text{reference} = 0.00040 \cdot \text{measured}^2 + 0.98014 \cdot \text{measured} + 0.50917
+$$
+
+(Essayez de forcer explicitement « Degré de régression : 2 » — vous devriez obtenir les mêmes
+coefficients que le résultat sélectionné automatiquement, confirmant que l'AIC a choisi le même
+degré que celui que vous auriez choisi à l'œil sur les données.)
+
+| Point | Calculé | Résidu |
+|---|---|---|
+| 1 | 0,509167 | +0,090833 |
+| 2 | 102,519881 | −0,169881 |
+| 3 | 212,523929 | +0,096071 |
+| 4 | 330,521310 | −0,101310 |
+| 5 | 456,512024 | +0,127976 |
+| 6 | 590,496071 | −0,096071 |
+| 7 | 732,473452 | +0,116548 |
+| 8 | 882,444167 | −0,064167 |
+
+$n = 8$, $k = 3$ (degré 2 → 3 coefficients) → ddl résiduels $= 5$. Erreur maximale =
+**0,169881** (point 2) ; étendue $= 882,38 - 0,6 = 881,78$ → erreur %FS $= 0,169881/881,78 \times
+100\% = \mathbf{0,0193\%}$.
+
+**Non-linéarité = 3,17 % FS** — l'écart de l'ajustement quadratique par rapport à sa propre
+meilleure droite d'ajustement. C'est le nombre confirmant « oui, une droite aurait été un
+ajustement sensiblement moins bon » — que le degré 2 était le bon choix, pas le degré 1.
+
+**Budget d'incertitude :**
+
+| Source | u |
+|---|---|
+| fit_residuals (Type A, ddl = 5) | 0,119470 |
+| resolution (Type B) = $0,5/\sqrt{12}$ | 0,144338 |
+
+- Combinée : $u_c = \sqrt{0.119470^2 + 0.144338^2} = \mathbf{0,187367\ kPa}$.
+- $\nu_{\text{eff}} = u_c^4 / (u_A^4/5) \approx \mathbf{30,2}$ (seul `fit_residuals` a un ddl
+  fini).
+- Élargie (distribution t) : $k = t_{0.975,\,\nu=30.2} \approx 2,042 \Rightarrow U = 0,187367
+  \times 2,042 = 0,382523 \approx \mathbf{0,38\ kPa}$ (2 chiffres significatifs).
+
+**Règle de décision (acceptation simple, spécification = ±1,0 % FS = ±8,818 kPa) :**
+
+$$
+\text{max error} = 0.169881 \le 8.818 \implies \textbf{CONFORMS}
+$$
+
+(confortablement — cet exemple est une « bonne » calibration).
+
+## Résultats attendus
+
+| Champ | Valeur |
+|---|---|
+| Degré polynomial | 2 (sélectionné automatiquement) |
+| Non-linéarité | 3,17 % |
+| Incertitude combinée | affichée arrondie : **0,19** |
+| Incertitude élargie (±) | affichée arrondie : **0,38** |
+| Déclaration | CONFORME à ±1,0 % de pleine échelle, règle de décision = Acceptation simple |

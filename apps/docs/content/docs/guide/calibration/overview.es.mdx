@@ -1,0 +1,96 @@
+---
+title: Resumen de calibración
+description: El flujo de trabajo de calibración de extremo a extremo — el asistente, analizar frente a guardar, y dónde queda cada resultado.
+---
+
+La calibración es el núcleo de lo que hace Open Gauge: comparar las lecturas de un sensor contra un
+patrón de confianza, ajustar una curva de corrección, evaluar la incertidumbre de medición, y emitir un
+dictamen de aprobado/rechazado — todo siguiendo [JCGM 100:2008 (GUM)](../reference/standards-glossary.mdx)
+e [ISO/IEC 17025:2017](../reference/standards-glossary.mdx).
+
+## Dos puntos de contacto con el backend
+
+Un evento de calibración involucra dos llamadas a la API:
+
+1. **`POST /calibrations/analyze`** — efímera. Toma pares de puntos (referencia, medido) en bruto
+   más parámetros de ajuste/incertidumbre, ejecuta el análisis completo, y devuelve el resultado.
+   **No se persiste nada.** El asistente de calibración llama a esto en cada cambio de entrada
+   (con debounce) para dar retroalimentación en vivo mientras ingresas datos.
+2. **`POST /calibrations`** — creación atómica. Toma el resultado ya calculado (el asistente
+   reenvía lo que sea que devolvió `/analyze`) más metadatos, y escribe una fila de `calibrations` y
+   sus filas de puntos de datos en una sola transacción. Un PDF de certificado se genera con la mejor
+   diligencia posible (best-effort) en la misma solicitud.
+
+Esta división existe para que puedas explorar libremente diferentes grados polinomiales, distribuciones y
+reglas de decisión antes de confirmar — el paso costoso y persistido solo ocurre una vez, cuando
+guardas.
+
+## El asistente de calibración
+
+Inicia una calibración desde el canal de un activo. El asistente tiene tres pasos:
+
+1. **Información general** — tipo de calibración (**interna**, contra un activo de referencia que posees, o
+   **externa**, de un laboratorio externo), fecha de calibración, quién la realizó, condiciones
+   ambientales, y (para calibraciones internas) el patrón de referencia usado y el procedimiento
+   seguido. Este paso también tiene una casilla **"Solo coeficientes (sin datos en bruto)"** para
+   certificados emitidos externamente que indican un polinomio directamente — consulta
+   [Calibraciones de solo coeficientes](./coefficients-only.mdx).
+2. **Datos en bruto** — ingresa pares de puntos (referencia, medido). Consulta
+   [Ajuste de curvas](./curve-fitting.mdx) para saber qué hace Open Gauge con ellos.
+3. **Análisis / revisión** — el ajuste calculado en vivo, el presupuesto de incertidumbre, y el
+   dictamen de conformidad. Consulta [El presupuesto de incertidumbre](./uncertainty-budget.mdx) y
+   [Reglas de decisión](./decision-rules.mdx).
+
+Guardar nunca se bloquea por un resultado fallido (no conforme) — una calibración fallida sigue siendo un
+registro real e importante. Si el resultado no cumple con la especificación del canal, la confirmación
+de guardado muestra una advertencia explícita nombrando la especificación y la regla de decisión, y el
+botón de guardar cambia su etiqueta a **"Guardar de todos modos."**
+
+## Calibraciones internas frente a externas
+
+- **Interna** — realizada internamente, contra uno de tus propios activos marcado como
+  [patrón de referencia](../sensors/adding-a-sensor.mdx#calibration-role). Cuando eliges un
+  activo de referencia, Open Gauge obtiene automáticamente la incertidumbre expandida de la calibración
+  más reciente de ese activo y la incorpora al presupuesto de incertidumbre de esta calibración como una
+  contribución `reference_standard` — consulta
+  [El presupuesto de incertidumbre](./uncertainty-budget.mdx#contributions).
+- **Externa** — realizada por un laboratorio de calibración externo. Registras el nombre del
+  laboratorio y el número de certificado; si el certificado del laboratorio indica un polinomio
+  directamente en lugar de datos en bruto, usa la ruta de solo coeficientes en lugar de volver a
+  derivar un ajuste desde cero.
+
+## Dónde terminan los resultados
+
+Las calibraciones históricas se pueden ver desde la página de detalle del activo — cada calibración
+pasada de cada canal, la más reciente primero, cada una con su análisis completo, presupuesto de
+incertidumbre y certificado. Nada se edita nunca en el mismo lugar; una nueva calibración es una fila
+nueva, no una corrección a una anterior.
+
+## Números de versión
+
+La **versión** de cada calibración (`v1`, `v2`, …) es un contador único y siempre creciente por
+activo (o canal de activo) — el siguiente entero, comenzando desde 1, asignado cuando se guarda el
+registro. **No** se basa en `calibration_date`: registrar retroactivamente una calibración que olvidaste
+ingresar antes igual obtiene el siguiente número disponible, no un número que refleje dónde cae
+cronológicamente. Una versión, una vez asignada, es permanente — nunca se reutiliza (ni siquiera la de una
+anulada, ver abajo) y nunca se renumera.
+
+## Anular una calibración
+
+El historial de calibración nunca se destruye — no hay botón de eliminar, solo **anular**, restringido a
+`admin`/`superadmin`. Anular una entrada (desde el ícono de papelera en su fila en la pestaña Calibración):
+
+- La marca como inválida y, opcionalmente, registra por qué.
+- La oculta de la lista de historial de calibración y del resumen del activo por defecto (un administrador puede marcar
+  **Mostrar anuladas** para volver a verla).
+- La excluye de los cálculos de fecha de vencimiento/estado, de modo que una entrada inválida no pueda hacer que un
+  activo parezca calibrado cuando no lo está.
+- La excluye del análisis de deriva/estabilidad de la pestaña Estado y de la lista desplegable de comparación de curvas.
+
+El registro, sus puntos de datos y su certificado se preservan todos intactos — anular solo cambia
+un indicador. Un administrador puede **restaurar** una calibración anulada en cualquier momento desde la misma fila, lo cual
+revierte todo lo anterior. Consulta [Calibraciones](/docs/api/calibrations) en la Referencia de la API para
+conocer los payloads exactos de `DELETE /calibrations/{id}` y `POST /calibrations/{id}/restore`.
+
+Una exportación completa de activo (la acción Exportar en la página del activo) siempre incluye las calibraciones
+anuladas — es una copia de seguridad histórica completa, no una vista filtrada.

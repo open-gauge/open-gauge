@@ -1,0 +1,362 @@
+---
+title: Zertifikatsvorlagen
+description: Hochladen und Erstellen benutzerdefinierter LaTeX-Vorlagen für Kalibrierzertifikate.
+---
+
+Ein Admin kann das eingebaute Zertifikatsdesign durch eine benutzerdefinierte `.tex`-Vorlage
+ersetzen — für Lokalisierung, ein anderes Layout oder um ein bestehendes Zertifikatsformat eines
+akkreditierten Labors nachzubilden — ohne jeglichen Code anzufassen. Vorlagen werden über
+**Admin-Panel → Zertifikatsvorlagen** verwaltet.
+
+## Wie das Rendering funktioniert
+
+Eine Vorlage ist eine `.tex`-Datei, die [Jinja](https://jinja.palletsprojects.com/)-Platzhalter mit
+LaTeX-sicheren Trennzeichen verwendet (Jinjas Standard `{{ }}`/`{% %}` kollidiert mit LaTeX' eigener
+`{}`-Gruppensyntax):
+
+| Jinja-Konstrukt | LaTeX-sichere Schreibweise |
+|---|---|
+| Variable | `\VAR{asset_name}` |
+| Block (`if`/`for`) | `\BLOCK{if asset_notes} ... \BLOCK{endif}` |
+| Kommentar | `\#{ a comment }` |
+
+Jeder Freitext-Platzhalter muss durch den `latex`-Filter laufen — `\VAR{asset_name\|latex}` — der
+Zeichen escapt, die LaTeX besonders behandelt (`\ { } $ & # ^ _ % ~`). Numerische/vorformatierte
+Felder sind so oder so unbedenklich; Bildpfade (siehe unten) dürfen **nicht** gefiltert werden, da
+es sich um reine Dateinamen handelt, nicht um zu rendernden Text. Dasselbe gilt für jeden unten als
+"rohes LaTeX-Math" (`coefficient_rows[].name`, `function_formula`) dokumentierten Platzhalter — sie
+enthalten wörtliche `$...$`-Mathe-Syntax und müssen ungefiltert verwendet werden, da das Escaping
+sonst den Mathe-Modus zerstören würde.
+
+Das gerenderte `.tex` wird von [Tectonic](https://tectonic-typesetting.github.io/), einer kleinen,
+eigenständigen LaTeX-Engine (keine vollständige TeX-Live-Installation), zu PDF kompiliert — siehe
+[Bereitstellung](../self-hosting/deployment.mdx) für die Details zum Docker-Image. Tectonic läuft
+auf XeTeX, das Unicode-nativ ist; die eingebaute Vorlage verwendet `fontspec` mit DejaVu Sans
+(im App-Image gebündelt), sodass Namen mit Akzenten, Gradzeichen, ±, usw. alle korrekt gerendert
+werden, ohne besonderes Escaping über den `latex`-Filter hinaus.
+
+## Eine Vorlage hochladen
+
+Wählen Sie unter **Admin-Panel → Zertifikatsvorlagen** einen Geltungsbereich (eine bestimmte
+Organisation, oder *Global* für das Fallback, das von jeder Organisation ohne eigene Standardvorlage
+verwendet wird — globale Vorlagen erfordern einen Superadmin, da sie jede Organisation betreffen),
+laden Sie die `.tex`-Datei hoch, geben Sie ihr einen Namen und markieren Sie sie optional als
+Standardvorlage dieses Geltungsbereichs.
+
+**Jeder Upload wird mit einer Probekompilierung validiert** (Testdaten), bevor er gespeichert wird —
+eine Vorlage mit einem LaTeX-Syntaxfehler oder einem falsch getippten Platzhalter wird sofort mit
+der Fehlermeldung des Compilers abgelehnt, statt erst beim nächsten echten Zertifikat zu scheitern.
+
+Das Ersetzen des Inhalts einer Vorlage ist keine Bearbeitung an Ort und Stelle — laden Sie sie
+erneut als neue Vorlage hoch und befördern Sie sie zur Standardvorlage. Die alte Version bleibt
+erhalten (weich gelöscht, nicht Standard), sodass vergangene Zertifikate, die konzeptionell darauf
+verweisen, weiterhin darauf zurückverfolgbar bleiben, was sie erzeugt hat.
+
+## Eine Vorlage in der Vorschau ansehen
+
+Jede Vorlagenzeile (und die eingebaute Standardvorlage der App) zeigt eine kleine Miniaturansicht
+ihrer ersten Seite, clientseitig gerendert aus einem **bei jedem Laden frisch zufällig erzeugten
+10-Zeilen-Beispiel-Kalibrierdatensatz** (eine synthetische lineare Anpassung mit realistischem
+Rauschen) — eine gute Annäherung daran, wie ein echtes Zertifikat aussieht, ohne dass eine echte
+Kalibrierung zur Hand sein muss. Klicken Sie auf die Miniaturansicht, um eine scrollbare
+Vollbildvorschau jeder Seite zu öffnen, mit einer Schaltfläche **Herunterladen**, um das gerenderte
+Beispiel-PDF zu speichern.
+
+## Platzhalterreferenz
+
+### Identität / Kopfzeile
+
+| Platzhalter | Typ | Hinweise |
+|---|---|---|
+| `certificate_number` | Text | z. B. `OG-CAL-OG-00001-v3` |
+| `org_name` | Text | Fällt auf `"Open Gauge"` zurück, falls nicht auflösbar |
+| `org_logo_path` | Bildpfad, optional | `\BLOCK{if org_logo_path}\includegraphics{\VAR{org_logo_path}}\BLOCK{endif}` |
+| `performer_name` | Text | |
+| `performer_signature_path` | Bildpfad, optional | Die Signatur des ausführenden Benutzers, falls gesetzt |
+| `calibration_date`, `due_date` | Text | Vorformatierte Datumszeichenketten |
+| `version` | Ganzzahl | Auch als Dokument-"Revisionsnummer" verwendbar |
+| `calibration_type` | Text | |
+| `chapter` | Text | Die physikalische Größe des Kanals (z. B. `"Pressure"`), oder der Anlagentyp, falls kein Kanal vorhanden ist — nützlich für Kopfzeilen im Dokumentenlenkungsstil, die Zertifikate nach Messtyp gruppieren |
+| `calibration_id` | Text | Kurzer Bezeichner (erste 8 Zeichen der UUID der Kalibrierung, großgeschrieben), getrennt von `certificate_number` |
+| `generated_date` | Text | Heutiges Datum (zum Zeitpunkt der Zertifikatsgenerierung), getrennt von `calibration_date` |
+| `qr_path` | Bildpfad, optional — QR-Code, der auf die Anlage verlinkt |
+
+### Anlage / Kanal
+
+| Platzhalter | Typ |
+|---|---|
+| `asset_id`, `asset_name`, `asset_manufacturer`, `asset_model`, `asset_serial`, `asset_part_number`, `asset_type_label` | Text |
+| `asset_notes` | Text, optional |
+| `channel` | Objekt, optional — `channel.id`, `.quantity`, `.unit`, `.min`, `.max`, `.accuracy`, `.range` (vorformatiert "min–max Einheit"), `.signal` (vorformatierter elektrischer Ausgangsbereich, oder `"—"`), `.precision` (vom Sensor angegebene Messunsicherheit, oder `"—"`), `.resolution` (oder `"—"`) |
+
+### Rückführbarkeit
+
+| Platzhalter | Typ |
+|---|---|
+| `external_lab_name`, `external_lab_certificate_number` | Text, optional |
+| `procedure` | Objekt, optional — `.id`, `.name`, `.version`, `.standard_ref` |
+| `reference_asset` | Objekt, optional — `.id`, `.name`, `.manufacturer`, `.model`, `.serial` |
+| `temperature`, `humidity`, `pressure` | Text, optional (°C / %RH / Pa) |
+| `calibration_location` | Text, optional — Name des Standorts, an dem die Kalibrierung durchgeführt wurde, falls zugewiesen |
+
+### Ergebnisse
+
+| Platzhalter | Typ |
+|---|---|
+| `coefficient_rows` | Liste von `{coefficient, name, term, value}` — `name` ist eine menschenlesbare Bezeichnung mit einem Index im Mathe-Modus, z. B. `"Offset ($a_{0}$)"`; da es rohes LaTeX-Math ist, referenzieren Sie es als `\VAR{row.name}` **ohne** den `latex`-Filter (Escaping würde `$`/`_`/`{}` verstümmeln) |
+| `function_formula` | Text, optional — die generische (nicht numerische) Kalibrierfunktion in LaTeX-Mathe-Syntax, z. B. `"f(x) = a_0 + a_1 x"`; ebenfalls rohes LaTeX-Math — verwenden Sie `\VAR{function_formula}` ungefiltert, typischerweise in `\[...\]` eingeschlossen |
+| `equation` | Text, optional — dieselbe Funktion mit eingesetzten tatsächlichen Anpassungswerten, z. B. `"y = -0.047 + 1.0004*x"` |
+| `stat_rows` | Liste von `{label, value}` (R², RMSE, Unsicherheit usw.) |
+| `results_summary` | Liste von `{label, value}` — kompakte 3-Zeilen-Tabelle Maximalfehler / % FS-Fehler / Erweiterte Unsicherheit |
+| `error_summary` | Objekt, optional — `.abs_error`, `.fs_error`, `.uncertainty`, jeweils vorformatiert und mit ± vorzeichenbehaftet (z. B. `"±0.12 %RH"`) — eine 3-spaltige, einzeilige Alternative zu `results_summary` |
+| `uncertainty_budget_rows` | Liste von `{source, distribution, standard_uncertainty, dof}` |
+| `effective_dof_note` | Text, optional |
+| `uncertainty_statement` | Text, optional — vollständiger Satz im GUM-§7.2.4-Stil |
+| `conformity` | Objekt, optional — `.result_label`, `.specification`, `.decision_rule_label`, `.expanded_uncertainty_line` |
+| `conformity_derivation` | Text, optional — schildert Maximalfehler + erweiterte Unsicherheit im Vergleich zur Spezifikation und gibt die Schlussfolgerung Bestanden/Nicht bestanden an (z. B. `"...totals 0.28 %RH, against a specification of ±0.8 (absolute) — the calibration CONFORMS..."`); `None`, sofern nicht sowohl eine Konformitätsbewertung als auch Fehler-/Unsicherheitswerte vorhanden sind |
+| `valid_range` | Text, optional |
+| `notes` | Text, optional |
+
+### Datensatz
+
+| Platzhalter | Typ |
+|---|---|
+| `dataset_rows` | Liste von `{index, measured, reference, fit, residual_abs, residual_pct}` |
+| `measured_unit`, `reference_unit` | Text |
+| `chart_path` | Bildpfad, optional — Streudiagramm + Anpassungskurven-Diagramm |
+| `lab_footer` | Text, optional — in der Seitenfußzeile gedruckt |
+
+## Rezepte: gängige Muster
+
+Jedes Muster unten ist copy-paste-fähig — jedes ist direkt aus `default.tex.jinja` oder
+`example_tables.tex` übernommen (siehe
+[Beispielvorlagen im Repository](#example-templates-in-the-repo)), sodass es garantiert kompiliert.
+
+### Einfaches Textfeld, escaped
+
+Die überwältigende Mehrheit der Platzhalter ist reiner Text und muss durch den `latex`-Filter
+laufen:
+
+```latex
+\textbf{Asset ID:} \VAR{asset_id|latex}
+\textbf{Manufacturer:} \VAR{asset_manufacturer|latex}
+```
+
+Das Vergessen von `|latex` bei Freitext ist der häufigste Vorlagenfehler — er kompiliert
+einwandfrei, bis ein echter Anlagenname `&`, `%`, `_` oder `#` enthält; dann meldet LaTeX entweder
+einen Fehler oder verstümmelt die Ausgabe stillschweigend. Numerische/vorformatierte Felder
+(`version`, `calibration_id`, bereits vom Backend formatierte Tabellenwerte) benötigen ihn nicht,
+aber ihn trotzdem hinzuzufügen ist harmlos — der Filter berührt nur die Handvoll Zeichen, die LaTeX
+besonders behandelt.
+
+### Optionales Feld — Text
+
+Die meisten Felder können `None`/leer sein (z. B. eine Anlage ohne Notizen, eine Kalibrierung ohne
+externes Labor). Schützen Sie sie mit `\BLOCK{if ...}`, damit die Zeile verschwindet, statt "None"
+oder eine verwaiste Bezeichnung ohne nachfolgenden Inhalt zu drucken:
+
+```latex
+\BLOCK{if asset_notes}
+\small\textbf{\color{oggray}Notes:} \VAR{asset_notes|latex}\normalsize
+\BLOCK{endif}
+```
+
+```latex
+\BLOCK{if temperature or humidity or pressure}
+Environmental Conditions:\ %
+\BLOCK{if temperature}Temperature: \VAR{temperature|latex}~\textdegree C\BLOCK{endif}
+\BLOCK{if humidity}\ \textbullet\ Humidity: \VAR{humidity|latex}~\%RH\BLOCK{endif}
+\BLOCK{if pressure}\ \textbullet\ Pressure: \VAR{pressure|latex}~Pa\BLOCK{endif}
+\BLOCK{endif}
+```
+
+### Optionales Feld — Bild
+
+Bild-Platzhalter (`org_logo_path`, `performer_signature_path`, `qr_path`, `chart_path`) sind
+`None`, wann immer das jeweilige Element nicht existiert (kein Logo hochgeladen, keine Signatur
+hinterlegt, Diagramm konnte nicht gerendert werden) — schützen Sie `\includegraphics` immer auf
+dieselbe Weise, und leiten Sie einen Bildpfad nie durch `|latex` (es ist ein reiner Dateiname, kein
+Text):
+
+```latex
+\BLOCK{if performer_signature_path}
+\includegraphics[width=40mm]{\VAR{performer_signature_path}}\\[-1mm]
+\rule{40mm}{0.4pt}\\
+\footnotesize\VAR{performer_name|latex}
+\BLOCK{endif}
+```
+
+### Optionales Feld — verschachteltes Objekt
+
+`channel`, `procedure`, `reference_asset`, `conformity` sind als Ganzes `None`, wenn diese Daten
+auf die Kalibrierung nicht zutreffen — schützen Sie das *Objekt*, und greifen Sie dann innerhalb des
+Blocks frei auf seine Attribute zu, ohne jedes einzeln erneut zu prüfen:
+
+```latex
+\BLOCK{if channel}
+\textbf{Channel} & \textbf{Quantity} & \textbf{Unit} & \textbf{Min} & \textbf{Max} & \textbf{Accuracy}\\
+\VAR{channel.id|latex} & \VAR{channel.quantity|latex} & \VAR{channel.unit|latex} & \VAR{channel.min|latex} & \VAR{channel.max|latex} & \VAR{channel.accuracy|latex}\\
+\BLOCK{endif}
+```
+
+```latex
+\BLOCK{if procedure}
+\textbf{Procedure ID} & \VAR{procedure.id|latex} & \textbf{Procedure Name} & \VAR{procedure.name|latex}\\
+\textbf{Procedure Version} & \VAR{procedure.version|latex} & \textbf{Standard Ref.} & \VAR{procedure.standard_ref|latex}\\
+\BLOCK{endif}
+```
+
+### Über eine Liste von Zeilen iterieren
+
+`coefficient_rows`, `stat_rows`, `results_summary`, `uncertainty_budget_rows` und `dataset_rows`
+sind allesamt Listen kleiner Objekte — iterieren Sie mit `\BLOCK{for ... in ...}\BLOCK{endfor}`,
+eine Tabellenzeile pro Durchlauf:
+
+```latex
+\begin{tabular}{@{}p{24mm}@{}p{20mm}@{}p{56mm}@{}}
+\toprule
+\textbf{Coefficient} & \textbf{Term} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.term|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+```
+
+Dieselbe Schleife funktioniert für `stat_rows` (eine flachere `{label, value}`-Form) und
+`dataset_rows` (mehr Spalten) — nur die Spaltenliste innerhalb des Schleifenkörpers ändert sich:
+
+```latex
+\BLOCK{for row in stat_rows}
+\VAR{row.label|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+```
+
+```latex
+\BLOCK{for row in dataset_rows}
+\VAR{row.index|latex} & \VAR{row.measured|latex} & \VAR{row.reference|latex} & \VAR{row.fit|latex} & \VAR{row.residual_abs|latex} & \VAR{row.residual_pct|latex}\\
+\BLOCK{endfor}
+```
+
+Kombinieren Sie einen Listenschutz mit der Schleife, wenn die gesamte Tabelle verschwinden soll,
+falls überhaupt keine Daten vorhanden sind (statt eine leere `tabular`-Umgebung mit nur einer
+Kopfzeile zu rendern):
+
+```latex
+\BLOCK{if uncertainty_budget_rows}
+\begin{tabular}{@{}p{48mm}@{}p{28mm}@{}p{45mm}@{}p{20mm}@{}}
+\toprule
+\textbf{Source} & \textbf{Distribution} & \textbf{Std. Uncertainty (u)} & \textbf{dof}\\
+\midrule
+\BLOCK{for row in uncertainty_budget_rows}
+\VAR{row.source|latex} & \VAR{row.distribution|latex} & \VAR{row.standard_uncertainty|latex} & \VAR{row.dof|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+```
+
+### Rohes LaTeX-Math — NICHT filtern
+
+`coefficient_rows[].name` und `function_formula` sind die beiden Ausnahmen von "immer `|latex`
+verwenden" — sie enthalten wörtliche LaTeX-Mathe-Syntax (`$a_{0}$`, `f(x) = a_0 + a_1 x`), die vom
+Backend speziell dafür erzeugt wird, unverändert in den Mathe-Modus eingesetzt zu werden. Sie zu
+filtern würde die Zeichen `$`, `_` und `{}` escapen, die sie überhaupt erst als Mathe rendern lassen:
+
+```latex
+% Wrong — the escape filter mangles the math syntax:
+\VAR{function_formula|latex}
+
+% Right:
+\[ \VAR{function_formula} \]
+```
+
+```latex
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.name} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+```
+
+Beachten Sie, dass `row.name` (ungefiltert, rohes Math) in derselben Zeile neben
+`row.coefficient|latex` und `row.value|latex` (gefiltert, reiner Text) steht — nur das im
+[Platzhalterreferenz](#placeholder-reference)-Abschnitt als "rohes LaTeX-Math" dokumentierte Feld
+überspringt den Filter.
+
+### Eine minimal funktionierende Vorlage
+
+Alles oben Genannte zusammengesetzt zur kleinsten Vorlage, die noch ein brauchbares Zertifikat
+erzeugt — kürzen Sie sie weiter ein oder verwenden Sie sie als Ausgangsgerüst:
+
+```latex
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=20mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{DejaVu Sans}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\begin{document}
+
+{\Large\bfseries \VAR{org_name|latex}} \hfill \VAR{certificate_number|latex}
+
+\vspace{4mm}
+\textbf{Asset:} \VAR{asset_id|latex} --- \VAR{asset_name|latex}\\
+\textbf{Calibrated:} \VAR{calibration_date|latex} \quad \textbf{Due:} \VAR{due_date|latex}\\
+\textbf{Performed by:} \VAR{performer_name|latex}
+
+\BLOCK{if coefficient_rows}
+\vspace{4mm}
+\begin{tabular}{ll}
+\toprule
+\textbf{Coefficient} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+
+\BLOCK{if performer_signature_path}
+\vspace{8mm}
+\includegraphics[width=35mm]{\VAR{performer_signature_path}}
+\BLOCK{endif}
+
+\end{document}
+```
+
+Jedes generierte Zertifikats-PDF — unabhängig davon, welche Vorlage es erzeugt hat, auch dieses
+minimale — wird nach der Kompilierung digital signiert; siehe
+[Digitale Zertifikatssignaturen](certificate-signing.mdx) dazu, wie das funktioniert und wie man es
+überprüft.
+
+## Beispielvorlagen im Repository
+
+Zwei vollständige, funktionierende Vorlagen werden in `apps/api/app/templates/certificates/` als
+Referenzmaterial ausgeliefert — beide kompilieren unverändert und können direkt hochgeladen werden,
+um sie auszuprobieren:
+
+- **`default.tex.jinja`** — das eingebaute Fallback. Das kanonische, stets aktuelle Beispiel für
+  die Verwendung jedes Platzhalters.
+- **`example_tables.tex`** — eine dichtere, im Dokumentenlenkungsstil gehaltene Alternative zur
+  eingebauten Standardvorlage, die denselben Inhalt abdeckt, aber anders angeordnet:
+  - Eine Dokumentenlenkungs-Kopfzeile (Dokumentnummer, Kapitel, Revision, Sensor-/Kalibrier-IDs,
+    Seite) statt eines schlichten Briefkopfs.
+  - Anlagen- und Kanalinformationen in drei Spalten — ein QR-Code der Anlage, dann die
+    Anlagenfelder zu zweit pro Spalte gruppiert statt auf separate Bezeichnungs-/Wertspalten
+    aufgeteilt — plus eine Kanalspezifikationstabelle mit Messbereich, Signalausgangsbereich,
+    Genauigkeit, Präzision und Auflösung.
+  - Angepasste Koeffizienten, dargestellt als symbolische Funktion (`function_formula`, z. B.
+    `f(x) = a_0 + a_1 x`) neben einer Tabelle, die jeden Koeffizienten benennt (Offset, Gain, ...)
+    mit seinem Wert, statt einer einzelnen numerischen Gleichung.
+  - Eine dreispaltige Zusammenfassung von Fehler & Unsicherheit (Abs. Fehler / FS-Fehler /
+    Unsicherheit) in einer Zeile, gefolgt vom erläuternden GUM-Absatz und einem Satz zur
+    Konformitätsableitung, der die Schlussfolgerung Bestanden/Nicht bestanden anhand der Zahlen
+    auf der Seite formuliert.
+  - Eine volle Breite einnehmende Datensatztabelle mit einer zweizeiligen Kopfzeile
+    (Spaltenname, dann Einheit) und ohne Diagramm.
+  - Eine dreispaltige, auf jeder Seite wiederholte Fußzeile: Name und Signatur des Erstellers
+    links, eine schlichte ISO/IEC-17025-Ausstellungserklärung in der Mitte (kein
+    Konformitätsabzeichen — die Schlussfolgerung Bestanden/Nicht bestanden befindet sich
+    stattdessen im Ergebnisabschnitt) und der Name der Organisation der Anlage rechts.

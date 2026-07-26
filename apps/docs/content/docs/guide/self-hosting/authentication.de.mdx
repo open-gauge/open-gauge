@@ -1,0 +1,96 @@
+---
+title: Authentifizierung
+description: Lokale Benutzer, OAuth2/OIDC, Enterprise-SSO und rollenbasierte Zugriffskontrolle.
+---
+
+Die Authentifizierung in Open Gauge ist darauf ausgelegt, durchgängig selbst hostbar zu sein —
+auch in vollständig offline betriebenen/air-gapped Umgebungen — und ist niemals an einen reinen
+Cloud-Anbieter gekoppelt.
+
+## Unterstützte Authentifizierungsmodi
+
+- **Lokale Benutzer und Passwörter** — die Standardeinstellung für kleine, selbst gehostete Installationen.
+  Funktioniert vollständig offline; keine externe Abhängigkeit. Jedes selbst registrierte Konto erfordert eine
+  Aktivierung, bevor es sich anmelden kann — siehe [E-Mail-Benachrichtigungen](./email-notifications.mdx#account-verification)
+  dazu, wie das mit und ohne konfiguriertes SMTP funktioniert. Die einzige Ausnahme ist das allererste Konto,
+  das bei einer frischen Installation erstellt wird: Da noch kein Admin vorhanden ist, der jemanden aktivieren
+  könnte, wird dieses Konto automatisch verifiziert und als `superadmin` angelegt, sodass eine neue Bereitstellung
+  immer leer und einsatzbereit startet, statt mit Demodaten vorbefüllt zu sein.
+- **OAuth2 / OpenID Connect** — für Organisationen, die bereits einen Identitätsanbieter betreiben.
+- **Enterprise-SSO** — über einen OIDC-kompatiblen Anbieter. **Keycloak** ist die empfohlene Wahl
+  für Enterprise-Bereitstellungen, die selbst gehostetes SSO wünschen, ohne von einem Cloud-Identitätsdienst
+  abhängig zu sein.
+
+Die Authentifizierung liegt hinter einer klaren Abstraktionsschicht im Backend, sodass eine Bereitstellung
+von lokaler Authentifizierung zu Keycloak (oder einem anderen OIDC-Anbieter) wechseln kann, ohne dass an
+anderer Stelle in Open Gauge Geschäftslogik geändert werden muss.
+
+## Rollen (RBAC)
+
+Jeder Benutzer hat genau eine Rolle, die bestimmt, was er sehen und ändern kann. Dies ist das
+einzige Berechtigungs-Flag des Kontos — es gibt kein separates "Superuser"-Bit; die Fähigkeiten
+des Super Admin ergeben sich vollständig aus `role == superadmin`:
+
+| Rolle | Typische Verwendung |
+|---|---|
+| `viewer` | Nur-Lese-Zugriff — Anlagen, Kalibrierungen und Zertifikate durchsuchen. |
+| `technician` | Tägliche operative Arbeit: Sensoren hinzufügen, Kalibrierungen durchführen, Standorte aktualisieren. |
+| `admin` | Verwaltet Benutzerkonten (erstellen, deaktivieren, Rolle ändern). Kann die Gefahrenzone nicht erreichen. |
+| `superadmin` | Alles, was Admin kann, plus die Gefahrenzone (Datenbankexport/-import/-reset), und kann jede Organisation verwalten, unabhängig von der Mitgliedschaft. |
+
+Dies ist eine systemweite Berechtigung, getrennt von der **Organisationsrolle** (`member`/`admin`), die
+ein Benutzer innerhalb einer bestimmten Organisation hat — die Verwaltung des Profils, der Mitglieder und der
+Beitrittsanfragen einer gegebenen Organisation wird von dieser organisationsbezogenen Rolle geregelt, nicht von
+dieser hier (Super Admin ist die einzige globale Rolle mit einem Zugriff, der in die Organisationsverwaltung
+hineinreicht). Siehe [Organisationen](../organizations/index.mdx).
+
+Geschützte Endpunkte weisen nicht authentifizierte Anfragen zurück, und Rollenprüfungen werden im
+Backend durchgesetzt (nicht nur in der Oberfläche versteckt) — siehe die Abschnitte [Auth](/docs/api/auth) und
+[Admin](/docs/api/admin) der API-Referenz für die genauen Endpunkte, die jede Rolle erreichen kann.
+
+## Profilbild
+
+Jeder Benutzer kann unter **Einstellungen → Profil** ein Profilbild festlegen. Es erscheint im
+kreisförmigen Avatar oben rechts in der oberen Leiste und auf der Profilseite des Benutzers (`/users/{id}`,
+erreichbar durch Klicken auf einen Namen überall dort, wo er erwähnt wird — Audit-Protokolle, Aktivitäten usw.).
+Benutzer ohne Bild fallen auf ihre Initialen zurück. Uploads sind auf Bilddateien unter 5 MB beschränkt und
+werden wie jede andere angehängte Datei in MinIO gespeichert (siehe [Datenmodell & Konzepte](../concepts/data-model.mdx)).
+
+## Signaturen
+
+Jeder Benutzer mit einer anderen Rolle als `viewer` kann unter **Einstellungen → Profil** eine Signatur
+festlegen, entweder durch Hochladen eines PNGs mit transparentem Hintergrund oder durch direktes Zeichnen mit
+der Maus (oder Touch/Stift) auf einer Zeichenfläche — in beiden Fällen wird das Ergebnis als transparentes PNG
+gespeichert. Beim Zeichnen macht **Rückgängig** den letzten Strich rückgängig, und **Löschen** schaltet einen
+Radiergummi-Modus um, der Tinte unter dem Zeiger entfernt, sodass ein falsch gezeichneter Teil korrigiert werden
+kann, ohne die gesamte Fläche zu leeren (das tut weiterhin **Zurücksetzen**).
+
+Anders als ein Profilbild ist eine Signatur kryptografisch an das Konto gebunden:
+
+1. Wenn ein Benutzer erstmals eine Signatur festlegt, generiert Open Gauge ein **Ed25519-Schlüsselpaar**
+   für ihn. Der private Schlüssel wird verschlüsselt gespeichert (AES-256-GCM, abgeleitet aus dem `SECRET_KEY`
+   der App), bevor er gespeichert wird — dies schützt vor einem reinen Datenbank-Leak (ein Dump oder ein
+   gestohlenes Backup), schützt jedoch nicht vor einer Kompromittierung des laufenden App-Prozesses selbst,
+   was die praktische Obergrenze für eine selbst gehostete Bereitstellung ohne externen Schlüsselverwaltungsdienst
+   darstellt.
+2. Open Gauge signiert mit diesem privaten Schlüssel einen kanonischen Umschlag — die ID des Benutzers, den
+   SHA-256-Hash der exakten Bilddaten und einen Zeitstempel. Sowohl das Signaturbild als auch die resultierenden
+   Signaturbytes werden gespeichert.
+3. Der **öffentliche Schlüssel ändert sich nie** nach der Generierung (das Ersetzen des Signaturbilds verwendet
+   dasselbe Schlüsselpaar weiter) und ist für jeden authentifizierten Benutzer über
+   `GET /users/{id}/signature/public-key` verfügbar, sodass ein Zertifikat — oder jeder andere Konsument —
+   unabhängig überprüfen kann, dass ein Signaturbild authentisch und unverändert ist.
+
+Das Ersetzen einer Signatur löscht die vorherige nicht — sie wird widerrufen (beibehalten, als inaktiv markiert),
+sodass historische Zertifikate, die auf eine ältere Signaturversion verweisen, unabhängig überprüfbar bleiben.
+Dies entspricht der Art, wie die [Kalibrierhistorie](../concepts/data-model.mdx) nie überschrieben, sondern nur
+ersetzt wird.
+
+Eine auf diese Weise festgelegte Signatur ist das, was Zertifikate verwenden werden, um visuell und
+kryptografisch zu bezeugen, wer eine Kalibrierung durchgeführt hat.
+
+## Sitzungs-Token
+
+Nach der Authentifizierung führen das Frontend und jeder API-Client bei nachfolgenden Anfragen ein
+Sitzungs-Token mit. Siehe [Auth](/docs/api/auth) in der API-Referenz für die genauen Login-/Refresh-/Logout-
+Endpunkte und Payload-Formate.

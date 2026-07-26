@@ -1,0 +1,289 @@
+---
+title: ISO/IEC 17025:2017
+description: Requisitos generales para la competencia de los laboratorios de ensayo y calibración — cláusula por cláusula, cómo la aborda Open Gauge.
+---
+
+## Resumen
+
+**ISO/IEC 17025:2017** — *Requisitos generales para la competencia de los laboratorios de ensayo y
+calibración* — se publica conjuntamente por ISO e IEC. Es la norma contra la que los organismos de
+acreditación (miembros de ILAC, p. ej. A2LA, UKAS, DAkkS) evalúan a un laboratorio de calibración o
+ensayo; un laboratorio no "cumple" con ella en abstracto, se **acredita** conforme a ella,
+usualmente para un alcance específico de mediciones. Es la norma más directamente relevante para
+Open Gauge de todas las de esta sección, ya que el dominio central de Open Gauge — registros de
+calibración, coeficientes, incertidumbre, trazabilidad y certificados — es exactamente lo que rigen
+la Cláusula 6 (Requisitos relativos a los recursos) y la Cláusula 7 (Requisitos relativos al
+proceso).
+
+La edición de 2017 (tercera edición, que reemplaza a la de 2005) reestructuró la norma en torno a
+requisitos basados en el desempeño y en el riesgo en lugar de una lista de verificación
+prescriptiva, y agregó el requisito explícito de **regla de decisión** (§7.1.3, §7.8.6) — el
+cambio más destacado y relevante para la lógica de aprobado/rechazado de Open Gauge.
+
+Las Cláusulas 4–5 (imparcialidad, confidencialidad, estructura legal/organizacional) y la mayor
+parte de la Cláusula 8 (documentación del sistema de gestión, auditorías internas, revisión por la
+dirección, acciones correctivas, quejas) rigen cómo opera la *organización* su sistema de calidad —
+no son algo que un sistema de software satisfaga por sí solo, así que se excluyen de la tabla de
+abajo. La tabla cubre la Cláusula 6 (recursos: equipo, trazabilidad) y la Cláusula 7 (proceso:
+registros, incertidumbre, informes, control de datos) — las partes de la norma que un LIMS
+realmente implementa.
+
+## Cumplimiento
+
+| Cláusula | Requisito | Estado | Dónde se aborda |
+|---|---|---|---|
+| [6.4.6–6.4.7](#calibration-programme) | Equipo calibrado según un programa definido; no se exige un intervalo fijo | ✅ Cumplido | [`calibration_interval`](../sensors/asset-registry.mdx) por activo, seguimiento de fecha de vencimiento |
+| [6.4.8](#calibration-status-identification) | Estado/validez del equipo fácilmente identificable | ✅ Cumplido | IDs de activo con código QR, insignias de estado vencido/próximo a vencer |
+| [6.4.9](#equipment-out-of-service) | Equipo defectuoso/cuestionable retirado de servicio | ⚠️ Parcial | [Puntuación de estado](../health-scoring/overview.mdx) marca anomalías; no hay un estado de "cuarentena" estricto |
+| [6.4.13](#equipment-records) | Registros de equipo: identidad, fabricante, fechas, resultados, fecha de vencimiento | ✅ Cumplido | Registros de Activo + Calibración |
+| [6.5.1–6.5.2, Anexo A](#traceability-chain) | Cadena de trazabilidad ininterrumpida y documentada, incluyendo la incertidumbre de cada eslabón | ✅ Cumplido | `internal_reference_asset_id` obtiene automáticamente la incertidumbre de calibración del propio patrón de referencia y la incorpora al presupuesto |
+| [7.1.3, 7.8.6](#decision-rule) | Regla de decisión documentada siempre que se emita un dictamen de conformidad | ✅ Cumplido | [Reglas de decisión](../calibration/decision-rules.mdx) — aceptación simple / banda de guarda / riesgo compartido, almacenadas por calibración |
+| [7.5.1–7.5.2](#technical-records) | Registros técnicos completos; enmiendas rastreadas a los originales, nada se sobrescribe | ✅ Cumplido | Las calibraciones son inmutables; las ediciones son registros nuevos, el [registro de auditoría](#data-control) captura cada cambio |
+| [7.6.1–7.6.2](#uncertainty-evaluation) | Incertidumbre evaluada para **todas** las calibraciones, incluidas todas las contribuciones significativas | ✅ Cumplido | El [presupuesto de incertidumbre](../calibration/uncertainty-budget.mdx) combina Tipo A (ajuste) + Tipo B (patrón de referencia, resolución, especificación del sensor) |
+| [7.8.2.1](#report-content) | Identificación del informe, fechas, método, resultados, unidades, autorización | ✅ Cumplido | Contenido del [certificado](../calibration/certificates.mdx) |
+| [7.8.4.1(a)](#uncertainty-on-certificate) | Incertidumbre indicada en el certificado, en la misma unidad o relativa al mensurando | ✅ Cumplido | Impresa con factor de cobertura y nivel de confianza |
+| [7.8.4.1(b)](#environmental-conditions) | Condiciones ambientales que influyen en el resultado indicadas | ✅ Cumplido | Campos de temperatura/humedad/presión, impresos cuando están presentes |
+| [7.8.4.1(c)](#traceability-statement) | Declaración de cómo el resultado es metrológicamente trazable | ✅ Cumplido | Identidad del activo de referencia (fabricante/modelo/serie) impresa en el certificado |
+| [7.8.4.1(d)](#as-found-as-left) | Resultados antes y después de cualquier ajuste o reparación, si están disponibles | ❌ No cumplido | No hay un par de campos "tal como se encontró/tal como se dejó" — consulta la brecha abajo |
+| [7.8.4.1(e), 7.8.6.2](#conformity-statement) | Dictamen de conformidad: qué especificación, qué resultado, qué regla de decisión | ✅ Cumplido | `conformity_statement` impreso con la especificación, la regla de decisión, y aprobado/rechazado |
+| [7.8.4.3](#no-interval-recommendation) | El certificado no recomendará un intervalo de calibración a menos que se haya acordado con el cliente | ✅ Cumplido | La plantilla de certificado integrada ya no imprime una fecha de vencimiento ni un intervalo (corregido en v3.2.1) |
+| [7.8.8](#amendments) | Las enmiendas a un informe emitido son un documento nuevo, identificado de forma única, que referencia al original | ⚠️ Parcial | Nueva versión de calibración + nuevo número de certificado, pero sin la redacción de referencia cruzada "Enmienda al informe" |
+| [7.11.2–7.11.3](#data-control) | LIMS validado, protegido contra acceso no autorizado y manipulación | ✅ Cumplido | RBAC en todos los endpoints; los certificados están firmados con PAdES |
+| [7.11.6](#calculation-checks) | Cálculos y transferencias de datos verificados de manera sistemática | ✅ Cumplido | Pruebas automatizadas contra valores de referencia conocidos (`test_calibration_analysis.py`, `test_uncertainty_format.py`) |
+| [8.4](#data-control) | Registros retenidos, protegidos, respaldados, con acceso controlado | ✅ Cumplido | Solo borrado suave (`is_active`/`voided_at`), registro de auditoría completo con estado antes/después y actor |
+
+## Detalle
+
+### Programa de calibración [#calibration-programme]
+
+> "6.4.7 The laboratory shall establish a calibration programme, which shall be reviewed and
+> adjusted as necessary... 6.4.6 Measuring equipment shall be calibrated when... calibration...is
+> required to establish the metrological traceability of the reported results."
+
+La norma deliberadamente no exige un intervalo fijo — los laboratorios definen y gestionan su
+propio programa. El `calibration_interval` de Open Gauge es un campo configurable por calibración
+(no un valor predeterminado fijo en el código), y el seguimiento de fechas de vencimiento, los
+correos de recordatorio, y las insignias de estado en toda la aplicación se derivan de él, de modo
+que los operadores pueden ajustar su propio programa de calibración sin ningún cambio de código.
+
+### Identificación del estado de calibración [#calibration-status-identification]
+
+> "6.4.8 All equipment requiring calibration or which has a defined period of validity shall be
+> labelled, coded or otherwise identified to allow the user of the equipment to readily identify
+> the status of calibration or period of validity."
+
+Cada activo obtiene un ID con código QR para etiquetado físico, y la interfaz muestra una insignia
+de estado vencido/próximo a vencer/válido en cada activo y en las vistas de lista — un operador que
+escanea un código QR llega al estado de calibración en vivo del activo, no a una etiqueta estática
+que puede quedar desactualizada.
+
+### Equipo fuera de servicio [#equipment-out-of-service]
+
+> "6.4.9 Equipment that has been subjected to overloading or mishandling, gives questionable
+> results, or has been shown to be defective or outside specified requirements, shall be taken out
+> of service. It shall be isolated to prevent its use or clearly labelled or marked as being out
+> of service until it has been verified to perform correctly."
+
+[Puntuación de estado](../health-scoring/overview.mdx) calcula un `health_score` automático y
+marca deriva/anomalías, y un activo se puede marcar como `retired_at` de forma permanente. Lo que
+falta es el caso específico de la cláusula: un estado **temporal y reversible** de "fuera de
+servicio" — algo entre "activo" y "retirado" — que bloquee o advierta visiblemente contra el uso de
+un activo mientras se investiga, tal como describe 6.4.9. Hoy un operador tiene que confiar en el
+estado de salud o en una nota manual; no hay ningún campo de estado dedicado ni una barrera de
+advertencia estricta.
+
+### Registros de equipo [#equipment-records]
+
+> "6.4.13 Records shall be retained for equipment which can influence laboratory activities. The
+> records shall include the following, where applicable: a) the identity of equipment...; b) the
+> manufacturer's name, type identification, and serial number...; ...e) calibration dates, results
+> of calibrations, adjustments, acceptance criteria, and the due date of the next calibration or
+> the calibration interval; ...h) details of any damage, malfunction, modification to, or repair
+> of, the equipment."
+
+El modelo `Asset` lleva fabricante, modelo, número de serie, versión de firmware y ubicación; cada
+`Calibration` lleva la fecha, los resultados (coeficientes, estadísticas, incertidumbre), los
+criterios de aceptación (el dictamen de conformidad), y la fecha de vencimiento. El historial de
+daños/reparaciones (h) no es un campo distinto — se espera que se capture en las `notes` de texto
+libre del activo o de una calibración, no como un registro estructurado.
+
+### Cadena de trazabilidad [#traceability-chain]
+
+> "6.5.1 The laboratory shall establish and maintain metrological traceability of its measurement
+> results by means of a documented unbroken chain of calibrations, each **contributing to the
+> measurement uncertainty**, linking them to an appropriate reference."
+>
+> "Annex A.2.1(c) ...measurement uncertainty for each step in the traceability chain is evaluated
+> according to agreed methods."
+
+Esta es la cláusula con más sustancia detrás. Cuando una calibración se realiza contra un
+`internal_reference_asset_id` (un patrón de referencia interno rastreado como su propio activo),
+Open Gauge obtiene automáticamente la **incertidumbre expandida de la calibración más reciente**
+de ese patrón de referencia y la incorpora al presupuesto de incertidumbre Tipo B de la
+calibración actual — no solo un vínculo con nombre, sino la propia incertidumbre de la referencia
+realmente propagándose hacia adelante, que es lo que exige "contribuir a la incertidumbre de
+medición." Un usuario también puede ingresarla manualmente si el activo de referencia no está
+rastreado en Open Gauge. Para calibraciones de tipo `calibration_type: "external"`, la cadena
+descansa en cambio sobre la propia acreditación del laboratorio externo, registrada mediante
+`external_lab_certificate_number` — Open Gauge no vuelve a derivar (ni debería) la incertidumbre
+de un laboratorio externo.
+
+### Regla de decisión [#decision-rule]
+
+> "7.1.3 When the customer requests a statement of conformity...the decision rule shall be
+> clearly defined... 7.8.6.1 ...the laboratory shall document the decision rule employed, taking
+> into account the level of risk..."
+
+Cubierto en su totalidad en [Reglas de decisión y conformidad](../calibration/decision-rules.mdx)
+— Open Gauge almacena cuál de las tres reglas (aceptación simple, banda de guarda, riesgo
+compartido) se aplicó en cada calibración, y la imprime en el certificado en lugar de un simple
+aprobado/rechazado.
+
+### Registros técnicos [#technical-records]
+
+> "7.5.1 ...Original observations, data and calculations shall be recorded at the time they are
+> made... 7.5.2 The laboratory shall ensure that amendments to technical records can be tracked to
+> previous versions or to original observations. Both the original and amended data...shall be
+> retained, including the date of alteration, an indication of the altered aspects and the
+> personnel responsible."
+
+Open Gauge no tiene ningún endpoint para "editar resultados de calibración" — existe
+`POST /calibrations` (crear) y `DELETE /calibrations/{id}` (anular, no eliminar: establece
+`is_active=false`, `voided_by`, `voided_at`, `void_reason`, reversible mediante `/restore`). Una
+calibración corregida es un registro nuevo, nunca una mutación del anterior — consulta
+[Modelo de datos y conceptos](../concepts/data-model.mdx). Cada anulación/restauración también se
+escribe en el registro de auditoría con actor, marca de tiempo, y estado antes/después.
+
+### Evaluación de la incertidumbre [#uncertainty-evaluation]
+
+> "7.6.2 A laboratory performing calibrations...shall evaluate the measurement uncertainty for
+> all calibrations. 7.6.1 ...all contributions that are of significance...shall be taken into
+> account."
+
+El [presupuesto de incertidumbre](../calibration/uncertainty-budget.mdx) combina una contribución
+Tipo A (residuos del ajuste) con contribuciones Tipo B — incertidumbre del patrón de referencia,
+resolución digital, y la propia especificación de exactitud del fabricante del sensor — combinadas
+mediante suma de cuadrados y raíz con un cálculo de grados de libertad efectivos
+(Welch-Satterthwaite) que alimenta el factor de cobertura, no solo los grados de libertad
+residuales del Tipo A únicamente.
+
+### Contenido del informe [#report-content]
+
+> "7.8.2.1 Each report shall include at least...unique identification...the name and contact
+> information of the customer; identification of the method used;...results...units...
+> identification of the person(s) authorizing the report."
+
+El certificado lleva un `certificate_number` único (`OG-CAL-{asset_id}-v{version}`), la identidad
+de la organización, el procedimiento usado, los resultados con unidades, y el nombre de quien
+realizó la calibración más la imagen de su firma digital (cuando está registrada).
+
+### Incertidumbre en el certificado [#uncertainty-on-certificate]
+
+> "7.8.4.1(a) the measurement uncertainty of the measurement result presented in the same unit as
+> that of the measurand or in a term relative to the measurand."
+
+Se imprime como incertidumbre expandida con su factor de cobertura y nivel de confianza, p. ej.
+`± 0.012 °C [k=2.00, 95.45%]`, junto a la incertidumbre combinada — redondeada según el GUM §7.2.6
+(dos cifras significativas).
+
+### Condiciones ambientales [#environmental-conditions]
+
+> "7.8.4.1(b) the conditions (e.g. environmental) under which the calibrations were made that
+> have an influence on the measurement results."
+
+Temperatura, humedad y presión se almacenan por calibración y se imprimen en el certificado
+siempre que estén presentes.
+
+### Declaración de trazabilidad [#traceability-statement]
+
+> "7.8.4.1(c) a statement identifying how the measurements are metrologically traceable."
+
+El certificado imprime la identidad del patrón de referencia interno (nombre, fabricante, modelo,
+serie) cuando se usó uno, o el nombre del laboratorio externo y el número de certificado en caso
+contrario — la [cadena de trazabilidad](#traceability-chain) hecha visible en el propio documento,
+no solo almacenada en la base de datos.
+
+### Tal como se encontró / tal como se dejó [#as-found-as-left]
+
+> "7.8.4.1(d) the results before and after any adjustment or repair, if available."
+
+**Brecha.** Open Gauge no tiene un par de campos distintos de "tal como se encontró/tal como se
+dejó" en una calibración — cada registro es un único conjunto de resultados. Un laboratorio que
+ajusta un instrumento a mitad de la calibración actualmente no tiene ninguna forma estructurada de
+capturar tanto las lecturas previas como las posteriores al ajuste en un solo certificado; la única
+solución alternativa es registrar dos calibraciones separadas, lo cual pierde la relación
+"antes/después del mismo evento de ajuste" que implica la cláusula.
+
+### Dictamen de conformidad [#conformity-statement]
+
+> "7.8.4.1(e) where relevant, a statement of conformity...7.8.6.2 ...the statement clearly
+> identifies: a) to which results...applies; b) which specifications...are met or not met; c) the
+> decision rule applied."
+
+`conformity_statement` es un registro estructurado (especificación, regla de decisión,
+incertidumbre expandida aplicada, aprobado/rechazado, y una razón cuando no se configuró ninguna
+especificación) generado en el momento del análisis e impreso textualmente en el certificado —
+incluso en una calibración **fallida**, que nunca se bloquea de guardarse (consulta
+[Reglas de decisión](../calibration/decision-rules.mdx#decision-rule)).
+
+### Sin recomendación de intervalo [#no-interval-recommendation]
+
+> "7.8.4.3 A calibration certificate or calibration label shall not contain any recommendation on
+> the calibration interval, except where this has been agreed with the customer."
+
+**Corregido en v3.2.1.** La plantilla de certificado integrada
+(`templates/certificates/default.tex.jinja`) solía imprimir incondicionalmente un campo "Fecha de
+vencimiento" derivado del `due_date` de la calibración (`calibration_date` + `calibration_interval`)
+en cada certificado, sin ningún indicador que distinguiera si el cliente había aceptado recibir una
+recomendación de intervalo — un conflicto directo con esta cláusula. Esa fila ahora muestra en su
+lugar la ubicación de la calibración; `due_date` sigue estando disponible en el contexto de la
+plantilla, así que una plantilla personalizada subida todavía puede imprimirlo una vez que exista
+un flujo real de acuerdo con el cliente (todavía no existe uno — hasta entonces, una organización
+que quiera esto en su propia plantilla toma esa decisión por sí misma, igual que acordarlo con un
+cliente fuera de banda).
+
+### Enmiendas [#amendments]
+
+> "7.8.8.2 Amendments to a report after issue shall be made only in the form of a further
+> document...which includes the statement 'Amendment to Report, serial number...'...7.8.8.3 When
+> it is necessary to issue a complete new report, this shall be uniquely identified and shall
+> contain a reference to the original that it replaces."
+
+Cada nueva calibración obtiene su propia `calibration_version` y número de certificado
+(`...-v{version}`), así que los resultados enmendados siempre están identificados de forma única y
+nunca sobrescriben el original — la sustancia del requisito se cumple. Lo que falta es la
+referencia cruzada literal: el certificado no lleva una redacción explícita que remita al número
+específico del certificado anterior que reemplaza, solo un sufijo de versión incremental.
+
+### Control de datos [#data-control]
+
+> "7.11.3 The laboratory information management system(s) shall: a) be protected from
+> unauthorized access; b) be safeguarded against tampering and loss...8.4.1 The laboratory shall
+> establish and retain legible records to demonstrate fulfilment of the requirements..."
+
+Cada endpoint de la API requiere autenticación, con control de acceso basado en roles que restringe
+las acciones destructivas (anular una calibración requiere administrador). Los certificados
+emitidos se incrustan con una firma digital PAdES en el momento de la generación, así que la
+manipulación de un PDF emitido es detectable. Cada creación, anulación, restauración y acción de
+administración se escribe en el [`AuditLog`](../concepts/data-model.mdx) con actor, marca de
+tiempo, IP, y estado antes/después — nada se elimina de forma permanente.
+
+### Verificaciones de cálculo [#calculation-checks]
+
+> "7.11.6 Calculations and data transfers shall be checked in an appropriate and systematic
+> manner."
+
+Tanto la lógica de incertidumbre y ajuste de curvas (`calibration_analysis.py`) como el formateo
+del enunciado de incertidumbre (`uncertainty_format.py`) tienen suites de pruebas automatizadas que
+verifican la corrección numérica contra valores de referencia conocidos, ejecutadas en cada cambio
+— no solo aserciones de rango de sensatez. Consulta
+[la política de pruebas de `CONTRIBUTING.md`](https://github.com/open-gauge/open-gauge/blob/main/docs/CONTRIBUTING.md#testing)
+para el requisito a nivel de todo el proyecto que sigue esto.
+
+---
+
+*Verificado contra ISO/IEC 17025:2017(E) y la base de código de Open Gauge
+(`apps/api/app/models/calibration.py`, `apps/api/app/models/asset.py`,
+`apps/api/app/services/certificate_service.py`, `apps/api/app/services/calibration_analysis.py`,
+`apps/api/app/api/v1/calibrations.py`, `apps/web/src/app/(app)/assets/[id]/CalibrationWizard.tsx`)
+el 2026-07-29.*

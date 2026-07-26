@@ -1,0 +1,99 @@
+---
+title: Le budget d'incertitude
+description: Comment Open Gauge construit un budget d'incertitude conforme au GUM, le combine, et l'élargit en une valeur ± déclarée.
+---
+
+Open Gauge exprime l'incertitude de mesure sous forme de **budget détaillé** (format de tableau de
+l'Annexe H.1 du GUM), et non comme un nombre unique opaque. Chaque calibration stocke un tableau
+de lignes de budget, une par contribution, chacune exprimée comme une *incertitude-type* dans les
+unités propres du mesurande.
+
+## Type A contre Type B
+
+Selon le GUM §0.7/§3.3.3, « Type A » et « Type B » décrivent **comment** une incertitude a été
+évaluée, et non si elle est « aléatoire » ou « systématique » (le GUM déconseille explicitement
+cette distinction plus ancienne) :
+
+- **Type A** — évaluée par analyse statistique d'une série d'observations (par ex. la
+  dispersion des résidus d'ajustement de la calibration).
+- **Type B** — évaluée par tout autre moyen : spécifications du fabricant, certificats de
+  calibration, données d'ouvrages de référence, résolution, jugement.
+
+## Contributions [#contributions]
+
+| Source | Type | Comment elle est dérivée |
+|---|---|---|
+| `fit_residuals` | A | Toujours présente. Écart-type des résidus d'ajustement de la courbe de calibration. Degrés de liberté = points − paramètres, ou inconnu si cela est ≤ 0. |
+| `reference_standard` | B | Optionnelle. L'incertitude élargie propre déclarée de l'étalon de référence, convertie en incertitude-type via $u = U/k$ (GUM §4.3.3). Pour les calibrations internes, récupérée automatiquement depuis la calibration la plus récente de l'actif de référence sélectionné ; sinon saisie manuellement. |
+| `resolution` | B | Incluse automatiquement chaque fois que la voie a une valeur de résolution. Distribution rectangulaire selon le GUM §4.3.7 — voir ci-dessous. |
+| `sensor_nominal_accuracy` | B | L'incertitude déclarée par le fabricant de la voie, convertie via $u = U/k$. Préremplie depuis le champ [Incertitude (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) de la voie mais librement modifiable par calibration. **Optionnelle uniquement** — l'intégrer par défaut risquerait un double comptage avec `fit_residuals`, puisque les deux peuvent refléter la même imprécision instrumentale sous-jacente. |
+| `external_certificate_stated` | B | N'apparaît que sur les calibrations [à coefficients uniquement](./coefficients-only.mdx) ayant une incertitude déclarée par un laboratoire. Enregistrée comme une seule ligne portant l'incertitude élargie et le facteur d'élargissement du certificat tels quels, sans décomposition supplémentaire. |
+
+### La résolution comme distribution rectangulaire
+
+La résolution d'une lecture numérique définit une plage à l'intérieur de laquelle la valeur vraie
+pourrait tomber avec une probabilité égale — une distribution **rectangulaire** (uniforme), et non
+normale. Selon le GUM §4.3.7, son incertitude-type est :
+
+$$
+u_{\text{resolution}} = \frac{\text{resolution}}{\sqrt{12}}
+$$
+
+## Combinaison [#combined-uncertainty]
+
+Toutes les lignes de budget sont combinées via la **somme quadratique** (*root-sum-square*, GUM
+Éq. 10), en supposant que les contributions ne sont pas corrélées :
+
+$$
+u_c(y) = \sqrt{\sum_i u(x_i)^2}
+$$
+
+Ceci est l'**incertitude-type composée**, stockée sous `combined_uncertainty` (« Combinée
+(RSS) » dans l'assistant).
+
+## Élargissement [#expanded-uncertainty]
+
+L'**incertitude élargie** est :
+
+$$
+U = k \cdot u_c(y)
+$$
+
+donnant un intervalle censé englober une fraction déclarée (le niveau de confiance) des valeurs
+raisonnablement attribuables au mesurande.
+
+### Facteur d'élargissement [#coverage-factor]
+
+Le facteur d'élargissement $k$ est **toujours dérivé** du niveau de confiance demandé et de la
+distribution — il n'existe nulle part dans Open Gauge de saisie séparée de « facteur
+d'élargissement », car un $k$ choisi par l'utilisateur indépendamment du niveau de confiance et de
+la forme de la distribution n'a pas de sens statistique :
+
+- **Distribution normale** — le quantile normal pour le niveau de confiance demandé (le « cas
+  simple » du GUM §6.3.3) :
+
+  $$
+  k = \Phi^{-1}\!\left(0.5 + \frac{\text{confidence \%}}{200}\right)
+  $$
+
+  par ex. confiance de 95 % → $k \approx 1,96$, 99 % → $k \approx 2,58$.
+
+- **Distribution t / distribution χ²** — $k$ est dérivé des **degrés de liberté effectifs**
+  $\nu_{\text{eff}}$, via la **formule de Welch-Satterthwaite** (GUM Éq. G.2b) :
+
+  $$
+  \nu_{\text{eff}} = \frac{u_c(y)^4}{\displaystyle\sum_i \frac{u(x_i)^4}{\nu_i}}
+  $$
+
+  Les lignes à degrés de liberté inconnus (infinis) — les contributions de Type B connues avec
+  exactitude — sortent entièrement de cette somme. Si *aucune* ligne n'a de degrés de liberté
+  finis, $\nu_{\text{eff}}$ est indéfini et Open Gauge se rabat sur le quantile de la distribution
+  normale ci-dessus (la limite correcte lorsque $\nu \to \infty$).
+
+## Arrondi des résultats déclarés
+
+Selon le GUM §7.2.6, l'incertitude combinée et l'incertitude élargie sont arrondies à
+**au plus 2 chiffres significatifs** pour l'affichage et sur le certificat — partout ailleurs
+(R², RMSE, erreur maximale, hystérésis, ...) un affichage décimal fixe simple est utilisé. Voir
+[Arrondi](./examples/rounding-and-troubleshooting.mdx) pour voir exactement comment cela se
+traduit en pratique.

@@ -1,0 +1,93 @@
+---
+title: Autenticación
+description: Usuarios locales, OAuth2/OIDC, SSO empresarial y control de acceso basado en roles.
+---
+
+La autenticación en Open Gauge está diseñada para ser autoalojable de extremo a extremo — incluso en entornos
+completamente sin conexión / aislados de la red (air-gapped) — y nunca está acoplada a un proveedor exclusivo de la nube.
+
+## Modos de autenticación admitidos
+
+- **Usuarios y contraseñas locales** — el valor por defecto para instalaciones autoalojadas pequeñas. Funciona
+  completamente sin conexión; sin dependencias externas. Toda cuenta autorregistrada requiere activación antes de
+  poder iniciar sesión — consulta [Notificaciones por correo electrónico](./email-notifications.mdx#account-verification) para
+  saber cómo funciona esto con y sin SMTP configurado. La única excepción es la primerísima cuenta
+  creada en una instalación nueva: como todavía no hay ningún administrador que pueda activar a nadie, se crea
+  verificada y con rol `superadmin` automáticamente, de modo que un despliegue nuevo siempre empieza vacío y
+  listo para usarse en lugar de venir prepoblado con datos de demostración.
+- **OAuth2 / OpenID Connect** — para organizaciones que ya operan un proveedor de identidad.
+- **SSO empresarial** — a través de un proveedor compatible con OIDC. **Keycloak** es la opción
+  recomendada para despliegues empresariales que quieren SSO autoalojado sin depender de un servicio de
+  identidad en la nube.
+
+La autenticación se sitúa detrás de una capa de abstracción clara en el backend, de modo que un despliegue puede pasar
+de autenticación local a Keycloak (u otro proveedor OIDC) sin cambiar ninguna lógica de negocio en
+ningún otro lugar de Open Gauge.
+
+## Roles (RBAC)
+
+Cada usuario tiene exactamente un rol, que rige lo que puede ver y cambiar. Este es el
+único indicador de privilegio de la cuenta — no existe un bit separado de "superusuario"; la capacidad de Super Admin
+proviene enteramente de `role == superadmin`:
+
+| Rol | Uso típico |
+|---|---|
+| `viewer` | Acceso de solo lectura — explorar activos, calibraciones y certificados. |
+| `technician` | Trabajo operativo del día a día: agregar sensores, ejecutar calibraciones, actualizar ubicaciones. |
+| `admin` | Gestiona cuentas de usuario (crear, desactivar, cambiar rol). No puede acceder a la Zona peligrosa. |
+| `superadmin` | Todo lo que puede hacer Admin, más la Zona peligrosa (exportación/importación/reinicio de la base de datos), y puede gestionar cualquier organización sin importar su membresía. |
+
+Esta es una concesión a nivel de todo el sistema, separada del **rol de organización** (`member`/`admin`) que un
+usuario tiene dentro de una organización específica — gestionar el perfil, los miembros y las solicitudes de ingreso de una
+organización dada se rige por ese rol delimitado a la organización, no por este (Super Admin es el único rol
+global con una anulación hacia la gestión de organizaciones). Consulta [Organizaciones](../organizations/index.mdx).
+
+Los endpoints protegidos rechazan las solicitudes no autenticadas, y las comprobaciones de rol se aplican en el
+backend (no solo ocultas en la interfaz) — consulta las secciones de [Auth](/docs/api/auth) y
+[Admin](/docs/api/admin) de la Referencia de la API para conocer los endpoints exactos que puede alcanzar cada rol.
+
+## Foto de perfil
+
+Cada usuario puede establecer una foto de perfil desde **Configuración → Perfil**. Aparece en el avatar
+circular en la parte superior derecha de la barra superior y en la página de perfil del usuario (`/users/{id}`, a la que se llega
+haciendo clic en un nombre en cualquier lugar donde se mencione — registros de auditoría, actividad, etc.). Los usuarios sin
+foto muestran sus iniciales por defecto. Las subidas se limitan a archivos de imagen de menos de 5MB y se
+almacenan en MinIO como cualquier otro archivo adjunto (consulta [Modelo de datos y conceptos](../concepts/data-model.mdx)).
+
+## Firmas
+
+Cada usuario con un rol distinto de `viewer` puede establecer una firma desde **Configuración → Perfil**,
+ya sea subiendo un PNG con fondo transparente o dibujándola directamente con el ratón
+(o con el dedo/lápiz óptico) en un lienzo — de cualquier forma, el resultado se almacena como un PNG transparente. Mientras
+se dibuja, **Deshacer** revierte el último trazo y **Borrar** activa un modo de borrador que elimina la tinta
+bajo el puntero, de modo que una parte mal dibujada se puede corregir sin borrar todo el lienzo
+(eso es lo que sigue haciendo **Limpiar**).
+
+A diferencia de una foto de perfil, una firma está criptográficamente vinculada a la cuenta:
+
+1. La primera vez que un usuario establece una firma, Open Gauge genera un **par de claves Ed25519** para
+   él. La clave privada se cifra en reposo (AES-256-GCM, derivada de la `SECRET_KEY` de la aplicación)
+   antes de almacenarse — esto protege contra una filtración exclusiva de la base de datos (un volcado o robo de copia de seguridad),
+   aunque no protege contra el compromiso del propio proceso de la aplicación en ejecución, que es el
+   techo práctico para un despliegue autoalojado sin un servicio externo de gestión de claves.
+2. Open Gauge firma un sobre canónico — el ID del usuario, el hash SHA-256 de los bytes exactos de la
+   imagen, y una marca de tiempo — con esa clave privada. Tanto la imagen de la firma como los bytes de firma
+   resultantes se almacenan.
+3. La **clave pública nunca cambia** una vez generada (reemplazar la imagen de firma reutiliza el
+   mismo par de claves) y está disponible para cualquier usuario autenticado a través de
+   `GET /users/{id}/signature/public-key`, de modo que un certificado — o cualquier otro consumidor — pueda
+   verificar de forma independiente que una imagen de firma es auténtica y no ha sido modificada.
+
+Reemplazar una firma no elimina la anterior — se revoca (se conserva, marcada como inactiva)
+para que los certificados históricos que hacen referencia a una versión de firma anterior sigan siendo verificables
+de forma independiente. Esto refleja cómo el [historial de calibración](../concepts/data-model.mdx) nunca se
+sobrescribe, solo se sustituye.
+
+Una firma establecida de esta manera es la que usarán los certificados para dar fe visual y criptográficamente
+de quién realizó una calibración.
+
+## Tokens de sesión
+
+Una vez autenticado, el frontend y cualquier cliente de la API llevan un token de sesión en las solicitudes
+posteriores. Consulta [Auth](/docs/api/auth) en la Referencia de la API para conocer los endpoints exactos de
+inicio de sesión/renovación/cierre de sesión y las formas de los payloads.

@@ -1,0 +1,58 @@
+---
+title: Métricas de deriva
+description: Cómo compara Open Gauge dos curvas de calibración — deriva máxima/media/RMS, desplazamiento, ganancia y deriva residual.
+---
+
+Para medir cuánto ha derivado un sensor, Open Gauge compara dos de sus curvas de calibración — una
+calibración de referencia (típicamente la de referencia inicial/primera) y una actual — evaluando
+ambos polinomios ajustados a lo largo de su **rango operativo compartido** y observando la curva de
+diferencia entre ellos, $d(x) = f_{\text{current}}(x) - f_{\text{reference}}(x)$.
+
+## Deriva máxima [#max-drift]
+
+La mayor diferencia absoluta entre las curvas de referencia y actual a lo largo del rango operativo
+compartido:
+
+$$
+\text{max drift} = \max_x \left| d(x) \right|
+$$
+
+El peso individual más grande en el [estado de salud](./overview.mdx#score)
+(30%) — responde a "en su peor punto, ¿cuánto se ha movido la calibración de este sensor?"
+
+## Deriva media [#mean-drift]
+
+La diferencia absoluta promedio entre las dos curvas a lo largo del rango compartido:
+
+$$
+\text{mean drift} = \frac{1}{n}\sum_{i=1}^n \left| d(x_i) \right|
+$$
+
+## Deriva RMS [#rms-drift]
+
+La diferencia cuadrática media entre las dos curvas — penaliza las desviaciones grandes con más
+fuerza que la deriva media, de la misma manera que el [RMSE](../calibration/curve-fitting.mdx#rmse)
+penaliza los residuos grandes más que un simple promedio:
+
+$$
+\text{RMS drift} = \sqrt{\frac{1}{n}\sum_{i=1}^n d(x_i)^2}
+$$
+
+## Desplazamiento [#offset]
+
+La diferencia entre las curvas al *inicio* del rango compartido — un desplazamiento constante (de
+punto cero). Un sensor que ha derivado en una cantidad aproximadamente constante en todo su rango,
+en lugar de empeorar hacia un extremo, se manifiesta principalmente como desplazamiento.
+
+## Ganancia [#gain]
+
+La pendiente de la curva de diferencia $d(x)$ — un cambio en la *sensibilidad* (intervalo) entre las
+dos calibraciones, en contraposición a un desplazamiento constante. Un sensor cuyo intervalo se ha
+estirado o comprimido (p. ej. por un cambio en la unión de referencia o en la ganancia del
+amplificador) se manifiesta principalmente como ganancia, no como desplazamiento.
+
+## Deriva residual [#residual-drift]
+
+La diferencia entre las curvas al *final* del rango menos la diferencia al *inicio* — es decir, la
+deriva que no se explica únicamente por un desplazamiento constante. Combinada con la
+[ganancia](#gain), esto separa "toda la curva se desplazó uniformemente" de "la curva se inclinó."

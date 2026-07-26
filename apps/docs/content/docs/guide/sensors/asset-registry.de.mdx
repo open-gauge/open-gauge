@@ -1,0 +1,180 @@
+---
+title: Grundlagen des Anlagenregisters
+description: Was eine Anlage ist, Sensoren im Vergleich zu DAQs, und der Lebenszyklus einer Anlage.
+---
+
+Jedes physische Messgerät, das Open Gauge erfasst — ein Sensor, ein Messumformer, ein Datenlogger — ist eine
+**Anlage**. Anlagen befinden sich in der Oberfläche unter **Anlagen → Neue Anlage**, und jede erhält
+zusätzlich zu ihrer internen Datenbank-ID eine menschenlesbare ID (z. B. `OG-00042`).
+
+## Sensor vs. DAQ
+
+Der Typ einer Anlage ist eine von:
+
+- **sensor** — ein Messgerät. Hat einen oder mehrere **Kanäle**, von denen jeder eine einzelne
+  gemessene physikalische Größe repräsentiert (Temperatur, Druck, Durchfluss, ...). Siehe
+  [Einen Sensor hinzufügen](./adding-a-sensor.mdx).
+- **daq** — ein Datenerfassungsgerät: ein Datenlogger, Signalkonditionierer oder Gateway. Hat eine
+  einzelne Hardware-Spezifikation anstelle von Messkanälen. Siehe
+  [Einen DAQ hinzufügen](./adding-a-daq.mdx).
+
+## Gemeinsame Felder
+
+Unabhängig vom Typ trägt jede Anlage die folgenden Felder, plus einen berechneten **Zustandswert**
+(0–100) — siehe [Zustandsbewertung](../health-scoring/overview.mdx). Jedes Feld hier wird auch
+durch einen Info-Tooltip (ⓘ) direkt in der Oberfläche erklärt — ein Klick auf einen Tooltip bringt
+Sie zurück zum passenden Abschnitt dieser Seite.
+
+### Anlagen-ID [#asset-id]
+
+Ein automatisch generierter, eindeutiger, menschenlesbarer Bezeichner (z. B. `OG-00042`), getrennt
+von der internen Datenbank-ID der Anlage. Wird überall in der Oberfläche, auf QR-/Aufkleber-Etiketten
+und in exportierten Paketen verwendet.
+
+### Name, Hersteller, Modell & Seriennummer [#identity]
+
+Freitext-Identitätsfelder. Der Name erscheint in Listen und Überschriften; Hersteller, Modell und
+Seriennummer identifizieren die physische Einheit.
+
+### Teilenummer [#part-number]
+
+Die eigene Teile-/Katalognummer des Herstellers, getrennt von der Seriennummer der Anlage — nützlich
+bei der Bestellung von Ersatzteilen oder beim Nachschlagen eines Datenblatts.
+
+### Beschreibung [#description]
+
+Freitext-Notizen zu Zweck oder Kontext der Anlage, angezeigt unter ihren Identitätsfeldern.
+
+### Organisation [#organization]
+
+Die Organisation, der diese Anlage gehört, ausgewählt aus einem Dropdown der eigenen Organisationen
+des erstellenden Benutzers, wenn die Anlage angelegt wird — erforderlich und unabhängig vom Standort
+der Anlage (die beiden werden nicht gegeneinander validiert). Siehe [Organisationen](../organizations/index.mdx).
+
+### Standort [#location]
+
+Wo sich die Anlage aktuell befindet, ausgewählt aus dem Standortbaum der Organisation — siehe
+[Standorte](../locations/index.mdx). Das Verschieben einer Anlage zeichnet einen auditierten
+Standort-Historieneintrag auf, statt den vorherigen Standort stillschweigend zu überschreiben.
+
+### Abmessungen & Gewicht [#dimensions-weight]
+
+Physische Größe (Freitext, z. B. `150×30×30 mm`) und Gewicht in Kilogramm — rein informativ.
+
+### Montageart [#mounting-type]
+
+Wie die Anlage physisch installiert ist (z. B. Wand, Decke, Mast, Hutschiene).
+
+### Anschlussart [#connection-type]
+
+Die physische Steckverbindung oder Verkabelungsschnittstelle (z. B. `M12 4-polig`).
+
+### Schutzart [#ip-rating]
+
+IP-Schutzart (z. B. IP65), die die Staub-/Wasserbeständigkeit beschreibt.
+
+### Ex-Schutz-Zoneneinstufung [#hazardous-area-rating]
+
+Die ATEX-/Ex-Zone, für die die Anlage zugelassen ist (oder "nicht explosionsgefährdet").
+
+### Betriebstemperatur & -feuchte [#operating-range]
+
+Der Umgebungsbereich, für den die Anlage selbst zum Betrieb zugelassen ist — zu unterscheiden vom
+*Messbereich* eines Kanals, der angibt, was er misst, statt was er toleriert.
+
+### Stromversorgung & Verbrauch [#power]
+
+Versorgungsspannung/-art (z. B. `24 VDC`) und Leistungsaufnahme in Watt.
+
+### Firmware-Version [#firmware-version]
+
+Die Versionsangabe der bordeigenen Firmware der Anlage, sofern zutreffend.
+
+### Kaufdatum, Preis & Garantie [#commercial]
+
+Beschaffungsbuchhaltung: wann die Anlage gekauft wurde, was sie gekostet hat und wann ihre Garantie
+abläuft.
+
+## Anlagenbild
+
+Jede Anlage kann ein Bild der physischen Einheit haben, das als eingekreiste Vorschau links neben der
+Überschrift auf der Detailseite der Anlage angezeigt wird. Klicken Sie auf die Vorschau, um sie in
+voller Größe in einem Modal zu öffnen. Verwenden Sie im Bearbeitungsmodus die Kamera-Schaltfläche am
+Bild, um es hochzuladen oder zu ersetzen, und die Papierkorb-Schaltfläche, um es zu entfernen —
+Änderungen wirken sich sofort aus, unabhängig vom "Änderungen speichern"-Ablauf, der für die übrigen
+Felder der Anlage verwendet wird. Das Bild wird wie jede andere angehängte Datei in MinIO gespeichert
+(siehe [Datenmodell & Konzepte](../concepts/data-model.mdx)) und ist getrennt von den bei der
+Anlagenerstellung einmalig festgelegten Referenzbildern `sensor_image_id`/`pinout_image_id`/
+`sensor_schematic_id`.
+
+## QR-Aufkleber-Etiketten
+
+Die Schaltfläche **Etikett** auf der Detailseite der Anlage öffnet einen Dialog mit einem druckbaren
+Etikett in drei Größen, jeweils herunterladbar als PNG, JPG oder PDF. Jede Größe kodiert eine URL zur
+Detailseite der Anlage in ihrem QR-Code:
+
+- **1×0,5 Zoll** — QR-Code auf der linken Hälfte; Anlagen-ID und Anlagenname auf der rechten Hälfte.
+  Dimensioniert für kleine Komponenten, auf die ein 2×2- oder 4×2-Etikett nicht passt.
+- **2×2 Zoll** — QR-Code mit darunter gedruckter Anlagen-ID.
+- **4×2 Zoll** — QR-Code, Anlagen-ID, Sensorname, letzte Kalibrierungs-/Fälligkeitsdaten und die
+  Kalibrierkoeffiziententabelle, nebeneinander.
+
+## Import & Export
+
+Jede Anlage kann als ZIP-Paket exportiert werden — über die Schaltfläche **Exportieren** auf der
+Detailseite der Anlage für eine einzelne Anlage, oder über die Schaltfläche **Exportieren** auf der
+Seite des Anlagenregisters, um eine Auswahl von Anlagen als Sammelexport zu exportieren (ein
+Checklisten-Modal lässt Sie einzelne Anlagen auswählen oder alle auf einmal). Beide erzeugen dieselbe
+Paketstruktur; ein Sammelexport ist einfach mehrere Einzelanlagen-Pakete innerhalb eines äußeren ZIPs.
+
+Jede Anlage erhält ihren eigenen Ordner, benannt nach ihrer `asset_id` (z. B. `OG-00042/`), der Folgendes enthält:
+
+- **`asset.yaml`** — jedes Anlagenfeld, ihre Sensorkanäle oder DAQ-Details und ihre vollständige
+  Kalibrierhistorie (einschließlich Kalibrierdatenpunkte und berechneter Statistiken), in einem
+  menschenlesbaren Format.
+- **`media/`** — die eigentlichen Dateien: das Anlagenbild, das Datenblatt, Pinout-/Sensorbilder und
+  Schaltpläne, alle als Sammelanhang hochgeladenen Dateien und die Zertifikats-PDF jeder Kalibrierung
+  (ein Unterordner pro Kalibrierung, älteste zuerst).
+
+**Was bewusst aus `asset.yaml` ausgelassen wird**: interne Datenbank-UUIDs — die eigene ID der Anlage,
+ihr Standort, `created_by`/`retired_by` und die ID jeder Datei. Diese ergeben nur innerhalb der
+Datenbank Sinn, aus der sie stammen. Wo sinnvoll, wird stattdessen ein menschenlesbarer Name rein zu
+Referenzzwecken eingefügt (z. B. `location_name`, `calibration_method_name`,
+`internal_procedure_name`) — Sensorkanäle werden über `channel_id` neu verknüpft, statt über eine
+rohe Sensor-UUID. Ein Feld hat keinen sicheren Ersatz und wird vollständig ausgelassen: Der Verweis
+einer Kalibrierung auf eine andere Anlage (`internal_reference_asset_id`) wird nicht exportiert oder
+neu verknüpft.
+
+Die Kalibrierhistorie wird **wortgetreu** exportiert und wieder importiert — `calibration_version`
+und jede berechnete Statistik werden unverändert kopiert, nie neu berechnet, da sie historische
+Tatsachen darstellen (siehe [Datenmodell & Konzepte](../concepts/data-model.mdx)).
+
+### Importieren
+
+Importieren Sie ein ZIP entweder über **Anlagen → + Neue Anlage → Aus Datei importieren** (erwartet
+genau eine Anlage in der Datei) oder über die Schaltfläche **Importieren** des Registers (akzeptiert
+ein oder mehrere ZIPs gleichzeitig, von denen jedes selbst einen oder mehrere Anlagenordner enthalten
+kann — praktisch für den erneuten Import eines vorherigen Sammelexports). Beide Abläufe rufen denselben
+Backend-Endpunkt auf und melden ein Ergebnis pro Anlagenordner, sodass ein Problem bei einer Anlage
+die anderen in derselben Datei nie blockiert.
+
+Beim Import wird eine brandneue Anlage mit einer neuen internen ID erstellt. Ihre `location_id`
+bleibt nicht gesetzt (der exportierte `location_name` dient nur zur Information), bis Sie sie manuell
+zuweisen. `calibration_method_name`/`internal_procedure_name` werden ohne Berücksichtigung der
+Groß-/Kleinschreibung mit den im Zielsystem bereits registrierten Verfahren abgeglichen; wird keine
+Übereinstimmung gefunden, bleibt die Verknüpfung einfach leer, statt den Import fehlschlagen zu lassen.
+Existiert die exportierte `asset_id` bereits im Zielsystem, schlägt der Import dieser Anlage mit einer
+klaren Fehlermeldung fehl — benennen Sie sie im YAML um und versuchen Sie es erneut.
+
+## Lebenszyklus
+
+Anlagen werden bei einer aktiven Bereitstellung nie endgültig gelöscht. Das Ausmustern einer Anlage:
+
+- Setzt `is_active = false` und zeichnet `retired_at`, `retired_by` und `retired_reason` auf.
+- Bewahrt die vollständige Kalibrierhistorie der Anlage — die vergangenen Kalibrierungen einer
+  ausgemusterten Anlage bleiben sichtbar und auditierbar.
+
+Dies entspricht der allgemeinen Datenbankphilosophie von Open Gauge (siehe
+[Datenmodell & Konzepte](../concepts/data-model.mdx)): Rückführbarkeit hat Vorrang vor Aufgeräumtheit.
+Wenn eine Anlage aus den täglichen Ansichten verschwinden soll, ihre Historie aber intakt bleiben
+soll, mustern Sie sie aus — löschen Sie sie nicht.

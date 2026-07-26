@@ -1,0 +1,42 @@
+{
+  "privacy": {
+    "title": "Política de privacidad",
+    "updated": "13 de julio de 2026",
+    "intro": "Open Gauge es software autoalojado: la organización que instaló esta instancia («el Operador») ejecuta su propia copia de la aplicación y de la base de datos, y es la responsable del tratamiento de todo lo que se almacena en ella. El propio proyecto Open Gauge no opera esta Instancia, no recibe una copia de sus datos y no tiene acceso a ellos.",
+    "section1Title": "1. Qué datos se almacenan y dónde",
+    "section1Body": "Todos los datos que introduces —datos de cuenta, registros de activos y sensores, historial de calibración, certificados, archivos subidos y registros de auditoría— se almacenan íntegramente dentro de la propia infraestructura del Operador: su base de datos PostgreSQL y su almacenamiento de objetos MinIO (o compatible con S3), tal como los configure el Operador. Open Gauge no transmite estos datos a ningún servicio de terceros por defecto.",
+    "section2Title": "2. Información de la cuenta",
+    "section2Body": "Para crear una cuenta proporcionas un nombre, una dirección de correo electrónico y una contraseña (almacenada como un hash con sal, nunca en texto plano). Si un administrador ha configurado las notificaciones por correo, tu dirección de correo se usa para enviar enlaces de verificación de cuenta y de restablecimiento de contraseña, y —para técnicos y administradores de tu organización— recordatorios de vencimiento de calibración.",
+    "section3Title": "3. Envío de correo",
+    "section3Body": "Cuando un administrador configura el SMTP (Administración → Correo), el correo saliente se envía directamente desde la Instancia al servidor SMTP que especifique el Operador. Ningún contenido de correo pasa por infraestructura operada por Open Gauge —no existe tal infraestructura—.",
+    "section4Title": "4. Registros de auditoría",
+    "section4Body": "Las acciones sensibles en materia de seguridad y trazabilidad (creación de registros, ediciones, anulaciones/restauraciones de calibraciones, cambios de configuración) se registran en un registro de auditoría inmutable, que incluye el usuario que actuó, una marca de tiempo y, cuando corresponda, la dirección IP y el user agent de la solicitud. Esta es una función esencial para la trazabilidad de estilo ISO/IEC 17025, no datos compartidos fuera de la Instancia.",
+    "section5Title": "5. Cookies y almacenamiento local",
+    "section5Body": "Open Gauge almacena tu token de sesión y tu preferencia de tema en el almacenamiento local de tu navegador. No utiliza cookies de seguimiento de terceros ni scripts de análisis.",
+    "section6Title": "6. Retención y eliminación de datos",
+    "section6Body": "Los registros de calibración son deliberadamente inmutables por motivos de trazabilidad —consulta la documentación de la Instancia para saber cómo funciona «anular» un registro—. Otros registros (activos, ubicaciones, procedimientos) admiten eliminación reversible. El Operador controla todos los periodos de retención y las políticas de copia de seguridad; contacta con tu administrador para solicitar la eliminación de los datos personales de tu cuenta.",
+    "section7Title": "7. Tus derechos",
+    "section7Body": "Según la jurisdicción del Operador y la legislación aplicable (p. ej., el RGPD), es posible que tengas derechos de acceso, rectificación o solicitud de eliminación de tus datos personales. Dado que el Operador controla la Instancia, dirige cualquier solicitud de este tipo a tu administrador.",
+    "section8Title": "8. Cambios en esta política",
+    "section8Body": "Esta página es una plantilla incluida con Open Gauge. Se recomienda a los Operadores que la hagan revisar por su propio asesor legal y la adapten a su jurisdicción, sector y obligaciones de cumplimiento antes de basarse en ella."
+  },
+  "terms": {
+    "title": "Términos de servicio",
+    "updated": "13 de julio de 2026",
+    "intro": "Open Gauge es software libre y de código abierto bajo la licencia <link>GNU Affero General Public License v3.0 (AGPL-3.0)</link>. Estos Términos rigen tu uso de una implementación concreta y autoalojada de Open Gauge (la «Instancia») operada por la organización que la instaló («el Operador») —no un servicio alojado prestado por el propio proyecto Open Gauge—.",
+    "section1Title": "1. Entre quiénes rigen estos términos",
+    "section1Body": "Open Gauge no es un producto SaaS. No existe una empresa central de Open Gauge que aloje tus datos o sea parte de estos términos. Cada Instancia se instala, configura y opera de forma independiente por su Operador, utilizando el código de código abierto de Open Gauge bajo la licencia AGPL-3.0. Cualquier acuerdo sobre el uso de una Instancia —incluidos estos Términos— es entre tú y el Operador, quien es el único responsable de la Instancia, su configuración, sus datos y sus usuarios.",
+    "section2Title": "2. Uso aceptable",
+    "section2Body": "Utiliza la Instancia únicamente para fines lícitos conformes con las políticas de tu organización. No intentes eludir los controles de acceso, buscar vulnerabilidades sin autorización, ni usar la Instancia para almacenar o procesar datos que no estés autorizado a tener.",
+    "section3Title": "3. Datos de calibración y trazabilidad",
+    "section3Body": "Open Gauge está diseñado para mantener el historial de calibración inmutable y trazable —los registros se versionan y nunca se sobrescriben silenciosamente—. Aunque el software impone esto a nivel del modelo de datos, el Operador es responsable de sus propias prácticas de copia de seguridad, retención y recuperación ante desastres. Ni este documento ni el software Open Gauge garantizan protección frente a la pérdida de datos por fallos de infraestructura, configuración incorrecta o error del Operador.",
+    "section4Title": "4. Sin garantía",
+    "section4Body": "Como se indica en la licencia AGPL-3.0, Open Gauge se proporciona <strong>«tal cual»</strong>, sin garantía de ningún tipo, expresa o implícita, incluidas entre otras las garantías de comerciabilidad, idoneidad para un fin particular y no infracción. El Operador no ofrece ninguna garantía adicional más allá de lo que establezcan sus propias políticas.",
+    "section5Title": "5. Limitación de responsabilidad",
+    "section5Body": "En la máxima medida permitida por la ley, ni los responsables del mantenimiento del proyecto Open Gauge ni el Operador (salvo que la propia política del Operador indique lo contrario) serán responsables de ningún daño indirecto, incidental, especial o consecuente derivado del uso del software o de una Instancia.",
+    "section6Title": "6. Cambios en estos términos",
+    "section6Body": "El Operador puede actualizar estos Términos para su Instancia en cualquier momento. Esta página es una plantilla incluida con Open Gauge —se recomienda a los Operadores que la hagan revisar por su propio asesor legal y la adapten a su jurisdicción y requisitos de cumplimiento (p. ej., ISO/IEC 17025) antes de basarse en ella.",
+    "section7Title": "7. Contacto",
+    "section7Body": "Para preguntas sobre estos Términos aplicados a una Instancia concreta, contacta directamente con el administrador de esa Instancia."
+  }
+}

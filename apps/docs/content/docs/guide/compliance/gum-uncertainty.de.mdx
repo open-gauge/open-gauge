@@ -1,0 +1,137 @@
+---
+title: GUM-/JCGM-Unsicherheitsreihe
+description: Der JCGM-Leitfaden zur Angabe der Unsicherheit beim Messen und seine kalibrierspezifischen Ergänzungen — die normativen Teile, und wie die Kalibrier-Engine von Open Gauge sie umsetzt.
+---
+
+## Zusammenfassung
+
+Das **JCGM** (Joint Committee for Guides in Metrology) veröffentlicht die **GUM**-Reihe (*Guide to
+the Expression of Uncertainty in Measurement*) gemeinsam im Auftrag von BIPM, IEC, IFCC, ISO, IUPAC,
+IUPAP und OIML. Es ist die grundlegende Theorie zur Unsicherheitsbewertung, auf der sowohl
+[ISO/IEC 17025](./iso-17025.mdx) als auch [EA-4/02](./ea-4-02.mdx) ihre eigenen Anforderungen
+aufbauen, und sie ist frei verfügbar (anders als die ISO-Normen in diesem Abschnitt).
+
+Der Ordner `references/JCGM/` enthält zehn Dokumente, nicht alle von derselben Art — einige sind
+normative Unsicherheitsmethodik, eines (JCGM 200, das VIM) ist ein reines Vokabular ohne eigene
+"Anforderungen". Diese Seite behandelt die beiden Dokumente mit konkretem, überprüfbarem Inhalt, der
+nicht bereits anderswo abgedeckt ist, plus das eine, das für die Konformitätsbewertung direkt
+relevant ist:
+
+- **JCGM 100:2008 (GUM)** und seine Kernmethodik zur Typ-A-/B-Bewertung, Kombination und Erweiterung
+  — bereits das Rückgrat von [ISO/IEC 17025 §7.6](./iso-17025.mdx#uncertainty-evaluation) und
+  [EA-4/02 §3–5](./ea-4-02.mdx#combining-uncertainties); hier nicht erneut behandelt, nur mit einem
+  Verweis versehen.
+- **JCGM GUM-6:2020** (*Developing and using measurement models*) — das Dokument, das am direktesten
+  auf das `poly_coefficients`-Schema von Open Gauge anwendbar ist, und die Quelle der untenstehenden
+  konkreten Lücken.
+- **JCGM 106:2012** (*The role of measurement uncertainty in conformity assessment*) — das
+  Dokument, auf das der HINWEIS in ISO/IEC 17025 §7.1.3 für die Anleitung zur Entscheidungsregel
+  verweist.
+
+Das VIM (JCGM 200) und das Übersichtsdokument GUM-1:2023 sind Vokabular-/Überblicksmaterial, keine
+Anforderungen — ihr Inhalt ist in [Normen & Glossar](../reference/standards-glossary.mdx)
+zusammengefasst statt hier eine Compliance-Tabelle zu erhalten, aus demselben Grund, aus dem
+organisatorische Klauseln von den anderen Seiten dieses Abschnitts ausgeschlossen sind: Es gibt in
+einem Glossar nichts, wogegen "erfüllt" bewertet werden könnte.
+
+## Compliance
+
+| Quelle | Anforderung | Status | Wo behandelt |
+|---|---|---|---|
+| [GUM 100, EA-4/02](#core-uncertainty-methodology) | Typ-A-/B-Bewertung, RSS-Kombination, Erweiterung mit Erweiterungsfaktor | ✅ Erfüllt | Siehe [ISO/IEC 17025 §7.6](./iso-17025.mdx#uncertainty-evaluation) und [EA-4/02](./ea-4-02.mdx) |
+| [GUM-6 Anhang H.3](#coefficient-covariance) | Kovarianz der angepassten Koeffizienten gespeichert und fortgepflanzt, nicht nur Unsicherheit pro Koeffizient | ✅ Erfüllt | `poly_coefficients_covariance` |
+| [GUM-6 Anhang D](#polynomial-basis-and-degree-selection) | Polynomgradauswahl durch Punktanzahl begrenzt; numerisch stabile Koeffizientenbasis | ❌ Nicht erfüllt | Automatische Gradauswahl ist auf eine fest codierte Obergrenze gedeckelt, nicht aus der Punktanzahl abgeleitet; Koeffizienten sind monomial, nicht Tschebyschow |
+| [GUM-6 §10.6](#drift-projection) | Unsicherheit zukünftiger Werte aus der Koeffizienten-Kovarianz des angepassten Modells fortgepflanzt | ⚠️ Teilweise | [Driftvorhersage](../health-scoring/predictions.mdx) ist eine separate Heuristik auf Basis eines linearen Trends, keine im GUM-6-Stil fortgepflanzte Projektion |
+| [GUM-6 Anhang C.5](#repeatability-as-a-budget-term) | Wiederholbarkeit/Reproduzierbarkeit als Top-down-Term in das Unsicherheitsbudget eingerechnet | ⚠️ Teilweise | `repeatability` wird berechnet und ausgewiesen, aber nicht zu `uncertainty_budget` hinzugefügt |
+| [GUM-6 §10.3.5](#no-inflated-uncertainty) | Eine bekannte Korrektur muss angewendet werden, nie durch eine aufgeblähte Unsicherheit ersetzt werden | ✅ Erfüllt | Open Gauge hat keinen Mechanismus, um eine Korrektur durch eine größere Unsicherheit zu ersetzen — die Anpassung selbst *ist* die Korrektur |
+| [JCGM 106](#conformity-assessment) | Entscheidungsregel-basierte Konformitätsbewertung (Guard Band / geteiltes Risiko) | ✅ Erfüllt | Dieselben [Entscheidungsregeln](./iso-17025.mdx#decision-rule) wie ISO/IEC 17025 §7.1.3/§7.8.6 |
+
+## Detail
+
+### Kernmethodik der Unsicherheit [#core-uncertainty-methodology]
+
+Typ-A-/Typ-B-Bewertung, quadratische Summierung für unabhängige Beiträge und Erweiterung über einen
+Erweiterungsfaktor sind allesamt in `calibration_analysis.py` implementiert — siehe
+[die Unsicherheitsbewertung von ISO/IEC 17025](./iso-17025.mdx#uncertainty-evaluation) und
+[die Erweiterungsfaktor-Richtlinie von EA-4/02](./ea-4-02.mdx#coverage-factor-policy) für die
+Details; diese Seite wiederholt sie nicht.
+
+### Kovarianz der Koeffizienten [#coefficient-covariance]
+
+> "GUM Annex H.3 (thermometer calibration curve) ...shows that ignoring the covariance between a
+> fitted slope and intercept can produce uncertainty estimates that are wrong by 30%+ when those
+> coefficients are later used together."
+
+`poly_coefficients_covariance` speichert die vollständige N×N-Kovarianzmatrix aus der
+Kleinste-Quadrate-Anpassung, nicht nur die diagonalen (pro Koeffizient) Standardunsicherheiten —
+genau das, worum es bei dieser Anforderung geht.
+
+### Polynombasis und Gradauswahl [#polynomial-basis-and-degree-selection]
+
+> "GUM-6 Annex D ...raw monomial coefficients...can span many orders of magnitude for
+> higher-degree fits...causing precision loss...**Recommended fix**: normalize the independent
+> variable to [-1, 1]...and fit in a Chebyshev polynomial basis...**Max recommended polynomial
+> degree** for m calibration points: n ≈ floor(1.4·√m)."
+
+**Lücke.** `_select_degree()` in `calibration_analysis.py` wählt einen Polynomgrad automatisch über
+AIC aus, ist aber auf ein fest codiertes `max_degree: int = 5` gedeckelt (und ein manuell angegebener
+Grad wird separat auf `min(poly_degree, 5)` begrenzt) — keiner der beiden Pfade leitet seine
+Obergrenze aus der Anzahl der Kalibrierpunkte ab, so wie es die Empfehlung `n ≈ floor(1.4·√m)` aus
+GUM-6 vorsieht, sodass einer Kalibrierung mit sehr wenigen Punkten weiterhin eine Anpassung vom
+Grad 5 angeboten werden kann, ohne eine eingebaute Unter-/Obergrenzenprüfung, die an die Daten
+gekoppelt ist. Getrennt davon werden Koeffizienten in der einfachen monomialen Basis angepasst und
+gespeichert (äquivalent zu `numpy.polyfit`), nicht in der numerisch stabilen Tschebyschow-Basis, die
+GUM-6 empfiehlt — akzeptabel für die niedrigen Grade (1–3), die die meisten Kalibrierungen
+tatsächlich verwenden, aber ein echtes Präzisionsrisiko, falls Anpassungen höheren Grades häufiger
+werden.
+
+### Driftprojektion [#drift-projection]
+
+> "GUM-6 §10.6 (drifting resistance standard example) ...the value **and uncertainty at a future
+> use time** obtained by evaluating the fitted line and propagating both the coefficient standard
+> uncertainties *and their covariance* to that future point."
+
+Die [Driftvorhersage](../health-scoring/predictions.mdx#prediction) führt eine separate lineare
+Regression über historische *Drift*-Werte durch, um zu projizieren, "wann dies zu einem Problem
+werden könnte" — eine nützliche Planungsheuristik, aber ausdrücklich dokumentiert als "keine
+zertifizierte Prognose". Sie wertet nicht das eigene angepasste Polynom einer Kalibrierung (mit
+seiner Koeffizienten-Kovarianz) in die Zukunft aus, so wie es GUM-6 §10.6 beschreibt; die beiden
+sind unterschiedliche Berechnungen für unterschiedliche Zwecke, und nur die strenge wäre geeignet,
+um auf einem Zertifikat zu stehen.
+
+### Wiederholbarkeit als Budgetterm [#repeatability-as-a-budget-term]
+
+> "GUM-6 Annex C.5 (referencing ISO 21748) ...a standard way to fold a sensor's repeatability spec
+> into the uncertainty budget as a single term when a full bottom-up model isn't practical."
+
+`repeatability` (und `hysteresis`, `non_linearity`) werden aus dem Kalibrierdatensatz berechnet und
+als eigene Statistiken ausgewiesen — aber sie werden nicht als Zeile in `uncertainty_budget` neben
+den Typ-A-/B-Beiträgen hinzugefügt, die es sind. Eine Kalibrierung mit hoher Wiederholbarkeitsstreuung,
+aber enger Regressionsanpassung, könnte dadurch derzeit ihre wahre kombinierte Unsicherheit
+unterberichten.
+
+### Keine aufgeblähte Unsicherheit [#no-inflated-uncertainty]
+
+> "GUM-6 §10.3.5 'The practice of not including in the measurement model a correction having known
+> value and applying instead an inflated uncertainty is scientifically unsound and is
+> deprecated.'"
+
+Es gibt in Open Gauge keinen Mechanismus, um das missbilligte Verfahren durchzuführen: Die
+Kalibrierfunktion selbst *ist* die Korrektur (sie bildet einen Rohmesswert auf einen korrigierten
+Wert ab), und das Unsicherheitsbudget ist eine separate, aufgeschlüsselte Berechnung — es gibt
+keinen Codepfad, bei dem ein bekannter systematischer Versatz unkorrigiert belassen und stattdessen
+mit einer größeren Unsicherheitszahl übertüncht werden könnte.
+
+### Konformitätsbewertung [#conformity-assessment]
+
+> "JCGM 106:2012 governs the decision-rule / pass-fail requirement in ISO 17025 §7.1.3 and §7.8.6."
+
+Vollständig behandelt bei [der Entscheidungsregel von ISO/IEC 17025](./iso-17025.mdx#decision-rule)
+— einfache Annahme, Guard Band und geteiltes Risiko sind genau die Familie von Entscheidungsregeln,
+die JCGM 106 beschreibt, um die Messunsicherheit in eine Konformitätsentscheidung einzubeziehen.
+
+---
+
+*Verifiziert gegen JCGM 100:2008, JCGM GUM-6:2020 und JCGM 106:2012, sowie die Open-Gauge-Codebasis
+(`apps/api/app/services/calibration_analysis.py`, `apps/api/app/models/calibration.py`,
+`apps/docs/content/docs/guide/health-scoring/predictions.mdx`) am 2026-07-29.*

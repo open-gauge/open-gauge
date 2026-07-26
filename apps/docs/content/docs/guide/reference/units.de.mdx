@@ -1,0 +1,62 @@
+---
+title: Einheiten & Umrechnungen
+description: Jede von Open Gauge unterstützte physikalische Größe, ihre SI-Speichereinheit und die Umrechnungsfaktoren für Anzeigeeinheiten.
+---
+
+Alle gespeicherten numerischen Werte in der Datenbank von Open Gauge liegen in **SI-Einheiten** vor.
+Die Einheit, die Sie in der Oberfläche wählen (z. B. °C, kPa, psi), ist eine *Anzeige*-Einheit —
+Open Gauge rechnet an der Grenze in SI um und zurück und speichert die Anzeigeeinheit zusammen mit
+dem Wert, damit sie korrekt hin- und zurückkonvertiert werden kann.
+
+| Physikalische Größe | SI-Einheit | Anzeigeeinheiten → SI |
+|---|---|---|
+| Temperatur | K | °C → `K = °C + 273.15` · °F → `K = (°F − 32) × 5/9 + 273.15` |
+| Druck | Pa | kPa ×1.000 · MPa ×1.000.000 · bar ×100.000 · psi ×6.894,757 · hPa ×100 · atm ×101.325 · mmHg ×133,322 · inHg ×3.386,389 · inH₂O ×249,0889 |
+| Durchfluss (volumetrisch) | m³/s | m³/h ÷3.600 · L/min ÷60.000 · gal/min (US) ×6,309×10⁻⁵ |
+| Durchfluss (Masse) | kg/s | kg/h ÷3.600 · g/min ÷60.000 · lb/min ×0,00755987 |
+| Füllstand | m | mm ÷1.000 · cm ÷100 · in ×0,0254 · ft ×0,3048 · % (anwendungsabhängig) |
+| Feuchte | %RH | g/m³ (keine universelle Umrechnung) · Taupunkt (erfordert psychrometrische Berechnung) |
+| Kraft | N | kN ×1.000 · kgf ×9,80665 · lbf ×4,44822 |
+| Drehmoment | N·m | kgf·m ×9,80665 · lbf·ft ×1,35582 |
+| Masse | kg | g ÷1.000 · mg ÷1.000.000 · lb ×0,45359237 |
+| Dehnung | m/m | µε ×10⁻⁶ |
+| Weg | m | nm ×10⁻⁹ · µm ×10⁻⁶ · mm ×10⁻³ · cm ×10⁻² · in ×0,0254 · ft ×0,3048 |
+| Winkel | rad | ° × π/180 |
+| Winkelgeschwindigkeit | rad/s | rpm × 2π/60 · °/s × π/180 |
+| Winkelbeschleunigung | rad/s² | °/s² × π/180 |
+| Geschwindigkeit | m/s | km/h ÷3,6 · mph ×0,44704 · knots ×0,514444 |
+| Beschleunigung | m/s² | g ×9,80665 |
+| Schalldruck | Pa | dB/dBA/dBC sind logarithmische Skalen — ohne einen Referenzdruck nicht direkt umrechenbar |
+| Spannung | V | mV ÷1.000 · kV ×1.000 |
+| Strom | A | mA ÷1.000 · kA ×1.000 |
+| Widerstand | Ω | kΩ ×1.000 · MΩ ×1.000.000 |
+| Leistung | W | kW ×1.000 · MW ×1.000.000 |
+| Energie | J | Wh ×3.600 · kWh ×3.600.000 · MWh ×3.600.000.000 |
+| Frequenz | Hz | kHz ×1.000 · MHz ×1.000.000 · GHz ×1.000.000.000 · bpm ÷60 |
+| Kapazität | F | µF ×10⁻⁶ · nF ×10⁻⁹ · pF ×10⁻¹² |
+| Induktivität | H | mH ×10⁻³ · µH ×10⁻⁶ |
+| Impedanz | Ω | kΩ ×1.000 · MΩ ×1.000.000 |
+| Magnetfeld | T | mT ×10⁻³ · µT ×10⁻⁶ · G ×10⁻⁴ |
+| Elektrisches Feld | V/m | kV/m ×1.000 |
+| Strahlung | Gy (Energiedosis) | Sv ist Äquivalentdosis (nicht direkt umrechenbar) · rem → Sv ×0,01 · Bq ist Aktivität (eine andere Größe) |
+| Beleuchtungsstärke | lx | Foot-candle ×10,7639 |
+| Leuchtdichte | cd/m² | — |
+| Konzentration | mol/m³ | ppm, ppb, %, mg/m³ hängen von der Substanz ab — erfordert Molekulargewicht und Bedingungen |
+| pH-Wert | dimensionslos | — |
+| Leitfähigkeit | S/m | mS/cm ×0,1 · µS/cm ×0,0001 |
+| Salzgehalt | kg/m³ | g/L (numerisch identisch) |
+| Gelöster Sauerstoff | mg/L | % Sättigung erfordert Temperatur und Druck |
+| Redoxpotenzial | V | mV ÷1.000 |
+| Dichte | kg/m³ | g/cm³ ×1.000 |
+| Viskosität | Pa·s | cP ×0,001 |
+| Feuchtigkeit | kg/kg | % ÷100 |
+| Partikelkonzentration | particles/m³ | particles/ft³ ×35,3147 |
+| Windrichtung | rad | ° × π/180 |
+| Niederschlag | m | mm ÷1.000 · in ×0,0254 |
+| Blutsauerstoff | % | — |
+| Oberflächenrauheit | m | µm ×10⁻⁶ |
+
+Einige Größen (Schalldruck, Strahlung, Konzentration) sind oben als **nicht** universell umrechenbar
+vermerkt — Open Gauge speichert bei diesen genau das, was der Benutzer eingegeben hat, ohne den
+Versuch einer verlustbehafteten Umrechnung, da eine korrekte Umrechnung zusätzlichen Kontext benötigt
+(einen Referenzwert, ein Molekulargewicht, Messbedingungen), der nicht immer verfügbar ist.

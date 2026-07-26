@@ -1,0 +1,105 @@
+---
+title: Organizaciones
+description: Membresía en múltiples organizaciones, roles a nivel de organización, solicitudes de ingreso y propiedad de activos.
+---
+
+Las **organizaciones** son el límite de inquilino (tenant) de Open Gauge — cada activo pertenece a una, y cada usuario
+puede pertenecer a cualquier número de ellas. Gestiónalas desde la página **Organizaciones** en la barra lateral.
+
+## Crear una organización
+
+Cualquier usuario autenticado que no sea **Visor** puede crear una organización desde
+**Organizaciones → Nueva organización** — no hay ninguna restricción de administrador más allá de eso, de la misma
+manera que crear una organización en GitHub o Gogs no requiere ser administrador del sitio. El creador se convierte
+automáticamente en el primer miembro **admin** de esa organización.
+
+Una organización tiene: **nombre**, un **nombre legal completo** opcional, **descripción**, **sitio web**,
+**ubicación** (su ubicación principal/sede, elegida del árbol de ubicaciones — consulta
+[Ubicaciones](../locations/index.mdx)), **correo electrónico**, **teléfono**, un **logotipo**, y un indicador de **privada**.
+
+## Membresía y roles de organización
+
+Un usuario puede ser miembro de cualquier número de organizaciones, con un rol delimitado a *esa* organización
+únicamente:
+
+| Rol | Puede hacer |
+|---|---|
+| `member` | Ver los detalles completos de la organización, la lista de miembros y sus activos. |
+| `admin` | Todo lo que puede hacer un miembro, más: editar el perfil/logotipo de la organización, gestionar miembros (cambiar roles, eliminar miembros), aprobar/rechazar solicitudes de ingreso, y desactivar la organización. |
+
+Este es un concepto separado del rol RBAC global de la cuenta del usuario
+(`superadmin`/`admin`/`technician`/`viewer` — consulta
+[Autenticación](../self-hosting/authentication.mdx#roles-rbac)). Ambos no se superponen excepto por
+una anulación: **Super Admin** puede gestionar cualquier organización sin importar su membresía en
+ella, como red de seguridad a nivel de sistema (p. ej. una organización que se queda sin administradores). El rol
+global `admin` no tiene acceso especial a una organización de la que no es miembro — la gestión de organizaciones es,
+por lo demás, de igual a igual, igual que en Gogs. La única excepción es **Visor**: se le bloquea de gestionar
+*cualquier* organización — crear una, editar su perfil, subir un logotipo, o tocar a sus miembros —
+incluso si posee un rol `admin` por organización. La restricción RBAC global gana sobre la de nivel de organización
+en este caso, de la misma manera que Visor es de solo lectura en el resto de Open Gauge.
+
+### Salir y eliminar miembros
+
+Un botón **Unirse / Salir** aparece en cada fila de la lista de organizaciones y en su página de detalle — junto a
+**Editar** para los administradores, en el lugar de Editar para todos los demás. Su etiqueta depende de quien lo ve: "Solicitar
+ingreso", un "Solicitud pendiente" deshabilitado mientras hay una solicitud en curso, o un "Salir" en rojo para los miembros;
+cada uno abre un diálogo de confirmación antes de hacer nada.
+
+Un miembro puede salir en cualquier momento — a menos que sea el **último administrador restante** de la organización. En
+ese caso, el diálogo de Salir lo guía en lugar de simplemente fallar: promover a otro miembro a administrador
+primero si hay otros miembros, o desactivar la organización en su lugar si es el único miembro que queda. La misma
+protección de último administrador se aplica cuando un administrador intenta eliminarse *a sí mismo*. Eliminar (o
+salir) no borra el registro de membresía — se marca como inactivo, preservando el historial de quién
+formó parte alguna vez de la organización, en consonancia con la filosofía general de borrado suave de Open Gauge (consulta
+[Modelo de datos y conceptos](../concepts/data-model.mdx)).
+
+Un administrador también puede agregar miembros directamente desde el botón **Agregar miembro** de la página de la organización (visible
+en modo edición, junto con los controles de cambio de rol y eliminación), que abre una lista con búsqueda y selección
+múltiple de todo usuario que no sea ya miembro activo — los usuarios seleccionados se agregan con el rol
+`member`.
+
+## Visibilidad
+
+- Las **organizaciones públicas** (`private: false`) muestran su perfil completo — nombre, nombre completo,
+  descripción, sitio web, ubicación, correo electrónico, teléfono — a cualquier usuario autenticado, sea o no
+  miembro.
+- Las **organizaciones privadas** muestran solo su **nombre** (con un ícono de candado) en la lista de
+  **Organizaciones**, de modo que siguen siendo lo suficientemente descubribles como para solicitar el ingreso. Todo lo demás — los
+  detalles del perfil, la lista de miembros y sus activos — es visible solo para los miembros (y para Super Admin).
+- La **lista de miembros** en sí nunca es pública, incluso para una organización no privada — solo los
+  miembros pueden ver quién más pertenece a ella.
+- Un administrador puede desactivar ("eliminar") una organización desde la **Zona de peligro** de su formulario de edición, tras
+  un diálogo de confirmación. Una organización desactivada es invisible para todos excepto Super Admin —
+  desaparece de la lista de Organizaciones y su página devuelve 404 para cualquier otro, el mismo tratamiento que
+  una organización privada llevada a su extremo.
+- Super Admin también ve las organizaciones desactivadas en la lista de **Organizaciones** (resaltadas en rojo,
+  etiquetadas "Eliminada") y puede reactivar una con el botón **Restaurar organización** que reemplaza a
+  "Eliminar organización" en la Zona de peligro de esa organización una vez que está desactivada. Restaurar solo hace que la
+  organización vuelva a estar activa y visible — no reactiva ninguna membresía que se haya borrado
+  al desactivarla; vuelve a agregar miembros mediante **Agregar miembro** después.
+
+## Solicitudes de ingreso
+
+Un usuario que no es miembro de una organización puede enviar una **solicitud de ingreso** desde la página de esa
+organización. Esto notifica a cada administrador de la organización de dos maneras:
+
+- **Correo electrónico**, si SMTP está configurado (consulta [Notificaciones por correo electrónico](../self-hosting/email-notifications.mdx)).
+- Una **notificación dentro de la aplicación** (el ícono de campana en la barra superior) — siempre, sin importar si el correo
+  está configurado. Este es el canal garantizado; el correo electrónico es una comodidad adicional sobre él.
+
+El solicitante aparece directamente en la lista de **Miembros** de la organización con un estado "Pendiente" —
+al hacer clic en la notificación dentro de la aplicación, un administrador va directamente a la página de la organización en modo edición para que
+la nueva solicitud sea inmediatamente visible. Un administrador la aprueba o la rechaza desde esa misma fila.
+Aprobar agrega al solicitante como `member`; cualquiera de las dos decisiones notifica al solicitante de la misma manera.
+
+## Los activos pertenecen a una organización
+
+Cada activo tiene un `organization_id` directo, elegido de una lista desplegable de las propias organizaciones
+del usuario creador cuando se crea el activo. Esto es independiente de la **ubicación** del activo — la
+organización de un activo y la organización de su ubicación no se validan de forma cruzada, así que elige ambas
+por separado. La organización se muestra en la página de detalle del activo (pestaña Resumen → panel General)
+y se enlaza de vuelta a la página de esa organización.
+
+La página de una organización muestra un **conteo de activos** en el que se puede hacer clic y que enlaza al registro de activos,
+filtrado por los activos de esa organización (`/assets?organization_id=...`), el mismo patrón que usa
+el conteo de activos de una ubicación (consulta [Ubicaciones](../locations/index.mdx)).

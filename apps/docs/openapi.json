@@ -3,7 +3,7 @@
   "info": {
     "title": "Open Gauge API",
     "description": "Open Gauge API",
-    "version": "3.2.1"
+    "version": "3.3.0"
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -4889,7 +4889,7 @@
           "Users"
         ],
         "summary": "Update User",
-        "description": "Admin-only: role, organization, is_active, and is_verified are all\nprivilege-bearing fields. Self-service updates go through PATCH /users/me\n(UserSelfUpdate) instead, which only allows name/email.",
+        "description": "Admin-only: role, organization, is_active, and is_verified are all\nprivilege-bearing fields. Self-service updates go through PATCH /users/me\n(UserSelfUpdate) instead, which only allows name/email/language.",
         "operationId": "update_user_api_v1_users__user_id__put",
         "security": [
           {
@@ -14758,6 +14758,10 @@
             ],
             "title": "Profile Picture Url"
           },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
           "last_login_at": {
             "anyOf": [
               {
@@ -14789,6 +14793,7 @@
           "role",
           "is_active",
           "is_verified",
+          "language",
           "last_login_at",
           "created_at",
           "updated_at"
@@ -14832,6 +14837,19 @@
               }
             ],
             "title": "Email"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
           }
         },
         "type": "object",

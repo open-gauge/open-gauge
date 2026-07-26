@@ -1,0 +1,132 @@
+---
+title: Firmas digitales del certificado
+description: Cómo se firman criptográficamente los PDFs de certificado de calibración, y cómo verificar uno.
+---
+
+Cada PDF de certificado de calibración que genera Open Gauge está firmado digitalmente — una firma PDF
+estándar (PAdES, [ISO 32000](https://www.iso.org/standard/75839.html)) incrustada directamente en el
+documento, no una imagen de una firma. Cualquier visor de PDF con soporte de firma (Adobe Acrobat,
+Chrome, Preview, ...) puede verificarla de forma nativa: que el certificado fue emitido por la
+organización que dice haberlo emitido, y que el archivo no ha sido alterado desde entonces. No se necesita
+ninguna cuenta de Open Gauge ni acceso a la API para comprobarlo — la prueba viaja con el propio PDF.
+
+Este es un mecanismo diferente y complementario a la **imagen de firma** de quien realizó la calibración
+descrita en [Generación de certificados](./certificates.mdx) — esa es una imagen de la firma de una
+persona, vinculada criptográficamente a su cuenta de usuario (consulta
+[Firmas](../self-hosting/authentication.mdx#signatures)) pero no a los bytes específicos del PDF.
+El mecanismo de esta página firma todo el documento renderizado, independientemente de quién lo
+realizó e independientemente de qué plantilla LaTeX lo produjo.
+
+## Cómo funciona
+
+La firma ocurre como un paso de posprocesamiento sobre el PDF compilado, después de que
+[Tectonic](https://tectonic-typesetting.github.io/) ya haya producido los bytes finales — se ejecuta de
+forma idéntica sin importar si el certificado provino de la plantilla integrada o de una subida
+completamente personalizada, ya que nunca examina el código fuente `.tex` en absoluto.
+
+1. Open Gauge resuelve la organización del activo calibrado de la misma manera en que resuelve qué
+   plantilla de certificado usar (consulta
+   [Qué plantilla se usa](./certificate-templates.mdx#uploading-a-template)) — organización del
+   activo, luego organización de la ubicación, luego organización de quien realizó la calibración.
+2. Esa organización tiene (o genera de forma diferida, en el primerísimo certificado que emite) un
+   certificado X.509 RSA-2048 autofirmado — su **certificado de firma**.
+3. El PDF compilado se firma con ese certificado: una **firma de certificación**
+   (`DocMDP=NO_CHANGES`), el nivel de firma PDF más estricto — cualquier modificación, por pequeña
+   que sea, después de firmar, la invalida. Esa es la garantía correcta para un certificado de
+   calibración emitido, que no tiene ninguna razón legítima para cambiar una vez emitido.
+4. Si el activo no tiene ninguna organización resoluble en absoluto, se usa en su lugar un
+   certificado de respaldo a nivel de toda la instancia (generado de la misma manera, de forma
+   diferida, la primera vez que se necesita).
+
+El certificado de firma de cada organización se genera una vez y se reutiliza para cada certificado
+que emita a partir de entonces — consulta [Certificado de firma de la organización](#organization-signing-certificate)
+para saber dónde encontrarlo.
+
+## Verificar un certificado firmado
+
+Abre cualquier PDF de certificado generado en un visor con soporte de firma:
+
+- **Adobe Acrobat / Acrobat Reader** — un banner dice "Firmado y todas las firmas son válidas" (o,
+  la primera vez, "La firma es válida, pero no se ha verificado la identidad del firmante" — consulta
+  [Confiar en el certificado](#trusting-the-certificate) más abajo para eliminar esa advertencia). Haz
+  clic en el panel de firma para ver el nombre del firmante, la huella digital del certificado, y la
+  hora de la firma.
+- **El visor de PDF integrado de Chrome / Preview de macOS** — busca el indicador del panel de firma en
+  la barra de herramientas; ambos analizan y validan firmas PAdES sin ningún complemento.
+- **Línea de comandos** (cualquier sistema operativo, sin necesidad de ningún producto de Adobe) —
+  `pdfsig` de [poppler-utils](https://poppler.freedesktop.org/) reporta el mismo resultado:
+
+  ```console
+  $ pdfsig certificate_OG-90421_v3.pdf
+  Digital Signature Info of: certificate_OG-90421_v3.pdf
+  Signature #1:
+    - Signer Certificate Common Name: Acme Metrology Lab
+    - Signature Type: ETSI.CAdES.detached
+    - Signed Ranges: [0 - 12345], [23456 - EOF]
+    - Total document signed
+    - Signature is Valid.
+  ```
+
+Sin importar qué herramienta uses, dos cosas deben ser ciertas para que el certificado sea confiable:
+la firma está **intacta** (los bytes no han cambiado desde que se firmó) y la cadena de certificados
+es **válida** (las matemáticas criptográficas cuadran). Un visor que reporte "el documento ha sido
+alterado" o "firma inválida" para un certificado descargado de Open Gauge significa que el archivo se
+modificó en tránsito o después de la descarga — trátalo como no confiable y vuelve a descargarlo desde
+la fuente.
+
+## Confiar en el certificado
+
+Como el certificado es **autofirmado** (no hay ninguna Autoridad Certificadora externa involucrada —
+apropiado para un producto autoalojado sin ninguna dependencia integrada de ninguna CA en particular),
+un visor al que no se le ha indicado explícitamente que confíe en él validará la firma con éxito pero
+igual mostrará una advertencia como "no se ha verificado la identidad del firmante." Esto es
+esperado, y es el mismo modelo de confianza-en-el-primer-uso que un certificado TLS autofirmado — no
+significa que la firma sea más débil, solo que el visor todavía no sabe que debe confiar en *este
+certificado específico*.
+
+Para eliminar la advertencia permanentemente en Adobe Acrobat:
+
+1. Descarga el certificado público de la organización — **Organizaciones → (organización) →
+   Firma de certificado → Descargar certificado** en la interfaz de Open Gauge, o
+   `GET /api/v1/organizations/{id}/signing-certificate` (consulta
+   [Certificado de firma de la organización](#organization-signing-certificate)).
+2. En Acrobat: **Editar → Preferencias → Firmas → Identidades y certificados de confianza → Más...**,
+   luego **Certificados de confianza → Importar**, selecciona el archivo `.pem` descargado.
+3. Selecciónalo en la lista → **Editar confianza** → marca **Usar este certificado como raíz de
+   confianza**.
+
+Una vez importado, cada certificado firmado por esa organización se valida sin problemas y sin
+ninguna advertencia — este es un paso único por organización y por persona que realiza la
+verificación (un auditor, un cliente, un regulador), no algo que Open Gauge o el propio PDF firmado
+puedan hacer en su nombre.
+
+## Certificado de firma de la organización [#organization-signing-certificate]
+
+El certificado de firma de cada organización (RSA-2048, autofirmado, validez de 10 años) es visible en
+su página de organización — **Organizaciones → (organización)** — mostrando el algoritmo, la huella
+digital SHA-256, y el período de validez, con un botón para descargar el certificado (no la clave
+privada, que nunca sale del servidor y está cifrada en reposo de la misma manera que las claves de
+firma Ed25519 por usuario usadas para las imágenes de firma — consulta
+[Firmas](../self-hosting/authentication.mdx#signatures)).
+
+Muestra "Aún no hay certificado" hasta que se emite el primer certificado de la organización — el
+par de claves se genera de forma diferida en el primer uso, no cuando se crea la organización en sí,
+así que una organización a la que nunca se le ha generado un certificado de calibración no tiene una
+clave de firma sin usar por ahí.
+
+`GET /api/v1/organizations/{id}/signing-certificate` devuelve la misma información como JSON (o
+`null` antes de que se emita el primer certificado); `GET /api/v1/admin/signing-certificate` devuelve
+el respaldo a nivel de toda la instancia usado para activos sin ninguna organización resoluble. Ambos
+son legibles por cualquier usuario autenticado — el certificado es la mitad pública del par de claves,
+no un secreto.
+
+## Por qué no la clave personal de quien realiza la calibración
+
+La imagen de firma ya vincula a un técnico específico con el certificado (consulta
+[Generación de certificados](./certificates.mdx)) — la firma a nivel de documento descrita en esta
+página usa en su lugar el certificado de la *organización*, deliberadamente: un certificado de
+calibración se emite bajo la autoridad del laboratorio, no del técnico individual, así que debería
+seguir siendo verificable incluso si el técnico que la realizó después deja la organización o nunca
+configuró una firma personal en absoluto. Los dos mecanismos son complementarios, no redundantes — uno
+identifica quién realizó la calibración, el otro demuestra qué laboratorio emitió el documento y que
+no ha sido manipulado desde entonces.

@@ -1,0 +1,70 @@
+---
+title: Resumen de cumplimiento
+description: Cómo se corresponden las funciones de calibración y trazabilidad de Open Gauge con las normas regulatorias y de certificación contra las que se evalúan los laboratorios.
+---
+
+Open Gauge está construido para poder usarse como el sistema de registro detrás de un programa de
+calidad/metrología acreditado o certificado, no solo como una base de datos de sensores. Esta
+sección documenta, norma por norma, exactamente qué cláusulas abordan hoy las funciones de Open
+Gauge, cuáles se abordan parcialmente, y cuáles siguen siendo responsabilidad de la organización
+que opera el sistema en lugar del software.
+
+## Cómo leer estas páginas
+
+Cada norma tiene su propia página con tres partes:
+
+1. **Resumen** — editor, edición, alcance, y por qué es relevante para una plataforma de
+   calibración autoalojada.
+2. **Tabla de cumplimiento** — una fila por cada cláusula relevante, con un estado y una
+   referencia a dónde se aborda esa cláusula dentro de Open Gauge.
+3. **Detalle** — una sección por cláusula, con un breve extracto del requisito y una explicación
+   de cómo lo aborda Open Gauge (o la brecha concreta, si todavía no lo hace).
+
+### Leyenda de estado
+
+| Estado | Significado |
+|---|---|
+| ✅ Cumplido | La función existe hoy y satisface la cláusula tal como está escrita. |
+| ⚠️ Parcial | Open Gauge proporciona parte de lo que exige la cláusula, pero queda una brecha real — descrita en la sección de detalle de la cláusula. |
+| ❌ No cumplido | Open Gauge actualmente no aborda esta cláusula. |
+| ➖ N/A | La cláusula rige algo fuera de lo que un sistema de software puede satisfacer por sí mismo (ver abajo). |
+
+### Alcance: qué cubren y qué no cubren estas páginas
+
+Las normas de certificación y acreditación mezclan dos tipos de requisitos: cosas que un **sistema
+de software** puede implementar (cadenas de trazabilidad, cálculo de incertidumbre, inmutabilidad
+de registros, contenido de informes, control de acceso), y cosas que son inherentemente un asunto
+**organizacional/de proceso** — registros de competencia del personal, política de imparcialidad,
+programas de auditoría interna, instalaciones y control ambiental, manejo de quejas. Las tablas de
+cumplimiento de Open Gauge solo incluyen cláusulas del primer tipo; las cláusulas organizacionales
+son requisitos reales que un laboratorio certificado igual debe satisfacer, solo que no son cosas
+que una página de documentación sobre software pueda marcar significativamente como "cumplido."
+
+### Política de citas
+
+Cuando la redacción exacta de una cláusula importa, estas páginas la citan — brevemente, una
+cláusula a la vez, con el propósito de explicar cómo la aborda Open Gauge. Varias de las normas
+referenciadas aquí (los documentos ISO y SAE/IAQG) son publicaciones con licencia comercial y
+protegidas por derechos de autor; estas páginas no las reproducen más allá de lo necesario para
+fundamentar cada explicación. Para el texto completo autorizado, obtén una copia con licencia del
+editor (ISO, SAE International, etc.) — los documentos de acceso público (guías JCGM/BIPM,
+publicaciones de EA, regulaciones federales de EE. UU.) son la excepción.
+
+### Esto no es una certificación
+
+Estas páginas describen las capacidades del software tal como están implementadas y verificadas
+contra la base de código actual en la fecha indicada en cada página. Son documentación técnica, no
+una opinión legal, una acreditación, ni una garantía de que un despliegue específico sea conforme —
+la conformidad real depende de cómo una organización configura y opera Open Gauge, y del resto de
+su sistema de calidad.
+
+## Normas cubiertas
+
+| Norma | Estado |
+|---|---|
+| [ISO/IEC 17025:2017](./iso-17025.mdx) — Requisitos generales para la competencia de los laboratorios de ensayo y calibración | Publicada |
+| [EA-4/02](./ea-4-02.mdx) — Evaluación de la incertidumbre de medición en calibración | Publicada |
+| [ISO 9001:2015](./iso-9001.mdx) — Sistemas de gestión de calidad | Publicada |
+| [ISO 10012:2003](./iso-10012.mdx) — Sistemas de gestión de las mediciones | Publicada |
+| [ISO 13485:2016](./iso-13485.mdx) — Sistemas de gestión de calidad para productos sanitarios | Publicada |
+| [Conjunto JCGM/GUM](./gum-uncertainty.mdx) — Incertidumbre de medición | Publicada (GUM 100, GUM-6, JCGM 106; la hoja de ruta del VIM y GUM-1 es vocabulario, incorporada en [Normas y glosario](../reference/standards-glossary.mdx)) |

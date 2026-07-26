@@ -21,7 +21,7 @@ export default async function AppLayout({
       <div className="flex flex-col h-screen overflow-hidden bg-og-surface-alt">
         {isDemoMode() && <DemoBanner />}
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          <Sidebar docsTree={docsSource.getPageTree()} />
+          <Sidebar docsTree={docsSource.getPageTree(locale)} />
           <div className="flex-1 flex flex-col overflow-hidden">
             <TopBar />
             <main className="flex-1 overflow-y-auto og-grid-bg">{children}</main>

@@ -1,0 +1,4 @@
+{
+  "title": "Sensores y activos",
+  "pages": ["asset-registry", "adding-a-sensor", "adding-a-daq"]
+}

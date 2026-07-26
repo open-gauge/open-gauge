@@ -1,0 +1,106 @@
+---
+title: Ajustement de courbe et statistiques de régression
+description: Comment Open Gauge ajuste une courbe de calibration et calcule le R², la RMSE, l'erreur maximale, la non-linéarité, la répétabilité et l'hystérésis.
+---
+
+Open Gauge ajuste une courbe de calibration polynomiale à vos points de données (référence,
+mesuré), puis rapporte un ensemble de statistiques de régression standard décrivant la qualité de
+cet ajustement.
+
+## L'ajustement
+
+Open Gauge ajuste :
+
+$$
+\text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
+$$
+
+via les moindres carrés (`np.polyfit`), de degré 1 à 5. Par défaut, le degré est
+**sélectionné automatiquement via l'AIC** (critère d'information d'Akaike) avec une règle de
+parcimonie : Open Gauge choisit le degré le plus bas dont l'AIC n'est pas dépassé de plus de 2
+points par un degré supérieur, afin de ne pas ajuster inutilement des ondulations d'ordre
+supérieur au bruit. Vous pouvez également fixer un degré spécifique explicitement dans
+l'assistant.
+
+**Covariance des coefficients.** Lorsqu'il y a plus de points de données que de paramètres
+ajustés, Open Gauge calcule également la matrice de covariance des coefficients ajustés
+(`np.polyfit(..., cov=True)`), stockée aux côtés de la calibration. Ceci importe car évaluer la
+courbe en un point en utilisant deux coefficients ajustés ou plus ensemble — sans leur
+covariance — sous-estime l'incertitude réelle (l'Annexe H.3 du GUM montre des sous-estimations de
+plus de 30 % en l'omettant). Open Gauge stocke cette matrice afin qu'une propagation correcte soit
+possible ; il n'existe pas encore de fonctionnalité Open Gauge qui évalue la courbe d'une
+calibration enregistrée à une lecture en direct, mais la covariance est capturée pour le jour où
+ce sera le cas.
+
+Un **ajustement dégénéré** — autant ou moins de points de données que de paramètres ajustés (par
+ex. un ajustement en ligne droite à 2 points) — a zéro degré de liberté résiduel : aucune matrice
+de covariance n'est stockée, et le terme d'incertitude de résidu d'ajustement (voir
+[Le budget d'incertitude](./uncertainty-budget.mdx)) est marqué comme n'ayant aucun degré de
+liberté fini.
+
+## Résidus
+
+Pour chaque point, le **résidu** est :
+
+$$
+\text{residual}_i = \text{reference}_i - f(\text{measured}_i)
+$$
+
+## R² [#r-squared]
+
+Le coefficient de détermination — quelle part de la variance des valeurs de référence la courbe
+ajustée explique. **1,0 est un ajustement parfait.**
+
+## RMSE [#rmse]
+
+L'erreur quadratique moyenne (*Root Mean Square Error*) — l'ampleur typique des résidus :
+
+$$
+\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^n \text{residual}_i^2}
+$$
+
+## Erreur maximale [#max-error]
+
+Le plus grand résidu absolu unique parmi tous les points de données. C'est le nombre qu'Open
+Gauge compare à une spécification pour décider de la réussite/de l'échec — voir
+[Règles de décision](./decision-rules.mdx).
+
+## Erreur %FS [#full-scale-error]
+
+L'erreur maximale exprimée en pourcentage de l'étendue de mesure :
+
+$$
+\%\text{FS error} = \frac{\text{max error}}{\text{range max} - \text{range min}} \times 100\%
+$$
+
+## Non-linéarité [#non-linearity]
+
+Pour un ajustement de degré ≥ 2 : de combien la courbe ajustée s'écarte de sa propre meilleure
+droite d'ajustement, en pourcentage de pleine échelle. Une non-linéarité importante est un signal
+qu'un ajustement de degré supérieur était le bon choix — pas seulement du bruit que la sélection
+automatique de degré a saisi.
+
+## Répétabilité [#repeatability]
+
+L'écart-type des valeurs mesurées à des **points de référence répétés** (trois lectures ou plus à
+la même valeur de référence) :
+
+$$
+\text{repeatability} = \sqrt{\frac{1}{m-1}\sum_{j=1}^m (x_j - \bar{x})^2}
+$$
+
+où $x_1, \ldots, x_m$ sont les valeurs mesurées enregistrées à la même valeur de référence.
+Nécessite au moins 3 points à cette référence pour être calculée — Open Gauge ne la rapporte que
+lorsque les données le permettent.
+
+## Hystérésis [#hysteresis]
+
+Le plus grand écart entre les valeurs mesurées enregistrées à la *même* valeur de référence à
+travers un **balayage ascendant et descendant** — c'est-à-dire à quel point la lecture « en
+montant vers X » et la lecture « en descendant vers X » sont éloignées, pour la valeur de
+référence montrant le plus grand écart. Nécessite un balayage montée/descente dans les données
+(la même valeur de référence visitée dans les deux sens) pour être calculée.
+
+Voir [Exemples concrets](./examples/index.mdx) pour un exemple de cellule de charge qui calcule
+à la main la répétabilité et l'hystérésis à partir d'un jeu de données réel à 12 points
+ascendant/descendant.

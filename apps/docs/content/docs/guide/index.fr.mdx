@@ -1,0 +1,54 @@
+---
+title: Introduction
+description: Ce qu'est Open Gauge, à qui il s'adresse, et comment cette documentation est organisée.
+---
+
+## Qu'est-ce qu'Open Gauge ?
+
+**Open Gauge** est une plateforme auto-hébergée pour gérer les capteurs industriels,
+les actifs d'instrumentation, les enregistrements de calibration, les coefficients de calibration,
+les certificats et les données de traçabilité. Elle est conçue pour les laboratoires, les sites
+industriels et les organisations d'ingénierie qui doivent savoir — avec preuves à l'appui — qu'une
+mesure peut être considérée comme fiable.
+
+Open Gauge assure le suivi de :
+
+- Le **registre des actifs** : chaque capteur et dispositif d'acquisition de données (DAQ) que
+  vous possédez, ses spécifications, et son emplacement physique.
+- L'**historique de calibration** : chaque événement de calibration, sous forme d'enregistrement
+  immuable et en ajout seul — jamais écrasé, jamais corrigé silencieusement.
+- L'**incertitude de mesure**, calculée selon le [JCGM 100:2008 (GUM)](./reference/standards-glossary.mdx)
+  et déclarée selon l'[ISO/IEC 17025:2017](./reference/standards-glossary.mdx).
+- Les **certificats**, procédures, sites/emplacements, et une piste d'audit de qui a modifié quoi
+  et quand.
+
+## À qui s'adresse cette documentation
+
+- **Techniciens de laboratoire et ingénieurs en calibration** — les sections
+  [Capteurs](./sensors/asset-registry.mdx), [Emplacements](./locations/index.mdx),
+  [Procédures](./procedures/index.mdx) et [Calibration](./calibration/overview.mdx) décrivent
+  les flux de travail quotidiens.
+- **Métrologues** — les sections [Calibration](./calibration/overview.mdx) et
+  [Score de santé](./health-scoring/overview.mdx) couvrent l'ensemble des bases mathématiques :
+  ajustement de courbe, budgets d'incertitude, règles de décision, et exemples numériques
+  détaillés.
+- **Équipes IT / DevOps déployant Open Gauge sur site** — voir
+  [Auto-hébergement](./self-hosting/deployment.mdx).
+- **Développeurs intégrant Open Gauge** — voir la [Référence API](/docs/api), générée
+  directement à partir du schéma OpenAPI en direct.
+
+## Comment Open Gauge est organisé
+
+Open Gauge modélise une hiérarchie simple :
+
+```
+Organization
+ └─ Locations (site → building → laboratory → ...)
+     └─ Assets (sensors, DAQs)
+         └─ Sensor channels (one per measured physical quantity)
+             └─ Calibrations (immutable history, one row per event)
+```
+
+Lisez ensuite [Modèle de données et concepts](./concepts/data-model.mdx) pour la vue d'ensemble,
+ou allez directement à [Ajouter un capteur](./sensors/adding-a-sensor.mdx) si Open Gauge est déjà
+en cours d'exécution et que vous voulez simplement enregistrer votre premier instrument.

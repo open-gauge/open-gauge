@@ -1,0 +1,38 @@
+---
+title: Calibraciones de solo coeficientes
+description: Registrar un certificado de laboratorio externo que indica el polinomio de calibración directamente, sin puntos de datos en bruto.
+---
+
+Algunos sensores — principalmente los enviados a un laboratorio externo — regresan con un certificado de
+calibración que indica los coeficientes del polinomio de calibración directamente, sin ningún punto de
+dato de referencia/medido en bruto incluido. Para estos casos, Open Gauge tiene una ruta dedicada para que no
+tengas que fabricar puntos de datos falsos solo para registrar el resultado.
+
+## Cómo usarla
+
+En una calibración **externa**, marcar **"Solo coeficientes (sin datos en bruto)"** en el Paso 1
+reemplaza el paso de datos en bruto del asistente con un formulario manual de ingreso de coeficientes:
+
+- El **orden del polinomio** (1–5) y sus **coeficientes**, ingresados con la misma convención de
+  potencias descendentes que usa el propio motor de regresión de Open Gauge (grado más alto primero,
+  término constante al final).
+- El **rango válido** (mín/máx) sobre el cual aplica el polinomio.
+- Opcionalmente, **"Incertidumbre indicada en el certificado"** — si el certificado del laboratorio
+  indica una incertidumbre expandida y un factor de cobertura, ingrésalos aquí para almacenarlos
+  directamente (en lugar de fabricar un valor derivado de un ajuste), produciendo una sola fila
+  `external_certificate_stated` en el [presupuesto de incertidumbre](./uncertainty-budget.mdx#contributions).
+
+## Qué se deja en blanco a propósito
+
+Como no hay datos en bruto, Open Gauge no calcula (ni muestra) un ajuste — esta ruta
+deliberadamente deja vacíos **R², RMSE**, la fila de presupuesto `fit_residuals`, y, de forma
+crítica, **la regla de decisión y el dictamen de conformidad**.
+
+Un dictamen de conformidad (aprobado/rechazado) requiere un *error evaluado* contra el cual comparar
+una especificación (GUM §6.3, ISO/IEC 17025 §7.8.6) — un registro de solo coeficientes no tiene ningún error
+evaluado, solo la propia función de calibración. Así que Open Gauge no muestra ni almacena una insignia
+fabricada de CONFORME/NO CONFORME para estos registros. Si necesitas un dictamen de conformidad, usa
+una calibración regular (que no sea de solo coeficientes) con los datos en bruto reales en su lugar.
+
+Consulta el [Ejemplo 4](./examples/coefficients-only-certificate.mdx) para un caso completo
+resuelto, incluyendo qué se guarda y se muestra.

@@ -1,0 +1,108 @@
+---
+title: "Ejemplo 2 — Transductor de presión, ajuste cuadrático (selección automática de grado)"
+description: Selección automática del grado polinomial mediante AIC, detección de no linealidad, y la ruta del factor de cobertura con distribución t.
+---
+
+Ejercita: selección automática del grado polinomial (AIC), detección de no linealidad, y la ruta
+del factor de cobertura de distribución t / Welch-Satterthwaite.
+
+## 2.0 Configuración
+
+Un activo, un canal:
+
+| Campo | Valor |
+|---|---|
+| Nombre | Line Pressure Transmitter |
+| Magnitud física | Presión |
+| Tipo de medición | Absoluta (cualquiera de las dos sirve para este ejemplo) |
+| Rango mín / máx | 0 / 700 |
+| Unidad | kPa |
+| Valor de exactitud | 1.0 |
+| Unidad de exactitud | **% FS** — completa primero Rango mín/máx, luego elige "% FS" como la primera opción |
+| Resolución | 0.5 |
+| Unidad de resolución | kPa |
+
+Deja en blanco `measurement_uncertainty` (no se usa en este ejemplo).
+
+## 2.1 Configuración del asistente de calibración
+
+Tipo **externa** (no se necesita ningún activo de referencia), **Grado de regresión: Automático**
+(el propósito de este ejemplo), distribución **distribución t**, confianza **95%** (la ruta de
+distribución t deriva su propio factor de cobertura a partir del nivel de confianza y los grados de
+libertad efectivos del ajuste), regla de decisión **Aceptación simple**.
+
+Puntos de datos — un transductor con una no linealidad cuadrática pequeña pero real en todo su rango:
+
+| # | Referencia (kPa) | Medido (kPa) |
+|---|---|---|
+| 1 | 0.60 | 0 |
+| 2 | 102.35 | 100 |
+| 3 | 212.62 | 200 |
+| 4 | 330.42 | 300 |
+| 5 | 456.64 | 400 |
+| 6 | 590.40 | 500 |
+| 7 | 732.59 | 600 |
+| 8 | 882.38 | 700 |
+
+## Las matemáticas
+
+Open Gauge prueba los grados 1 a 5 y elige el grado más bajo cuyo AIC no sea superado por más de 2
+puntos por un grado más alto (la regla de parsimonia). Para estos datos selecciona el **grado 2**:
+
+$$
+\text{reference} = 0.00040 \cdot \text{measured}^2 + 0.98014 \cdot \text{measured} + 0.50917
+$$
+
+(Intenta forzar explícitamente "Grado de regresión: 2" — deberías obtener los mismos coeficientes
+que el resultado autoseleccionado, confirmando que el AIC eligió el mismo grado que elegirías a
+simple vista con los datos.)
+
+| Punto | Calculado | Residuo |
+|---|---|---|
+| 1 | 0.509167 | +0.090833 |
+| 2 | 102.519881 | −0.169881 |
+| 3 | 212.523929 | +0.096071 |
+| 4 | 330.521310 | −0.101310 |
+| 5 | 456.512024 | +0.127976 |
+| 6 | 590.496071 | −0.096071 |
+| 7 | 732.473452 | +0.116548 |
+| 8 | 882.444167 | −0.064167 |
+
+$n = 8$, $k = 3$ (grado 2 → 3 coeficientes) → dof residuales $= 5$. Error máximo = **0.169881**
+(punto 2); intervalo $= 882.38 - 0.6 = 881.78$ → error %FS $= 0.169881/881.78 \times 100\% =
+\mathbf{0.0193\%}$.
+
+**No linealidad = 3.17% FS** — la desviación del ajuste cuadrático respecto a su propia mejor línea
+recta de ajuste. Este es el número que confirma "sí, una línea recta habría sido un ajuste
+notablemente peor" — que el grado 2 fue la decisión correcta, no el grado 1.
+
+**Presupuesto de incertidumbre:**
+
+| Fuente | u |
+|---|---|
+| fit_residuals (Tipo A, dof = 5) | 0.119470 |
+| resolution (Tipo B) = $0.5/\sqrt{12}$ | 0.144338 |
+
+- Combinada: $u_c = \sqrt{0.119470^2 + 0.144338^2} = \mathbf{0.187367\ kPa}$.
+- $\nu_{\text{eff}} = u_c^4 / (u_A^4/5) \approx \mathbf{30.2}$ (solo `fit_residuals` tiene dof
+  finitos).
+- Expandida (distribución t): $k = t_{0.975,\,\nu=30.2} \approx 2.042 \Rightarrow U = 0.187367
+  \times 2.042 = 0.382523 \approx \mathbf{0.38\ kPa}$ (2 cifras significativas).
+
+**Regla de decisión (aceptación simple, especificación = ±1.0% FS = ±8.818 kPa):**
+
+$$
+\text{max error} = 0.169881 \le 8.818 \implies \textbf{CONFORMA}
+$$
+
+(con amplio margen — este es un ejemplo de calibración "buena").
+
+## Resultados esperados
+
+| Campo | Valor |
+|---|---|
+| Grado polinomial | 2 (autoseleccionado) |
+| No linealidad | 3.17% |
+| Incertidumbre combinada | mostrado redondeado: **0.19** |
+| Incertidumbre expandida (±) | mostrado redondeado: **0.38** |
+| Dictamen | CONFORMA con ±1.0% de escala completa, regla de decisión = Aceptación simple |

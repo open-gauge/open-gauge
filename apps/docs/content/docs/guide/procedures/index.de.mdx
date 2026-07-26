@@ -1,0 +1,47 @@
+---
+title: Verfahren
+description: Wiederverwendbare Kalibrierverfahrensvorlagen — Schritte, Ausrüstung, Materialien und Abnahmekriterien.
+---
+
+Ein **Verfahren** ist eine wiederverwendbare Kalibrierverfahrensvorlage, die einer physikalischen
+Größe zugeordnet ist (z. B. ein dokumentierter Prozess zur Kalibrierung von Temperatur-RTDs gegen
+ein Trockenblock-Referenznormal). Verwalten Sie sie über die Seite **Verfahren** in der Seitenleiste.
+
+## Warum Verfahren existieren
+
+ISO/IEC 17025 verlangt, dass ein Labor definierte Verfahren für seine Kalibrierarbeit dokumentiert
+und befolgt. Die Verfahrensvorlagen von Open Gauge erfassen diese Dokumentation einmalig und lassen Sie
+sie von jeder auf dieselbe Weise durchgeführten Kalibrierung aus referenzieren, statt Methodiknotizen
+jedes Mal neu einzutippen.
+
+## Felder
+
+| Feld | Zweck |
+|---|---|
+| Name & physikalische Größe | Was dieses Verfahren kalibriert und für welche Größe. |
+| Version | Freitext-Versionsangabe (z. B. `"1.0"`) — erhöhen Sie sie, wenn sich die Methodik ändert. |
+| Schwierigkeitsgrad | Informativer Hinweis zum Kenntnisstand für denjenigen, der es durchführt. |
+| Normreferenz | Freitext-Verweis auf eine externe Norm (eine ISO-/ASTM-Nummer usw.). |
+| Autor, Dauer | Wer es verfasst hat und wie lange die Durchführung ungefähr dauert. |
+| Schlagworte | Freie Bezeichnungen zur Suche/Filterung. |
+| Ausrüstung | Strukturierte Liste der benötigten Ausrüstung. |
+| Materialien | Strukturierte Liste der benötigten Materialien/Verbrauchsmittel. |
+| Umgebung | Erforderliche Umgebungsbedingungen (Temperatur, Feuchte usw.), unter denen das Verfahren durchzuführen ist. |
+| Sicherheitshinweise | Freitextliste der Sicherheitsaspekte. |
+| Schritte | Die geordneten Verfahrensschritte selbst. |
+| Abnahmekriterien | Was für dieses Verfahren als bestanden gilt, direkt daneben dokumentiert. |
+
+## Ein Verfahren mit einem Kanal verknüpfen
+
+Legen Sie bei einem Sensorkanal die **Kalibriermethode** auf ein gespeichertes Verfahren fest — dies
+wird zum *Standard*-Verfahren des Kanals, vorausgewählt, sobald Sie eine neue interne Kalibrierung
+für diesen Kanal starten. Es ist nur ein Standard: Jede Kalibrierung kann bei Bedarf ein anderes
+Verfahren (oder keines) referenzieren.
+
+## Wo Verfahren in einer Kalibrierung erscheinen
+
+Eine **interne** Kalibrierung (siehe [Kalibrierübersicht](../calibration/overview.mdx)) kann das
+befolgte Verfahren referenzieren (`internal_procedure_id`), und diese Referenz wird auf dem
+resultierenden Zertifikat zusammen mit dem verwendeten Referenznormal und den erfassten
+Umgebungsbedingungen ausgedruckt — die vollständige Rückführbarkeitskette, die ein
+Kalibrierzertifikat benötigt.

@@ -1,0 +1,103 @@
+---
+title: Génération de certificats
+description: Ce qui figure sur un certificat de calibration Open Gauge, et comment le récupérer.
+---
+
+Enregistrer une calibration génère au mieux un certificat PDF au format A4 dans la même requête —
+si la génération échoue pour une raison quelconque, l'enregistrement de calibration est tout de
+même enregistré ; vous pouvez régénérer le certificat plus tard.
+
+Les certificats ne sont **pas** des PDF construits à la main — ils sont générés à partir d'un
+modèle LaTeX (un fichier `.tex` avec des espaces réservés) compilé en PDF par
+[Tectonic](https://tectonic-typesetting.github.io/), un petit moteur LaTeX autonome. Chaque
+organisation obtient un certificat fonctionnel sans aucune configuration (le modèle par défaut
+intégré), et un administrateur peut téléverser un modèle personnalisé pour changer la mise en
+page, le texte, ou l'image de marque sans aucun changement de code — voir
+[Modèles de certificat](./certificate-templates.mdx).
+
+## Contenu
+
+- **En-tête à en-tête (letterhead)** — le logo de l'organisation (s'il est défini, voir
+  [Modèle de données et concepts](../concepts/data-model.mdx)) et son nom.
+- **En-tête** — code QR et numéro de certificat.
+- **Informations sur l'actif** — l'actif et la voie calibrée.
+- **Traçabilité** — la procédure suivie, l'étalon de référence utilisé (calibrations internes),
+  et les conditions environnementales enregistrées.
+- **Résultats** — les coefficients ajustés et l'équation, le tableau des statistiques de
+  régression (voir [Ajustement de courbe](./curve-fitting.mdx)), le tableau détaillé du budget
+  d'incertitude (voir [Le budget d'incertitude](./uncertainty-budget.mdx)), et la déclaration de
+  conformité (voir [Règles de décision](./decision-rules.mdx)).
+- **Jeu de données** — le tableau des points bruts et un graphique de l'ajustement.
+- **Signature** — l'image de signature de l'utilisateur ayant effectué la calibration, s'il en a
+  défini une (voir [Signatures](../self-hosting/authentication.mdx#signatures)),
+  cryptographiquement liée à son compte et vérifiable de manière indépendante. Affichée lorsque la
+  calibration est liée à un compte utilisateur réel — le champ « Effectuée par » de l'assistant de
+  calibration prend par défaut l'utilisateur connecté (liant l'enregistrement à son compte) mais
+  peut être basculé en texte libre pour un intervenant externe, auquel cas il n'y a aucun compte
+  sur lequel rechercher une signature. En repli (principalement pour les calibrations enregistrées
+  avant que cette liaison n'existe), si l'enregistrement n'est pas lié mais que le nom saisi dans
+  « Effectuée par » correspond exactement au nom d'affichage d'un utilisateur actif, la signature
+  de cet utilisateur est tout de même utilisée.
+
+Cette image de signature est une image sur la page, pas une signature vérifiable du *document* —
+chaque PDF de certificat généré est séparément et en plus signé numériquement (PAdES, intégré
+directement dans le PDF par tout lecteur PDF prenant en charge les signatures) après la
+compilation, quel que soit le modèle qui l'a produit. Voir
+[Signatures numériques des certificats](./certificate-signing.mdx).
+
+La section incertitude imprime une déclaration en phrase complète de style GUM §7.2.4 — valeur,
+facteur d'élargissement, base (distribution normale contre distribution t), niveau de confiance,
+et la plage de validité sur laquelle l'incertitude s'applique — adaptée pour une *fonction* de
+calibration plutôt qu'un résultat de mesure unique, puisque c'est ce qu'Open Gauge certifie.
+
+## Ce qui n'y figure délibérément pas
+
+Selon l'ISO/IEC 17025 §7.8.4.3, un certificat de calibration ne doit **pas** imprimer de
+recommandation d'intervalle de calibration à moins que cela n'ait été explicitement convenu avec
+le client. Le modèle par défaut intégré n'imprime aucune date d'échéance ni aucune mention
+d'intervalle — cette cellule d'en-tête affiche à la place le lieu de la calibration (voir
+[Conformité ISO/IEC 17025 §7.8.4.3](../compliance/iso-17025.mdx#no-interval-recommendation) pour
+l'historique ; c'était un bogue avant la v3.2.1). `due_date` reste disponible dans le contexte du
+modèle pour un modèle personnalisé téléversé qui souhaiterait l'imprimer. Ceci est distinct de
+l'[intervalle recommandé](../health-scoring/predictions.mdx) qu'Open Gauge calcule pour son propre
+score de santé — ce nombre n'apparaît jamais sur un certificat, seulement dans l'interface de
+l'application elle-même.
+
+## Quel modèle est utilisé
+
+Par défaut, l'ordre de résolution est le premier trouvé qui gagne :
+
+1. Le modèle par défaut actif de l'organisation propriétaire de l'actif calibré (via
+   l'emplacement de l'actif — voir
+   [Modèle de données et concepts](../concepts/data-model.mdx)).
+2. Le modèle par défaut actif de l'organisation de l'utilisateur ayant effectué la calibration, si
+   l'actif n'a pas d'emplacement.
+3. Le modèle par défaut global, si un a été téléversé.
+4. Le modèle intégré fourni avec Open Gauge — toujours disponible, aucune configuration
+   nécessaire.
+
+Le bouton **Télécharger le certificat** sur le panneau de détail d'une calibration possède une
+liste déroulante à côté listant chaque modèle disponible pour cette calibration (les modèles de
+son organisation plus tout modèle global) — en choisir un télécharge un certificat généré avec ce
+modèle spécifique au lieu du modèle par défaut résolu, sans affecter le certificat canonique
+stocké décrit ci-dessous.
+
+## Récupérer un certificat
+
+`GET /calibrations/{id}/certificate` renvoie une URL MinIO présignée valable 1 heure vers le
+certificat généré lors de l'enregistrement de la calibration (le générant à la demande s'il est
+manquant) — c'est le certificat canonique et mis en cache pour la calibration.
+
+`GET /calibrations/{id}/certificate/download` (optionnellement avec un paramètre de requête
+`?template_id=`) génère toujours un nouveau PDF frais et le diffuse directement, sans toucher au
+certificat mis en cache — c'est ce qui alimente le sélecteur de modèle ci-dessus, et ce que
+l'interface utilise pour chaque clic de téléchargement, de sorte que ce que vous voyez reflète
+exactement les données actuelles de la calibration et le modèle choisi. Cela nécessite que la
+calibration ait des résultats (une équation ajustée ou des coefficients saisis manuellement) ;
+sinon, elle renvoie 400.
+
+`GET /calibrations/{id}/certificate-templates` liste les modèles disponibles pour l'actif de
+cette calibration (les modèles de son organisation plus les modèles globaux), pour construire un
+sélecteur de modèle comme celui décrit ci-dessus.
+
+Voir [Calibrations](/docs/api/calibrations) dans la référence API.

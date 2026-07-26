@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { CalendarEvent } from "@/types/dashboard";
 import { getCalendarEvents } from "@/services/dashboard.service";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
@@ -14,9 +14,13 @@ function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function formatDisplayDate(dateStr: string): string {
+// Weekday and month names follow the viewer's locale; day/year stay numeric
+// (locale-independent) to match the rest of the app's date formatting.
+function formatDisplayDate(dateStr: string, locale: string, monthShort: string[]): string {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+  const weekday = d.toLocaleDateString(locale, { weekday: "short" });
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${weekday}, ${day} ${monthShort[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 type Grouped = Record<string, CalendarEvent[]>;
@@ -121,6 +125,7 @@ interface Props {
 
 export default function CalibrationCalendar({ initialEvents, initialYear }: Props) {
   const t = useTranslations("dashboard.calendar");
+  const locale = useLocale();
   const monthShort = t.raw("monthShort") as string[];
   const dayLabels = t.raw("dayLabels") as string[];
   const today = new Date();
@@ -273,7 +278,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
           }}
         >
           <p className="text-[11px] font-semibold mb-1.5 text-gray-200">
-            {formatDisplayDate(tooltip.day)}
+            {formatDisplayDate(tooltip.day, locale, monthShort)}
           </p>
           <div className="space-y-1">
             {tooltip.events.map((e, i) => {

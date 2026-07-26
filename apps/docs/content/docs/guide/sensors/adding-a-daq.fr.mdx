@@ -1,0 +1,32 @@
+---
+title: Ajouter un DAQ
+description: Enregistrer un dispositif d'acquisition de données — champs de spécification matérielle.
+---
+
+Un actif de type **DAQ** (dispositif d'acquisition de données) représente un enregistreur de
+données, un conditionneur de signal, ou une passerelle — du matériel qui lit ou achemine des
+signaux provenant de capteurs, plutôt que de mesurer lui-même une grandeur physique. Créez-en un
+via **Actifs → Nouvel actif**, type d'actif **daq**.
+
+Contrairement à un capteur, un DAQ possède une unique ligne de spécification matérielle au lieu de
+voies de mesure :
+
+| Champ | Notes |
+|---|---|
+| Type de DAQ | `data_logger` / `signal_conditioner` / `gateway` / `other` |
+| Voies d'entrée / sortie | Nombre de voies physiques disponibles. |
+| Types de signaux d'entrée / sortie | par ex. 4-20 mA, 0-10 V, thermocouple, RTD. |
+| Fréquence d'échantillonnage (Hz) | Globale et par voie. |
+| Type et résolution du CAN (bits) | Les caractéristiques du convertisseur analogique-numérique. |
+| Plage de tension d'entrée | Min/max. |
+| Impédance d'entrée (Ω) | |
+| Plancher de bruit (µV RMS) | |
+| Plage dynamique (dB) | |
+| Support de synchronisation, source d'horloge, précision de synchronisation temporelle, gigue | Pertinent pour l'acquisition synchronisée multi-voies ou multi-dispositifs. |
+| Protocole de communication, type d'interface | par ex. Modbus, Ethernet/IP, RS-485, USB. |
+| Modes de déclenchement | |
+
+Un DAQ peut être lié depuis un enregistrement de calibration (`daq_id`) pour documenter quel
+matériel d'acquisition a été utilisé pour prendre les mesures de cet événement de calibration —
+utile lorsque le même capteur est lu via différents DAQ à différents moments et que vous voulez
+savoir quelle combinaison a produit un point de données donné.

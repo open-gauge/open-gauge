@@ -12,3 +12,20 @@ export function translateDynamic<T extends (key: never) => string>(
   const k = key as Parameters<T>[0];
   return t.has(k) ? t(k) : key;
 }
+
+/**
+ * Same idea as `translateDynamic`, for values that could belong to one of
+ * several translator namespaces (e.g. a "subtype" filter that mixes DAQ
+ * subtypes and sensor physical quantities) — tries each in order and falls
+ * back to the raw key if none has it.
+ */
+export function translateDynamicAny<T extends (key: never) => string>(
+  translators: (T & { has: (key: never) => boolean })[],
+  key: string,
+): string {
+  for (const t of translators) {
+    const k = key as Parameters<T>[0];
+    if (t.has(k)) return t(k);
+  }
+  return key;
+}

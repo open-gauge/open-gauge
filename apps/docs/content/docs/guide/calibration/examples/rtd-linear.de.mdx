@@ -1,0 +1,224 @@
+---
+title: "Beispiel 1 — Temperatur-RTD, lineare Anpassung, vollständiges Unsicherheitsbudget"
+description: Ein Zweikalibrierungs-Beispiel, das lineare Regression, alle vier Unsicherheitsbeiträge gleichzeitig und alle drei Entscheidungsregeln trainiert.
+---
+
+Trainiert: lineare Regression, alle vier Typ-A-/Typ-B-Budgetbeiträge gleichzeitig
+(Anpassungsresiduen, Referenznormal, Auflösung, nominale Sensorgenauigkeit), die
+Auto-Abruf-Funktion der Referenznormal-Unsicherheit sowie die drei Entscheidungsregeln, die bei
+identischen Daten auseinandergehen.
+
+Jede Zahl unten wurde erzeugt, indem die echte Berechnungs-Engine von Open Gauge gegen die gezeigten
+Eingabedaten ausgeführt wurde, und anschließend unabhängig von Hand aus den zugrunde liegenden
+Formeln neu abgeleitet, um zu bestätigen, dass sie übereinstimmen. Wenn Sie dieselbe Konfiguration
+und dieselben Daten über die Oberfläche eingeben, sollten Sie dieselben Zahlen sehen (bis auf die am
+Ende beschriebene [Anzeigerundung](./rounding-and-troubleshooting.mdx)).
+
+Dieses Beispiel hat **zwei Kalibrierungen**: Zuerst kalibrieren Sie ein Referenzthermometer (sodass
+es eine erweiterte Unsicherheit hinterlegt hat), dann kalibrieren Sie den Arbeitssensor *gegen*
+diese Referenz — dies ist es, was Open Gauge veranlasst, die Budgetzeile "Referenznormal" automatisch
+vorzubefüllen.
+
+## 1.0 Einrichtung — zwei Anlagen
+
+**Anlage A — Referenznormal** (Anlagen → Neue Anlage):
+
+| Feld | Wert |
+|---|---|
+| Name | Reference PT100 Standard |
+| Hersteller / Modell | beliebig, z. B. Fluke / 5628 |
+| Anlagentyp | sensor |
+
+Ein Kanal:
+
+| Feld | Wert |
+|---|---|
+| Kanal-ID | CH1 |
+| Physikalische Größe | Temperatur |
+| Bereich Min / Max | 0 / 100 |
+| Einheit | °C |
+| Kalibrierrolle | **aktiviert** (Referenznormal) |
+
+Lassen Sie Genauigkeit/Auflösung/Unsicherheit bei dieser Anlage leer — hier zählt nur die erweiterte
+Unsicherheit *des Kalibrierdatensatzes* (berechnet in 1.1).
+
+**Anlage B — Arbeitssensor:**
+
+| Feld | Wert |
+|---|---|
+| Name | Process Line Thermometer |
+| Hersteller / Modell | beliebig, z. B. Generic / PT100-A |
+| Anlagentyp | sensor |
+
+Ein Kanal:
+
+| Feld | Wert |
+|---|---|
+| Kanal-ID | CH1 |
+| Physikalische Größe | Temperatur |
+| Bereich Min / Max | 0 / 100 |
+| Einheit | °C |
+| Genauigkeitswert | 0,5 |
+| Genauigkeitseinheit | °C (eine echte Einheit bedeutet "absolut" — siehe [Die "% FS"-Konvention](../../sensors/adding-a-sensor.mdx#the-fs-convention)) |
+| Auflösung | 0,1 |
+| Auflösungseinheit | °C |
+| Messunsicherheit | 0,3 |
+| Unsicherheitseinheit | °C |
+| Kalibrierrolle | nicht aktiviert (kein Referenznormal) |
+
+Lassen Sie "Ausgangssignal-Einheit" bei beiden Kanälen leer, damit die Einheit des Messwerts
+standardmäßig °C wird — dies vermeidet für dieses Beispiel die Komplexität der Einheitsumrechnung.
+
+## 1.1 Zuerst das Referenznormal kalibrieren
+
+Starten Sie bei Anlage A eine Kalibrierung: Typ **intern** (oder extern — spielt hier keine Rolle,
+keine Referenz-Anlage nötig), Verteilung **Normal**, Vertrauensniveau **95 %**, keine
+Genauigkeitsspezifikation nötig (Kanalgenauigkeit überspringen — sie ist bei diesem Kanal nicht
+gesetzt).
+
+Datenpunkte (Referenz = Wert eines übergeordneten Normals; Messwert = Anzeige dieses
+Referenzthermometers):
+
+| # | Referenz (°C) | Messwert (°C) |
+|---|---|---|
+| 1 | 0,000 | 0,010 |
+| 2 | 50,000 | 50,020 |
+| 3 | 100,000 | 99,985 |
+
+### Die Rechnung
+
+Die Anpassung von $\text{reference} = a \cdot \text{measured} + b$ (Grad 1) an diese 3 Punkte
+ergibt $a = 1{,}00025$, $b = -0{,}01750$.
+
+Residuen (Referenz − berechnet):
+
+| Punkt | Berechnet | Residuum |
+|---|---|---|
+| 1 | −0,007498 | **+0,007498** |
+| 2 | 50,015004 | **−0,015004** |
+| 3 | 99,992495 | **+0,007505** |
+
+$n = 3$ Punkte, $k = 2$ Parameter → Rest-Freiheitsgrade $= 1$.
+
+- **Typ-A-Standardunsicherheit** = Stichproben-Standardabweichung der Residuen ($\text{ddof}=1$) =
+  **0,012994 °C**.
+- Keine Typ-B-Beiträge bei diesem Kanal konfiguriert, sodass das Budget genau eine Zeile hat:
+
+| Quelle | Verteilung | u | dof |
+|---|---|---|---|
+| fit_residuals (Typ A) | normal | 0,012994 | 1 |
+
+- **Kombinierte Unsicherheit**: $u_c = \sqrt{0.012994^2} = \mathbf{0{,}012994\ °C}$.
+- **Erweiterungsfaktor**: für eine Normalverteilung bei 95 % Vertrauensniveau,
+  $k = \Phi^{-1}(0.975) \approx \mathbf{1{,}96}$.
+- **Erweiterte Unsicherheit**: $U = k \cdot u_c = 1{,}96 \times 0{,}012994 = 0{,}025467 \approx
+  \mathbf{0{,}025\ °C}$ (2 signifikante Stellen).
+
+### Erwartete Ergebnisse im Assistenten (Schritt 3)
+
+| Feld | Wert |
+|---|---|
+| R² | 0,99999993 |
+| RMSE | 0,010609 |
+| Maximalfehler | 0,015004 |
+| Kombinierte Unsicherheit | 0,012994 (gerundet angezeigt: **0,013**) |
+| Erweiterte Unsicherheit (±) | 0,025467 (gerundet angezeigt: **0,025**) |
+
+Speichern Sie diese Kalibrierung. **Notieren Sie sich die erweiterte Unsicherheit (0,025 °C)** —
+die Kalibrierung von Anlage B ruft diese im nächsten Schritt automatisch ab.
+
+## 1.2 Den Arbeitssensor gegen das Referenznormal kalibrieren
+
+Starten Sie bei Anlage B eine Kalibrierung: Typ **intern**, Referenz-Anlage **Reference PT100
+Standard** (Anlage A) — sobald Sie sie auswählen, sollte der Assistent "Ref. standard U: 0.025 °C
+(last calibration of Reference PT100 Standard)" anzeigen. Zeigt er stattdessen ein manuelles
+Eingabefeld, hat der Abruf keine Kalibrierung bei Anlage A gefunden — gehen Sie zurück und
+bestätigen Sie, dass 1.1 gespeichert wurde.
+
+Verteilung **Normal**, Vertrauensniveau **95 %**, Entscheidungsregel **Guard Band (Toleranz − U)**,
+und aktivieren Sie **"Nominale Sensorgenauigkeit einbeziehen"** (rechnet die Herstellerangabe von
+0,3 °C des Kanals ein).
+
+Datenpunkte:
+
+| # | Referenz (°C) | Messwert (°C) |
+|---|---|---|
+| 1 | 0,00 | 0,05 |
+| 2 | 20,00 | 20,08 |
+| 3 | 40,00 | 39,95 |
+| 4 | 60,00 | 60,12 |
+| 5 | 80,00 | 79,90 |
+| 6 | 100,00 | 100,07 |
+
+### Die Rechnung
+
+Anpassung: $a = 1{,}00038$, $b = -0{,}04739$.
+
+| Punkt | Berechnet | Residuum |
+|---|---|---|
+| 1 | 0,002631 | −0,002631 |
+| 2 | 20,040260 | −0,040260 |
+| 3 | 39,917828 | +0,082172 |
+| 4 | 60,095510 | −0,095510 |
+| 5 | 79,883044 | +0,116956 |
+| 6 | 100,060727 | −0,060727 |
+
+$n = 6$, $k = 2$ → Rest-Freiheitsgrade $= 4$. Maximalfehler = **0,116956** (Punkt 5) →
+%FS-Fehler = $0{,}116956/100 \times 100\% = \mathbf{0{,}117\%}$.
+
+**Unsicherheitsbudget** (diesmal vier Zeilen):
+
+| Quelle | Wie sie abgeleitet wird | u |
+|---|---|---|
+| fit_residuals (Typ A) | Standardabweichung der 6 Residuen, dof = 4 | 0,083509 |
+| reference_standard (Typ B) | 0,025467 (U von Anlage A) ÷ k=2 | 0,012734 |
+| resolution (Typ B) | $0{,}1/\sqrt{12}$ | 0,028868 |
+| sensor_nominal_accuracy (Typ B) | 0,3 ÷ k=2 | 0,150000 |
+
+- **Kombiniert**: $u_c = \sqrt{0.083509^2 + 0.012734^2 + 0.028868^2 + 0.150000^2} =
+  \mathbf{0{,}174554\ °C}$.
+- **Effektive Freiheitsgrade** (Welch-Satterthwaite — nur `fit_residuals` hat endliche dof; die
+  drei Typ-B-Zeilen sind exakt bekannt und fallen aus der Summe heraus):
+
+  $$
+  \nu_{\text{eff}} = \frac{u_c^4}{u_A^4 / \text{dof}_A} = \frac{0.174554^4}{0.083509^4/4}
+  \approx 76{,}4
+  $$
+
+- **Erweitert** (Normalverteilung — $\nu_{\text{eff}}$ wird für "normal" nicht verwendet, nur für
+  "t"/"chi_squared"): $k = \Phi^{-1}(0.975) \approx 1{,}96$,
+  $U = 1{,}96 \times 0{,}174554 = 0{,}342120 \approx \mathbf{0{,}34\ °C}$ (2 signifikante Stellen).
+
+**Entscheidungsregel (Guard Band, Spezifikation = ±0,5 °C absolut):**
+
+$$
+\text{guard} = U = 0.342120, \quad \text{max error} + \text{guard} = 0.116956 + 0.342120 =
+0.459076 \le 0.5 \implies \textbf{CONFORMS}
+$$
+
+### Erwartete Ergebnisse
+
+| Feld | Wert |
+|---|---|
+| Kombinierte Unsicherheit | gerundet angezeigt: **0,17** |
+| Erweiterte Unsicherheit (±) | gerundet angezeigt: **0,34** |
+| ν_eff (im Tooltip "Erweitert") | ≈ 76,4 |
+| Aussage | **KONFORM** zu ±0,5 (absolut), Entscheidungsregel = Guard-Band-Annahme |
+
+## 1.3 Bonusprüfung — beobachten Sie, wie die drei Entscheidungsregeln auseinandergehen [#bonus-check]
+
+Wiederholen Sie 1.2 mit dem auf **0,4** geänderten Genauigkeitswert des Kanals (Kanal bearbeiten,
+speichern, dann dieselben 6 Punkte durch Schritt 3 einer neuen Kalibrierung laufen lassen) und
+probieren Sie alle drei [Entscheidungsregeln](../decision-rules.mdx) bei weiterhin aktiviertem
+"Nominale Sensorgenauigkeit einbeziehen" aus. Alles oben Genannte bleibt unverändert (dieselbe
+Anpassung, dasselbe Budget, dasselbe $U = 0{,}342120$) — nur das Bestehen/Nichtbestehen kippt:
+
+| Entscheidungsregel | Prüfung | Ergebnis |
+|---|---|---|
+| Einfache Annahme | $0{,}116956 \le 0{,}4$ | **KONFORM** |
+| Guard Band (− U) | $0{,}116956 + 0{,}342120 = 0{,}459076 \le 0{,}4$? Nein | **NICHT KONFORM** |
+| Geteiltes Risiko (+ U) | $0{,}116956 - 0{,}342120 = -0{,}225164 \le 0{,}4$ | **KONFORM** |
+
+Dies ist der klarste Weg, um zu bestätigen, dass die Entscheidungsregel-Funktion korrekt
+verdrahtet ist: identische Daten und identische Spezifikation, drei unterschiedliche Urteile,
+abhängig einzig davon, welche Regel ausgewählt ist.

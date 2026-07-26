@@ -1,0 +1,57 @@
+---
+title: Normes et glossaire
+description: La nomenclature GUM/VIM qu'Open Gauge utilise, et les normes que son moteur de calibration met en œuvre.
+---
+
+Pour une répartition clause par clause des exigences qu'Open Gauge satisfait, satisfait
+partiellement, ou ne traite pas encore — avec citations et références de code — voir
+[Conformité](../compliance/overview.mdx), en commençant par
+[ISO/IEC 17025:2017](../compliance/iso-17025.mdx).
+
+## Normes qu'Open Gauge met en œuvre
+
+| Norme | Titre | Pertinence pour Open Gauge |
+|---|---|---|
+| **JCGM 100:2008 (GUM)** | Guide pour l'expression de l'incertitude de mesure | Le document fondateur derrière [le budget d'incertitude](../calibration/uncertainty-budget.mdx) — évaluation de Type A/B, combinaison, élargissement, facteurs d'élargissement. |
+| **JCGM GUM-6:2020** | Élaboration et utilisation des modèles de mesure | Le document le plus directement applicable au modèle de données de coefficient de calibration d'Open Gauge — covariance des coefficients, propagation de l'incertitude à travers une courbe ajustée. |
+| **ISO/IEC 17025:2017** | Exigences générales concernant la compétence des laboratoires d'étalonnages et d'essais | Les §7.1.3/§7.8.6 exigent de documenter une [règle de décision](../calibration/decision-rules.mdx) chaque fois qu'une déclaration de réussite/échec est émise ; le §7.8.4.3 régit ce qu'un certificat peut déclarer à propos des intervalles de calibration. |
+| **JCGM GUM-1:2023** | Guide pour l'expression de l'incertitude de mesure — Partie 1 : Introduction | Une feuille de route/un aperçu de la suite de documents GUM réorganisée. |
+| **JCGM 200:2012 (VIM)** | Vocabulaire international de métrologie — Concepts fondamentaux et généraux et termes associés | Le vocabulaire source sur lequel s'appuient à la fois le GUM et l'ISO/IEC 17025 sans le redéfinir — voir les termes ci-dessous. Désigné par l'ISO/IEC 17025 comme « ISO/IEC Guide 99 ». |
+
+Voir [Conformité → Suite GUM/JCGM sur l'incertitude](../compliance/gum-uncertainty.mdx) pour le
+statut au niveau des clauses du GUM-6 et du JCGM 106 ; le VIM et la feuille de route du GUM-1 sont
+des documents de vocabulaire/aperçu sans tableau de conformité propre — leur contenu se trouve ici
+à la place.
+
+## Nomenclature centrale (GUM / VIM)
+
+L'interface d'Open Gauge, les noms de champs de l'API, et le langage des certificats utilisent
+ces termes avec précision — ce ne sont pas des synonymes interchangeables.
+
+| Terme | Symbole | Définition |
+|---|---|---|
+| Mesurande | $Y$ | La grandeur particulière soumise au mesurage. |
+| Grandeurs d'entrée | $X_1, \ldots, X_N$ | Grandeurs dont dépend le mesurande : $Y = f(X_1, \ldots, X_N)$. |
+| Estimation de sortie | $y$ | Le résultat de mesure calculé, $y = f(x_1, \ldots, x_N)$. |
+| Incertitude-type | $u(x_i)$ | Incertitude d'un résultat exprimée sous forme d'un écart-type. |
+| Évaluation de Type A | — | Incertitude évaluée par analyse statistique d'une série d'observations (par ex. répétabilité des résidus de points de calibration). |
+| Évaluation de Type B | — | Incertitude évaluée par tout autre moyen : spécifications du fabricant, certificats de calibration, données d'ouvrages de référence, résolution, jugement. Type A/B est une classification de la *méthode d'évaluation*, pas une distinction entre erreur « aléatoire » et « systématique » — le GUM déconseille explicitement le terme « incertitude systématique ». |
+| Incertitude-type composée | $u_c(y)$ | Incertitude-type d'un résultat dérivée de plusieurs autres grandeurs — la racine carrée positive d'une somme de termes de variance/covariance pondérés par la sensibilité. |
+| Incertitude élargie | $U$ | $U = k \cdot u_c(y)$. Définit un intervalle censé englober une fraction déclarée des valeurs raisonnablement attribuables au mesurande. |
+| Facteur d'élargissement | $k$ | Multiplicateur numérique appliqué à $u_c(y)$ pour obtenir $U$. Doit toujours être déclaré aux côtés de $U$. |
+| Coefficient de sensibilité | $c_i = \partial f/\partial x_i$ | Décrit comment $y$ varie avec un petit changement de $x_i$. |
+| Degrés de liberté | $\nu$ | Indicateur de fiabilité d'une estimation d'incertitude-type (par ex. $\nu = n-1$ pour une moyenne de $n$ observations, $\nu = n-m$ pour un ajustement par moindres carrés à $m$ paramètres). |
+| Coefficient de corrélation | $r(x_i, x_j)$ | $r = u(x_i, x_j) / [u(x_i)u(x_j)]$, borné $[-1, 1]$. |
+| Correction | — | Une valeur ajoutée, ou un facteur appliqué, pour compenser un effet systématique *reconnu*. Le GUM suppose que toutes ces corrections sont appliquées **avant** l'évaluation de l'incertitude. |
+| Traçabilité métrologique | — | (VIM, via l'ISO/IEC Guide 99) « Property of a measurement result whereby the result can be related to a reference through a documented unbroken chain of calibrations, each contributing to the measurement uncertainty. » Voir [la chaîne de traçabilité](../compliance/iso-17025.mdx#traceability-chain). |
+| Vérification | — | (VIM, via l'ISO/IEC Guide 99:2007, 2.44) « Provision of objective evidence that a given item fulfils specified requirements. » Distincte de la *calibration* — la vérification est une vérification réussite/échec par rapport à une exigence ; la calibration établit la relation entre l'indication et la valeur de référence. |
+| Règle de décision | — | (ISO/IEC 17025, 3.7) « Rule that describes how measurement uncertainty is accounted for when stating conformity with a specified requirement. » Voir [Règles de décision](../calibration/decision-rules.mdx). |
+
+### Erreur ≠ Incertitude
+
+L'**erreur** est une grandeur idéalisée et inconnaissable (résultat − valeur vraie).
+L'**incertitude** est un paramètre *positif* caractérisant la dispersion des valeurs
+raisonnablement attribuables au mesurande. Les noms de champs d'Open Gauge (`max_error`,
+`combined_uncertainty`, `expanded_uncertainty`) sont choisis pour être cohérents avec cette
+distinction — `max_error` est une erreur évaluée à partir de données réelles, tandis que les
+champs d'incertitude décrivent le *doute* autour d'un résultat, pas le résultat lui-même.

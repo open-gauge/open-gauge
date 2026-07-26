@@ -1,0 +1,61 @@
+---
+title: Drift-Kennzahlen
+description: Wie Open Gauge zwei Kalibrierkurven vergleicht — Maximal-/Mittel-/RMS-Drift, Offset, Verstärkung und Restdrift.
+---
+
+Um zu messen, wie stark ein Sensor gedriftet ist, vergleicht Open Gauge zwei seiner Kalibrierkurven —
+eine Referenzkalibrierung (typischerweise die Basis-/erste) und eine aktuelle — indem beide
+angepassten Polynome über ihren **gemeinsamen Betriebsbereich** ausgewertet werden und die
+Differenzkurve zwischen ihnen betrachtet wird, $d(x) = f_{\text{current}}(x) - f_{\text{reference}}(x)$.
+
+## Maximale Drift [#max-drift]
+
+Die größte absolute Differenz zwischen der Referenz- und der aktuellen Kurve über den gemeinsamen
+Betriebsbereich:
+
+$$
+\text{max drift} = \max_x \left| d(x) \right|
+$$
+
+Die einzelne größte Gewichtung im [Zustandswert](./overview.mdx#score) (30 %) — sie beantwortet
+"An ihrem schlechtesten Punkt: Wie weit hat sich die Kalibrierung dieses Sensors verschoben?"
+
+## Mittlere Drift [#mean-drift]
+
+Die durchschnittliche absolute Differenz zwischen den beiden Kurven über den gemeinsamen Bereich:
+
+$$
+\text{mean drift} = \frac{1}{n}\sum_{i=1}^n \left| d(x_i) \right|
+$$
+
+## RMS-Drift [#rms-drift]
+
+Die quadratisch gemittelte Differenz zwischen den beiden Kurven — bestraft größere Abweichungen
+stärker als die mittlere Drift, auf dieselbe Weise, wie
+[RMSE](../calibration/curve-fitting.mdx#rmse) große Residuen stärker bestraft als ein einfacher
+Durchschnitt es täte:
+
+$$
+\text{RMS drift} = \sqrt{\frac{1}{n}\sum_{i=1}^n d(x_i)^2}
+$$
+
+## Offset [#offset]
+
+Die Differenz zwischen den Kurven am *Anfang* des gemeinsamen Bereichs — eine konstante
+(Nullpunkt-)Verschiebung. Ein Sensor, der über seinen gesamten Bereich um einen ungefähr
+konstanten Betrag gedriftet ist, statt sich zu einem Ende hin zu verschlechtern, zeigt sich
+größtenteils als Offset.
+
+## Verstärkung [#gain]
+
+Die Steigung der Differenzkurve $d(x)$ — eine Änderung der *Empfindlichkeit* (Spanne) zwischen den
+beiden Kalibrierungen, im Gegensatz zu einem konstanten Offset. Ein Sensor, dessen Spanne sich
+gedehnt oder gestaucht hat (z. B. durch eine Verschiebung der Referenzstelle oder der
+Verstärkerverstärkung), zeigt sich größtenteils als Verstärkung, nicht als Offset.
+
+## Restdrift [#residual-drift]
+
+Die Differenz zwischen den Kurven am *Ende* des Bereichs minus der Differenz am *Anfang* — d. h.
+Drift, die nicht allein durch einen konstanten Offset erklärt wird. Zusammen mit der
+[Verstärkung](#gain) trennt dies "die gesamte Kurve hat sich gleichmäßig verschoben" von "die Kurve
+hat sich geneigt."

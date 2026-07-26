@@ -1,0 +1,67 @@
+---
+title: Score de santé et stabilité
+description: Comment le score de santé 0-100 d'Open Gauge est composé, et ce que signifient « stabilité » et « intervalle recommandé ».
+---
+
+Chaque actif ayant au moins deux calibrations sur une voie obtient un **score de santé** calculé
+(0–100), visible sur l'onglet Santé de l'actif. Avec une seule calibration, il n'y a pas encore de
+tendance à évaluer — Open Gauge affiche un score neutre de 100 %, une stabilité « Stable », et un
+taux de dérive de 0 plutôt qu'un résultat trompeur calculé à partir d'un point unique.
+
+## Score de santé [#score]
+
+Un composite pondéré de six entrées, chacune normalisée individuellement puis combinée :
+
+| Entrée | Pondération |
+|---|---|
+| Dérive maximale | 30 % |
+| Dérive RMS | 20 % |
+| RMSE | 15 % |
+| Incertitude | 10 % |
+| Hystérésis | 10 % |
+| Linéarité | 10 % |
+| Tendance | 5 % |
+
+La dérive maximale et la dérive RMS dominent le score (50 % combinés) car elles répondent le plus
+directement à la question à laquelle un score de santé existe pour répondre : *cet instrument
+mesure-t-il toujours ce qu'il prétend mesurer ?* Voir [Métriques de dérive](./drift-metrics.mdx)
+pour ce que signifie mathématiquement chaque terme de dérive.
+
+## Stabilité [#stability]
+
+Une classification (par ex. Stable / En dérive / Instable) dérivée du
+[taux de dérive](#average-drift) à long terme — relatif à l'étendue de pleine échelle de la
+voie — et de la qualité de l'ajustement de régression de la tendance de dérive. Un capteur peut
+avoir un score de santé « bon » (élevé) aujourd'hui tout en étant classé comme en dérive, si la
+tendance évolue dans une direction préoccupante même si elle n'a pas encore franchi un seuil.
+
+## Dérive moyenne [#average-drift]
+
+Le taux de dérive à long terme issu d'une régression linéaire sur l'historique complet de
+calibration de cette voie — à quelle vitesse, en moyenne, l'erreur de ce capteur augmente dans le
+temps (indépendamment de l'[erreur maximale](../calibration/curve-fitting.mdx#max-error)
+individuelle de toute calibration donnée).
+
+## Intervalle recommandé [#recommended-interval]
+
+Une suggestion heuristique pour le prochain intervalle de calibration, basée sur la
+classification de [stabilité](#stability) actuelle, à partir de l'intervalle de calibration par
+défaut configuré du capteur. Il s'agit d'une recommandation interne à Open Gauge à des fins de
+planification uniquement — elle n'est jamais imprimée sur le certificat de calibration lui-même ;
+selon l'ISO/IEC 17025 §7.8.4.3, un certificat ne déclare une recommandation d'intervalle que
+lorsque cela a été explicitement convenu avec le client, et Open Gauge ne dispose pas encore de ce
+flux d'accord (voir
+[Génération de certificats](../calibration/certificates.mdx#whats-deliberately-not-on-it)).
+
+## Les graphiques
+
+- **Évolution de la dérive** — dérive maximale de chaque calibration par rapport à la calibration
+  de référence (la première), avec une ligne de tendance linéaire. La vue principale du
+  vieillissement du capteur dans le temps.
+- **Stabilité de calibration** — l'évolution historique de la RMSE, de l'erreur maximale, de
+  l'incertitude élargie, de l'hystérésis, et du R² à travers chaque calibration de cette voie,
+  tracées ensemble afin que vous puissiez repérer des évolutions corrélées (par ex. l'incertitude
+  augmentant en même temps que la RMSE).
+- **Comparaison de courbes de calibration** — évalue les polynômes ajustés de deux calibrations
+  sur environ 200 points à travers leur plage de fonctionnement partagée, isolant comment la
+  courbe elle-même a changé de forme — indépendamment de l'erreur d'un point quelconque.

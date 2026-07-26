@@ -1,0 +1,178 @@
+---
+title: Docker-Compose-Bereitstellung
+description: Ausführen des vollständigen Open-Gauge-Stacks mit Docker Compose — Dienste, Ports, Umgebungsvariablen, Backups und Migrationen.
+---
+
+Docker Compose ist das primäre, vollwertige Bereitstellungsziel von Open Gauge. Es wird erwartet, dass
+jede Funktion damit funktioniert — von einem Raspberry Pi oder Intel-N100-Mini-PC in einem Labor bis hin
+zu einem internen Unternehmensserver. Kubernetes-Unterstützung ist optional und nicht erforderlich, um Open Gauge zu betreiben.
+
+## Voraussetzungen
+
+- Docker und Docker Compose auf dem Host installiert.
+- Die Ports `3000`, `3002`, `8000`, `8080`, `9000`, `9001` und `5432` frei (oder umgemappt — siehe
+  unten).
+
+## Den Stack starten
+
+```bash
+cd infrastructure/docker
+docker compose up -d
+```
+
+Dies erstellt und startet jeden in `infrastructure/docker/docker-compose.yml` definierten Dienst.
+
+## Dienste
+
+| Dienst | Image / Build | Port(s) | Zweck |
+|---|---|---|---|
+| `db` | `postgres:15-alpine` | `5432` | Die einzige verlässliche Quelle für alle strukturierten Daten. |
+| `api` | `apps/api/Dockerfile` | `8000` | FastAPI-Backend (`/api/v1/...`), OpenAPI-Schema unter `/openapi.json`. |
+| `web` | `apps/web/Dockerfile` | `3000` | Die Benutzeroberfläche von Open Gauge. |
+| `docs` | `apps/docs/Dockerfile` | `3002` | Diese Dokumentations-Website (Knowledge Center + API-Referenz). |
+| `adminer` | `adminer:4` | `8080` | Schlanke Web-UI zur direkten Inspektion der Postgres-Datenbank. |
+| `minio` | `minio/minio` | `9000` (S3-API), `9001` (Konsole) | S3-kompatibler Objektspeicher für Zertifikate, Datenblätter und Bilder. |
+
+`api`, `web` und `docs` warten darauf, dass `db` (und bei `web`/`docs` auch `api`) als
+gesund gemeldet wird, bevor sie starten, über Docker Compose `depends_on: condition: service_healthy` —
+sodass ein frisches `docker compose up -d` automatisch in der richtigen Reihenfolge hochfährt.
+
+Das `api`-Image bringt [Tectonic](https://tectonic-typesetting.github.io/) (eine kleine,
+eigenständige LaTeX-Engine, ~20 MB) mit, um [Zertifikatsvorlagen](../calibration/certificate-templates.mdx)
+zu PDF zu kompilieren. Das zugehörige LaTeX-Paketbündel wird zur Build-Zeit vorab abgerufen und im Image
+zwischengespeichert, sodass die Zertifikatserstellung zur Laufzeit vollständig offline funktioniert — kein
+Netzwerkzugriff erforderlich, auch nicht in air-gapped Bereitstellungen.
+
+## Wichtige Umgebungsvariablen
+
+Jede von `infrastructure/docker/docker-compose.yml` verwendete Anmeldeinformation und URL wird aus einer
+einzigen Datei gelesen, [`infrastructure/docker/.env`](https://github.com/open-gauge/open-gauge/blob/main/infrastructure/docker/.env)
+— bearbeiten Sie diese Datei (nicht die Compose-Datei selbst), bevor Sie über eine lokale Evaluierung hinaus bereitstellen:
+
+| Variable | Dienst | Zweck |
+|---|---|---|
+| `HOST_IP` | web, docs, minio URLs | Hostname/IP, unter dem die App erreichbar ist; wird verwendet, um die untenstehenden URLs abzuleiten. |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `db`, `api` | Postgres-Anmeldeinformationen und Datenbankname. |
+| `SECRET_KEY` | `api` | Signiert Sitzungs-/Auth-Token — **in der Produktion unbedingt ändern**. |
+| `FRONTEND_URL` | `api` | Öffentliche App-URL; wird in generierte QR-Codes und Anlagenetiketten eingebettet — auf Ihre Produktionsdomain verweisen lassen, nicht auf `localhost`. |
+| `CORS_ORIGINS` | `api` | JSON-Array der Ursprünge, die die API aufrufen dürfen (muss Ihre `web`-URL enthalten). |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minio`, `api` | Anmeldeinformationen für den Objektspeicher. |
+| `MINIO_BUCKET` | `api` | Bucket für Kalibrierzertifikate, Datenblätter und Uploads. |
+| `MINIO_PUBLIC_URL` | `api` | Die extern erreichbare MinIO-URL, die für vorsignierte Zertifikats-/Dateilinks verwendet wird. |
+| `NEXT_PUBLIC_API_URL` | `web` (Build-Argument) | Die vom Browser erreichbare API-URL, zur Build-Zeit fest eingebaut. |
+| `API_INTERNAL_URL` | `web`, `docs` | Die Container-zu-Container-API-URL (z. B. `http://api:8000`), verwendet für serverseitige Anfragen — in der Compose-Datei fest codiert, da sie zwischen Bereitstellungen nie variiert. |
+| `NEXT_PUBLIC_DOCS_URL` | `web` (Build-Argument) | Die vom Browser erreichbare Docs-URL — wird von In-App-Tooltips für Deep-Links in diese Dokumentation verwendet. |
+
+## Backups
+
+Der einfachste Weg ist die **Gefahrenzone** am unteren Ende von **Admin → Dashboard** (nur
+Super Admin): **Datenbank exportieren** lädt eine einzelne ZIP-Datei herunter, die ein `pg_dump`-Archiv im
+benutzerdefinierten Format der gesamten Datenbank (Anlagen, Kalibrierungen, Benutzer, Audit-Protokolle) zusammen
+mit jeder Datei in MinIO bündelt (Zertifikate, Datenblätter, LaTeX-Vorlagen, Profilbilder). Die Schaltfläche
+**Datenbank importieren** desselben Panels stellt beides aus genau dieser einen Datei wieder her — auch auf
+einer *anderen* Open-Gauge-Instanz, da die Medien, auf die die wiederhergestellten Datensätze verweisen, mitkommen,
+statt in der MinIO der ursprünglichen Instanz zurückzubleiben.
+
+Alternativ können die beiden Teile weiterhin getrennt mit gewöhnlichen Infrastruktur-Tools gesichert werden:
+
+1. **PostgreSQL** (`infrastructure/docker/data/postgres`) — führen Sie `pg_dump`/`pg_restore` direkt gegen den
+   `db`-Dienst aus, oder sichern Sie das Verzeichnis selbst mit einem beliebigen dateibasierten Tool.
+2. **MinIO** (`infrastructure/docker/data/minio`) — sichern Sie das Verzeichnis direkt, oder verwenden Sie
+   `mc mirror` gegen die MinIO-S3-API.
+
+Der Verlust von MinIO-Daten beschädigt keine Kalibrierdatensätze (Zertifikate können bei Bedarf über
+`GET /calibrations/{id}/certificate` neu generiert werden), aber von Benutzern hochgeladene Datenblätter, rohe
+Kalibrierdateien und benutzerdefinierte Zertifikatsvorlagen sind ohne ein MinIO-Backup nicht wiederherstellbar.
+Der Verlust von PostgreSQL-Daten bedeutet den Verlust von allem — sichern Sie es nach einem echten Zeitplan, nicht
+nur mit dem Volume-Snapshot, der zufällig existiert.
+
+**Datenbank importieren** akzeptiert weiterhin auch ein reines `pg_dump`-Archiv — das Format, das Export erzeugte,
+bevor Medien gebündelt wurden — zur Wiederherstellung älterer Backups; in diesem Fall wird nur die Datenbank
+wiederhergestellt und vorhandene MinIO-Dateien bleiben unangetastet.
+
+Wenn Sie `pg_dump`/`pg_restore` selbst statt Export/Import in der App ausführen, verwenden Sie eine
+Client-Version, die zur Postgres-Hauptversion des `db`-Dienstes passt (15 — siehe das `image:`-Tag in
+`docker-compose.yml`). Der `pg_restore` eines neueren Clients gibt Sitzungs-Setup-Anweisungen aus, die der Server
+nicht erkennt (z. B. `transaction_timeout`, eingeführt in Postgres 17), was die Wiederherstellung fehlschlagen lässt.
+Das `api`-Image selbst liefert immer die passende Client-Version, sodass Export/Import über die Oberfläche
+unabhängig davon funktioniert, was auf Ihrem eigenen Rechner installiert ist.
+
+PostgreSQL- und MinIO-Daten liegen unter `infrastructure/docker/data/` als **Bind-Mounts** — ein fester
+Host-Pfad neben der Compose-Datei — statt als von Docker verwaltete benannte Volumes, und zwar gezielt damit
+Daten nach einem Rebuild nicht stillschweigend verschwinden können: Die Identität eines Bind-Mounts ist der
+buchstäbliche Pfad, sodass er nicht so auseinanderlaufen kann wie ein benanntes Volume, wenn Compose
+unterschiedlich aufgerufen wird (ein anderes Arbeitsverzeichnis, eine explizite `-p`-Projektüberschreibung oder
+eine ältere `docker-compose`-v1-Binary). Sie können dies bei Ihrer eigenen Bereitstellung mit
+`scripts/verify-media-persistence.sh` im Repository-Root überprüfen — siehe
+[Persistenz überprüfen](#verifying-persistence) unten.
+
+Wenn Sie von einer Version aktualisieren, die benannte Volumes verwendete (`postgres_data`/`minio_data`),
+kopieren Sie deren Inhalt einmal in die neuen Pfade, bevor Sie neu bereitstellen:
+
+```bash
+docker run --rm -v opengauge_postgres_data:/from -v "$(pwd)/data/postgres:/to" alpine cp -a /from/. /to/
+docker run --rm -v opengauge_minio_data:/from -v "$(pwd)/data/minio:/to" alpine cp -a /from/. /to/
+```
+
+**Unter Windows tut dieser Befehl unter Umständen stillschweigend nichts, wenn er ohne Vorsichtsmaßnahmen aus
+Git Bash ausgeführt wird.** Die MSYS-Schicht von Git Bash schreibt *jedes* Argument mit einem `/`-Präfixpfad um,
+bevor es `docker.exe` erreicht — einschließlich der containerseitigen Pfade `/from` und `/to` oben, nicht nur der
+hostseitigen — und macht daraus etwas Unsinniges wie `C:\Program Files\Git\from`. Docker meldet dann entweder
+einen Fehler oder legt an dem sich daraus ergebenden, unsinnigen Ort ein leeres Verzeichnis an, und `cp`
+"gelingt", ohne irgendetwas in das echte `data/postgres`/`data/minio` zu kopieren — was genau so aussieht, als
+seien die Daten verloren, während tatsächlich die Migration nie gegen den richtigen Pfad lief. Entweder:
+
+- Führen Sie den Befehl stattdessen in **PowerShell oder cmd.exe** aus, wo dieses Umschreiben überhaupt nicht
+  stattfindet, oder
+- Stellen Sie ihm `MSYS_NO_PATHCONV=1` voran, wenn Sie in Git Bash bleiben:
+  `MSYS_NO_PATHCONV=1 docker run --rm -v opengauge_postgres_data:/from ...`
+
+Ein verräterisches Zeichen, dass Ihnen dies bereits passiert ist: ein leeres, seltsam benanntes Verzeichnis
+neben `data/postgres` (z. B. `data/postgres;C`) — für sich genommen harmlos, aber ein Zeichen dafür, dass der
+Kopiervorgang stillschweigend ins Leere lief. Ihre ursprünglichen Daten sind im alten benannten Volume weiterhin
+sicher (`docker volume ls` listet es auf), bis Sie es selbst mit `docker volume rm` entfernen; führen Sie die
+Migration korrekt erneut aus (siehe oben), und sie erscheinen in `data/postgres`/`data/minio`.
+
+## Persistenz überprüfen
+
+`scripts/verify-media-persistence.sh` (im Repository-Root) automatisiert die obige Prüfung: Es startet
+Wegwerf-Container für `db`/`minio` unter einem isolierten Compose-Projektnamen und einem temporären Datenverzeichnis
+(niemals Ihr echtes `infrastructure/docker/data/`), schreibt eine Marker-Zeile/ein Marker-Objekt, führt ein
+vollständiges `docker compose down` + `up --build` aus und bestätigt, dass beide erhalten bleiben. Es beendet sich
+mit einem Fehlercode ungleich null, wenn eines von beidem nicht der Fall ist, sodass es sicher in CI eingebunden
+oder nach jeder Änderung an `docker-compose.yml` ausgeführt werden kann:
+
+```bash
+scripts/verify-media-persistence.sh
+```
+
+Es ist vollständig von jeder echten laufenden Bereitstellung isoliert — sicher, parallel zu einer Live-Instanz
+auszuführen.
+
+Die Aktion **Datenbank leeren** der **Gefahrenzone** löscht jede Organisation, Anlage, jeden Standort, jedes
+Verfahren und jede Kalibrierung sowie jeden Nicht-Super-Admin-Benutzer und leert den Dateispeicher — nur
+Super-Admin-Konten bleiben erhalten. So lässt sich eine befüllte Demo-/Testinstallation ohne Neuinstallation in
+den leeren Zustand zurückversetzen, in dem eine frische Bereitstellung startet. Erfordert die Eingabe von `RESET`
+zur Bestätigung und kann nicht rückgängig gemacht werden.
+
+## Datenbankmigrationen ausführen
+
+Migrationen verwenden Alembic und liegen unter `apps/api/migrations/versions/`:
+
+```bash
+docker compose -f infrastructure/docker/docker-compose.yml exec api alembic upgrade head
+```
+
+Führen Sie dies nach dem Ziehen einer neuen Open-Gauge-Version aus, die Schemaänderungen enthält, bevor Sie den
+`api`-Dienst mit dem neuen Image neu starten.
+
+## Open Gauge aktualisieren
+
+```bash
+git pull
+docker compose -f infrastructure/docker/docker-compose.yml up -d --build
+docker compose -f infrastructure/docker/docker-compose.yml exec api alembic upgrade head
+```
+
+Ein Neubau ist auch dann gefahrlos, wenn sich nichts geändert hat — Docker verwendet zwischengespeicherte
+Schichten wieder.

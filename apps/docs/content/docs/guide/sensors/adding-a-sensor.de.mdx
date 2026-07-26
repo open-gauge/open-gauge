@@ -1,0 +1,199 @@
+---
+title: Einen Sensor hinzufügen
+description: Schritt-für-Schritt-Anleitung zur Registrierung einer Sensor-Anlage und zur Konfiguration ihrer Kanäle, Feld für Feld.
+---
+
+Diese Seite führt Feld für Feld durch die Registrierung einer Sensor-Anlage und die Konfiguration
+ihres/ihrer Messkanäle. Jedes hier beschriebene Feld wird auch durch einen Info-Tooltip (ⓘ) direkt
+in der Oberfläche erklärt — ein Klick auf einen Tooltip bringt Sie zurück zum passenden Abschnitt
+dieser Seite.
+
+## 1. Die Anlage erstellen
+
+Gehen Sie zu **Anlagen → Neue Anlage**, wählen Sie den Anlagentyp **sensor** und füllen Sie Name,
+Hersteller/Modell, Seriennummer sowie (optional) ein Datenblatt und einen Standort aus.
+Das Speichern erstellt die Anlage mit einer automatisch generierten ID (z. B. `OG-00042`).
+
+## 2. Einen Kanal hinzufügen
+
+Eine Sensor-Anlage kann einen oder mehrere **Kanäle** haben — einen pro physikalischer Größe, die sie
+misst. Die meisten Sensoren für einen einzelnen Zweck (ein Thermoelement, ein Druckmessumformer) haben
+genau einen Kanal; eine Multiparameter-Sonde kann mehrere haben. Verwenden Sie auf der Detailseite der
+Anlage **Kanal hinzufügen** und geben Sie ihm eine **Kanal-ID** (eine kurze, innerhalb dieser Anlage
+eindeutige Bezeichnung, z. B. `CH1`).
+
+## 3. Den Kanal konfigurieren
+
+### Physikalische Größe [#physical-quantity]
+
+Die physikalische Größe definiert die Art der Messung (z. B. Temperatur, Druck) und bestimmt die
+anwendbaren Einheiten und Kalibrierverfahren. Wählen Sie diejenige, die am besten zur primären Messung
+des Sensors passt — dies bestimmt, welche Einheiten in jedem Einheiten-Dropdown unten erscheinen.
+
+Jede von Open Gauge unterstützte physikalische Größe, mit ihren verfügbaren Messtechnologien, den Optionen
+ihres **Typ**-Dropdowns (heute hat nur Druck eines — siehe [Messtyp](#measurement-type) unten) und
+ihren wählbaren Anzeigeeinheiten:
+
+| Physikalische Größe | Technologie | Typ (falls zutreffend) | Einheiten |
+|---|---|---|---|
+| Temperatur | Thermoelement (J, K, T, E, N, R, S, B), RTD (PT100, PT1000, Sonstige), Thermistor (NTC, PTC, Sonstige), Infrarot, Faseroptik, Halbleiter, Bimetall | — | °C, °F, K |
+| Druck | Dehnungsmessstreifen, Piezoresistiv, Piezoelektrisch, Kapazitiv, Induktiv, Resonant, Optisch, MEMS | Absolut, Relativ (Überdruck) | Pa, kPa, MPa, bar, psi, hPa, atm, mmHg, inHg, inH₂O |
+| Durchfluss | Differenzdruck, Blende, Venturi, Turbine, Verdrängung, Elektromagnetisch, Wirbel, Coriolis, Ultraschall, Thermische Masse | — | m³/h, L/min, gal/min, kg/h, g/min, lb/min |
+| Füllstand | Schwimmer, Hydrostatisch, Kapazitiv, Leitfähig, Ultraschall, Radar, Laser, Optisch | — | mm, cm, m, in, ft, % |
+| Feuchte | Kapazitiv, Resistiv, Wärmeleitfähigkeit, Taupunktspiegel | — | %RH, g/m³, Taupunkt °C, Taupunkt °F |
+| Kraft | Dehnungsmessstreifen, Piezoelektrisch, Hydraulisch, Pneumatisch, Optisch | — | N, kN, kgf, lbf |
+| Drehmoment | Dehnungsmessstreifen, Magnetoelastisch, Optisch, Piezoelektrisch | — | N·m, kN·m, lbf·ft |
+| Masse | Dehnungsmessstreifen, Elektromagnetische Kraftkompensation, Schwingrohr, Piezoelektrisch | — | kg, g, mg, lb |
+| Dehnung | Folien-Dehnungsmessstreifen, Halbleiter-Dehnungsmessstreifen, Faser-Bragg-Gitter, Kapazitiv | — | µε, m/m |
+| Weg | Potentiometrisch, LVDT, Induktiv, Kapazitiv, Wirbelstrom, Laser, Optischer Encoder, Magnetostriktiv | — | nm, µm, mm, cm, m, in, ft |
+| Winkel | Potentiometer, Optischer Encoder, Magnetischer Encoder, Resolver, Neigungssensor, MEMS | — | °, rad |
+| Winkelgeschwindigkeit | Optischer Encoder, Hall-Effekt, Magnetoresistiv, Tachometer, MEMS-Gyroskop | — | rpm, °/s, rad/s |
+| Winkelbeschleunigung | MEMS-Gyroskop, Optischer Encoder (Ableitung) | — | °/s², rad/s² |
+| Geschwindigkeit | Doppler-Radar, Laser-Doppler, Encoder-basiert, Pitotrohr, Ultraschall | — | mm/s, m/s, km/h, mph, knots |
+| Beschleunigung | MEMS, Piezoelektrisch, Piezoresistiv, Kapazitiv, Servo-Beschleunigungsmesser | — | m/s², g |
+| Schalldruck | Kondensatormikrofon, Piezoelektrisches Mikrofon, MEMS-Mikrofon | — | Pa, dB, dB(A), dB(C) |
+| Spannung | Widerstandsteiler, Kapazitiver Teiler, Hall-Effekt, Trennverstärker | — | V, mV, kV |
+| Strom | Shunt-Widerstand, Hall-Effekt, Stromwandler, Rogowski-Spule | — | A, mA, kA |
+| Widerstand | 2-Leiter, 3-Leiter, 4-Leiter, Brückenmessung | — | Ω, kΩ, MΩ |
+| Leistung | Wattmeter, Leistungsanalysator, Berechnet (V×I) | — | W, kW, MW |
+| Energie | Energiezähler, Smart Meter | — | Wh, kWh, MWh |
+| Frequenz | Quarzzähler, Reziprokzähler, Optisch, Magnetischer Aufnehmer | — | Hz, kHz, MHz, GHz, bpm |
+| Kapazität | Brücke, Lade-/Entladeverfahren, Resonant | — | F, µF, nF, pF |
+| Induktivität | Brücke, Resonant, Impedanzbasiert | — | H, mH, µH |
+| Impedanz | Impedanzanalysator, LCR-Messgerät | — | Ω, kΩ, MΩ |
+| Magnetfeld | Hall-Effekt, Fluxgate, Magnetoresistiv, NMR, SQUID | — | T, mT, µT, G |
+| Elektrisches Feld | Feldmühle, Elektrostatische Sonde, Kapazitive Sonde | — | V/m, kV/m |
+| Strahlung | Geiger-Müller, Szintillation, Halbleiter, Ionisationskammer, Proportionalzähler | — | Gy, Sv, rem, Bq |
+| Beleuchtungsstärke | Photodiode, Photowiderstand, Luxmeter | — | lx, fc |
+| Leuchtdichte | Bildgebendes Photometer, Spotphotometer | — | cd/m² |
+| Konzentration | Elektrochemisch, NDIR, PID, MOS, Katalytische Perle (Pellistor), Zirkonoxid, Massenspektrometer | — | ppm, ppb, %, mg/m³ |
+| pH-Wert | Glaselektrode, ISFET, Optisch | — | pH |
+| Leitfähigkeit | Kontaktierend, Induktiv, Ringkern | — | S/m, mS/cm, µS/cm |
+| Salzgehalt | Leitfähigkeitsbasiert, Refraktometer | — | ppt, PSU, g/L |
+| Gelöster Sauerstoff | Galvanisch, Polarographisch, Optisch/Lumineszenz | — | mg/L, % sat |
+| ORP / Redoxpotenzial | Platinelektrode, Goldelektrode | — | mV |
+| Dichte | Schwingrohr, Hydrostatisch, Coriolis, Pyknometer | — | kg/m³, g/cm³ |
+| Viskosität | Rotations-, Schwingungs-, Kapillar-, Kugelfall-Verfahren | — | Pa·s, cP |
+| Feuchtigkeit | Kapazitiv, Mikrowelle, Infrarot, Gravimetrisch | — | %RH, %, g/g |
+| Partikelkonzentration | Optischer Partikelzähler, Laserstreuung, Kondensationspartikelzähler | — | particles/m³, particles/ft³ |
+| Windrichtung | Windfahne, Ultraschall | — | ° |
+| Niederschlag | Kippwaage, Wägung, Optisch | — | mm, in |
+| Blutsauerstoff | Pulsoxymetrie | — | % SpO₂ |
+| Oberflächenrauheit | Taktiles Profilometer, Optisches Profilometer, Laserscanning | — | Ra (µm), Rz (µm), Rt (µm), µm |
+
+*Halten Sie diese Tabelle mit `PHYSICAL_QUANTITIES` in `apps/web/src/lib/sensor-options.ts` synchron
+— aktualisieren Sie sie, wann immer dort eine neue physikalische Größe, Technologie oder Einheit
+hinzugefügt wird.*
+
+### Messtyp [#measurement-type]
+
+Manche physikalischen Größen haben mehr als einen Mess-*Modus*. Das klarste Beispiel ist Druck: Ein
+Sensor kann **absoluten** Druck (relativ zum Vakuum) oder **Relativdruck** (relativ zum
+Atmosphärendruck) angeben. Wo eine physikalische Größe definierte Optionen hat, erscheint unter
+Physikalische Größe ein **Typ**-Dropdown; wo keines benötigt wird (z. B. Temperatur), ist das Feld
+vollständig ausgeblendet.
+
+### Messbereich & Einheit [#measurement-range]
+
+Geben Sie den **Messbereich** (Min/Max) und die Anzeige-**Einheit** des Kanals ein. Sobald ein Bereich
+festgelegt ist, wird jede "% FS"-Option (Prozent des Endwerts) unten verfügbar, da ein Prozentsatz eine
+Spanne benötigt, gegen die umgerechnet werden kann.
+
+### Technologie [#technology]
+
+Die Messtechnologie (z. B. RTD, Thermoelement, Dehnungsmessstreifen) steht rechts neben der
+physikalischen Größe — ein rein beschreibendes Feld ohne Auswirkung auf Berechnungen.
+
+### Ausgangssignal [#output-signal]
+
+Der Rohausgang des Sensors — Typ, Wertebereich und Einheit — steht direkt unter dem Messbereich, im
+selben Min-Max/Einheit-Spaltenlayout. Dies ist das, was der Sensor tatsächlich elektrisch ausgibt, was
+sich von der physikalischen Einheit unterscheiden kann (z. B. eine 4–20-mA-Stromschleife, die 0–100 °C
+repräsentiert).
+
+| Ausgangssignaltyp | Beschreibung | Einheiten |
+|---|---|---|
+| Analog | Ein kontinuierliches elektrisches Signal proportional zum Messwert (z. B. eine 4–20-mA-Stromschleife). | mA, A, V, mV, kV |
+| Digital | Ein kodierter/diskreter Ausgang; die Einheitsoptionen entsprechen der physikalischen Größe des Kanals selbst statt einer festen elektrischen Einheit. | Dieselben Einheiten wie die physikalische Größe des Kanals |
+| Frequenz | Der Messwert wird als Signalfrequenz kodiert. | Hz, kHz, MHz, GHz |
+| Widerstand | Der Ausgang ist ein variabler Widerstand proportional zum Messwert (z. B. ein Platin-RTD-Element). | Ω, kΩ, MΩ |
+| Kapazität | Der Ausgang ist eine variable Kapazität proportional zum Messwert. | F, µF, nF, pF |
+| Ratiometrisch | Der Ausgang wird als Verhältnis zur Erregerspannung des Sensors ausgedrückt statt als Absolutwert (z. B. der mV/V-Ausgang einer Wägezelle mit Brückenschaltung). | mV/V, V/V |
+
+*Halten Sie diese Tabelle mit `OUTPUT_TYPE_OPTIONS`/`getOutputUnits` in
+`apps/web/src/lib/sensor-options.ts` synchron — aktualisieren Sie sie, wann immer dort ein neuer
+Ausgangssignaltyp hinzugefügt wird.*
+
+### Genauigkeitswert [#accuracy-value]
+
+Maximale Abweichung zwischen dem Sensorausgang und dem wahren Wert. Kleiner bedeutet genauer. Wählen
+Sie **% FS** als Einheit, um dies als Prozentsatz des Messbereichs statt als Absolutwert auszudrücken —
+siehe [Die "% FS"-Konvention](#the-fs-convention) unten. Dies ist die Herstellerangabe/nominale
+Genauigkeitsspezifikation, und dagegen vergleicht Open Gauge den gemessenen Fehler einer Kalibrierung, um
+über Bestehen/Nichtbestehen zu entscheiden — siehe [Entscheidungsregeln](../calibration/decision-rules.mdx).
+
+### Auflösung [#resolution]
+
+Die kleinste Änderung des Eingangs, die der Sensor erkennen und in seinem Ausgang darstellen kann. Die
+Auflösung fließt automatisch als Typ-B-(rechteckiger) Beitrag in das Unsicherheitsbudget jeder
+Kalibrierung ein — siehe [Das Unsicherheitsbudget](../calibration/uncertainty-budget.mdx).
+
+### Unsicherheit (±) [#measurement-uncertainty]
+
+Quantifiziert den Zweifel am Messergebnis, ausgedrückt als ±Wert. Dies ist die nominale/erweiterte
+Unsicherheitsangabe des Herstellers. Sie füllt im Kalibrier-Assistenten vorab ein Feld "Nominale
+Sensorgenauigkeit" pro Kalibrierung aus (dort weiterhin bearbeitbar) als *optionaler* Typ-B-Beitrag zum
+Unsicherheitsbudget dieser Kalibrierung — Opt-in, da das bedingungslose Einrechnen die Gefahr birgt,
+den aus den eigenen Daten der Kalibrierung berechneten Anpassungsresiduen-Term doppelt zu zählen.
+
+### Driftrate [#drift-rate]
+
+Die Rate, mit der sich der Sensorausgang über die Zeit verschiebt, ohne dass sich die gemessene Größe
+ändert. Rein informativ am Kanal — die eigene Drift-*Erkennung* von Open Gauge wird aus der tatsächlichen
+Kalibrierhistorie berechnet, nicht aus dieser Herstellerangabe; siehe [Drift-Kennzahlen](../health-scoring/drift-metrics.mdx).
+
+### Ansprechzeit (ms) [#response-time-ms]
+
+Zeit, bis der Sensorausgang nach einer sprunghaften Eingangsänderung einen definierten Prozentsatz
+seines Endwerts erreicht.
+
+### Bandbreite (Hz) [#bandwidth-hz]
+
+Maximale Frequenz von Eingangsänderungen, denen der Sensor genau folgen kann.
+
+### Kalibriermethode [#calibration-method]
+
+Das [Verfahren](../procedures/index.mdx), mit dem dieser Kanal kalibriert wird — die Verknüpfung
+eines Verfahrens hier lässt den Kalibrier-Assistenten die richtigen Schritte, Ausrüstung und
+Abnahmekriterien für diesen spezifischen Kanal vorab ausfüllen.
+
+### Kalibrierrolle [#calibration-role]
+
+Ein Kontrollkästchen, **"Referenznormal"** (Standard: nicht aktiviert/**Nein**). Aktivieren Sie es, um
+diesen Kanal als Referenznormal zu kennzeichnen, sodass er als Rückführbarkeitsreferenz ausgewählt
+werden kann, wenn andere Anlagen dagegen kalibriert werden — siehe
+[Kalibrierübersicht](../calibration/overview.mdx) dazu, wie interne Kalibrierungen eine
+Referenz-Anlage verwenden.
+
+## Die "% FS"-Konvention [#the-fs-convention]
+
+Genauigkeit, Auflösung und Unsicherheit koppeln jeweils einen numerischen Wert mit einem
+**Einheiten-Dropdown**. Dieses Dropdown bietet die kompatiblen physikalischen Einheiten des Kanals
+(z. B. °C für einen Temperaturkanal) sowie, sobald Bereich Min/Max ausgefüllt sind, eine
+**"% FS"**-Option als *erste* Wahl. Es gibt kein separates Feld "Genauigkeitstyp" zum Festlegen — die
+Wahl einer echten Einheit (wie °C) bedeutet, dass der Wert absolut ist; die Wahl von **% FS** bedeutet,
+dass es sich um einen Prozentsatz der Bereichsspanne handelt, und Open Gauge rechnet ihn intern in einen
+Absolutwert um (`Wert/100 × (Bereich_max − Bereich_min)`), wo immer er in einer Berechnung verwendet
+wird.
+
+## Nach dem Speichern
+
+Sobald ein Kanal gespeichert ist, ist jeder ausgefüllte Wert direkt in der Kanalliste auf der
+Anlagenseite sichtbar — kein erneutes Öffnen des Bearbeitungsformulars nötig, um zu prüfen, was
+konfiguriert wurde.
+
+## Nächste Schritte
+
+Mit einem konfigurierten Kanal sind Sie bereit, Ihre erste Kalibrierung durchzuführen — siehe
+[Kalibrierübersicht](../calibration/overview.mdx), oder arbeiten Sie ein vollständiges numerisches
+Beispiel in [Durchgerechnete Beispiele](../calibration/examples/index.mdx) durch.

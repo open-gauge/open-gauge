@@ -1,0 +1,66 @@
+---
+title: Estado de salud y estabilidad
+description: Cómo se compone el estado de salud de 0-100 de Open Gauge, y qué significan "estabilidad" e "intervalo recomendado".
+---
+
+Todo activo con al menos dos calibraciones en un canal obtiene un **estado de salud** calculado
+(0–100), visible en la pestaña Estado del activo. Con una sola calibración, todavía no hay una
+tendencia que evaluar — Open Gauge muestra una puntuación neutral del 100%, estabilidad "Estable", y
+una tasa de deriva de 0 en lugar de un resultado engañoso calculado a partir de un solo punto.
+
+## Estado de salud [#score]
+
+Un compuesto ponderado de seis variables de entrada, cada una normalizada individualmente y luego
+combinada:
+
+| Entrada | Peso |
+|---|---|
+| Deriva máxima | 30% |
+| Deriva RMS | 20% |
+| RMSE | 15% |
+| Incertidumbre | 10% |
+| Histéresis | 10% |
+| Linealidad | 10% |
+| Tendencia | 5% |
+
+La deriva máxima y la deriva RMS dominan la puntuación (50% combinado) porque son las que responden
+más directamente a la pregunta que un estado de salud existe para responder: *¿este instrumento
+sigue midiendo lo que dice medir?* Consulta [Métricas de deriva](./drift-metrics.mdx) para saber qué
+significa matemáticamente cada término de deriva.
+
+## Estabilidad [#stability]
+
+Una clasificación (p. ej. Estable / A la deriva / Inestable) derivada de la
+[tasa de deriva](#average-drift) a largo plazo — relativa al intervalo de escala completa del canal
+— y la calidad del ajuste de regresión de la tendencia de deriva. Un sensor puede tener un estado de
+salud "bueno" (alto) hoy y aun así estar clasificado como a la deriva, si la tendencia se mueve en
+una dirección preocupante aunque todavía no haya cruzado un umbral.
+
+## Deriva promedio [#average-drift]
+
+La tasa de deriva a largo plazo obtenida de una regresión lineal sobre todo el historial de
+calibración de este canal — qué tan rápido, en promedio, crece con el tiempo el error de este
+sensor (independientemente del [error máximo](../calibration/curve-fitting.mdx#max-error)
+individual de cualquier calibración concreta).
+
+## Intervalo recomendado [#recommended-interval]
+
+Una sugerencia heurística para el próximo intervalo de calibración, basada en la clasificación de
+[estabilidad](#stability) actual, partiendo del intervalo de calibración predeterminado configurado
+del sensor. Esta es una recomendación interna de Open Gauge solo para fines de planificación — nunca
+se imprime en el propio certificado de calibración; según ISO/IEC 17025 §7.8.4.3, un certificado
+solo indica una recomendación de intervalo cuando se ha acordado explícitamente con el cliente, y
+Open Gauge todavía no tiene ese flujo de acuerdo (consulta
+[Generación de certificados](../calibration/certificates.mdx#whats-deliberately-not-on-it)).
+
+## Los gráficos
+
+- **Evolución de la deriva** — deriva máxima de cada calibración frente a la calibración de
+  referencia (la primera), con una línea de tendencia lineal. La vista principal del envejecimiento
+  del sensor a lo largo del tiempo.
+- **Estabilidad de la calibración** — la evolución histórica de RMSE, Error Máximo, Incertidumbre
+  Expandida, Histéresis y R² a lo largo de cada calibración de este canal, graficados juntos para
+  que puedas detectar cambios correlacionados (p. ej. la incertidumbre creciendo junto con el RMSE).
+- **Comparación de curvas de calibración** — evalúa los polinomios ajustados de dos calibraciones
+  sobre aproximadamente 200 puntos a lo largo de su rango operativo compartido, aislando cómo ha
+  cambiado de forma la propia curva — independientemente del error de cualquier punto individual.

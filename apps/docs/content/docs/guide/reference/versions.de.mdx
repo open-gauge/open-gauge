@@ -1,0 +1,827 @@
+---
+title: Versionen
+description: Release-Historie — was sich in jeder Version von Open Gauge geändert hat, und warum.
+---
+
+Open Gauge verfolgt eine einzige Versionsnummer über Frontend und Backend hinweg. Sie wird unten
+links in der Seitenleiste angezeigt (`v3.3.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
+spiegelt [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) im
+Repository-Root wider.
+
+Die Historie unterhalb von 1.0.0 wurde nachträglich aus dem Git-Commit-Protokoll rekonstruiert,
+nummeriert nach der Wirkung auf die semantische Versionierung (`0.x`, solange das Produkt vor der
+Veröffentlichung/instabil war, `1.0.0` ab dem Punkt, an dem es zu einem dokumentierten,
+lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern die kleineren
+Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
+eingeflossen sind.
+
+## 3.3.0
+
+### Hinzugefügt
+
+- **Mehrsprachige Unterstützung.** Die Web-App wird jetzt auf Englisch (maßgeblich), Spanisch,
+  Französisch und Deutsch ausgeliefert, mit einer Architektur, die so konzipiert ist, dass das
+  spätere Hinzufügen einer fünften Sprache (und weiterer) eine reine Inhaltsänderung ist (ein
+  `LocaleMeta`-Eintrag in `apps/web/src/i18n/locales.ts` plus ein Satz
+  `messages/{locale}/*.json`) — nie eine Änderung am Anwendungscode. Aufgebaut auf
+  [next-intl](https://next-intl.dev), wobei nicht-englische Locales in der URL ein Präfix tragen
+  (`/es/...`, `/fr/...`, `/de/...`), während Englisch an der Wurzel unpräfixiert bleibt, sodass
+  bestehende Links und Lesezeichen weiterhin funktionieren. Ein neuer Sprachumschalter mit
+  Globus-Symbol sitzt neben dem Theme-Umschalter in der oberen Leiste; die gewählte Sprache wird
+  sofort in ein `NEXT_LOCALE`-Cookie geschrieben und, sobald angemeldet, in das Profil des Benutzers
+  (`PATCH /users/me` erhielt ein validiertes `language`-Feld), sodass sie einen wiederkehrenden
+  Benutzer über Geräte und Browser hinweg begleitet. Jede Seite und jede gemeinsam genutzte
+  Komponente in der authentifizierten App, der Anmelde-/Registrierungs-/Passwort-vergessen-/
+  Passwort-zurücksetzen-/E-Mail-bestätigen-Ablauf, die Admin-/Einstellungsbildschirme, die
+  Datenschutzerklärung und die Nutzungsbedingungen (sowohl der App als auch der Marketing-Website)
+  sowie jedes enum-gesteuerte Dropdown (physikalische Größen, Sensortechnologien, Kalibrierstatus,
+  Rollen usw.) sind übersetzt. Das Aktivitätsprotokoll und der Audit-Trail übersetzen jede Aktion
+  (`asset.created`, `calibration.voided`, …), statt den rohen Ereigniscode anzuzeigen, und der
+  Datums-Tooltip des Kalibrierkalenders im Dashboard zeigt den Wochentagsnamen in der Sprache des
+  Betrachters. Von Benutzern eingegebene Inhalte (Anlagennamen, Notizen, Freitext im Audit-Protokoll)
+  bleiben bewusst unübersetzt — sie werden genau so angezeigt, wie sie eingegeben wurden, da die
+  maschinelle Übersetzung der Daten einer anderen Person stillschweigend verändern würde, was
+  diese geschrieben hat. Die separate Marketing-Website (`landing/`, ein statisches
+  HTML/CSS/JS-Cloudflare-Worker-Projekt) erhielt einen eigenen, passenden Sprachumschalter neben
+  ihrem Hell/Dunkel-Umschalter, vollständige spanische/französische/deutsche Fassungen der
+  Marketing-Startseite und der Rechtsseiten sowie eine auf `Accept-Language` basierende
+  Weiterleitung beim ersten Besuch in ihrem Worker.
+- Backend: `User` erhielt eine Spalte `language` (validiert gegen `SUPPORTED_LANGUAGES`,
+  standardmäßig `en`), migriert über `028_add_user_language.py`, mit Testabdeckung für gültige/
+  ungültige Werte bei `UserSelfUpdate`.
+- Das Knowledge Center (`apps/docs`, sowie derselbe Inhalt, in der App eingebettet unter
+  **Dokumentation**) ist jetzt ebenfalls übersetzt, unter Verwendung der eingebauten i18n von
+  Fumadocs: Die spanische/französische/deutsche Übersetzung jeder Anleitungsseite liegt als
+  `page.{locale}.mdx`-Geschwisterdatei neben ihrer englischen Quelle, mit automatischem Fallback
+  auf Englisch für jede noch nicht übersetzte Seite, sodass die Abdeckung schrittweise wachsen
+  kann. Die eigenständige Docs-Website folgt demselben Schema unpräfixiertes-Englisch/präfixierte-
+  andere-Sprachen wie die App (`/docs/guide`, `/es/docs/guide`, …) und erhielt einen eigenen
+  Sprachumschalter in der oberen Navigation. Die automatisch generierte API-Referenz bleibt in
+  jeder Sprache nur auf Englisch, da sie direkt aus dem OpenAPI-Schema generiert wird, statt von
+  Hand geschrieben zu sein.
+
+## 3.2.1
+
+### Behoben
+
+- Die eingebaute Standard-Kalibrierzertifikatsvorlage druckte bedingungslos ein Feld
+  "Fälligkeitsdatum" (`calibration_date` + `calibration_interval`), ohne eine Möglichkeit zu
+  wissen, ob der Kunde zugestimmt hatte, eine Kalibrierintervall-Empfehlung zu erhalten — ein
+  direkter Konflikt mit ISO/IEC 17025 §7.8.4.3 ("Ein Kalibrierzertifikat...darf keine Empfehlung
+  zum Kalibrierintervall enthalten, außer wenn dies mit dem Kunden vereinbart wurde"), und ein
+  Widerspruch zur Dokumentation der Zertifikatserstellung, die fälschlicherweise behauptete, es
+  erscheine nie ein Intervall-Wortlaut. `templates/certificates/default.tex.jinja` rendert
+  `due_date` nicht mehr — diese Zelle zeigt jetzt stattdessen den Standort der Kalibrierung. `due_date`
+  wird weiterhin an den Kontext jeder Vorlage übergeben, sodass eine benutzerdefinierte
+  hochgeladene Vorlage sich weiterhin dafür entscheiden kann, es zu drucken (z. B. sobald ein
+  echter Kunden-Vereinbarungs-Workflow existiert). Gefunden beim Erstellen des
+  [Compliance](../compliance/overview.mdx)-Abschnitts dieser Dokumentation — siehe
+  [ISO/IEC 17025 §7.8.4.3](../compliance/iso-17025.mdx#no-interval-recommendation).
+
+## 3.2.0
+
+### Hinzugefügt
+
+- Jede Stelle, an der ein Benutzer in einer Liste erscheint — Organisationsmitglieder,
+  Beitrittsanfragen, die Auswahl "Mitglied hinzufügen", die Admin-Benutzerliste und Aktivitäts-/
+  Audit-Protokolleinträge — zeigt jetzt sein Profilbild und verlinkt seinen Namen zu `/users/{id}`,
+  über eine neue gemeinsam genutzte `UserSummary`-Komponente (`UserMention`, verwendet von
+  Aktivitätsprotokollen, ist jetzt ein dünner Wrapper darum). Backend-Antworten, die einen Benutzer
+  einbetten (`OrganizationMemberResponse`, `OrganizationJoinRequestResponse`,
+  `EligibleUserResponse`, `AuditLogResponse`), erhielten ein Feld `profile_picture_url`, aufgelöst
+  über einen neuen gemeinsamen Helfer `resolve_picture_url`. Dabei wurde eine bereits bestehende
+  Lücke behoben: Der pro Anlage vorhandene Audit-Protokoll-Endpunkt
+  (`GET /assets/{id}/audit-logs`) reicherte `actor_name`/`actor_role` überhaupt nie an (immer
+  null) — er teilt sich jetzt dieselbe Anreicherung wie der übergeordnete
+  `/audit-logs`-Endpunkt.
+- Alle Kontrollkästchen in der gesamten App werden durch eine neue gemeinsame
+  `ToggleSwitch`-Komponente ersetzt — ein pillenförmiger Schalter mit sanftem Ein/Aus-Farbübergang
+  und einer Zustandsbeschriftung "Ein"/"Aus".
+- Anmeldeseite: ein Augensymbol zur Passwort-Sichtbarkeit und ein Schalter "Angemeldet bleiben" —
+  aktiviert (Standard) speichert die Sitzung wie zuvor in `localStorage`; deaktiviert verwendet
+  stattdessen `sessionStorage`, sodass Abmelden so einfach ist wie das Schließen des Browsers.
+- Ein Klick auf ein Tortendiagramm-Segment im Dashboard navigiert jetzt zu einem gefilterten
+  Register: Kalibrierstatus → Anlagen gefiltert nach Status, Sensor-/DAQ-Typ → Anlagen gefiltert
+  nach diesem Untertyp, physikalische Größe des Verfahrens → das Verfahrensregister entsprechend
+  gefiltert.
+- **Admin → Dashboard → Datenbank exportieren/importieren** bündelt jetzt jedes MinIO-Objekt
+  (Zertifikate, Datenblätter, LaTeX-Vorlagen, Profilbilder) zusammen mit dem `pg_dump`-Archiv in
+  einer einzigen ZIP-Datei, sodass die Wiederherstellung eines Backups auf einer anderen Instanz
+  ihre Medien mitbringt, statt Dateiverweise ins Leere zeigen zu lassen. Import akzeptiert
+  weiterhin ein reines `pg_dump`-Archiv aus älteren Backups (in diesem Fall nur die Datenbank).
+- Kalibrierzertifikats-PDFs werden jetzt mit einer echten, PDF-nativen Signatur (PAdES) digital
+  signiert — jeder PDF-Betrachter mit Signaturunterstützung (Adobe Acrobat, Chrome, Preview) kann
+  überprüfen, dass ein Zertifikat von seiner Organisation ausgestellt wurde und seither nicht
+  verändert wurde, unabhängig davon, welche LaTeX-Vorlage es gerendert hat. Jede Organisation
+  erhält bei ihrem ersten ausgestellten Zertifikat ein träge generiertes, selbstsigniertes
+  RSA-2048-Zertifikat, sichtbar und herunterladbar unter **Organisationen → (Organisation) →
+  Zertifikatssignierung**. Siehe
+  [Digitale Zertifikatssignaturen](/docs/guide/calibration/certificate-signing) dazu, wie man eine
+  überprüft.
+- Die Dokumentation zu Zertifikatsvorlagen erhielt einen umfangreichen Abschnitt "Rezepte" mit
+  copy-paste-fähigen Mustern für jede Platzhalterform, plus ein minimales, funktionierendes
+  Vorlagengerüst.
+
+### Behoben
+
+- Das Profilbild des Benutzers zeigte beim Hovern keinen Zeigercursor, obwohl ein Klick darauf
+  etwas bewirkt (öffnet das Vorschau-Modal, öffnet das Avatar-Dropdown in der oberen Leiste).
+
+## 3.1.1
+
+### Behoben
+
+- **Hohe Priorität:** Der in Self-Hosting → Bereitstellung dokumentierte Migrationsbefehl von
+  benanntem Volume zu Bind-Mount (zum Upgrade einer Installation von vor der
+  Bind-Mount-Korrektur in 3.0.0) kopierte stillschweigend nichts, wenn er aus Git Bash unter
+  Windows ausgeführt wurde: MSYS schreibt *jedes* mit `/` beginnende Argument um, bevor es
+  `docker.exe` erreicht, einschließlich der containerseitigen Pfade in
+  `-v /host/path:/container/path` (nicht nur der Host-Seite), und verstümmelt sie zu Unsinn wie
+  `C:\Program Files\Git\from`. `docker run ... cp -a /from/. /to/` schreibt dann an einen
+  unsinnigen Ort statt nach `data/postgres`/`data/minio` — ohne dass ein Fehler gemeldet wird,
+  sodass es genau so aussah, als hätte der Rebuild die Daten gelöscht, während die eigentliche
+  Ursache war, dass der Migrationsschritt nie gegen den richtigen Pfad lief. Die Dokumentation
+  weist jetzt darauf hin, den Befehl stattdessen aus PowerShell/cmd.exe statt Git Bash auszuführen,
+  oder ihm `MSYS_NO_PATHCONV=1` voranzustellen, falls Git Bash unvermeidbar ist, sowie darauf, wie
+  man einen missglückten vorherigen Versuch erkennt (ein verwaistes, leeres Verzeichnis im Stil
+  `data/postgres;C`) und sich davon erholt (die Originaldaten sind im alten benannten Volume
+  weiterhin intakt, bis es ausdrücklich entfernt wird).
+  - Bestätigt, dass die aktuelle Bind-Mount-Konfiguration selbst (eingeführt in 3.0.0) nicht die
+    Quelle eines anhaltenden Datenverlusts ist: ein vollständiger Durchlauf aus
+    `docker compose down` + `up --build`, sowohl gegen ein frisch initialisiertes leeres
+    `data/`-Verzeichnis als auch gegen das befüllte Verzeichnis dieses Repositorys selbst, bewahrt
+    jede Zeile und Datei exakt.
+  - `scripts/verify-media-persistence.sh` hinzugefügt — eine isolierte, nicht-destruktive Prüfung
+    (Wegwerf-Compose-Projektname und temporäres Datenverzeichnis, sicher parallel zu einer
+    Live-Bereitstellung ausführbar), die eine Marker-Zeile/ein Marker-Objekt schreibt, die
+    Container abbaut, neu baut und bestätigt, dass beide erhalten bleiben. Beendet sich bei
+    Fehlschlag mit einem Fehlercode ungleich null, sodass es nach jeder Änderung an
+    `docker-compose.yml` ausgeführt oder als Regressionsschutz gegen ein Wiederauftreten dieser
+    Fehlerklasse in CI eingebunden werden kann.
+
+## 3.1.0
+
+### Hinzugefügt
+
+- Benutzerspezifische Benachrichtigungseinstellungen und ein vollständiger
+  Benachrichtigungs-Lebenszyklus (einzelne/alle löschen, Klick-zum-Navigieren) für den in 3.0.0
+  eingeführten In-App-Posteingang.
+  - Ein neuer Abschnitt **Einstellungen → Benachrichtigungen** lässt jeden Benutzer pro Kategorie
+    (Kalibrierung fällig, neue Kalibrierung erfasst, Beitrittsanfrage zur Organisation, Entscheidung
+    zur Beitrittsanfrage zur Organisation) wählen, ob er sie per E-Mail, in der App, beidem oder
+    keinem von beiden erhält. Neue Benutzer und unberührte Kategorien haben standardmäßig beide
+    Kanäle aktiviert, sodass von Haus aus nichts konfiguriert werden muss.
+  - Das Dropdown der Benachrichtigungsglocke erhielt eine Aktion **Alle löschen** und eine
+    Entfernen-Schaltfläche (×) pro Benachrichtigung — zuvor konnte der Posteingang nur als gelesen
+    markiert, aber nie tatsächlich geleert werden.
+  - Erinnerungen zu bald fälligen/überfälligen Kalibrierungen und Benachrichtigungen zu neuen
+    Kalibrierungen lösen jetzt auf dieselbe Weise eine In-App-Benachrichtigung aus, wie es
+    Beitrittsanfragen zu Organisationen bereits taten (in 3.0.0), statt immer nur per E-Mail zu
+    erfolgen — der In-App-Kanal hängt überhaupt nicht davon ab, ob SMTP konfiguriert ist. Beide
+    verlinken zur Detailseite der Anlage.
+  - Der Durchlauf der Kalibrier-Erinnerungen markiert eine Erinnerung jetzt als gesendet, sobald
+    *irgendein* aktivierter Kanal für *irgendeinen* Empfänger zustellt (in der App oder per
+    E-Mail), statt speziell E-Mail zu verlangen — ein defekter SMTP-Server blockiert nicht mehr den
+    garantierten In-App-Kanal und wird nicht endlos wiederholt, sobald der Empfänger auf andere
+    Weise benachrichtigt wurde.
+
+## 3.0.0
+
+### Hinzugefügt
+
+- Organisationen sind jetzt vollwertige Multi-Tenant-Entitäten. Jeder Nicht-Viewer-Benutzer kann
+  eine erstellen und wird automatisch ihr erster Admin; ein Benutzer kann einer beliebigen Anzahl
+  von Organisationen angehören, jeweils mit eigener `member`-/`admin`-Rolle — getrennt von der
+  globalen RBAC-Rolle des Benutzerkontos. Nur Super Admin greift in die Organisationsverwaltung
+  ein, bei der der Aufrufer kein Mitglied ist; die globale `admin`-Rolle hat keinen besonderen
+  Zugriff auf Organisationen, entsprechend dem gleichrangigen Modell. Viewer ist von jeder
+  Organisationsverwaltung ausgeschlossen, unabhängig von einer eventuellen `admin`-Rolle innerhalb
+  einer Organisation — die globale RBAC-Einschränkung gewinnt gegenüber der auf
+  Organisationsebene.
+  - Neue Profilfelder: `full_name`, `website`, `location_id` (primärer Standort/Hauptsitz),
+    `email`, `phone`, `private`.
+  - Neue eigene Seite **Organisationen** (Liste + Detailseite pro Organisation, ersetzt das alte
+    Panel Admin → Organisationen) und ein Reiter in der Seitenleiste.
+  - Mitglieder können austreten, und Admins können Mitglieder entfernen oder ihre Rolle ändern —
+    abgesichert, sodass eine Organisation nie ohne Admins dasteht (der letzte Admin muss zuerst
+    jemand anderen befördern, oder stattdessen die Organisation deaktivieren).
+  - Private Organisationen zeigen Nicht-Mitgliedern nur ihren Namen (mit Schlosssymbol), sodass sie
+    noch auffindbar genug bleiben, um einen Beitritt zu beantragen; alles andere über sie — Profil,
+    Mitgliederliste, Anlagen — ist nur für Mitglieder.
+  - Nicht-Mitglieder können eine **Beitrittsanfrage** senden; jeder Admin dieser Organisation wird
+    immer über einen neuen In-App-Benachrichtigungsposteingang (Glockensymbol in der oberen Leiste)
+    benachrichtigt, zusätzlich per E-Mail, falls SMTP konfiguriert ist. Das Genehmigen fügt den
+    Anfragenden als `member` hinzu.
+  - Anlagen tragen jetzt eine direkte `organization_id` (ausgewählt aus den eigenen Organisationen
+    des erstellenden Benutzers), unabhängig vom Standort der Anlage — angezeigt auf der Detailseite
+    der Anlage und zurückverlinkt zur Seite der Organisation, die wiederum eine anklickbare
+    Anlagenanzahl zeigt, die das Anlagenregister filtert.
+  - Das Mitgliederpanel der Organisationsseite erhielt eine Schaltfläche **Mitglied hinzufügen**
+    (ein Modal, das jeden Benutzer auflistet, der noch kein aktives Mitglied ist, Mehrfachauswahl,
+    hinzugefügt mit der Rolle `member`) und eine **Gefahrenzone** mit einer bestätigten
+    Löschaktion — das Löschen deaktiviert die Organisation und verbirgt sie vor allen außer Super
+    Admin. Ausstehende Beitrittsanfragen erscheinen jetzt direkt in derselben Mitgliederliste mit
+    dem Status "Ausstehend" statt in einem separaten Panel, und das Genehmigen/Ablehnen erfordert
+    keinen Bearbeitungsmodus mehr; das Ändern der Rolle eines Mitglieds oder das Entfernen jedoch
+    schon.
+  - Eine Schaltfläche **Beitreten/Verlassen** erscheint jetzt in jeder Listenzeile einer
+    Organisation und auf ihrer Detailseite (neben Bearbeiten für Admins, an Stelle von Bearbeiten
+    für alle anderen): "Beitritt anfragen", ein deaktiviertes "Anfrage ausstehend", sobald eine
+    Anfrage läuft, oder ein rotes "Verlassen" für Mitglieder — jede hinter einem
+    Bestätigungsdialog. Das Verlassen als letzter Admin einer Organisation wird angeleitet, statt
+    einfach abgelehnt zu werden: zunächst ein anderes Mitglied befördern, oder die Organisation
+    löschen, falls es auch das letzte Mitglied ist.
+  - Neue gemeinsame UI-Komponente `ImageUploadField` (kreisförmiges Bild, Klick zur Vorschau,
+    überlagerte Upload-/Entfernen-Schaltflächen im Bearbeitungsmodus) — jetzt einheitlich für das
+    Organisationslogo, das Anlagenbild und das Benutzerprofilbild verwendet.
+  - Eine deaktivierte Organisation ist jetzt nur für Super Admin in der Liste Organisationen
+    sichtbar, mit rotem Hintergrund und einem Abzeichen "Gelöscht" dargestellt, und kann mit einer
+    Schaltfläche "Organisation wiederherstellen" in der Gefahrenzone ihres Bearbeitungsformulars
+    reaktiviert werden (`POST /organizations/{id}/restore`) — das Wiederherstellen wirkt sich nur
+    auf die Sichtbarkeit aus, nicht auf die Mitgliedschaft.
+
+### Geändert
+
+- **Breaking:** Viewer ist jetzt in der gesamten App nur lesend, nicht nur bei Organisationen —
+  sie können keine Anlagen, Verfahren oder Standorte mehr erstellen, bearbeiten, ausmustern,
+  importieren oder exportieren. Die Abhängigkeit `require_not_viewer` (bereits für die
+  Signaturverwaltung verwendet) sichert jetzt auch jeden verändernden Endpunkt bei `assets`,
+  `procedures` und `locations` ab; die entsprechenden Frontend-Steuerelemente
+  Neu/Bearbeiten/Löschen/Importieren/Exportieren sind für Viewer entsprechend ausgeblendet.
+- **Breaking:** Teams werden entfernt. Open Gauge ahmt jetzt Gogs nach — nur Benutzer und
+  Organisationen, keine Team-Ebene dazwischen.
+  - Die Tabellen `teams` und `team_members`, die `/teams*`-API-Endpunkte, die
+    Selbstbedienungs-Oberfläche zum Beitreten/Verlassen unter Einstellungen → Teams und das
+    verschachtelte Team-Panel unter Admin → Organisationen wurden entfernt.
+  - Die Anlagenzuordnung (zuvor `assets.owner`, ein Team-Verweis) wird durch das oben genannte
+    direkte `assets.organization_id` ersetzt.
+  - Kalibrier-E-Mail-Benachrichtigungen (neue Kalibrierung und Erinnerungen fällig/überfällig)
+    gehen jetzt an jeden aktiven Techniker/Admin/Super Admin, der Mitglied der Organisation der
+    Anlage ist, statt an die Mitglieder eines Teams; Viewer werden nie benachrichtigt. Die
+    Fußzeile der eingebauten Zertifikatsvorlage lässt ihre separate Zeile "Team" entfallen, da die
+    Zeile "Organisation" dies bereits abdeckt.
+- **Breaking:** Das redundante Boolean `User.is_superuser` wird entfernt. Es wurde bei jeder
+  Berechtigungsprüfung immer mit ODER mit `role == "superadmin"` verknüpft; die Fähigkeit von
+  Super Admin kommt jetzt ausschließlich aus dem Feld `role`. Jedes Konto, das
+  `is_superuser=true` hatte, wird durch die Migration auf `role=superadmin` befördert, sodass
+  niemand den Zugriff verliert.
+- **Breaking:** `users.organization_id` (ein einzelner nullbarer Fremdschlüssel, eine Organisation
+  pro Benutzer) wird durch die oben beschriebene Many-to-Many-Tabelle `organization_members`
+  ersetzt.
+- 11+ duplizierte, router-lokale Hilfsfunktionen `_require_admin`/`_require_superuser` wurden zu
+  gemeinsamen FastAPI-Abhängigkeiten `require_admin`/`require_superadmin` in
+  `dependencies/deps.py` zusammengeführt. Die vier Kopien von `ROLE_LABELS`/`ROLE_COLORS` im
+  Frontend wurden entsprechend in `lib/roles.ts` zusammengeführt.
+
+### Behoben
+
+- Das Organisationslogo wurde als nicht anklickbares Quadrat angezeigt statt als kreisförmiges,
+  klickbares Vorschaubild, das überall sonst verwendet wird.
+- Der Website-Link einer Organisation wurde relativ zur aktuellen Seite aufgelöst, wenn der
+  gespeicherte Wert kein `http(s)://`-Präfix hatte, was Besucher zu einer defekten URL
+  `/organizations/<website>` schickte, statt zur beabsichtigten Website. Die Speicherung ist
+  unverändert; nur der ausgehende Link wird normalisiert.
+- Die Anlagenanzahl auf der Seite einer Organisation verlinkte zum Anlagenregister, filterte es
+  aber nicht tatsächlich nach Organisation — das Register las `organization_id`/
+  `organization_name` nie aus der URL.
+- **Hohe Priorität:** Hochgeladene Dateien und Datenbankzeilen konnten selbst mit fest
+  vorgegebenem Projektnamen (vorherige Korrektur) nach `docker compose up --build` weiterhin
+  gelöscht erscheinen — ein anderer Aufruf (Arbeitsverzeichnis, `-p`-Überschreibung oder eine
+  ältere `docker-compose`-v1-Binary, die den Schlüssel `name:` ignoriert) konnte immer noch auf ein
+  anders benanntes Volume auflösen. Postgres und MinIO binden jetzt an einen festen Host-Pfad
+  (`infrastructure/docker/data/`) statt an ein benanntes Volume, das auf diese Weise nicht
+  auseinanderlaufen kann. Bestehende Installationen: Kopieren Sie Ihre aktuellen Daten aus dem
+  benannten Volume vor dem Upgrade nach `./data/postgres` und `./data/minio`
+  (`docker run --rm -v <old_volume>:/from -v $(pwd)/data/X:/to alpine cp -a /from/. /to/`), und
+  stellen Sie dann neu bereit.
+- Das Logo auf der Organisationslistenseite war quadratisch statt der überall sonst verwendeten
+  kreisförmigen Darstellung.
+- Das Organisationsbild blieb während der Bearbeitung klein (48px), statt der größeren Größe zu
+  entsprechen, die beim Bearbeiten eines Anlagen- oder Profilbilds verwendet wird.
+- Das Landen im Anlagenregister über einen gefilterten Link einer Organisation (oder eines
+  Standorts) wendete den Filter nicht an, bis die Seite manuell aktualisiert wurde — das Register
+  las den Filter aus `window.location.search` in einem nur beim Mounten ausgeführten Effekt, den
+  clientseitige Navigation nicht erneut auslöst. Umgestellt auf den reaktiven
+  `useSearchParams()`-Hook. Getrennt davon löschte das Verwerfen eines Filters über "Alle
+  anzeigen" nur den Zustand im Speicher, nicht die URL, sodass eine anschließende Aktualisierung
+  ihn stillschweigend erneut anwendete — "Alle anzeigen" löscht jetzt auch die entsprechenden
+  URL-Parameter.
+- Die Schaltfläche "Mitglied hinzufügen" der Organisationsseite war außerhalb des
+  Bearbeitungsmodus sichtbar, inkonsistent mit jedem anderen Steuerelement zur
+  Mitgliederverwaltung.
+
+## 2.4.0
+
+### Hinzugefügt
+
+- Die Signaturfläche (verwendet, wenn ein Benutzer seine Genehmigungssignatur festlegt) hat jetzt
+  Schaltflächen **Rückgängig** und **Löschen** neben **Zurücksetzen**. Rückgängig macht den
+  letzten Strich rückgängig; Löschen schaltet einen Radiergummi-Modus um, der Tinte unter dem
+  Zeiger entfernt statt hinzuzufügen, sodass ein falsch gezeichneter Teil einer Signatur korrigiert
+  werden kann, ohne alles neu zu zeichnen.
+- Eine neue QR-Aufkleber-Größe **1×0,5 Zoll**, neben den bestehenden Größen 2×2 und 4×2: QR-Code
+  auf der linken Hälfte, Anlagen-ID und Anlagenname auf der rechten Hälfte. Verfügbar als PNG, JPG
+  und PDF über denselben Anlagen-Dialog **Etikett**.
+
+## 2.3.0
+
+### Geändert
+
+- Changelog-Einträge (hier und in der `VERSIONS.md` im Repository-Root) zeigen jetzt nur die
+  Versionsnummer, kein Datum mehr — die Git-Historie ist bereits das Protokoll, wann etwas
+  ausgeliefert wurde, und die beiden Daten konnten auseinanderlaufen.
+
+### Behoben
+
+- Der Durchlauf der Kalibrier-Erinnerungen konnte während der lokalen Entwicklung und bei
+  Testläufen echte E-Mails versenden. `email_settings` war als Singleton dokumentiert, aber auf
+  Datenbankebene nie als solches durchgesetzt; Code, der es mit einem ungeordneten `.first()`
+  abfragte, konnte stillschweigend eine beliebige vorhandene Zeile aufgreifen, einschließlich
+  einer echten, bereits konfigurierten SMTP-Zeile, sodass ein Test, der den Erinnerungsdurchlauf
+  ausübte, am Ende eine echte E-Mail statt eines No-ops versenden konnte. Ein eindeutiger Index
+  macht das Erstellen einer zweiten Zeile jetzt unmöglich, dieselbe Technik, die bereits für
+  `certificate_templates` verwendet wird.
+- Die Aktion **Datenbank leeren** der **Gefahrenzone** konnte das Konto löschen, das sie ausgelöst
+  hat. Die Zugriffsprüfung akzeptiert entweder das Flag `is_superuser` oder `role ==
+  "superadmin"`, aber der Reset bewahrte nur `is_superuser`-Konten — ein `role ==
+  "superadmin"`-Benutzer ohne dieses Flag konnte die Aktion erreichen und dann davon gelöscht
+  werden. Der aufrufende Benutzer wird jetzt unabhängig von Rolle oder Flag immer bewahrt.
+
+## 2.2.0
+
+### Geändert
+
+- **Korrektur zu 2.1.0:** Der Inhalt der Landing-/Marketing-Seite (Funktionen, Vergleichstabelle,
+  FAQ, Kontaktformular) gehörte nie in dieses Repository — es ist die öffentliche Website
+  `opengauge.org`, die in einem separaten `landing`-Repository liegt.
+  `apps/web/src/app/page.tsx` wurde zurückgesetzt, und die in 2.1.0 hinzugefügten Verzeichnisse
+  `apps/web/src/components/landing/` und `apps/web/functions/` wurden entfernt; dieser Inhalt
+  wurde stattdessen im `landing`-Repository neu aufgebaut, passend zu dessen einfachem
+  HTML/CSS/JS-Stack.
+- Die admin-seitige **Gefahrenzone** vereinfacht: die in 2.1.0 hinzugefügte Aktion "ausgewählte
+  Tabellen leeren" entfernt (ein nur für Admins zugänglicher Endpunkt ohne Oberfläche zur
+  Erfüllung seiner eigenen Voraussetzung war die Komplexität nicht wert), und die Gestaltung des
+  Panels korrigiert, damit sie zum Rest von Admin → Dashboard passt — Import sitzt jetzt in
+  derselben roten Karte "Gefahrenzone" wie Leeren (beide wirklich destruktiv), während das
+  nicht-destruktive Exportieren in seiner eigenen neutralen Backup-Karte bleibt.
+
+### Behoben
+
+- `POST /admin/database/import` schlug fehl mit `pg_restore: error: could not execute query:
+  ERROR: unrecognized configuration parameter "transaction_timeout"`. Das
+  `postgresql-client`-Standardpaket von Debian ist neuer (17) als der Server des `db`-Dienstes
+  (`postgres:15-alpine`), und pg_restore erzeugt Sitzungs-Setup-Anweisungen basierend auf seiner
+  eigenen Client-Version — die von v17 werden von einem v15-Server nicht verstanden. Das
+  API-Image bindet jetzt `postgresql-client-15` über das offizielle PGDG-apt-Repository ein, exakt
+  passend zum Server.
+- Hochgeladene Dateien (Profilbilder, Signaturen, PDFs, Zertifikatsvorlagen) und Datenbankzeilen
+  konnten nach `docker compose up --build` gelöscht erscheinen. Docker Compose leitet seinen
+  Projektnamen — und damit seine Volume-Namen — standardmäßig vom aktuellen Verzeichnis ab, sodass
+  der Aufruf von `docker compose` von einem anderen Ort (oder auf eine andere Weise) als üblich
+  stillschweigend einen *zweiten*, anders benannten Stack mit frischen, leeren Volumes erzeugt.
+  `docker-compose.yml` legt jetzt einen expliziten Projekt-`name` fest, sodass immer dieselben
+  Volumes verwendet werden, unabhängig davon, wie Compose aufgerufen wird.
+
+## 2.1.0
+
+### Hinzugefügt
+
+- Die Landing-Page (`opengauge.org`) ist jetzt eine vollständige Marketing-Seite: ein
+  überarbeiteter Funktionsabschnitt, ein Funktionsvergleich gegenüber veralteter
+  On-Premise-Kalibriersoftware/Tabellenkalkulationen/generischem Cloud-CMMS, eine FAQ und ein
+  Kontaktformular an `hello@opengauge.com`.
+- Eine Cloudflare-Pages-Funktion (`apps/web/functions/api/contact.ts`) verarbeitet die Übermittlungen
+  des Kontaktformulars über die eigene E-Mail-Routing-Bindung "send email" von Cloudflare — keine
+  E-Mail-API eines Drittanbieters oder zusätzliche Abhängigkeit. Nur auf der
+  Cloudflare-Pages-Bereitstellung aktiv; siehe `apps/web/functions/README.md` für die einmalige
+  Einrichtung auf Cloudflare-Seite. Überall sonst (selbst gehostetes Docker, lokale Entwicklung)
+  greift das Formular auf einen `mailto:`-Link zurück.
+
+### Behoben
+
+- Die admin-seitige **Gefahrenzone** (Datenbankexport/-import/-reset) war für jedes Konto
+  unsichtbar, das nach der Erstinstallation zur Rolle `superadmin` befördert wurde, weil die
+  Prüfung das separate Flag `is_superuser` erforderte — das keine Admin-Panel-Oberfläche jemals
+  bei einem anderen Konto setzen kann. Sie akzeptiert jetzt auch `role == "superadmin"`,
+  entsprechend derselben Konvention, die bereits überall sonst in der API für diese
+  Berechtigungsstufe verwendet wird.
+
+## 2.0.0
+
+### Geändert
+
+- **Breaking:** Die Teammitgliedschaft ist jetzt Opt-in. Zuvor war das Feld `User.team` eine
+  einzelne Freitext-Zeichenkette ohne echtes Mitgliedschaftsmodell dahinter; es wird durch eine
+  Verknüpfungstabelle `team_members` ersetzt, sodass ein Benutzer einer beliebigen Anzahl von
+  Teams angehören kann und in keinem beginnt. Das Feld `team`/`teams` änderte seine Form in der
+  Benutzer-API (`UserResponse.team: string | null` → `UserResponse.teams: {id, name}[]`), und
+  `UserCreate`/`UserUpdate`/`UserSelfUpdate.team` wurden entfernt — einem Team stattdessen über
+  `POST`/`DELETE /teams/{id}/join|leave` beitreten/es verlassen. Bestehende `users.team`-Werte
+  werden von der Migration überall dort in echte Mitgliedschaftszeilen übertragen, wo der Text zu
+  einem Team in der eigenen Organisation des Benutzers passte.
+- Das Erstellen, Umbenennen und Löschen von Teams ist jetzt nur noch über Admin → Organisationen
+  möglich. Der eigene Reiter Einstellungen → Teams des Benutzers ist nur zur Selbstbedienung: 
+  wählen, welchen Teams der eigenen Organisation beigetreten oder welche verlassen werden.
+
+### Hinzugefügt
+
+- Die **Gefahrenzone** in Admin → Dashboard verschoben (nur Super Admin): neben den bestehenden
+  Export-/Import-/Reset-Aktionen lässt eine neue Aktion **Ausgewählte Tabellen leeren** Sie genau
+  auswählen, welche Datenbanktabellen geleert werden sollen, statt nur eines Alles-oder-nichts-Resets.
+- Die PDF-Vorschau-Miniaturansicht (Anlagen-Abschnitt Dateien, Zertifikatsvorlagen) zeigt beim
+  Hovern jetzt ein Augensymbol und einen Schatten, um zu signalisieren, dass sie anklickbar ist.
+
+### Behoben
+
+- Der Hintergrund der Signaturzeichenfläche wird im Dunkelmodus nicht mehr fast schwarz, was
+  zuvor die dunkle Signaturtinte während des Zeichnens (und in der gespeicherten
+  Signaturvorschau) unsichtbar machte.
+
+## 1.2.0
+
+### Hinzugefügt
+
+- **Ratiometrischer** Ausgangssignaltyp für Sensorkanäle (z. B. Wägezellen mit Brückenschaltung),
+  mit den Einheiten `mV/V` und `V/V`. Siehe
+  [Ausgangssignal](../sensors/adding-a-sensor.mdx#output-signal).
+- PDF-Vorschau für PDF-Dateien im Anlagen-Abschnitt **Dateien** — auf die Miniaturansicht einer
+  Datei klicken, um sie vor dem Herunterladen in der Vorschau anzuzeigen, mit demselben
+  Vorschauprogramm wie für Kalibrierzertifikate.
+- Referenztabellen in [Einen Sensor hinzufügen](../sensors/adding-a-sensor.mdx), die jede
+  unterstützte physikalische Größe (mit Technologie, Typ und Einheiten) und jeden
+  Ausgangssignaltyp (mit Einheiten) abdecken.
+
+### Behoben
+
+- Der Text des Dropdown-Menüs für Zertifikatsvorlagen ist jetzt im Dunkelmodus sichtbar.
+- Das Profilbild der Anlage erscheint nicht mehr in der Dateiliste der Anlage — es wird nur noch
+  über den Abschnitt Bild verwaltet, um Doppelungen zu vermeiden.
+
+## 1.1.0
+
+### Hinzugefügt
+
+- **Datenbank-Panel** (Admin → Datenbank, nur Super Admin): ein vollständiges Datenbank-Backup
+  exportieren, eines wiederherstellen, oder die App auf einen sauberen Zustand zurücksetzen
+  (löscht alle Daten außer Super-Admin-Konten).
+
+### Geändert
+
+- Frische Installationen starten jetzt leer. Das erste auf einer neuen Installation registrierte
+  Konto wird automatisch verifiziert und als `superadmin` erstellt — zuvor wurde es unverifiziert
+  erstellt, ohne dass ein Admin es aktivieren konnte, und die App wurde mit Demo-Benutzern,
+  -Anlagen, -Standorten und -Verfahren vorbefüllt ausgeliefert, statt leer zu starten. Siehe
+  [Authentifizierung](../self-hosting/authentication.mdx) und
+  [E-Mail-Benachrichtigungen](../self-hosting/email-notifications.mdx#account-verification).
+- Docker Compose liest jetzt jede Anmeldeinformation und URL aus `infrastructure/docker/.env`,
+  statt sie in `docker-compose.yml` fest zu codieren — siehe
+  [Docker-Compose-Bereitstellung](../self-hosting/deployment.mdx#key-environment-variables).
+- Generierte QR-Codes und Anlagenetiketten kodieren jetzt die konfigurierbare `FRONTEND_URL` statt
+  eines fest codierten `http://localhost:3000`, sodass sie in der Produktion korrekt aufgelöst
+  werden.
+
+### Behoben
+
+- Der Abschnitt "Dokumentation" der Seitenleiste klappt sich beim Betrachten einer Seite der
+  API-Referenz nicht mehr automatisch auf — nur ein Klick auf "Dokumentation" selbst klappt ihn
+  auf.
+
+## 1.0.13
+
+### Hinzugefügt
+
+- PDF-Handhabung und -Download für generierte Kalibrierzertifikate.
+
+## 1.0.12
+
+### Hinzugefügt
+
+- Verwaltung von Benutzersignaturen: Hochladen, Abrufen und kryptografische Verifizierung.
+- LaTeX-Rendering-Dienst und Verwaltung von Zertifikatsvorlagen.
+
+## 1.0.11
+
+### Behoben
+
+- Abmessungen des Logo-Bildes in der Seitenleiste, für korrekte Skalierung im hellen Modus.
+
+### Hinzugefügt
+
+- Zusätzliche Dokumentationslinks für Sensorattribute und Felder des Anlagenregisters.
+
+## 1.0.10
+
+### Hinzugefügt
+
+- Demo-Modus: In-Memory-Datenspeicher mit Sitzungspersistenz, um Open Gauge ohne Backend
+  auszuprobieren.
+
+### Geändert
+
+- Allgemeine Funktions- und Leistungsverbesserungen in der gesamten App.
+
+## 1.0.9
+
+### Hinzugefügt
+
+- Ablauf zum Zurücksetzen des Passworts und zur Kontoaktivierung für selbst registrierte
+  Benutzer.
+
+### Geändert
+
+- `package-lock.json` bereinigt, unnötige Peer-Abhängigkeiten entfernt.
+
+## 1.0.8
+
+### Hinzugefügt
+
+- Dunkle und helle Logo-SVGs, ein neues App-Symbol, eine Abzeichen-Komponente für die
+  Kalibriermethode und der Hell-/Dunkel-Theme-Umschalter.
+- Radialverlauf-Hintergrundbehandlung für das Dashboard-Rasterhintergrund.
+
+## 1.0.7
+
+### Hinzugefügt
+
+- Funktion zum weichen Entwerten von Kalibrierungen (eine Kalibrierung entwerten, ohne ihre
+  Historie zu löschen).
+
+### Geändert
+
+- Das Produktions-Startskript wurde auf einen benutzerdefinierten statischen Server für den
+  Next.js-Export-Build umgestellt.
+
+## 1.0.6
+
+### Hinzugefügt
+
+- Funktion für E-Mail-Benachrichtigungen, mit SMTP-Konfiguration im Admin-Panel.
+
+## 1.0.5
+
+### Geändert
+
+- Umfassendere Refaktorisierung der Codestruktur für Lesbarkeit und Wartbarkeit.
+- Unnötige Peer-Abhängigkeiten entfernt; `@emnapi/core`/`@emnapi/runtime` hinzugefügt.
+
+## 1.0.4
+
+### Hinzugefügt
+
+- Anlagenimport über ZIP-Upload.
+
+## 1.0.3
+
+### Geändert
+
+- Veraltete eigenständige Dateien `ARCHITECTURE.md`, `DATABASE.md` und `UNITS.md` entfernt, da
+  diese Dokumentations-Website jetzt die maßgebliche Quelle ist.
+
+## 1.0.2
+
+### Hinzugefügt
+
+- Uploads für Profil- und Anlagenbilder.
+
+## 1.0.1
+
+### Geändert
+
+- Verbesserungen an Gestaltung und Funktion der Dashboard-Komponente.
+- Aufräumarbeiten: kompilierte Python-Artefakte für Speicher-/Hilfsmodule.
+
+## 1.0.0
+
+Das erste als produktionsreif betrachtete Release: lizenziert, dokumentiert und deckt den
+vollständigen Arbeitsablauf von Kalibrierung bis Zertifikat ab.
+
+### Hinzugefügt
+
+- Dokumentations-Website Knowledge Center + API-Referenz (diese Website), wobei
+  `fumadocs-openapi` die API-Referenz direkt aus dem FastAPI-Schema generiert.
+- AGPL-3.0-Lizenz, sowie eine erweiterte `README.md`/`CONTRIBUTING.md`.
+
+## 0.5.8
+
+### Hinzugefügt
+
+- Unterstützung für externe Kalibrierungen nur mit Koeffizienten (eine Kalibrierung ohne
+  Rohdatenpunkte erfassen, unter Verwendung zuvor abgeleiteter Koeffizienten).
+
+## 0.5.7
+
+### Hinzugefügt
+
+- Feld `measurement_type` bei Sensoren, mit zugehörigen Oberflächenaktualisierungen.
+
+## 0.5.6
+
+### Hinzugefügt
+
+- Durchgerechnete Kalibrierbeispiele, eine Aufschlüsselung des Unsicherheitsbudgets und
+  Berichtswerkzeuge.
+
+## 0.5.5
+
+### Hinzugefügt
+
+- Zustandsbewertung: Zustandsdienst, Bewertungstests und der Reiter Zustand der Anlage.
+- Anzeige der Zustandsübersicht und eine verbesserte Ring-Visualisierung der Kalibrierkarte.
+
+## 0.5.4
+
+### Hinzugefügt
+
+- Löschen von Kalibrierungen, auf Admins beschränkt.
+
+## 0.5.3
+
+### Geändert
+
+- Anlagen- und Audit-Protokollverarbeitung um akteurbasierte Filterung erweitert;
+  Korrekturen bei der Sensoraktualisierung.
+
+## 0.5.2
+
+### Geändert
+
+- Benutzer- und Audit-Protokoll-Detailansichten zeigen jetzt Akteursinformationen (wer die Aktion
+  durchgeführt hat), mit allgemeinen Verbesserungen der UI-Komponenten.
+
+## 0.5.1
+
+### Hinzugefügt
+
+- Verfahren und Zusammenfassung der Verfahrensverteilung im Dashboard.
+
+## 0.5.0
+
+### Hinzugefügt
+
+- Tortendiagramm-Komponenten, mit Hover-Effekten und gemeinsamer Kontextverwaltung.
+
+### Geändert
+
+- Abruf des Kalibrierlabor-Standorts in den Reiter Kalibrierung integriert, mit
+  Oberflächenaktualisierungen für die Anzeige des Kalibrierlabors.
+
+## 0.4.4
+
+### Geändert
+
+- Dashboard-Typen und API um Kalibrierstatus- und Daten zu kürzlichen Anlagen erweitert.
+
+## 0.4.3
+
+### Hinzugefügt
+
+- Aufkleber-Modal für die Etikettengenerierung, mit Vorschau- und Downloadoptionen.
+
+### Geändert
+
+- Farbdefinitionen neu organisiert; Logik zur Etikettengenerierung bereinigt.
+
+## 0.4.2
+
+### Hinzugefügt
+
+- Kennzeichen `is_calibration_lab` bei Standorten und eine Verknüpfung
+  `calibration_location_id` bei Kalibrierungen.
+
+## 0.4.1
+
+### Geändert
+
+- Anlagen- und Verfahrensschemata überarbeitet; verbesserte Formularvalidierung und
+  Fehlerbehandlung.
+
+## 0.4.0
+
+### Hinzugefügt
+
+- Dienst zur Etiketten-/Aufklebergenerierung.
+- Aktivitätsprotokoll.
+
+## 0.3.7
+
+### Hinzugefügt
+
+- Admin-Panel.
+- PDF-Generierung für Kalibrierberichte.
+
+## 0.3.6
+
+### Hinzugefügt
+
+- Seite für Benutzereinstellungen.
+
+### Behoben
+
+- Kleinere Probleme im Kalibrier-Assistenten und in der Kalibrieransicht.
+
+## 0.3.5
+
+### Hinzugefügt
+
+- Seite Verfahren, mit Datei-Uploads.
+- Bearbeitung von Verfahren.
+
+## 0.3.4
+
+### Hinzugefügt
+
+- Unterstützung für das Hinzufügen neuer Anlagen.
+
+### Behoben
+
+- Verhalten bei der Anlagenbearbeitung.
+
+## 0.3.3
+
+### Geändert
+
+- Kalibrierdiagramm durch Plotly ersetzt.
+- Kalibrieransicht aktualisiert, um das neue Layout aus Kalibrierdiagramm/-tabelle zu unterstützen.
+
+## 0.3.2
+
+### Hinzugefügt
+
+- Arbeitsablauf zum Hinzufügen von Kalibrierdatensätzen.
+
+### Geändert
+
+- Weitere Verfeinerungen bei der Standortbearbeitung.
+
+## 0.3.1
+
+### Hinzugefügt
+
+- Hinzufügen-/Bearbeiten-Abläufe für Standorte.
+- Verbesserungen bei der Bearbeitung von Anlagendetails.
+
+## 0.3.0
+
+### Hinzugefügt
+
+- Seite Standorte, mit einer Hierarchie aus Standort/Gebäude/Labor.
+
+### Geändert
+
+- Gestaltung des Hintergrunddiagramms in Seitenleiste/oberer Leiste.
+
+## 0.2.3
+
+### Geändert
+
+- Datenbankgestützte Panels des Übersichtsreiters aktualisiert.
+
+### Hinzugefügt
+
+- Funktion zur Bearbeitung der Anlagenübersicht, mit ersten Tests.
+
+## 0.2.2
+
+### Hinzugefügt
+
+- Anlagenprofilseite.
+
+## 0.2.1
+
+### Geändert
+
+- Anlagenregistertabelle aktualisiert.
+
+## 0.2.0
+
+### Hinzugefügt
+
+- Dunkler/heller Modus.
+
+### Geändert
+
+- Dashboard gegen das neue Datenbankschema neu aufgebaut, mit neuen Panels.
+
+## 0.1.2
+
+### Geändert
+
+- UI-Elemente über frühe Bildschirme hinweg vereinheitlicht.
+
+## 0.1.1
+
+### Hinzugefügt
+
+- Laden des Profils bei der Authentifizierung.
+
+## 0.1.0
+
+### Hinzugefügt
+
+- Anmeldeseite und Login-Logik.
+- Dashboard-Bildschirm.
+
+## 0.0.0
+
+- Erster Commit: Monorepo-Grundgerüst und Basisarchitektur (Next.js-Frontend, FastAPI-Backend,
+  Docker-Compose-Infrastruktur).

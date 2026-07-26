@@ -1,0 +1,366 @@
+---
+title: Modèles de certificat
+description: Téléverser et rédiger des modèles LaTeX personnalisés pour les certificats de calibration.
+---
+
+Un administrateur peut remplacer le design de certificat intégré par un modèle `.tex`
+personnalisé — pour la localisation, une mise en page différente, ou pour correspondre à un
+format de certificat de laboratoire accrédité existant — sans toucher à aucun code. Les modèles
+se gèrent depuis **Panneau d'administration → Modèles de certificat**.
+
+## Comment fonctionne le rendu
+
+Un modèle est un fichier `.tex` utilisant des espaces réservés [Jinja](https://jinja.palletsprojects.com/)
+avec des délimiteurs sûrs pour LaTeX (les délimiteurs par défaut de Jinja `{{ }}`/`{% %}`
+entrent en conflit avec la propre syntaxe de groupe `{}` de LaTeX) :
+
+| Construction Jinja | Écriture sûre pour LaTeX |
+|---|---|
+| Variable | `\VAR{asset_name}` |
+| Bloc (`if`/`for`) | `\BLOCK{if asset_notes} ... \BLOCK{endif}` |
+| Commentaire | `\#{ a comment }` |
+
+Chaque espace réservé en texte libre doit passer par le filtre `latex` —
+`\VAR{asset_name\|latex}` — qui échappe les caractères que LaTeX traite spécialement
+(`\ { } $ & # ^ _ % ~`). Les champs numériques/préformatés sont sûrs dans les deux cas ; les
+chemins d'image (voir ci-dessous) ne doivent **pas** être filtrés, puisque ce sont de simples
+noms de fichiers, pas du texte à afficher. La même règle s'applique à tout espace réservé
+documenté ci-dessous comme « math LaTeX brute » (`coefficient_rows[].name`, `function_formula`) —
+ils contiennent une syntaxe mathématique littérale `$...$` et doivent être utilisés non filtrés,
+sinon l'échappement casserait le mode mathématique.
+
+Le `.tex` généré est compilé en PDF par [Tectonic](https://tectonic-typesetting.github.io/), un
+petit moteur LaTeX autonome (pas une installation complète de TeX Live) — voir
+[Déploiement](../self-hosting/deployment.mdx) pour les détails de l'image Docker. Tectonic
+s'exécute sur XeTeX, qui est nativement Unicode ; le modèle intégré utilise `fontspec` avec
+DejaVu Sans (fournie avec l'image de l'application) de sorte que les noms accentués, les signes
+de degré, ±, etc. s'affichent tous correctement sans échappement particulier au-delà du filtre
+`latex`.
+
+## Téléverser un modèle
+
+Depuis **Panneau d'administration → Modèles de certificat**, choisissez une portée (une
+organisation spécifique, ou *Global* pour le repli utilisé par toute organisation sans son propre
+modèle par défaut — les modèles globaux nécessitent un superadmin, puisqu'ils affectent chaque
+organisation), téléversez le fichier `.tex`, donnez-lui un nom, et marquez-le éventuellement comme
+modèle par défaut de cette portée.
+
+**Chaque téléversement est validé par une compilation d'essai** (données factices) avant d'être
+enregistré — un modèle avec une erreur de syntaxe LaTeX ou un espace réservé mal orthographié est
+rejeté immédiatement, avec le message d'erreur du compilateur, plutôt que d'échouer seulement la
+prochaine fois qu'un vrai certificat est généré.
+
+Remplacer le contenu d'un modèle n'est pas une modification sur place — téléversez-le à nouveau
+comme un nouveau modèle et promouvez-le comme modèle par défaut. L'ancienne version reste présente
+(supprimée en douceur, non par défaut) afin que les certificats passés qui y font conceptuellement
+référence restent traçables jusqu'à ce qui les a générés.
+
+## Prévisualiser un modèle
+
+Chaque ligne de modèle (et le modèle par défaut intégré de l'application) affiche une petite
+vignette de sa première page, rendue côté client à partir d'un **jeu de données de calibration
+d'exemple de 10 lignes fraîchement randomisé** (un ajustement linéaire synthétique avec un bruit
+réaliste) généré à nouveau à chaque chargement — une approximation proche de ce à quoi ressemble
+un véritable certificat sans avoir besoin d'une véritable calibration sous la main. Cliquez sur la
+vignette pour ouvrir un aperçu défilable en taille réelle de chaque page, avec un bouton
+**Télécharger** pour enregistrer le PDF d'exemple généré.
+
+## Référence des espaces réservés
+
+### Identité / en-tête
+
+| Espace réservé | Type | Notes |
+|---|---|---|
+| `certificate_number` | texte | par ex. `OG-CAL-OG-00001-v3` |
+| `org_name` | texte | Se replie sur `"Open Gauge"` si non résolu |
+| `org_logo_path` | chemin d'image, optionnel | `\BLOCK{if org_logo_path}\includegraphics{\VAR{org_logo_path}}\BLOCK{endif}` |
+| `performer_name` | texte | |
+| `performer_signature_path` | chemin d'image, optionnel | La signature de l'utilisateur ayant effectué la calibration, si définie |
+| `calibration_date`, `due_date` | texte | Chaînes de date préformatées |
+| `version` | entier | Utilisable aussi comme « numéro de révision » de document |
+| `calibration_type` | texte | |
+| `chapter` | texte | La grandeur physique de la voie (par ex. `"Pressure"`), ou le type d'actif s'il n'y a pas de voie — utile pour des en-têtes de style contrôle documentaire regroupant les certificats par type de mesure |
+| `calibration_id` | texte | Identifiant court (les 8 premiers caractères de l'UUID de la calibration, en majuscules) distinct de `certificate_number` |
+| `generated_date` | texte | La date du jour (au moment où le certificat est généré), distincte de `calibration_date` |
+| `qr_path` | chemin d'image, optionnel — code QR renvoyant vers l'actif |
+
+### Actif / voie
+
+| Espace réservé | Type |
+|---|---|
+| `asset_id`, `asset_name`, `asset_manufacturer`, `asset_model`, `asset_serial`, `asset_part_number`, `asset_type_label` | texte |
+| `asset_notes` | texte, optionnel |
+| `channel` | objet, optionnel — `channel.id`, `.quantity`, `.unit`, `.min`, `.max`, `.accuracy`, `.range` (« min–max unité » préformaté), `.signal` (plage de sortie électrique préformatée, ou `"—"`), `.precision` (incertitude de mesure déclarée du capteur, ou `"—"`), `.resolution` (ou `"—"`) |
+
+### Traçabilité
+
+| Espace réservé | Type |
+|---|---|
+| `external_lab_name`, `external_lab_certificate_number` | texte, optionnel |
+| `procedure` | objet, optionnel — `.id`, `.name`, `.version`, `.standard_ref` |
+| `reference_asset` | objet, optionnel — `.id`, `.name`, `.manufacturer`, `.model`, `.serial` |
+| `temperature`, `humidity`, `pressure` | texte, optionnel (°C / %HR / Pa) |
+| `calibration_location` | texte, optionnel — nom de l'emplacement où la calibration a été effectuée, si assigné |
+
+### Résultats
+
+| Espace réservé | Type |
+|---|---|
+| `coefficient_rows` | liste de `{coefficient, name, term, value}` — `name` est un libellé lisible avec un indice en mode mathématique, par ex. `"Offset ($a_{0}$)"` ; comme c'est de la math LaTeX brute, référencez-le comme `\VAR{row.name}` **sans** le filtre `latex` (l'échappement dénaturerait le `$`/`_`/`{}`) |
+| `function_formula` | texte, optionnel — la fonction de calibration générique (non numérique) en syntaxe mathématique LaTeX, par ex. `"f(x) = a_0 + a_1 x"` ; également math LaTeX brute — utilisez `\VAR{function_formula}` non filtré, généralement enveloppé dans `\[...\]` |
+| `equation` | texte, optionnel — la même fonction avec les valeurs ajustées réelles substituées, par ex. `"y = -0.047 + 1.0004*x"` |
+| `stat_rows` | liste de `{label, value}` (R², RMSE, incertitude, etc.) |
+| `results_summary` | liste de `{label, value}` — tableau compact à 3 lignes Erreur maximale / Erreur % de pleine échelle / Incertitude élargie |
+| `error_summary` | objet, optionnel — `.abs_error`, `.fs_error`, `.uncertainty`, chacun préformaté et signé avec ± (par ex. `"±0.12 %RH"`) — une alternative à 3 colonnes sur une seule ligne à `results_summary` |
+| `uncertainty_budget_rows` | liste de `{source, distribution, standard_uncertainty, dof}` |
+| `effective_dof_note` | texte, optionnel |
+| `uncertainty_statement` | texte, optionnel — phrase complète de style GUM §7.2.4 |
+| `conformity` | objet, optionnel — `.result_label`, `.specification`, `.decision_rule_label`, `.expanded_uncertainty_line` |
+| `conformity_derivation` | texte, optionnel — relate l'erreur maximale + l'incertitude élargie par rapport à la spécification et énonce la conclusion réussite/échec (par ex. `"...totals 0.28 %RH, against a specification of ±0.8 (absolute) — the calibration CONFORMS..."`) ; `None` sauf si à la fois une évaluation de conformité et des valeurs d'erreur/incertitude existent |
+| `valid_range` | texte, optionnel |
+| `notes` | texte, optionnel |
+
+### Jeu de données
+
+| Espace réservé | Type |
+|---|---|
+| `dataset_rows` | liste de `{index, measured, reference, fit, residual_abs, residual_pct}` |
+| `measured_unit`, `reference_unit` | texte |
+| `chart_path` | chemin d'image, optionnel — graphique de nuage de points + courbe d'ajustement |
+| `lab_footer` | texte, optionnel — imprimé dans le pied de page |
+
+## Recettes : schémas courants
+
+Chaque schéma ci-dessous est copiable-collable — chacun est repris directement de
+`default.tex.jinja` ou `example_tables.tex` (voir
+[Modèles d'exemple dans le dépôt](#example-templates-in-the-repo)), il est donc garanti qu'il
+compile.
+
+### Champ de texte simple, échappé
+
+L'écrasante majorité des espaces réservés sont du texte simple et doivent passer par le filtre
+`latex` :
+
+```latex
+\textbf{Asset ID:} \VAR{asset_id|latex}
+\textbf{Manufacturer:} \VAR{asset_manufacturer|latex}
+```
+
+Oublier `|latex` sur du texte libre est le bogue de modèle le plus courant — cela compile bien
+jusqu'à ce qu'un nom d'actif réel contienne `&`, `%`, `_`, ou `#`, moment auquel LaTeX renvoie
+soit une erreur, soit dénature silencieusement la sortie. Les champs numériques/préformatés
+(`version`, `calibration_id`, les valeurs de tableau déjà formatées par le backend) n'en ont pas
+besoin, mais l'ajouter quand même est sans risque — le filtre ne touche que la poignée de
+caractères que LaTeX traite spécialement.
+
+### Champ optionnel — texte
+
+La plupart des champs peuvent être `None`/vides (par ex. un actif sans notes, une calibration
+sans laboratoire externe). Protégez-les avec `\BLOCK{if ...}` afin que la ligne disparaisse au
+lieu d'imprimer « None » ou un libellé isolé sans rien après :
+
+```latex
+\BLOCK{if asset_notes}
+\small\textbf{\color{oggray}Notes:} \VAR{asset_notes|latex}\normalsize
+\BLOCK{endif}
+```
+
+```latex
+\BLOCK{if temperature or humidity or pressure}
+Environmental Conditions:\ %
+\BLOCK{if temperature}Temperature: \VAR{temperature|latex}~\textdegree C\BLOCK{endif}
+\BLOCK{if humidity}\ \textbullet\ Humidity: \VAR{humidity|latex}~\%RH\BLOCK{endif}
+\BLOCK{if pressure}\ \textbullet\ Pressure: \VAR{pressure|latex}~Pa\BLOCK{endif}
+\BLOCK{endif}
+```
+
+### Champ optionnel — image
+
+Les espaces réservés d'image (`org_logo_path`, `performer_signature_path`, `qr_path`,
+`chart_path`) valent `None` chaque fois que cet élément n'existe pas (aucun logo téléversé,
+aucune signature enregistrée, graphique n'ayant pas pu être généré) — protégez toujours
+`\includegraphics` de la même façon, et ne faites jamais passer un chemin d'image par
+`|latex` (c'est un simple nom de fichier, pas du texte) :
+
+```latex
+\BLOCK{if performer_signature_path}
+\includegraphics[width=40mm]{\VAR{performer_signature_path}}\\[-1mm]
+\rule{40mm}{0.4pt}\\
+\footnotesize\VAR{performer_name|latex}
+\BLOCK{endif}
+```
+
+### Champ optionnel — objet imbriqué
+
+`channel`, `procedure`, `reference_asset`, `conformity` valent `None` en tant qu'objet entier
+lorsque cette donnée ne s'applique pas à la calibration — protégez l'*objet*, puis accédez
+librement à ses attributs à l'intérieur du bloc sans revérifier chacun d'eux :
+
+```latex
+\BLOCK{if channel}
+\textbf{Channel} & \textbf{Quantity} & \textbf{Unit} & \textbf{Min} & \textbf{Max} & \textbf{Accuracy}\\
+\VAR{channel.id|latex} & \VAR{channel.quantity|latex} & \VAR{channel.unit|latex} & \VAR{channel.min|latex} & \VAR{channel.max|latex} & \VAR{channel.accuracy|latex}\\
+\BLOCK{endif}
+```
+
+```latex
+\BLOCK{if procedure}
+\textbf{Procedure ID} & \VAR{procedure.id|latex} & \textbf{Procedure Name} & \VAR{procedure.name|latex}\\
+\textbf{Procedure Version} & \VAR{procedure.version|latex} & \textbf{Standard Ref.} & \VAR{procedure.standard_ref|latex}\\
+\BLOCK{endif}
+```
+
+### Boucler sur une liste de lignes
+
+`coefficient_rows`, `stat_rows`, `results_summary`, `uncertainty_budget_rows`, et `dataset_rows`
+sont tous des listes de petits objets — bouclez avec `\BLOCK{for ... in ...}\BLOCK{endfor}`, une
+ligne de tableau par itération :
+
+```latex
+\begin{tabular}{@{}p{24mm}@{}p{20mm}@{}p{56mm}@{}}
+\toprule
+\textbf{Coefficient} & \textbf{Term} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.term|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+```
+
+La même boucle fonctionne pour `stat_rows` (une forme plus plate `{label, value}`) et
+`dataset_rows` (plus de colonnes) — seule la liste des colonnes à l'intérieur du corps de la
+boucle change :
+
+```latex
+\BLOCK{for row in stat_rows}
+\VAR{row.label|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+```
+
+```latex
+\BLOCK{for row in dataset_rows}
+\VAR{row.index|latex} & \VAR{row.measured|latex} & \VAR{row.reference|latex} & \VAR{row.fit|latex} & \VAR{row.residual_abs|latex} & \VAR{row.residual_pct|latex}\\
+\BLOCK{endfor}
+```
+
+Combinez une protection de liste avec la boucle lorsque le tableau entier doit disparaître s'il
+n'y a aucune donnée du tout (plutôt que de rendre un `tabular` vide avec juste une ligne d'en-tête) :
+
+```latex
+\BLOCK{if uncertainty_budget_rows}
+\begin{tabular}{@{}p{48mm}@{}p{28mm}@{}p{45mm}@{}p{20mm}@{}}
+\toprule
+\textbf{Source} & \textbf{Distribution} & \textbf{Std. Uncertainty (u)} & \textbf{dof}\\
+\midrule
+\BLOCK{for row in uncertainty_budget_rows}
+\VAR{row.source|latex} & \VAR{row.distribution|latex} & \VAR{row.standard_uncertainty|latex} & \VAR{row.dof|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+```
+
+### Math LaTeX brute — NE PAS filtrer
+
+`coefficient_rows[].name` et `function_formula` sont les deux exceptions à la règle « toujours
+utiliser `|latex` » — ils contiennent une syntaxe mathématique LaTeX littérale (`$a_{0}$`,
+`f(x) = a_0 + a_1 x`) générée par le backend spécifiquement pour être déposée telle quelle en mode
+mathématique. Les filtrer échapperait les caractères `$`, `_`, et `{}` qui les font s'afficher
+comme des mathématiques en premier lieu :
+
+```latex
+% Wrong — the escape filter mangles the math syntax:
+\VAR{function_formula|latex}
+
+% Right:
+\[ \VAR{function_formula} \]
+```
+
+```latex
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.name} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+```
+
+Remarquez `row.name` (non filtré, math brute) placé à côté de `row.coefficient|latex` et
+`row.value|latex` (filtrés, texte simple) dans la même ligne — seul le champ documenté comme
+« math LaTeX brute » dans la [référence des espaces réservés](#placeholder-reference) saute le
+filtre.
+
+### Un modèle minimal fonctionnel
+
+Tout ce qui précède assemblé dans le plus petit modèle produisant encore un certificat
+utilisable — réduisez-le encore ou utilisez-le comme squelette de départ :
+
+```latex
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=20mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{DejaVu Sans}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\begin{document}
+
+{\Large\bfseries \VAR{org_name|latex}} \hfill \VAR{certificate_number|latex}
+
+\vspace{4mm}
+\textbf{Asset:} \VAR{asset_id|latex} --- \VAR{asset_name|latex}\\
+\textbf{Calibrated:} \VAR{calibration_date|latex} \quad \textbf{Due:} \VAR{due_date|latex}\\
+\textbf{Performed by:} \VAR{performer_name|latex}
+
+\BLOCK{if coefficient_rows}
+\vspace{4mm}
+\begin{tabular}{ll}
+\toprule
+\textbf{Coefficient} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+
+\BLOCK{if performer_signature_path}
+\vspace{8mm}
+\includegraphics[width=35mm]{\VAR{performer_signature_path}}
+\BLOCK{endif}
+
+\end{document}
+```
+
+Chaque PDF de certificat généré — quel que soit le modèle qui l'a produit, y compris celui-ci
+minimal — est signé numériquement après la compilation ; voir
+[Signatures numériques des certificats](certificate-signing.mdx) pour savoir comment cela
+fonctionne et comment le vérifier.
+
+## Modèles d'exemple dans le dépôt
+
+Deux modèles complets et fonctionnels sont fournis dans
+`apps/api/app/templates/certificates/` comme matériel de référence — les deux se compilent tels
+quels et peuvent être téléversés directement pour les essayer :
+
+- **`default.tex.jinja`** — le repli intégré. L'exemple canonique et toujours à jour de chaque
+  espace réservé en usage.
+- **`example_tables.tex`** — une alternative plus dense, de style contrôle documentaire, au
+  modèle par défaut intégré, couvrant le même contenu mais disposé différemment :
+  - Un en-tête de contrôle documentaire (numéro de document, chapitre, révision, identifiants
+    capteur/calibration, page) au lieu d'un simple en-tête à en-tête.
+  - Les informations sur l'actif et la voie en trois colonnes — un code QR de l'actif, puis les
+    champs de l'actif regroupés deux par colonne au lieu d'être répartis entre des colonnes
+    libellé/valeur séparées — plus un tableau de spécification de voie couvrant la plage de
+    mesure, la plage de sortie du signal, l'exactitude, la précision, et la résolution.
+  - Les coefficients ajustés affichés comme une fonction symbolique (`function_formula`, par ex.
+    `f(x) = a_0 + a_1 x`) à côté d'un tableau nommant chaque coefficient (Offset, Gain, ...) avec
+    sa valeur, plutôt qu'une équation numérique unique.
+  - Un résumé Erreur et Incertitude à trois colonnes (Erreur abs. / Erreur FS / Incertitude) sur
+    une seule ligne, suivi du paragraphe explicatif GUM et d'une phrase de dérivation de
+    conformité qui énonce la conclusion réussite/échec par rapport aux nombres sur la page.
+  - Un tableau de jeu de données pleine largeur avec un en-tête à deux lignes (nom de colonne,
+    puis unité) et sans graphique.
+  - Un pied de page à trois colonnes répété sur chaque page : le nom et la signature du
+    préparateur à gauche, une simple déclaration d'émission ISO/IEC 17025 au centre (aucun badge
+    de conformité — la conclusion réussite/échec se trouve plutôt dans la section des résultats),
+    et le nom de l'organisation de l'actif à droite.

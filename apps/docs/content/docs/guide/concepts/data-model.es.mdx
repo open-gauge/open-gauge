@@ -1,0 +1,96 @@
+---
+title: Modelo de datos y conceptos
+description: Organizaciones, ubicaciones y activos — cómo se relacionan las entidades centrales de Open Gauge.
+---
+
+Esta página ofrece la forma general del modelo de datos de Open Gauge. Para el esquema completo a nivel de
+columnas, consulta los modelos de SQLAlchemy en `apps/api/app/models/` — las columnas, tipos y restricciones de
+cada tabla se definen allí y son la referencia canónica (esta página cubre los
+conceptos y relaciones, no cada columna).
+
+## La jerarquía
+
+```
+Organization                    tenant root
+ ├─ organization_members        many-to-many: which users belong, with an org-scoped role
+ ├─ organization_join_requests  pending/approved/rejected requests to join
+ ├─ Locations                   hierarchical tree: site → building → laboratory → ...
+ │   └─ (asset_locations)       every assignment of an asset to a location, over time
+ └─ Assets                      the instrumentation registry: sensors and DAQs — own an
+                                 organization_id directly (independent of their location)
+     ├─ Sensor channels         one per measured physical quantity (an asset can have several)
+     │   └─ Calibrations        immutable history, one row per calibration event
+     │       └─ Calibration data  the raw reference/measured points behind each calibration
+     └─ DAQ specification       hardware spec, for asset_type = "daq"
+```
+
+## Organizaciones
+
+Una **organización** es la raíz del inquilino (tenant) — cada activo pertenece a exactamente una, mediante un
+`organization_id` directo (independiente de la ubicación del activo). Un usuario puede pertenecer a cualquier número de
+organizaciones, cada una con su propio rol `member`/`admin` delimitado a esa organización únicamente —
+distinto del rol RBAC global (`viewer`/`technician`/`admin`/`superadmin`, consulta
+[Autenticación](../self-hosting/authentication.mdx#roles-rbac)). Cualquier usuario puede crear una
+organización y se convierte automáticamente en su primer administrador. Consulta [Organizaciones](../organizations/index.mdx)
+para el modelo completo de membresía, visibilidad y solicitudes de ingreso.
+
+Los correos de recordatorio de calibración próxima a vencer/vencida van a todo Técnico, Administrador y Super Admin
+activo que sea miembro de la organización del activo — consulta
+[Notificaciones por correo electrónico](../self-hosting/email-notifications.mdx).
+
+Una organización puede tener un **logotipo**, establecido por un administrador de la organización desde la propia página de
+la organización (subir una imagen, con la misma validación de 5MB/solo imagen y almacenamiento en MinIO que la
+[foto de perfil de un usuario](../self-hosting/authentication.mdx#profile-picture) o su
+[firma](../self-hosting/authentication.mdx#signatures)). El logotipo está pensado para usarse en
+los certificados generados junto al nombre de la organización.
+
+## Ubicaciones
+
+Las **ubicaciones** forman un árbol (`parent_location_id` es autorreferencial): organización → sitio →
+edificio → laboratorio, o la jerarquía que tenga sentido para tus instalaciones. Una ubicación se
+puede marcar como `is_calibration_lab`, lo que la señala como un lugar válido para *realizar* una calibración
+(seleccionable como la ubicación de calibración en el asistente de calibración). Consulta
+[Ubicaciones](../locations/index.mdx) para el flujo de trabajo operativo.
+
+Cada vez que un activo se mueve, Open Gauge registra una nueva fila en `asset_locations` en lugar de simplemente actualizar
+la ubicación actual del activo en el mismo lugar — así que "dónde estaba este sensor en una fecha dada" siempre se
+puede responder, no solo "dónde está ahora."
+
+## Activos
+
+Un **activo** es la entidad central del registro — un instrumento físico. Su `asset_type` es
+`sensor` o `daq`:
+
+- Un activo de tipo **sensor** tiene uno o más **canales** (la tabla `sensors`, a pesar de su nombre, es
+  en realidad "una fila por canal de medición en un activo"), cada uno con su propia magnitud física,
+  rango de medición, especificación de exactitud/resolución/incertidumbre e historial de calibración. Consulta
+  [Sensores y activos](../sensors/asset-registry.mdx).
+- Un activo de tipo **DAQ** (dispositivo de adquisición de datos) tiene una única fila de especificación de hardware
+  (número de canales de entrada/salida, tasa de muestreo, resolución del ADC, protocolo de comunicación, etc.) en lugar
+  de canales de medición.
+
+Los activos nunca se eliminan de forma permanente en un despliegue activo — retirar uno establece `is_active = false`
+además de `retired_at`/`retired_by`/`retired_reason`, preservando su historial completo de calibración para
+fines de auditoría.
+
+## Calibraciones
+
+Una **calibración** es una fila inmutable por evento de calibración, vinculada al canal de sensor específico que
+calibró. Las nuevas calibraciones siempre crean filas nuevas — Open Gauge nunca edita ni sobrescribe
+un registro de calibración pasado, de la misma manera que no reescribirías un commit de Git. Consulta
+[Calibración](../calibration/overview.mdx) para el flujo de trabajo completo y las matemáticas detrás de cada número
+que calcula Open Gauge.
+
+## Procedimientos
+
+Un **procedimiento** es una plantilla reutilizable de procedimiento de calibración delimitada a una magnitud física
+(pasos, equipo requerido, materiales, condiciones ambientales, criterios de aceptación). Un
+canal de sensor puede referenciar un procedimiento por defecto mediante `calibration_method_id`. Consulta
+[Procedimientos](../procedures/index.mdx).
+
+## Registros de auditoría
+
+Cada cambio de estado significativo en Open Gauge — crear un sensor, editar un canal, guardar una
+calibración, retirar un activo — se registra en una tabla inmutable `audit_logs` que captura el
+actor, el estado antes/después y una marca de tiempo. Nada en Open Gauge sobrescribe silenciosamente el historial
+sin dejar rastro.

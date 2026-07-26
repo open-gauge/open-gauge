@@ -1,0 +1,50 @@
+---
+title: Arquitectura
+description: La forma técnica de Open Gauge — frontend, backend, almacenamiento y cómo encajan entre sí.
+---
+
+Open Gauge es un monolito moderno con aplicaciones de frontend y backend separadas, diseñado para ser
+aburrido, confiable y fácil de autoalojar.
+
+## Aplicaciones
+
+| App | Stack | Responsabilidad |
+|---|---|---|
+| `apps/web` | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui | La interfaz de usuario de Open Gauge. |
+| `apps/api` | FastAPI, Python, SQLAlchemy, Alembic, Pydantic | API REST, lógica de negocio, motor de análisis de calibración. |
+| `apps/docs` | Next.js, Fumadocs | Este sitio de documentación. |
+
+El frontend se comunica con el backend exclusivamente a través de la API REST (`/api/v1/...`) — no hay
+acceso compartido a la base de datos ni acoplamiento oculto entre `apps/web` y `apps/api`.
+
+## Infraestructura
+
+- **PostgreSQL** — la única fuente de verdad para todos los datos estructurados: organizaciones, sitios,
+  activos, canales de sensor, calibraciones, procedimientos, usuarios y registros de auditoría. Todos los
+  valores físicos numéricos almacenados se guardan en unidades del SI; las unidades de visualización se guardan junto a
+  ellos para que el frontend pueda convertirlos para su presentación.
+- **MinIO** (almacenamiento de objetos compatible con S3) — certificados de calibración (PDFs generados),
+  hojas de datos, archivos de calibración en bruto e imágenes. Solo los *metadatos* de los archivos residen en PostgreSQL —
+  el contenido binario nunca se almacena en la base de datos.
+- **Redis** — se usa solo donde es genuinamente necesario; Open Gauge evita la complejidad de infraestructura por
+  defecto.
+- **Docker Compose** — el objetivo de despliegue principal y de primera clase. Consulta
+  [Autoalojamiento](../self-hosting/deployment.mdx) para la lista completa de servicios y cómo ejecutarlo.
+
+## Principios de diseño
+
+Open Gauge está construido en torno a unos pocos principios innegociables que dan forma a casi toda decisión de diseño
+en el producto:
+
+- **Trazabilidad por encima de la conveniencia.** Los datos de calibración son datos históricos. Open Gauge nunca sobrescribe
+  un registro de calibración — una nueva calibración siempre crea una fila nueva e inmutable. Trata
+  el historial de calibración como tratarías los commits de Git: de solo anexado y auditable.
+- **API primero.** Las API se diseñan antes que la interfaz de usuario. Cada función de Open Gauge es accesible a través de la
+  API REST, documentada mediante OpenAPI — consulta la [Referencia de la API](/docs/api).
+- **Autoalojado primero.** Cada función tiene que funcionar en Docker Compose en hardware modesto
+  (una Raspberry Pi o una mini PC Intel N100 es un objetivo de despliegue realista), y
+  la autenticación tiene que funcionar completamente sin conexión / aislada de la red (air-gapped) — consulta
+  [Autenticación](../self-hosting/authentication.mdx).
+- **Auditable.** Cada registro importante lleva `created_at`, `updated_at` y `created_by`.
+  Las entidades sensibles a auditoría van más allá, conservando `version` y `change_reason`. Open Gauge prefiere el borrado
+  suave (`is_active` / `archived_at`) frente a los borrados destructivos siempre que puede.

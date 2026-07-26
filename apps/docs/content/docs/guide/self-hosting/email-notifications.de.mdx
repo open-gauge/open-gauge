@@ -1,0 +1,120 @@
+---
+title: E-Mail-Benachrichtigungen
+description: SMTP-Konfiguration für Kontobestätigung, Passwort-Zurücksetzung und Kalibrier-Erinnerungen, vollständig von einem Admin verwaltet.
+---
+
+Open Gauge kann für vier Dinge E-Mails senden: Bestätigung neuer Konten, Zurücksetzen eines
+vergessenen Passworts, die für eine Kalibrierung zuständige Organisation über ihren Status auf dem Laufenden
+halten, und Organisationsadmins auf eine Beitrittsanfrage aufmerksam machen. Wie bei Gogs/Gitea ist SMTP eine
+einzige, von einem Admin verwaltete Konfiguration statt etwas, das jeder Benutzer selbst anfasst.
+
+Jedes dieser Ereignisse (außer Kontobestätigung und Passwort-Zurücksetzung, für die es keine In-App-Entsprechung
+gibt) löst auch eine In-App-Benachrichtigung aus — das Glockensymbol in der oberen Leiste — unabhängig davon,
+ob SMTP konfiguriert ist; E-Mail ist ein Bonus obendrauf, nicht der einzige Weg, davon zu erfahren. Siehe
+[Benachrichtigungen](../notifications/index.mdx) für die vollständige Liste der Kategorien, den Posteingang
+selbst und wie jeder Benutzer unter **Einstellungen → Benachrichtigungen** auswählt, welche Kanäle er pro
+Kategorie wünscht. Siehe auch [Organisationen → Beitrittsanfragen](../organizations/index.mdx#join-requests).
+
+## Konfiguration
+
+SMTP-Einstellungen liegen in der Datenbank, nicht in Umgebungsvariablen — sie werden von jedem `admin`- oder
+`superadmin`-Benutzer unter **Admin → E-Mail** bearbeitet und wirken sofort (kein Neustart erforderlich). So
+bleibt Mail in einer selbst gehosteten Bereitstellung zur Laufzeit konfigurierbar, ohne den Container neu zu
+bauen oder neu bereitzustellen.
+
+Für die Schritt-für-Schritt-Anleitung (welche Felder auszufüllen sind, anbieterspezifische Einstellungen für
+Gmail / Office 365 / SendGrid / Mailgun und Fehlerbehebung), siehe
+[E-Mail konfigurieren (SMTP)](./email-configuration.mdx). Kurzfassung: Host, Port, optionaler
+Benutzername/Passwort, eine Absenderadresse/-name, ein Aktivierungsschalter und eine Vorlaufzeit für
+Erinnerungen in Tagen — plus eine Aktion **Test-E-Mail senden**, um die Konfiguration zu validieren, bevor
+sie aktiviert wird. Siehe [Admin](/docs/api/admin) in der API-Referenz für die zugrunde liegenden
+`/admin/email-settings`-Endpunkte.
+
+### Verhalten, wenn Mail nicht konfiguriert ist
+
+Open Gauge muss von Haus aus in Docker Compose funktionieren (siehe [Self-Hosting: Bereitstellung](./deployment.mdx)),
+obwohl bei keiner selbst gehosteten Installation SMTP standardmäßig konfiguriert ist. Deshalb prüft jeder
+E-Mail-versendende Codepfad zuerst, ob Mail aktiviert ist, und weicht auf einen manuellen, admin-vermittelten
+Fallback aus, statt vollständig zu scheitern:
+
+- **Die Registrierung** erstellt das Konto weiterhin, aber es startet unbestätigt — da es keine Möglichkeit
+  gibt, einen Bestätigungslink zu versenden, muss ein `admin`/`superadmin` es manuell unter **Admin →
+  Benutzer** aktivieren (dort erscheinen ein Abzeichen "Aktivierung ausstehend" und eine Schaltfläche
+  **Aktivieren**).
+- **Passwort vergessen** hat ohne SMTP überhaupt keinen Selbstbedienungsweg — der Anmeldebildschirm teilt dem
+  Benutzer mit, seinen Administrator zu kontaktieren, der gebeten werden kann, ihm den Zugriff wiederzuverschaffen.
+- **Kalibrierbenachrichtigungen und -erinnerungen** lösen weiterhin normal ihre In-App-Benachrichtigung aus —
+  nur die E-Mail-Hälfte wird übersprungen. Siehe [Benachrichtigungen](../notifications/index.mdx).
+
+Nichts an der Kontoerstellung oder den Kalibrier-Workflows wird dadurch blockiert, dass Mail nicht konfiguriert
+ist — nur die automatisierten Selbstbedienungsteile davon.
+
+## Kontobestätigung
+
+Jedes selbst registrierte Konto (`POST /auth/register`) startet unbestätigt und kann sich erst anmelden,
+nachdem es aktiviert wurde — es gibt keinen Weg, auf dem Selbstregistrierung sofortigen Zugriff gewährt,
+unabhängig von der Mail-Konfiguration.
+
+**Ausnahme: das allererste Konto bei einer frischen Installation.** Bei null Benutzern in der Datenbank gibt
+es keinen Admin, der jemanden aktivieren könnte, daher wird diese erste Registrierung bestätigt und mit der
+Rolle `superadmin` erstellt und kann sich sofort anmelden. Jedes danach registrierte Konto folgt dem
+untenstehenden normalen Aktivierungsablauf.
+
+Wie die Aktivierung für jeden nach dem ersten Konto aussieht, hängt davon ab, ob Mail aktiviert ist:
+
+**Mit aktiviertem Mail:**
+
+1. Das Konto wird mit `is_verified = false` und einem zufälligen Bestätigungstoken erstellt
+   (24 Stunden Gültigkeit).
+2. Eine Bestätigungs-E-Mail mit einem Link zu `/auth/verify-email?token=...` wird gesendet.
+3. `POST /auth/login` weist unbestätigte Konten zurück, bis der Link angeklickt wurde.
+4. Das Anklicken des Links ruft `GET /auth/verify-email` auf, was das Konto als bestätigt markiert und ein
+   Zugriffstoken zurückgibt — der Benutzer landet angemeldet.
+
+Wenn die E-Mail nie ankommt (z. B. weil der Admin die SMTP-Einrichtung noch nicht abgeschlossen hat), kann
+der Benutzer vom Anmeldebildschirm aus eine weitere anfordern (`POST /auth/resend-verification`), die immer
+erfolgreich antwortet, ohne preiszugeben, ob die Adresse existiert.
+
+**Ohne aktiviertes Mail:** Das Konto wird unbestätigt erstellt, ohne dass ein Token ausgestellt wird (es gibt
+keinen Ort, an den es gesendet werden könnte). Ein `admin`/`superadmin` aktiviert es direkt unter **Admin →
+Benutzer** — dies setzt `is_verified = true` ohne E-Mail-Roundtrip.
+
+Konten, die direkt von einem Admin erstellt werden (`POST /users`), sind von all dem nicht betroffen — sie
+sind sofort bestätigt, da ein Admin bereits bei der Erstellung des Kontos für sie bürgt.
+
+## Passwort vergessen
+
+`POST /auth/forgot-password` antwortet immer erfolgreich, unabhängig davon, ob die Adresse existiert, um
+nicht preiszugeben, ob ein Konto existiert — das Frontend zeigt in beiden Fällen dieselbe generische Meldung.
+
+**Mit aktiviertem Mail:** Wenn die Adresse zu einem Konto passt, wird ein Zurücksetzungstoken (1 Stunde
+Gültigkeit) generiert und mit einem Link zu `/auth/reset-password?token=...` per E-Mail versendet. Das
+Absenden eines neuen Passworts dort (`POST /auth/reset-password`) löscht das Token, aktualisiert das Passwort
+und meldet den Benutzer an.
+
+**Ohne aktiviertes Mail:** Es wird nie ein Token generiert — es gibt keinen Selbstbedienungs-Zurücksetzungsweg.
+Die Meldung des Anmeldebildschirms weist explizit darauf hin und verweist den Benutzer an seinen Administrator,
+der das Passwort zurücksetzen kann, indem er Anmeldedaten neu erstellt oder ihm anderweitig außerhalb der App hilft.
+
+## Kalibrierbenachrichtigungen
+
+Zwei Ereignisse benachrichtigen jeden aktiven Techniker, Admin und Super Admin in der Organisation einer
+Anlage, per In-App-Benachrichtigung und (falls konfiguriert) E-Mail — die eigenen Einstellungen jedes
+Empfängers unter **Einstellungen → Benachrichtigungen** entscheiden, welche Kanäle er tatsächlich erhält
+(siehe [Benachrichtigungen](../notifications/index.mdx)). Siehe
+[Datenmodell & Konzepte](../concepts/data-model.mdx) dazu, wie Anlagen und Organisationen zusammenhängen;
+Betrachter (Viewer) werden nie benachrichtigt, da sie nicht auf eine Kalibrierung reagieren können:
+
+- **Neue Kalibrierung erfasst** — sobald `POST /calibrations` erfolgreich ist, werden die Techniker und
+  Admins der Organisation benachrichtigt (außer der Person, die sie gerade erfasst hat).
+- **Bald fällig / überfällig** — ein täglicher Durchlauf (07:00 Uhr Serverzeit) prüft die letzte Kalibrierung
+  jeder aktiven Anlage. An jede Kalibrierung wird höchstens einmal pro Schwellenwert erinnert: einmal, wenn sie
+  in das konfigurierte Erinnerungsfenster eintritt, und ein weiteres Mal, wenn sie in den überfälligen Zustand
+  übergeht. Eine Kalibrierung wird erst dann als "erinnert" markiert, wenn mindestens ein Kanal tatsächlich für
+  mindestens einen Empfänger zustellt (In-App-Benachrichtigung erstellt oder E-Mail gesendet); tut das keiner
+  — z. B. weil Mail nicht konfiguriert ist und jeder Empfänger für diese Kategorie In-App abgewählt hat — wird
+  es beim Durchlauf des nächsten Tages erneut versucht.
+
+All dies erfolgt nach bestem Bemühen: Ein fehlgeschlagener Versand wird protokolliert und blockiert nie die
+Erfassung der Kalibrierung, und der tägliche Durchlauf als Ganzes eskaliert nie über seinen eigenen
+Protokolleintrag hinaus.
