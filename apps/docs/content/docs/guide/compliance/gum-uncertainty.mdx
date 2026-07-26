@@ -1,0 +1,129 @@
+---
+title: GUM / JCGM uncertainty suite
+description: The JCGM Guide to the Expression of Uncertainty in Measurement and its calibration-specific supplements — the normative parts, and how Open Gauge's calibration engine implements them.
+---
+
+## Summary
+
+The **JCGM** (Joint Committee for Guides in Metrology) publishes the **GUM** (*Guide to the
+Expression of Uncertainty in Measurement*) suite jointly on behalf of BIPM, IEC, IFCC, ISO, IUPAC,
+IUPAP, and OIML. It's the foundational uncertainty-evaluation theory that both
+[ISO/IEC 17025](./iso-17025.mdx) and [EA-4/02](./ea-4-02.mdx) build their own requirements on top
+of, and it's freely available (unlike the ISO standards in this section).
+
+The `references/JCGM/` folder holds ten documents, not all of the same character — some are
+normative uncertainty methodology, one (JCGM 200, the VIM) is a pure vocabulary with no
+"requirements" of its own. This page covers the two documents with concrete, checkable content not
+already covered elsewhere, plus the one directly relevant to conformity assessment:
+
+- **JCGM 100:2008 (GUM)** and its core Type A/B evaluation, combination, and expansion
+  methodology — already the backbone of [ISO/IEC 17025 §7.6](./iso-17025.mdx#uncertainty-evaluation)
+  and [EA-4/02 §3–5](./ea-4-02.mdx#combining-uncertainties); not re-covered here beyond a pointer.
+- **JCGM GUM-6:2020** (*Developing and using measurement models*) — the document most directly
+  applicable to Open Gauge's `poly_coefficients` schema, and the source of the specific gaps
+  below.
+- **JCGM 106:2012** (*The role of measurement uncertainty in conformity assessment*) — the
+  document ISO/IEC 17025 §7.1.3's NOTE points to for decision-rule guidance.
+
+The VIM (JCGM 200) and the GUM-1:2023 roadmap document are vocabulary/overview material, not
+requirements — their content is folded into
+[Standards & glossary](../reference/standards-glossary.mdx) rather than given a compliance table
+here, for the same reason organizational clauses are excluded from the other pages in this
+section: there's nothing to score "met" against in a glossary.
+
+## Compliance
+
+| Source | Requirement | Status | Where addressed |
+|---|---|---|---|
+| [GUM 100, EA-4/02](#core-uncertainty-methodology) | Type A/B evaluation, RSS combination, expansion with coverage factor | ✅ Met | See [ISO/IEC 17025 §7.6](./iso-17025.mdx#uncertainty-evaluation) and [EA-4/02](./ea-4-02.mdx) |
+| [GUM-6 Annex H.3](#coefficient-covariance) | Fitted coefficient covariance stored and propagated, not just per-coefficient uncertainty | ✅ Met | `poly_coefficients_covariance` |
+| [GUM-6 Annex D](#polynomial-basis-and-degree-selection) | Polynomial degree selection bounded by point count; numerically stable coefficient basis | ❌ Not met | Degree auto-selection is capped at a hardcoded ceiling, not derived from point count; coefficients are monomial, not Chebyshev |
+| [GUM-6 §10.6](#drift-projection) | Future-value uncertainty propagated from the fitted model's coefficient covariance | ⚠️ Partial | [Drift prediction](../health-scoring/predictions.mdx) is a separate linear-trend heuristic, not a GUM-6-style propagated projection |
+| [GUM-6 Annex C.5](#repeatability-as-a-budget-term) | Repeatability/reproducibility folded into the uncertainty budget as a top-down term | ⚠️ Partial | `repeatability` is computed and reported, but not added to `uncertainty_budget` |
+| [GUM-6 §10.3.5](#no-inflated-uncertainty) | A known correction must be applied, never replaced with an inflated uncertainty | ✅ Met | Open Gauge has no mechanism to substitute a correction with a larger uncertainty — the fit itself *is* the correction |
+| [JCGM 106](#conformity-assessment) | Decision-rule-based conformity assessment (guard band / shared risk) | ✅ Met | Same [decision rules](./iso-17025.mdx#decision-rule) as ISO/IEC 17025 §7.1.3/§7.8.6 |
+
+## Detail
+
+### Core uncertainty methodology [#core-uncertainty-methodology]
+
+Type A/Type B evaluation, root-sum-square combination for independent contributions, and expansion
+via a coverage factor are all implemented in `calibration_analysis.py` — see
+[ISO/IEC 17025's uncertainty evaluation](./iso-17025.mdx#uncertainty-evaluation) and
+[EA-4/02's coverage-factor policy](./ea-4-02.mdx#coverage-factor-policy) for the detail; this page
+doesn't repeat it.
+
+### Coefficient covariance [#coefficient-covariance]
+
+> "GUM Annex H.3 (thermometer calibration curve) ...shows that ignoring the covariance between a
+> fitted slope and intercept can produce uncertainty estimates that are wrong by 30%+ when those
+> coefficients are later used together."
+
+`poly_coefficients_covariance` stores the full N×N covariance matrix from the least-squares fit,
+not just the diagonal (per-coefficient) standard uncertainties — the specific thing this
+requirement is about.
+
+### Polynomial basis and degree selection [#polynomial-basis-and-degree-selection]
+
+> "GUM-6 Annex D ...raw monomial coefficients...can span many orders of magnitude for
+> higher-degree fits...causing precision loss...**Recommended fix**: normalize the independent
+> variable to [-1, 1]...and fit in a Chebyshev polynomial basis...**Max recommended polynomial
+> degree** for m calibration points: n ≈ floor(1.4·√m)."
+
+**Gap.** `_select_degree()` in `calibration_analysis.py` auto-selects a polynomial degree via AIC,
+but is capped at a hardcoded `max_degree: int = 5` (and a manually-specified degree is separately
+clamped to `min(poly_degree, 5)`) — neither path derives its ceiling from the number of
+calibration points the way GUM-6's `n ≈ floor(1.4·√m)` guidance recommends, so a calibration with
+very few points can still be offered a degree-5 fit with no built-in floor/ceiling sanity check
+tied to the data. Separately, coefficients are fitted and stored in the plain monomial basis
+(equivalent to `numpy.polyfit`), not the numerically stable Chebyshev basis GUM-6 recommends —
+acceptable for the low degrees (1–3) most calibrations actually use, but a real precision risk
+if higher-degree fits become common.
+
+### Drift projection [#drift-projection]
+
+> "GUM-6 §10.6 (drifting resistance standard example) ...the value **and uncertainty at a future
+> use time** obtained by evaluating the fitted line and propagating both the coefficient standard
+> uncertainties *and their covariance* to that future point."
+
+[Drift prediction](../health-scoring/predictions.mdx#prediction) runs a separate linear regression
+over historical *drift* values to project "when might this become a problem" — a useful planning
+heuristic, but explicitly documented as "not a certified forecast." It doesn't evaluate a
+calibration's own fitted polynomial (with its coefficient covariance) forward in time the way
+GUM-6 §10.6 describes; the two are different calculations serving different purposes, and only the
+rigorous one would be appropriate to put on a certificate.
+
+### Repeatability as a budget term [#repeatability-as-a-budget-term]
+
+> "GUM-6 Annex C.5 (referencing ISO 21748) ...a standard way to fold a sensor's repeatability spec
+> into the uncertainty budget as a single term when a full bottom-up model isn't practical."
+
+`repeatability` (and `hysteresis`, `non_linearity`) are computed from the calibration dataset and
+reported as their own statistics — but they aren't added as a row in `uncertainty_budget`
+alongside the Type A/B contributions that are. A calibration with high repeatability scatter but a
+tight regression fit could currently under-report its true combined uncertainty as a result.
+
+### No inflated uncertainty [#no-inflated-uncertainty]
+
+> "GUM-6 §10.3.5 'The practice of not including in the measurement model a correction having known
+> value and applying instead an inflated uncertainty is scientifically unsound and is
+> deprecated.'"
+
+There's no mechanism in Open Gauge to do the deprecated thing: the calibration function itself
+*is* the correction (it maps a raw reading to a corrected value), and the uncertainty budget is a
+separate, itemized calculation — there's no code path where a known systematic offset could be
+left uncorrected and papered over with a larger uncertainty number instead.
+
+### Conformity assessment [#conformity-assessment]
+
+> "JCGM 106:2012 governs the decision-rule / pass-fail requirement in ISO 17025 §7.1.3 and §7.8.6."
+
+Covered in full at [ISO/IEC 17025's decision rule](./iso-17025.mdx#decision-rule) — simple
+acceptance, guard band, and shared risk are exactly the family of decision rules JCGM 106
+describes for factoring measurement uncertainty into a conformity decision.
+
+---
+
+*Verified against JCGM 100:2008, JCGM GUM-6:2020, and JCGM 106:2012, and the Open Gauge codebase
+(`apps/api/app/services/calibration_analysis.py`, `apps/api/app/models/calibration.py`,
+`apps/docs/content/docs/guide/health-scoring/predictions.mdx`) on 2026-07-29.*

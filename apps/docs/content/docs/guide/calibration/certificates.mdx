@@ -49,11 +49,15 @@ measurement result, since that's what Open Gauge certifies.
 
 ## What's deliberately not on it
 
-Per ISO/IEC 17025 §7.8.4.3, the certificate **never** prints a calibration-interval
-recommendation unless explicitly agreed with the customer. Open Gauge doesn't have that agreement
-flow yet, so no interval or "due date" language appears on the certificate at all — even
-though Open Gauge computes a recommended interval for its own
-[health scoring](../health-scoring/predictions.mdx) internally.
+Per ISO/IEC 17025 §7.8.4.3, a calibration certificate must **not** print a calibration-interval
+recommendation unless that's been explicitly agreed with the customer. The built-in default
+template doesn't print a due date or any interval language — that header cell shows the
+calibration's location instead (see
+[ISO/IEC 17025 compliance §7.8.4.3](../compliance/iso-17025.mdx#no-interval-recommendation) for
+the history; this was a bug prior to v3.2.1). `due_date` is still available in the template
+context for a custom uploaded template that wants to print it. This is separate from the
+[recommended interval](../health-scoring/predictions.mdx) Open Gauge computes for its own health
+scoring — that number never appears on a certificate, only in the app's own UI.
 
 ## Which template is used
 

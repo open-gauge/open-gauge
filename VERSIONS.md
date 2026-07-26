@@ -9,6 +9,22 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.2.1
+
+### Fixed
+
+- The built-in default calibration certificate template printed a "Due Date" field
+  (`calibration_date` + `calibration_interval`) unconditionally, with no way to know whether the
+  customer had agreed to receive a calibration-interval recommendation — a direct conflict with
+  ISO/IEC 17025 §7.8.4.3 ("A calibration certificate...shall not contain any recommendation on the
+  calibration interval, except where this has been agreed with the customer"), and a contradiction
+  of the certificate-generation docs, which incorrectly claimed no due-date language ever appeared.
+  `templates/certificates/default.tex.jinja` no longer renders `due_date` — that cell now shows the
+  calibration's location instead. `due_date` is still passed into every template's context, so a
+  custom uploaded template can still choose to print it (e.g. once a real customer-agreement flow
+  exists). Found while building the [Compliance](apps/docs/content/docs/guide/compliance/) section
+  of the docs — see [ISO/IEC 17025 §7.8.4.3](apps/docs/content/docs/guide/compliance/iso-17025.mdx#no-interval-recommendation).
+
 ## 3.2.0
 
 ### Added

@@ -1,0 +1,68 @@
+---
+title: Compliance overview
+description: How Open Gauge's calibration and traceability features map to the regulatory and certification standards labs are assessed against.
+---
+
+Open Gauge is built to be usable as the system of record behind an accredited or certified
+quality/metrology programme, not just a database of sensors. This section documents, standard by
+standard, exactly which clauses Open Gauge's features address today, which are partially
+addressed, and which remain the responsibility of the operating organization rather than the
+software.
+
+## How to read these pages
+
+Each standard gets its own page with three parts:
+
+1. **Summary** — publisher, edition, scope, and why it's relevant to a self-hosted calibration
+   platform.
+2. **Compliance table** — one row per relevant clause, with a status and a pointer to where in
+   Open Gauge that clause is addressed.
+3. **Detail** — one section per clause, with a short excerpt of the requirement and an explanation
+   of how Open Gauge addresses it (or the concrete gap, if it doesn't yet).
+
+### Status legend
+
+| Status | Meaning |
+|---|---|
+| ✅ Met | The feature exists today and satisfies the clause as written. |
+| ⚠️ Partial | Open Gauge provides part of what the clause requires, but a real gap remains — described in the clause's detail section. |
+| ❌ Not met | Open Gauge does not currently address this clause. |
+| ➖ N/A | The clause governs something outside what a software system can satisfy on its own (see below). |
+
+### Scope: what these pages do and don't cover
+
+Certification and accreditation standards mix two kinds of requirements: things a **software
+system** can implement (traceability chains, uncertainty calculation, record immutability, report
+content, access control), and things that are inherently an **organizational/process** matter —
+personnel competence records, impartiality policy, internal audit programmes, facilities and
+environmental control, complaint handling. Open Gauge's compliance tables only include clauses of
+the first kind; the organizational clauses are real requirements a certified lab must still
+satisfy, just not ones a documentation page about software can meaningfully mark "met."
+
+### Quoting policy
+
+Where a clause's exact wording matters, these pages quote it — briefly, one clause at a time, for
+the purpose of explaining how Open Gauge addresses it. Several of the standards referenced here
+(the ISO and SAE/IAQG documents) are commercially licensed, copyrighted publications; these pages
+do not reproduce them beyond what's needed to ground each explanation. For the authoritative full
+text, obtain a licensed copy from the publisher (ISO, SAE International, etc.) — publicly
+available documents (JCGM/BIPM guides, EA publications, US federal regulations) are the exception.
+
+### This is not a certification
+
+These pages describe the software's capabilities as implemented and verified against the current
+codebase at the date noted on each page. They are engineering documentation, not a legal opinion,
+an accreditation, or a guarantee that any specific deployment is compliant — actual conformance
+depends on how an organization configures and operates Open Gauge, and on the rest of its quality
+system.
+
+## Standards covered
+
+| Standard | Status |
+|---|---|
+| [ISO/IEC 17025:2017](./iso-17025.mdx) — General requirements for the competence of testing and calibration laboratories | Published |
+| [EA-4/02](./ea-4-02.mdx) — Evaluation of the uncertainty of measurement in calibration | Published |
+| [ISO 9001:2015](./iso-9001.mdx) — Quality management systems | Published |
+| [ISO 10012:2003](./iso-10012.mdx) — Measurement management systems | Published |
+| [ISO 13485:2016](./iso-13485.mdx) — Medical devices quality management systems | Published |
+| [JCGM/GUM suite](./gum-uncertainty.mdx) — Uncertainty of measurement | Published (GUM 100, GUM-6, JCGM 106; the VIM and GUM-1 roadmap are vocabulary, folded into [Standards & glossary](../reference/standards-glossary.mdx)) |

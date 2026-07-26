@@ -1,0 +1,275 @@
+---
+title: ISO/IEC 17025:2017
+description: General requirements for the competence of testing and calibration laboratories — clause-by-clause, how Open Gauge addresses it.
+---
+
+## Summary
+
+**ISO/IEC 17025:2017** — *General requirements for the competence of testing and calibration
+laboratories* — is published jointly by ISO and IEC. It's the standard accreditation bodies
+(ILAC members, e.g. A2LA, UKAS, DAkkS) assess a calibration or testing laboratory against; a
+laboratory doesn't "comply" with it in the abstract, it gets **accredited** to it, usually for a
+specific scope of measurements. It is the most directly relevant standard to Open Gauge of any in
+this section, since Open Gauge's core domain — calibration records, coefficients, uncertainty,
+traceability, and certificates — is exactly what Clause 6 (Resource requirements) and Clause 7
+(Process requirements) govern.
+
+The 2017 edition (third edition, replacing 2005) restructured the standard around
+performance-based, risk-based requirements rather than a prescriptive checklist, and added the
+explicit **decision rule** requirement (§7.1.3, §7.8.6) — the headline change most relevant to
+Open Gauge's pass/fail logic.
+
+Clauses 4–5 (impartiality, confidentiality, legal/organizational structure) and most of Clause 8
+(management-system documentation, internal audits, management review, corrective actions,
+complaints) govern how the *organization* runs its quality system — they aren't something a
+software system satisfies on its own, so they're excluded from the table below. The table covers
+Clause 6 (resources: equipment, traceability) and Clause 7 (process: records, uncertainty,
+reporting, data control) — the parts of the standard a LIMS actually implements.
+
+## Compliance
+
+| Clause | Requirement | Status | Where addressed |
+|---|---|---|---|
+| [6.4.6–6.4.7](#calibration-programme) | Equipment calibrated on a defined programme; no fixed interval mandated | ✅ Met | Per-asset [`calibration_interval`](../sensors/asset-registry.mdx), due-date tracking |
+| [6.4.8](#calibration-status-identification) | Equipment status/validity readily identifiable | ✅ Met | QR-coded asset IDs, due/overdue status badges |
+| [6.4.9](#equipment-out-of-service) | Defective/questionable equipment taken out of service | ⚠️ Partial | [Health scoring](../health-scoring/overview.mdx) flags anomalies; no hard "quarantine" state |
+| [6.4.13](#equipment-records) | Equipment records: identity, manufacturer, dates, results, due date | ✅ Met | Asset + Calibration records |
+| [6.5.1–6.5.2, Annex A](#traceability-chain) | Unbroken, documented traceability chain, each link's uncertainty included | ✅ Met | `internal_reference_asset_id` auto-pulls the reference standard's own calibration uncertainty into the budget |
+| [7.1.3, 7.8.6](#decision-rule) | Decision rule documented whenever a conformity statement is issued | ✅ Met | [Decision rules](../calibration/decision-rules.mdx) — simple acceptance / guard band / shared risk, stored per calibration |
+| [7.5.1–7.5.2](#technical-records) | Technical records complete; amendments tracked to originals, nothing overwritten | ✅ Met | Calibrations are immutable; edits are new records, [audit log](#data-control) captures every change |
+| [7.6.1–7.6.2](#uncertainty-evaluation) | Uncertainty evaluated for **all** calibrations, all significant contributions included | ✅ Met | [Uncertainty budget](../calibration/uncertainty-budget.mdx) combines Type A (fit) + Type B (reference standard, resolution, sensor spec) |
+| [7.8.2.1](#report-content) | Report identification, dates, method, results, units, authorization | ✅ Met | [Certificate](../calibration/certificates.mdx) content |
+| [7.8.4.1(a)](#uncertainty-on-certificate) | Uncertainty stated on the certificate, same unit or relative to the measurand | ✅ Met | Printed with coverage factor and confidence level |
+| [7.8.4.1(b)](#environmental-conditions) | Environmental conditions influencing the result stated | ✅ Met | Temperature/humidity/pressure fields, printed when present |
+| [7.8.4.1(c)](#traceability-statement) | Statement of how the result is metrologically traceable | ✅ Met | Reference-asset identity (manufacturer/model/serial) printed on the certificate |
+| [7.8.4.1(d)](#as-found-as-left) | Results before and after any adjustment or repair, if available | ❌ Not met | No as-found/as-left field pair — see gap below |
+| [7.8.4.1(e), 7.8.6.2](#conformity-statement) | Statement of conformity: which spec, which result, which decision rule | ✅ Met | `conformity_statement` printed with specification, decision rule, and pass/fail |
+| [7.8.4.3](#no-interval-recommendation) | Certificate shall not recommend a calibration interval unless agreed with the customer | ✅ Met | Built-in certificate template no longer prints a due date or interval (fixed in v3.2.1) |
+| [7.8.8](#amendments) | Amendments to an issued report are a new, uniquely identified document referencing the original | ⚠️ Partial | New calibration version + new certificate number, but no "Amendment to Report" cross-reference wording |
+| [7.11.2–7.11.3](#data-control) | LIMS validated, protected from unauthorized access and tampering | ✅ Met | RBAC on all endpoints; certificates are PAdES-signed |
+| [7.11.6](#calculation-checks) | Calculations and data transfers checked in a systematic manner | ✅ Met | Automated tests against known reference values (`test_calibration_analysis.py`, `test_uncertainty_format.py`) |
+| [8.4](#data-control) | Records retained, protected, backed up, access-controlled | ✅ Met | Soft-delete only (`is_active`/`voided_at`), full audit log with before/after state and actor |
+
+## Detail
+
+### Calibration programme [#calibration-programme]
+
+> "6.4.7 The laboratory shall establish a calibration programme, which shall be reviewed and
+> adjusted as necessary... 6.4.6 Measuring equipment shall be calibrated when... calibration...is
+> required to establish the metrological traceability of the reported results."
+
+The standard deliberately does not mandate a fixed interval — labs define and manage their own
+programme. Open Gauge's `calibration_interval` is a configurable, per-calibration field (not a
+hardcoded default), and due-date tracking, reminder emails, and status badges throughout the app
+are derived from it, so operators can adjust their own calibration programme without any code
+change.
+
+### Calibration status identification [#calibration-status-identification]
+
+> "6.4.8 All equipment requiring calibration or which has a defined period of validity shall be
+> labelled, coded or otherwise identified to allow the user of the equipment to readily identify
+> the status of calibration or period of validity."
+
+Every asset gets a QR-coded ID for physical labeling, and the UI shows a due/overdue/valid status
+badge on every asset and in list views — an operator scanning a QR code lands on the asset's live
+calibration status, not a static label that can go stale.
+
+### Equipment out of service [#equipment-out-of-service]
+
+> "6.4.9 Equipment that has been subjected to overloading or mishandling, gives questionable
+> results, or has been shown to be defective or outside specified requirements, shall be taken out
+> of service. It shall be isolated to prevent its use or clearly labelled or marked as being out
+> of service until it has been verified to perform correctly."
+
+[Health scoring](../health-scoring/overview.mdx) computes an automatic `health_score` and flags
+drift/anomalies, and an asset can be marked `retired_at` permanently. What's missing is the
+clause's specific case: a **temporary, reversible** "out of service" state — something between
+"active" and "retired" — that visibly blocks or warns against using an asset pending
+investigation, the way 6.4.9 describes. Today an operator has to rely on the health score or a
+manual note; there's no dedicated status field or hard warning gate.
+
+### Equipment records [#equipment-records]
+
+> "6.4.13 Records shall be retained for equipment which can influence laboratory activities. The
+> records shall include the following, where applicable: a) the identity of equipment...; b) the
+> manufacturer's name, type identification, and serial number...; ...e) calibration dates, results
+> of calibrations, adjustments, acceptance criteria, and the due date of the next calibration or
+> the calibration interval; ...h) details of any damage, malfunction, modification to, or repair
+> of, the equipment."
+
+The `Asset` model carries manufacturer, model, serial number, firmware version, and location; each
+`Calibration` carries the date, results (coefficients, statistics, uncertainty), acceptance
+criteria (the conformity statement), and due date. Damage/repair history (h) isn't a distinct
+field — it's expected to be captured in the free-text `notes` on the asset or a calibration, not a
+structured record.
+
+### Traceability chain [#traceability-chain]
+
+> "6.5.1 The laboratory shall establish and maintain metrological traceability of its measurement
+> results by means of a documented unbroken chain of calibrations, each **contributing to the
+> measurement uncertainty**, linking them to an appropriate reference."
+>
+> "Annex A.2.1(c) ...measurement uncertainty for each step in the traceability chain is evaluated
+> according to agreed methods."
+
+This is the clause with the most substance behind it. When a calibration is performed against an
+`internal_reference_asset_id` (an internal reference standard tracked as its own asset), Open
+Gauge automatically fetches that reference standard's **own most recent calibration's expanded
+uncertainty** and folds it into the current calibration's Type B uncertainty budget — not just a
+named link, but the reference's own uncertainty actually propagating forward, which is what
+"contributing to the measurement uncertainty" requires. A user can also enter it manually if the
+reference asset isn't tracked in Open Gauge. For `calibration_type: "external"` calibrations, the
+chain instead rests on the external lab's own accreditation, recorded via
+`external_lab_certificate_number` — Open Gauge doesn't (and shouldn't) re-derive an external lab's
+uncertainty.
+
+### Decision rule [#decision-rule]
+
+> "7.1.3 When the customer requests a statement of conformity...the decision rule shall be
+> clearly defined... 7.8.6.1 ...the laboratory shall document the decision rule employed, taking
+> into account the level of risk..."
+
+Covered in full in [Decision rules & conformity](../calibration/decision-rules.mdx) — Open Gauge
+stores which of the three rules (simple acceptance, guard band, shared risk) was applied on every
+calibration, and prints it on the certificate rather than a bare pass/fail.
+
+### Technical records [#technical-records]
+
+> "7.5.1 ...Original observations, data and calculations shall be recorded at the time they are
+> made... 7.5.2 The laboratory shall ensure that amendments to technical records can be tracked to
+> previous versions or to original observations. Both the original and amended data...shall be
+> retained, including the date of alteration, an indication of the altered aspects and the
+> personnel responsible."
+
+Open Gauge has no "edit calibration results" endpoint — there is `POST /calibrations` (create) and
+`DELETE /calibrations/{id}` (void, not delete: sets `is_active=false`, `voided_by`,
+`voided_at`, `void_reason`, reversible via `/restore`). A corrected calibration is a new record,
+never a mutation of the old one — see [Data model & concepts](../concepts/data-model.mdx).
+Every void/restore is also written to the audit log with actor, timestamp, and before/after state.
+
+### Uncertainty evaluation [#uncertainty-evaluation]
+
+> "7.6.2 A laboratory performing calibrations...shall evaluate the measurement uncertainty for
+> all calibrations. 7.6.1 ...all contributions that are of significance...shall be taken into
+> account."
+
+The [uncertainty budget](../calibration/uncertainty-budget.mdx) combines a Type A contribution
+(fit residuals) with Type B contributions — reference-standard uncertainty, digital resolution,
+and the sensor's own manufacturer accuracy spec — combined via root-sum-square with an effective
+degrees-of-freedom (Welch-Satterthwaite) calculation feeding the coverage factor, not just the
+Type-A-only residual degrees of freedom.
+
+### Report content [#report-content]
+
+> "7.8.2.1 Each report shall include at least...unique identification...the name and contact
+> information of the customer; identification of the method used;...results...units...
+> identification of the person(s) authorizing the report."
+
+The certificate carries a unique `certificate_number` (`OG-CAL-{asset_id}-v{version}`),
+organization identity, the procedure used, results with units, and the performer's name plus
+digital signature image (when on file).
+
+### Uncertainty on certificate [#uncertainty-on-certificate]
+
+> "7.8.4.1(a) the measurement uncertainty of the measurement result presented in the same unit as
+> that of the measurand or in a term relative to the measurand."
+
+Printed as expanded uncertainty with its coverage factor and confidence level, e.g. `± 0.012 °C
+[k=2.00, 95.45%]`, alongside the combined uncertainty — rounded per GUM §7.2.6 (two significant
+figures).
+
+### Environmental conditions [#environmental-conditions]
+
+> "7.8.4.1(b) the conditions (e.g. environmental) under which the calibrations were made that
+> have an influence on the measurement results."
+
+Temperature, humidity, and pressure are stored per calibration and printed on the certificate
+whenever present.
+
+### Traceability statement [#traceability-statement]
+
+> "7.8.4.1(c) a statement identifying how the measurements are metrologically traceable."
+
+The certificate prints the internal reference standard's identity (name, manufacturer, model,
+serial) when one was used, or the external lab's name and certificate number otherwise — the
+[traceability chain](#traceability-chain) made visible on the document itself, not just stored in
+the database.
+
+### As-found / as-left [#as-found-as-left]
+
+> "7.8.4.1(d) the results before and after any adjustment or repair, if available."
+
+**Gap.** Open Gauge has no distinct as-found/as-left field pair on a calibration — each record is
+a single result set. A lab that adjusts an instrument mid-calibration currently has no structured
+way to capture both the pre-adjustment and post-adjustment readings on one certificate; the only
+workaround is recording two separate calibrations, which loses the "before/after the same
+adjustment event" relationship the clause implies.
+
+### Conformity statement [#conformity-statement]
+
+> "7.8.4.1(e) where relevant, a statement of conformity...7.8.6.2 ...the statement clearly
+> identifies: a) to which results...applies; b) which specifications...are met or not met; c) the
+> decision rule applied."
+
+`conformity_statement` is a structured record (specification, decision rule, expanded uncertainty
+applied, pass/fail, and a reason when no spec was configured) generated at analysis time and
+printed verbatim on the certificate — including on a **failed** calibration, which is never
+blocked from saving (see [Decision rules](../calibration/decision-rules.mdx#decision-rule)).
+
+### No interval recommendation [#no-interval-recommendation]
+
+> "7.8.4.3 A calibration certificate or calibration label shall not contain any recommendation on
+> the calibration interval, except where this has been agreed with the customer."
+
+**Fixed in v3.2.1.** The built-in certificate template (`templates/certificates/default.tex.jinja`)
+used to unconditionally print a "Due Date" field derived from the calibration's `due_date`
+(`calibration_date` + `calibration_interval`) on every certificate, with no flag distinguishing
+whether the customer had agreed to receive an interval recommendation — a direct conflict with
+this clause. That row now shows the calibration's location instead; `due_date` remains available
+in the template context, so a custom uploaded template can still print it once a real
+customer-agreement flow exists (there isn't one yet — until then, an org that wants this on its
+own template is making that call itself, same as agreeing it with a customer out of band).
+
+### Amendments [#amendments]
+
+> "7.8.8.2 Amendments to a report after issue shall be made only in the form of a further
+> document...which includes the statement 'Amendment to Report, serial number...'...7.8.8.3 When
+> it is necessary to issue a complete new report, this shall be uniquely identified and shall
+> contain a reference to the original that it replaces."
+
+Each new calibration gets its own `calibration_version` and certificate number
+(`...-v{version}`), so amended results are always uniquely identified and never overwrite the
+original — the substance of the requirement is met. What's missing is the literal cross-reference:
+the certificate doesn't carry explicit wording pointing back to the specific prior certificate
+number it supersedes, only an incrementing version suffix.
+
+### Data control [#data-control]
+
+> "7.11.3 The laboratory information management system(s) shall: a) be protected from
+> unauthorized access; b) be safeguarded against tampering and loss...8.4.1 The laboratory shall
+> establish and retain legible records to demonstrate fulfilment of the requirements..."
+
+Every API endpoint requires authentication, with role-based access control gating destructive
+actions (voiding a calibration requires admin). Issued certificates are embedded with a PAdES
+digital signature at generation time, so tampering with an issued PDF is detectable. Every create,
+void, restore, and admin action is written to the [`AuditLog`](../concepts/data-model.mdx) with
+actor, timestamp, IP, and before/after state — nothing is hard-deleted.
+
+### Calculation checks [#calculation-checks]
+
+> "7.11.6 Calculations and data transfers shall be checked in an appropriate and systematic
+> manner."
+
+The uncertainty and curve-fitting logic (`calibration_analysis.py`) and the uncertainty-statement
+formatting (`uncertainty_format.py`) both have automated test suites asserting numeric correctness
+against known reference values, run on every change — not just sanity-range assertions. See
+[`CONTRIBUTING.md`'s testing policy](https://github.com/open-gauge/open-gauge/blob/main/docs/CONTRIBUTING.md#testing)
+for the project-wide requirement this follows.
+
+---
+
+*Verified against ISO/IEC 17025:2017(E) and the Open Gauge codebase
+(`apps/api/app/models/calibration.py`, `apps/api/app/models/asset.py`,
+`apps/api/app/services/certificate_service.py`, `apps/api/app/services/calibration_analysis.py`,
+`apps/api/app/api/v1/calibrations.py`, `apps/web/src/app/(app)/assets/[id]/CalibrationWizard.tsx`)
+on 2026-07-29.*

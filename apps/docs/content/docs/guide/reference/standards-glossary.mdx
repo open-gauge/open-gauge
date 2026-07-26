@@ -3,6 +3,11 @@ title: Standards & glossary
 description: The GUM/VIM nomenclature Open Gauge uses, and the standards its calibration engine implements.
 ---
 
+For a clause-by-clause breakdown of which requirements Open Gauge meets, partially meets, or
+doesn't yet address — with citations and code references — see
+[Compliance](../compliance/overview.mdx), starting with
+[ISO/IEC 17025:2017](../compliance/iso-17025.mdx).
+
 ## Standards Open Gauge implements
 
 | Standard | Title | Relevance to Open Gauge |
@@ -11,6 +16,11 @@ description: The GUM/VIM nomenclature Open Gauge uses, and the standards its cal
 | **JCGM GUM-6:2020** | Developing and using measurement models | The most directly applicable document to Open Gauge's calibration-coefficient data model — coefficient covariance, propagating uncertainty through a fitted curve. |
 | **ISO/IEC 17025:2017** | General requirements for the competence of testing and calibration laboratories | §7.1.3/§7.8.6 require documenting a [decision rule](../calibration/decision-rules.mdx) whenever a pass/fail statement is issued; §7.8.4.3 governs what a certificate may state about calibration intervals. |
 | **JCGM GUM-1:2023** | Guide to the expression of uncertainty in measurement — Part 1: Introduction | A roadmap/overview of the reorganized GUM document suite. |
+| **JCGM 200:2012 (VIM)** | International vocabulary of metrology — Basic and general concepts and associated terms | The source vocabulary GUM and ISO/IEC 17025 both build on without redefining — see the terms below. Referred to by ISO/IEC 17025 as "ISO/IEC Guide 99." |
+
+See [Compliance → GUM/JCGM uncertainty suite](../compliance/gum-uncertainty.mdx) for the
+clause-level status of GUM-6 and JCGM 106; the VIM and the GUM-1 roadmap are vocabulary/overview
+documents with no compliance table of their own — their content lives here instead.
 
 ## Core nomenclature (GUM / VIM)
 
@@ -32,6 +42,9 @@ interchangeable synonyms.
 | Degrees of freedom | $\nu$ | Reliability indicator of a standard uncertainty estimate (e.g. $\nu = n-1$ for a mean of $n$ observations, $\nu = n-m$ for an $m$-parameter least-squares fit). |
 | Correlation coefficient | $r(x_i, x_j)$ | $r = u(x_i, x_j) / [u(x_i)u(x_j)]$, bounded $[-1, 1]$. |
 | Correction | — | A value added, or factor applied, to compensate a *recognized* systematic effect. GUM assumes all such corrections are applied **before** uncertainty evaluation. |
+| Metrological traceability | — | (VIM, via ISO/IEC Guide 99) "Property of a measurement result whereby the result can be related to a reference through a documented unbroken chain of calibrations, each contributing to the measurement uncertainty." See [the traceability chain](../compliance/iso-17025.mdx#traceability-chain). |
+| Verification | — | (VIM, via ISO/IEC Guide 99:2007, 2.44) "Provision of objective evidence that a given item fulfils specified requirements." Distinct from *calibration* — verification is a pass/fail check against a requirement; calibration establishes the relation between indication and reference value. |
+| Decision rule | — | (ISO/IEC 17025, 3.7) "Rule that describes how measurement uncertainty is accounted for when stating conformity with a specified requirement." See [Decision rules](../calibration/decision-rules.mdx). |
 
 ### Error ≠ Uncertainty
 

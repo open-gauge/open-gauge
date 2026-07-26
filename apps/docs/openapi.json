@@ -3,7 +3,7 @@
   "info": {
     "title": "Open Gauge API",
     "description": "Open Gauge API",
-    "version": "0.1.0"
+    "version": "3.2.1"
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -53,6 +53,7 @@
           "Auth"
         ],
         "summary": "Register Endpoint",
+        "description": "Create a local account. Every new account requires activation before it can\nsign in. If an admin has configured and enabled SMTP (see /admin/email-settings),\nactivation is self-service via an emailed verification link (/auth/verify-email).\nOtherwise an admin must activate the account manually from Admin -> Users.",
         "operationId": "register_endpoint_api_v1_auth_register_post",
         "requestBody": {
           "content": {
@@ -66,6 +67,161 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify-email": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verify Email Endpoint",
+        "description": "Confirm the token from a registration verification email, activating the\naccount and returning an access token for immediate sign-in. Tokens expire\n24 hours after registration.",
+        "operationId": "verify_email_endpoint_api_v1_auth_verify_email_get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend-verification": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Resend Verification Endpoint",
+        "description": "Re-send the verification email. Always responds 204 regardless of whether\nthe address exists or is already verified, to avoid leaking account existence.",
+        "operationId": "resend_verification_endpoint_api_v1_auth_resend_verification_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Forgot Password Endpoint",
+        "description": "Send a password reset link if email is configured and the address matches an\naccount. Always responds 204 regardless of outcome, to avoid leaking account\nexistence — the frontend shows a generic message either way. Without SMTP\nconfigured there is no self-service reset path at all; contact your administrator.",
+        "operationId": "forgot_password_endpoint_api_v1_auth_forgot_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset Password Endpoint",
+        "description": "Complete a password reset from the emailed link and sign the user in.\nTokens expire 1 hour after being requested.",
+        "operationId": "reset_password_endpoint_api_v1_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -282,6 +438,7 @@
           "Organizations"
         ],
         "summary": "List Organizations",
+        "description": "Every active organization, name-only for private ones — enough for a\nnon-member to discover a private org exists and request to join it.\n`mine=true` scopes the list to the caller's own active memberships (e.g.\nthe organization picker on asset creation). Super Admin additionally sees\ndeactivated organizations — the only way to reach one, since it's\ninvisible to everyone else.",
         "operationId": "list_organizations_api_v1_organizations_get",
         "security": [
           {
@@ -310,19 +467,13 @@
             }
           },
           {
-            "name": "is_active",
+            "name": "mine",
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Is Active"
+              "type": "boolean",
+              "default": false,
+              "title": "Mine"
             }
           }
         ],
@@ -334,7 +485,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/OrganizationResponse"
+                    "$ref": "#/components/schemas/OrganizationListItem"
                   },
                   "title": "Response List Organizations Api V1 Organizations Get"
                 }
@@ -358,6 +509,7 @@
           "Organizations"
         ],
         "summary": "Create Organization",
+        "description": "Any authenticated non-Viewer may create an organization — org creation is\na self-service action independent of the global RBAC role otherwise,\nmirroring Gogs/GitHub, but Viewer is excluded like every other org\nmanagement action. The creator automatically becomes that org's first\nadmin member.",
         "operationId": "create_organization_api_v1_organizations_post",
         "security": [
           {
@@ -521,6 +673,759 @@
               "type": "string",
               "format": "uuid",
               "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/signing-certificate": {
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Get Organization Signing Certificate",
+        "description": "The X.509 certificate used to digitally sign this organization's\ncalibration certificate PDFs (see pdf_signing_service). Not secret — it's\nthe public half of the keypair, published so a recipient of a signed PDF\ncan import it as an explicitly trusted root in their PDF viewer instead\nof seeing an \"untrusted signer\" warning for the self-signed cert.\n\nReturns null until the organization's first certificate has been\ngenerated — the keypair is created lazily on first use, not on\norganization creation (mirrors GET /users/{id}/signature's null-until-uploaded shape).",
+        "operationId": "get_organization_signing_certificate_api_v1_organizations__org_id__signing_certificate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SigningCertificateResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Organization Signing Certificate Api V1 Organizations  Org Id  Signing Certificate Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/logo": {
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Upload Org Logo",
+        "description": "Upload or replace an organization's logo. Organization admin only.",
+        "operationId": "upload_org_logo_api_v1_organizations__org_id__logo_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_org_logo_api_v1_organizations__org_id__logo_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Delete Org Logo",
+        "description": "Remove an organization's logo, if one is set. Organization admin only.",
+        "operationId": "delete_org_logo_api_v1_organizations__org_id__logo_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/restore": {
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Restore Organization",
+        "description": "Reactivate a deactivated organization — Super Admin only, since a\ndeactivated org may have zero active memberships left to fall back on.\nRestoring only affects visibility; it does not reactivate memberships.",
+        "operationId": "restore_organization_api_v1_organizations__org_id__restore_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/members": {
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "List Org Members",
+        "description": "The member roster is not public information — even for a non-private\norganization, only members (or Super Admin) can see who else is in it.",
+        "operationId": "list_org_members_api_v1_organizations__org_id__members_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationMemberResponse"
+                  },
+                  "title": "Response List Org Members Api V1 Organizations  Org Id  Members Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Add Members",
+        "description": "Directly add one or more users as `member`-role members — org admin\nonly. Unknown user ids are silently skipped.",
+        "operationId": "add_members_api_v1_organizations__org_id__members_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMembersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationMemberResponse"
+                  },
+                  "title": "Response Add Members Api V1 Organizations  Org Id  Members Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/eligible-members": {
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "List Eligible Members",
+        "description": "Users who could be added as a member — org admin only, same gate as\nevery other member-management endpoint (not global-admin gated).",
+        "operationId": "list_eligible_members_api_v1_organizations__org_id__eligible_members_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EligibleUserResponse"
+                  },
+                  "title": "Response List Eligible Members Api V1 Organizations  Org Id  Eligible Members Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/members/{user_id}": {
+      "put": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Update Member Role",
+        "operationId": "update_member_role_api_v1_organizations__org_id__members__user_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationMemberRoleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationMemberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Remove Member",
+        "operationId": "remove_member_api_v1_organizations__org_id__members__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/leave": {
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Leave Organization",
+        "operationId": "leave_organization_api_v1_organizations__org_id__leave_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/join-requests": {
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Create Join Request",
+        "operationId": "create_join_request_api_v1_organizations__org_id__join_requests_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationJoinRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "List Join Requests",
+        "operationId": "list_join_requests_api_v1_organizations__org_id__join_requests_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationJoinRequestResponse"
+                  },
+                  "title": "Response List Join Requests Api V1 Organizations  Org Id  Join Requests Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/join-requests/{request_id}/approve": {
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Approve Join Request",
+        "operationId": "approve_join_request_api_v1_organizations__org_id__join_requests__request_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{org_id}/join-requests/{request_id}/reject": {
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Reject Join Request",
+        "operationId": "reject_join_request_api_v1_organizations__org_id__join_requests__request_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Org Id"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
             }
           }
         ],
@@ -940,6 +1845,23 @@
             }
           },
           {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Organization Id"
+            }
+          },
+          {
             "name": "include_descendants",
             "in": "query",
             "required": false,
@@ -1075,7 +1997,7 @@
           "Assets"
         ],
         "summary": "Validate a single-asset import ZIP",
-        "description": "Check whether a ZIP contains exactly one valid, importable asset (used by the 'New Asset → Import from file' flow before it asks the user to pick a location/owner). Never creates anything — always returns 200 with a `valid` flag rather than an error status, so the UI can show either the asset preview or a plain 'not a valid asset' message.",
+        "description": "Check whether a ZIP contains exactly one valid, importable asset (used by the 'New Asset → Import from file' flow before it asks the user to pick a location). Never creates anything — always returns 200 with a `valid` flag rather than an error status, so the UI can show either the asset preview or a plain 'not a valid asset' message.",
         "operationId": "validate_import_zip_api_v1_assets_import_validate_post",
         "requestBody": {
           "content": {
@@ -1123,7 +2045,7 @@
           "Assets"
         ],
         "summary": "Import assets from a ZIP",
-        "description": "Import one or more assets from a ZIP archive produced by the asset export feature. Each top-level folder containing an asset.yaml is imported independently — a failure importing one asset does not block the others in the same file. Used by both the registry's bulk 'Import' button and the 'New Asset → Import from file' flow. location_id/owner are optional and, when given, are applied to every asset imported in this call (the 'Import from file' flow only ever imports one asset at a time).",
+        "description": "Import one or more assets from a ZIP archive produced by the asset export feature. Each top-level folder containing an asset.yaml is imported independently — a failure importing one asset does not block the others in the same file. Used by both the registry's bulk 'Import' button and the 'New Asset → Import from file' flow. location_id is optional and, when given, is applied to every asset imported in this call (the 'Import from file' flow only ever imports one asset at a time).",
         "operationId": "import_assets_api_v1_assets_import_post",
         "requestBody": {
           "content": {
@@ -1435,6 +2357,7 @@
           "Assets"
         ],
         "summary": "List Asset Calibrations",
+        "description": "List calibration records for this asset, newest first. Voided calibrations\nare excluded unless include_voided=true.",
         "operationId": "list_asset_calibrations_api_v1_assets__asset_pk__calibrations_get",
         "security": [
           {
@@ -1470,6 +2393,16 @@
               "type": "integer",
               "default": 50,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "include_voided",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Voided"
             }
           }
         ],
@@ -2049,7 +2982,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^(2x2|4x2)$",
+              "pattern": "^(1x0\\.5|2x2|4x2)$",
               "default": "4x2",
               "title": "Size"
             }
@@ -2199,6 +3132,7 @@
           "Calibrations"
         ],
         "summary": "List Calibrations",
+        "description": "List calibration records across all assets. Voided calibrations are\nexcluded unless include_voided=true.",
         "operationId": "list_calibrations_api_v1_calibrations_get",
         "security": [
           {
@@ -2224,6 +3158,16 @@
               "type": "integer",
               "default": 50,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "include_voided",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Voided"
             }
           }
         ],
@@ -2259,6 +3203,7 @@
           "Calibrations"
         ],
         "summary": "Create Calibration",
+        "description": "Record a new calibration. calibration_version is assigned automatically as\nthe next integer for this asset (or asset/sensor) — always increasing and\nunique, regardless of calibration_date.",
         "operationId": "create_calibration_api_v1_calibrations_post",
         "security": [
           {
@@ -2350,9 +3295,9 @@
         "tags": [
           "Calibrations"
         ],
-        "summary": "Delete Calibration",
-        "description": "Permanently remove a calibration record. Restricted to admin and superadmin.",
-        "operationId": "delete_calibration_api_v1_calibrations__cal_id__delete",
+        "summary": "Void Calibration",
+        "description": "Mark a calibration invalid rather than deleting it. Calibration history is\nnever destroyed: the record, its data points, and its certificate are all preserved.\nA voided calibration is hidden\nfrom listings by default, excluded from due-date/status calculations, and\nexcluded from drift/health analysis, until an admin restores it.\nRestricted to admin and superadmin.",
+        "operationId": "void_calibration_api_v1_calibrations__cal_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -2367,6 +3312,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Cal Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reason"
             }
           }
         ],
@@ -2439,6 +3400,55 @@
         }
       }
     },
+    "/api/v1/calibrations/{cal_id}/restore": {
+      "post": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "Restore Calibration",
+        "description": "Reinstate a previously voided calibration. Restricted to admin and superadmin.",
+        "operationId": "restore_calibration_api_v1_calibrations__cal_id__restore_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/calibrations/{cal_id}/certificate": {
       "get": {
         "tags": [
@@ -2484,6 +3494,398 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/certificate-templates": {
+      "get": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "List Certificate Templates For Calibration",
+        "description": "List certificate templates available for this calibration's asset —\nits resolved organization's templates plus global ones. Powers the\ntemplate picker on the certificate download button.",
+        "operationId": "list_certificate_templates_for_calibration_api_v1_calibrations__cal_id__certificate_templates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  },
+                  "title": "Response List Certificate Templates For Calibration Api V1 Calibrations  Cal Id  Certificate Templates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/certificate/download": {
+      "get": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "Download Certificate",
+        "description": "Live-generate and stream the calibration certificate PDF as a direct\ndownload, optionally rendered with a specific certificate template\ninstead of the resolved org/global default.\n\nUnlike GET /certificate, this never reads from or writes to the cached\ncalibration_file_id — it's always a fresh, ad-hoc render (needed since a\none-off \"try this template\" download must not overwrite the canonical\nstored certificate), so it's a little slower but always reflects the\nchosen template exactly.",
+        "operationId": "download_certificate_api_v1_calibrations__cal_id__certificate_download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          },
+          {
+            "name": "template_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificate-templates": {
+      "get": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "List Templates",
+        "operationId": "list_templates_api_v1_certificate_templates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Organization Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CertificateTemplateResponse"
+                  },
+                  "title": "Response List Templates Api V1 Certificate Templates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "Upload Template",
+        "description": "Upload a .tex Jinja certificate template. Validated with a dry-run compile\n(dummy data) before being persisted, so a bad template is rejected immediately\nrather than silently failing the next time a real certificate is generated.",
+        "operationId": "upload_template_api_v1_certificate_templates_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_template_api_v1_certificate_templates_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificate-templates/{template_id}": {
+      "put": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "Update Template",
+        "description": "Metadata-only update (name/description/is_default/is_active) — replacing the\n.tex source itself requires uploading a new template, keeping history immutable.",
+        "operationId": "update_template_api_v1_certificate_templates__template_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificateTemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "Delete Template",
+        "description": "Soft-deletes the template. If it was the active default, certificate\ngeneration simply falls back to the global/built-in default — no replacement\nneeds to be designated first.",
+        "operationId": "delete_template_api_v1_certificate_templates__template_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificate-templates/{template_id}/preview": {
+      "post": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "Preview Template",
+        "description": "Re-compile the template with a freshly randomized 10-row sample dataset\nand return the PDF directly, so an admin can see what it looks like —\ndataset table, chart, everything — without generating a real certificate.",
+        "operationId": "preview_template_api_v1_certificate_templates__template_id__preview_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificate-templates/preview-builtin": {
+      "post": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "Preview Builtin Template",
+        "description": "Preview the app's built-in default template (no DB row exists for it)\nwith a freshly randomized 10-row sample dataset.",
+        "operationId": "preview_builtin_template_api_v1_certificate_templates_preview_builtin_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/procedures": {
@@ -3487,6 +4889,7 @@
           "Users"
         ],
         "summary": "Update User",
+        "description": "Admin-only: role, organization, is_active, and is_verified are all\nprivilege-bearing fields. Self-service updates go through PATCH /users/me\n(UserSelfUpdate) instead, which only allows name/email.",
         "operationId": "update_user_api_v1_users__user_id__put",
         "security": [
           {
@@ -3578,48 +4981,63 @@
         }
       }
     },
-    "/api/v1/teams": {
+    "/api/v1/users/me/signature": {
       "get": {
         "tags": [
-          "Teams"
+          "Signatures"
         ],
-        "summary": "List Teams",
-        "operationId": "list_teams_api_v1_teams_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "org_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Org Id"
-            }
-          }
-        ],
+        "summary": "Get My Signature",
+        "operationId": "get_my_signature_api_v1_users_me_signature_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TeamResponse"
-                  },
-                  "title": "Response List Teams Api V1 Teams Get"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserSignatureResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get My Signature Api V1 Users Me Signature Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Signatures"
+        ],
+        "summary": "Upload My Signature",
+        "description": "Upload or replace the current user's signature (transparent-background image).\n\nAccepts both a file upload and a drawn canvas exported as a PNG blob — both go through\nthis single endpoint, distinguished by the `source` field. The image is cryptographically\nsigned with the user's Ed25519 key (generated on first use) so its authenticity can later\nbe verified against the published public key.",
+        "operationId": "upload_my_signature_api_v1_users_me_signature_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_my_signature_api_v1_users_me_signature_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSignatureResponse"
                 }
               }
             }
@@ -3634,36 +5052,63 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       },
-      "post": {
+      "delete": {
         "tags": [
-          "Teams"
+          "Signatures"
         ],
-        "summary": "Create Team",
-        "operationId": "create_team_api_v1_teams_post",
+        "summary": "Delete My Signature",
+        "description": "Revoke the current user's active signature. History is preserved, not deleted.",
+        "operationId": "delete_my_signature_api_v1_users_me_signature_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/signature/public-key": {
+      "get": {
+        "tags": [
+          "Signatures"
+        ],
+        "summary": "Get User Public Key",
+        "operationId": "get_user_public_key_api_v1_users__user_id__signature_public_key_get",
         "security": [
           {
             "HTTPBearer": []
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TeamCreate"
-              }
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
             }
           }
-        },
+        ],
         "responses": {
-          "201": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TeamResponse"
+                  "$ref": "#/components/schemas/PublicKeyResponse"
                 }
               }
             }
@@ -3681,13 +5126,14 @@
         }
       }
     },
-    "/api/v1/teams/{team_id}": {
-      "put": {
+    "/api/v1/users/{user_id}/signature/verify": {
+      "get": {
         "tags": [
-          "Teams"
+          "Signatures"
         ],
-        "summary": "Update Team",
-        "operationId": "update_team_api_v1_teams__team_id__put",
+        "summary": "Verify User Signature",
+        "description": "Recomputes the image hash and re-verifies the crypto signature independently.\n\nDefaults to the user's current active signature; pass `signature_id` to verify a\nspecific historical (revoked) signature instead — history is never deleted.",
+        "operationId": "verify_user_signature_api_v1_users__user_id__signature_verify_get",
         "security": [
           {
             "HTTPBearer": []
@@ -3695,33 +5141,102 @@
         ],
         "parameters": [
           {
-            "name": "team_id",
+            "name": "user_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Team Id"
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "signature_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signature Id"
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TeamUpdate"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TeamResponse"
+                  "$ref": "#/components/schemas/SignatureVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "List Notifications",
+        "operationId": "list_notifications_api_v1_notifications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationResponse"
+                  },
+                  "title": "Response List Notifications Api V1 Notifications Get"
                 }
               }
             }
@@ -3740,10 +5255,133 @@
       },
       "delete": {
         "tags": [
-          "Teams"
+          "Notifications"
         ],
-        "summary": "Delete Team",
-        "operationId": "delete_team_api_v1_teams__team_id__delete",
+        "summary": "Delete All Notifications",
+        "operationId": "delete_all_notifications_api_v1_notifications_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Get Unread Count",
+        "operationId": "get_unread_count_api_v1_notifications_unread_count_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/preferences": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Get Notification Preferences",
+        "operationId": "get_notification_preferences_api_v1_notifications_preferences_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationPreferenceItem"
+                  },
+                  "type": "array",
+                  "title": "Response Get Notification Preferences Api V1 Notifications Preferences Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Update Notification Preferences",
+        "operationId": "update_notification_preferences_api_v1_notifications_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationPreferenceItem"
+                  },
+                  "type": "array",
+                  "title": "Response Update Notification Preferences Api V1 Notifications Preferences Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark Notification Read",
+        "operationId": "mark_notification_read_api_v1_notifications__notification_id__read_post",
         "security": [
           {
             "HTTPBearer": []
@@ -3751,13 +5389,80 @@
         ],
         "parameters": [
           {
-            "name": "team_id",
+            "name": "notification_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Team Id"
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Mark All Read",
+        "operationId": "mark_all_read_api_v1_notifications_read_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}": {
+      "delete": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "Delete Notification",
+        "operationId": "delete_notification_api_v1_notifications__notification_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Notification Id"
             }
           }
         ],
@@ -3818,6 +5523,258 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminSystemResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/signing-certificate": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get Instance Signing Certificate",
+        "description": "The instance-wide fallback signing certificate, used to sign\ncalibration certificates whose asset has no resolvable organization\n(see certificate_service.resolve_organization). Not secret — see\nGET /organizations/{id}/signing-certificate for the per-organization\nequivalent, which is used instead whenever an organization can be\nresolved.\n\nReturns null until the first such certificate has been generated.",
+        "operationId": "get_instance_signing_certificate_api_v1_admin_signing_certificate_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SigningCertificateResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Instance Signing Certificate Api V1 Admin Signing Certificate Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/email-settings": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get Email Settings",
+        "description": "Get the SMTP configuration used for registration and calibration\nnotification emails. The password is never returned — only whether one is\nset. Admin/superadmin only.",
+        "operationId": "get_email_settings_api_v1_admin_email_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailSettingsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update Email Settings",
+        "description": "Update the SMTP configuration. Fields are partial: omit smtp_password to\nleave it unchanged, or pass an empty string to clear it. Admin/superadmin\nonly; the change is recorded in the audit log with the password redacted.",
+        "operationId": "update_email_settings_api_v1_admin_email_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/email-settings/test": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Send Test Email",
+        "description": "Send a one-off test email using the currently saved SMTP settings, to\nverify the configuration works before relying on it. Admin/superadmin only.",
+        "operationId": "send_test_email_api_v1_admin_email_settings_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/database/export": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Export Database",
+        "description": "Download a full backup of the instance: a zip bundling a PostgreSQL dump\n(pg_dump custom format) — every organization, asset, calibration, and\nuser — together with every file in MinIO (certificates, datasheets,\nLaTeX templates, profile pictures). Superadmin only. Restore it with\nPOST /admin/database/import.",
+        "operationId": "export_database_api_v1_admin_database_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/database/import": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Import Database",
+        "description": "Restore a backup produced by GET /admin/database/export, replacing\nevery table's contents and every file in MinIO. Also accepts a bare\npg_dump archive from before media bundling existed (database only, media\nuntouched). Superadmin only — this overwrites the entire instance,\nincluding the account making the request.",
+        "operationId": "import_database_api_v1_admin_database_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_database_api_v1_admin_database_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/database/reset": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reset Database",
+        "description": "Delete every organization, asset, location, procedure, calibration, and\nnon-superadmin user, and empty file storage — resetting the app to the\nsame clean state a fresh install starts in. Superadmin accounts (including\nthe caller) are preserved. Superadmin only; requires the literal\nconfirmation string \"RESET\" to guard against an accidental call.",
+        "operationId": "reset_database_api_v1_admin_database_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatabaseResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3921,6 +5878,24 @@
         ],
         "title": "ActivityItem"
       },
+      "AddMembersRequest": {
+        "properties": {
+          "user_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "User Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_ids"
+        ],
+        "title": "AddMembersRequest"
+      },
       "AdminStatsResponse": {
         "properties": {
           "assets": {
@@ -3942,10 +5917,6 @@
           "organizations": {
             "type": "integer",
             "title": "Organizations"
-          },
-          "teams": {
-            "type": "integer",
-            "title": "Teams"
           }
         },
         "type": "object",
@@ -3954,8 +5925,7 @@
           "procedures",
           "calibrations",
           "users",
-          "organizations",
-          "teams"
+          "organizations"
         ],
         "title": "AdminStatsResponse"
       },
@@ -4445,7 +6415,7 @@
             ],
             "title": "Location Id"
           },
-          "owner": {
+          "organization_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -4455,7 +6425,7 @@
                 "type": "null"
               }
             ],
-            "title": "Owner"
+            "title": "Organization Id"
           },
           "datasheet_url": {
             "anyOf": [
@@ -5245,7 +7215,7 @@
             ],
             "title": "Location Id"
           },
-          "owner": {
+          "organization_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -5255,7 +7225,7 @@
                 "type": "null"
               }
             ],
-            "title": "Owner"
+            "title": "Organization Id"
           },
           "datasheet_url": {
             "anyOf": [
@@ -5601,6 +7571,17 @@
                 "type": "null"
               }
             ]
+          },
+          "organization_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Name"
           },
           "site_name": {
             "anyOf": [
@@ -5724,17 +7705,6 @@
             ],
             "title": "Technology"
           },
-          "owner_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner Name"
-          },
           "calibration_health_score": {
             "anyOf": [
               {
@@ -5759,7 +7729,7 @@
           "serial_number",
           "manufacturer_part_number",
           "location_id",
-          "owner",
+          "organization_id",
           "datasheet_url",
           "firmware_version",
           "power_supply",
@@ -5861,7 +7831,7 @@
             ],
             "title": "Location Id"
           },
-          "owner": {
+          "organization_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -5871,7 +7841,7 @@
                 "type": "null"
               }
             ],
-            "title": "Owner"
+            "title": "Organization Id"
           },
           "datasheet_url": {
             "anyOf": [
@@ -6231,7 +8201,7 @@
           "serial_number",
           "manufacturer_part_number",
           "location_id",
-          "owner",
+          "organization_id",
           "datasheet_url",
           "firmware_version",
           "power_supply",
@@ -6377,18 +8347,6 @@
             ],
             "title": "Manufacturer Part Number"
           },
-          "owner": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner"
-          },
           "location_id": {
             "anyOf": [
               {
@@ -6400,6 +8358,18 @@
               }
             ],
             "title": "Location Id"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
           },
           "firmware_version": {
             "anyOf": [
@@ -6691,6 +8661,17 @@
             ],
             "title": "Actor Role"
           },
+          "actor_profile_picture_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Profile Picture Url"
+          },
           "action": {
             "type": "string",
             "title": "Action"
@@ -6791,18 +8772,6 @@
               }
             ],
             "title": "Location Id"
-          },
-          "owner": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Owner"
           }
         },
         "type": "object",
@@ -6810,6 +8779,20 @@
           "file"
         ],
         "title": "Body_import_assets_api_v1_assets_import_post"
+      },
+      "Body_import_database_api_v1_admin_database_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_database_api_v1_admin_database_import_post"
       },
       "Body_upload_asset_file_api_v1_assets__asset_pk__files_post": {
         "properties": {
@@ -6853,6 +8836,39 @@
         ],
         "title": "Body_upload_my_picture_api_v1_users_me_picture_post"
       },
+      "Body_upload_my_signature_api_v1_users_me_signature_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "source"
+        ],
+        "title": "Body_upload_my_signature_api_v1_users_me_signature_post"
+      },
+      "Body_upload_org_logo_api_v1_organizations__org_id__logo_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_org_logo_api_v1_organizations__org_id__logo_post"
+      },
       "Body_upload_procedure_step_file_api_v1_procedures__proc_pk__files_post": {
         "properties": {
           "file": {
@@ -6866,6 +8882,53 @@
           "file"
         ],
         "title": "Body_upload_procedure_step_file_api_v1_procedures__proc_pk__files_post"
+      },
+      "Body_upload_template_api_v1_certificate_templates_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "name"
+        ],
+        "title": "Body_upload_template_api_v1_certificate_templates_post"
       },
       "Body_validate_import_zip_api_v1_assets_import_validate_post": {
         "properties": {
@@ -6982,11 +9045,6 @@
             "type": "string",
             "title": "Calibration Type",
             "default": "external"
-          },
-          "calibration_version": {
-            "type": "integer",
-            "title": "Calibration Version",
-            "default": 1
           },
           "calibration_interval": {
             "anyOf": [
@@ -8088,6 +10146,46 @@
               }
             ],
             "title": "Conformity Statement"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "voided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided At"
+          },
+          "voided_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided By"
+          },
+          "void_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Void Reason"
           }
         },
         "type": "object",
@@ -8176,6 +10274,127 @@
           "count"
         ],
         "title": "CalibrationStatusCount"
+      },
+      "CertificateTemplateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "organization_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "name",
+          "description",
+          "is_default",
+          "is_active",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CertificateTemplateResponse"
+      },
+      "CertificateTemplateUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "CertificateTemplateUpdate"
       },
       "ChangePasswordRequest": {
         "properties": {
@@ -8870,6 +11089,19 @@
         ],
         "title": "DashboardSummary"
       },
+      "DatabaseResetRequest": {
+        "properties": {
+          "confirm": {
+            "type": "string",
+            "title": "Confirm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "title": "DatabaseResetRequest"
+      },
       "DetailedMetrics": {
         "properties": {
           "drift_group": {
@@ -8990,6 +11222,247 @@
           "operator"
         ],
         "title": "DriftPoint"
+      },
+      "EligibleUserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "profile_picture_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Picture Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email"
+        ],
+        "title": "EligibleUserResponse",
+        "description": "A user not currently an active member of the org — candidate for the\nAdd Member dropdown."
+      },
+      "EmailSettingsResponse": {
+        "properties": {
+          "smtp_host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Host"
+          },
+          "smtp_port": {
+            "type": "integer",
+            "title": "Smtp Port"
+          },
+          "smtp_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Username"
+          },
+          "has_smtp_password": {
+            "type": "boolean",
+            "title": "Has Smtp Password"
+          },
+          "smtp_use_tls": {
+            "type": "boolean",
+            "title": "Smtp Use Tls"
+          },
+          "from_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Email"
+          },
+          "from_name": {
+            "type": "string",
+            "title": "From Name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "calibration_reminder_days": {
+            "type": "integer",
+            "title": "Calibration Reminder Days"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "smtp_host",
+          "smtp_port",
+          "smtp_username",
+          "has_smtp_password",
+          "smtp_use_tls",
+          "from_email",
+          "from_name",
+          "enabled",
+          "calibration_reminder_days",
+          "updated_at"
+        ],
+        "title": "EmailSettingsResponse"
+      },
+      "EmailSettingsUpdate": {
+        "properties": {
+          "smtp_host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Host"
+          },
+          "smtp_port": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 65535,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Port"
+          },
+          "smtp_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Username"
+          },
+          "smtp_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Password"
+          },
+          "smtp_use_tls": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smtp Use Tls"
+          },
+          "from_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Email"
+          },
+          "from_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Name"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "calibration_reminder_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 90,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Reminder Days"
+          }
+        },
+        "type": "object",
+        "title": "EmailSettingsUpdate"
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 3,
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ForgotPasswordRequest"
       },
       "HTTPValidationError": {
         "properties": {
@@ -9458,6 +11931,112 @@
         ],
         "title": "MetricGroupItem"
       },
+      "NotificationPreferenceItem": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "email_enabled": {
+            "type": "boolean",
+            "title": "Email Enabled"
+          },
+          "in_app_enabled": {
+            "type": "boolean",
+            "title": "In App Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "email_enabled",
+          "in_app_enabled"
+        ],
+        "title": "NotificationPreferenceItem"
+      },
+      "NotificationPreferencesUpdate": {
+        "properties": {
+          "preferences": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationPreferenceItem"
+            },
+            "type": "array",
+            "title": "Preferences"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preferences"
+        ],
+        "title": "NotificationPreferencesUpdate"
+      },
+      "NotificationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "is_read": {
+            "type": "boolean",
+            "title": "Is Read"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "title",
+          "body",
+          "link",
+          "is_read",
+          "created_at"
+        ],
+        "title": "NotificationResponse"
+      },
+      "OrgRole": {
+        "type": "string",
+        "enum": [
+          "member",
+          "admin"
+        ],
+        "title": "OrgRole"
+      },
       "OrganizationCreate": {
         "properties": {
           "name": {
@@ -9465,6 +12044,17 @@
             "maxLength": 255,
             "minLength": 1,
             "title": "Name"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
           },
           "description": {
             "anyOf": [
@@ -9476,6 +12066,56 @@
               }
             ],
             "title": "Description"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "private": {
+            "type": "boolean",
+            "title": "Private",
+            "default": false
           }
         },
         "type": "object",
@@ -9483,6 +12123,203 @@
           "name"
         ],
         "title": "OrganizationCreate"
+      },
+      "OrganizationJoinRequestResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "user_name": {
+            "type": "string",
+            "title": "User Name"
+          },
+          "user_email": {
+            "type": "string",
+            "title": "User Email"
+          },
+          "user_profile_picture_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Profile Picture Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "user_id",
+          "user_name",
+          "user_email",
+          "status",
+          "created_at"
+        ],
+        "title": "OrganizationJoinRequestResponse"
+      },
+      "OrganizationListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "private": {
+            "type": "boolean",
+            "title": "Private"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "is_member": {
+            "type": "boolean",
+            "title": "Is Member",
+            "default": false
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_last_admin": {
+            "type": "boolean",
+            "title": "Is Last Admin",
+            "default": false
+          },
+          "has_pending_join_request": {
+            "type": "boolean",
+            "title": "Has Pending Join Request",
+            "default": false
+          },
+          "member_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "private"
+        ],
+        "title": "OrganizationListItem",
+        "description": "Safe to return regardless of the viewer's membership — used for the\n/organizations list, including private orgs (name-only, so a non-member\ncan still find and request to join one). The viewer-relative fields below\ndescribe only the caller's own relationship to the org (never the roster\nor other secrets) so they're safe to populate even for a private org the\ncaller isn't in — they drive the Join/Leave button on the list row."
+      },
+      "OrganizationMemberResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "profile_picture_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Picture Url"
+          },
+          "role": {
+            "$ref": "#/components/schemas/OrgRole"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "name",
+          "email",
+          "role",
+          "active",
+          "created_at"
+        ],
+        "title": "OrganizationMemberResponse"
+      },
+      "OrganizationMemberRoleUpdate": {
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/OrgRole"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "OrganizationMemberRoleUpdate"
       },
       "OrganizationResponse": {
         "properties": {
@@ -9495,16 +12332,9 @@
             "type": "string",
             "title": "Name"
           },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+          "private": {
+            "type": "boolean",
+            "title": "Private"
           },
           "is_active": {
             "type": "boolean",
@@ -9519,13 +12349,166 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "location_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "logo_file_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo File Id"
+          },
+          "logo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Url"
+          },
+          "asset_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Count"
+          },
+          "member_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Count"
+          },
+          "is_member": {
+            "type": "boolean",
+            "title": "Is Member",
+            "default": false
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_manage": {
+            "type": "boolean",
+            "title": "Can Manage",
+            "default": false
+          },
+          "is_last_admin": {
+            "type": "boolean",
+            "title": "Is Last Admin",
+            "default": false
+          },
+          "has_pending_join_request": {
+            "type": "boolean",
+            "title": "Has Pending Join Request",
+            "default": false
           }
         },
         "type": "object",
         "required": [
           "id",
           "name",
-          "description",
+          "private",
           "is_active",
           "created_at",
           "updated_at"
@@ -9547,6 +12530,17 @@
             ],
             "title": "Name"
           },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
           "description": {
             "anyOf": [
               {
@@ -9557,6 +12551,62 @@
               }
             ],
             "title": "Description"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "private": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Private"
           },
           "is_active": {
             "anyOf": [
@@ -10405,6 +13455,29 @@
         "type": "object",
         "title": "ProcedureUpdate"
       },
+      "PublicKeyResponse": {
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "title": "Algorithm"
+          },
+          "public_key_pem": {
+            "type": "string",
+            "title": "Public Key Pem"
+          },
+          "fingerprint_sha256": {
+            "type": "string",
+            "title": "Fingerprint Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "algorithm",
+          "public_key_pem",
+          "fingerprint_sha256"
+        ],
+        "title": "PublicKeyResponse"
+      },
       "RadarAxis": {
         "properties": {
           "axis": {
@@ -10494,6 +13567,75 @@
           "password"
         ],
         "title": "RegisterRequest"
+      },
+      "RegisterResponse": {
+        "properties": {
+          "access_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "verification_required": {
+            "type": "boolean",
+            "title": "Verification Required"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verification_required",
+          "message"
+        ],
+        "title": "RegisterResponse",
+        "description": "access_token is always unset on a fresh registration: every new self-registered\naccount requires activation before it can sign in — either by verifying via the\nemailed link (mail configured) or by an admin manually activating it in the Users\npanel (mail not configured)."
+      },
+      "ResendVerificationRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 3,
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ResendVerificationRequest"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "ResetPasswordRequest"
       },
       "SensorChannelCreate": {
         "properties": {
@@ -11217,6 +14359,80 @@
         ],
         "title": "SensorChannelResponse"
       },
+      "SignatureVerifyResponse": {
+        "properties": {
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "image_hash_match": {
+            "type": "boolean",
+            "title": "Image Hash Match"
+          },
+          "signature_valid": {
+            "type": "boolean",
+            "title": "Signature Valid"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "signed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Signed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verified",
+          "image_hash_match",
+          "signature_valid",
+          "version",
+          "signed_at"
+        ],
+        "title": "SignatureVerifyResponse"
+      },
+      "SigningCertificateResponse": {
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "title": "Algorithm"
+          },
+          "subject_common_name": {
+            "type": "string",
+            "title": "Subject Common Name"
+          },
+          "certificate_pem": {
+            "type": "string",
+            "title": "Certificate Pem"
+          },
+          "fingerprint_sha256": {
+            "type": "string",
+            "title": "Fingerprint Sha256"
+          },
+          "not_valid_before": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Not Valid Before"
+          },
+          "not_valid_after": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Not Valid After"
+          }
+        },
+        "type": "object",
+        "required": [
+          "algorithm",
+          "subject_common_name",
+          "certificate_pem",
+          "fingerprint_sha256",
+          "not_valid_before",
+          "not_valid_after"
+        ],
+        "title": "SigningCertificateResponse"
+      },
       "StabilityMetricSeries": {
         "properties": {
           "name": {
@@ -11362,104 +14578,19 @@
         ],
         "title": "StoredFileResponse"
       },
-      "TeamCreate": {
+      "TestEmailRequest": {
         "properties": {
-          "name": {
+          "to_email": {
             "type": "string",
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "organization_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Organization Id"
+            "minLength": 3,
+            "title": "To Email"
           }
         },
         "type": "object",
         "required": [
-          "name"
+          "to_email"
         ],
-        "title": "TeamCreate"
-      },
-      "TeamResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "description"
-        ],
-        "title": "TeamResponse"
-      },
-      "TeamUpdate": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          }
-        },
-        "type": "object",
-        "title": "TeamUpdate"
+        "title": "TestEmailRequest"
       },
       "TokenResponse": {
         "properties": {
@@ -11529,6 +14660,19 @@
         ],
         "title": "UncertaintyContributionOut"
       },
+      "UnreadCountResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count"
+        ],
+        "title": "UnreadCountResponse"
+      },
       "UserCreate": {
         "properties": {
           "email": {
@@ -11555,29 +14699,6 @@
               }
             ],
             "default": "viewer"
-          },
-          "organization_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Organization Id"
-          },
-          "team": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Team"
           }
         },
         "type": "object",
@@ -11606,36 +14727,13 @@
           "role": {
             "$ref": "#/components/schemas/UserRole"
           },
-          "team": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Team"
-          },
-          "organization_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Organization Id"
-          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
           },
-          "is_superuser": {
+          "is_verified": {
             "type": "boolean",
-            "title": "Is Superuser"
+            "title": "Is Verified"
           },
           "profile_picture_id": {
             "anyOf": [
@@ -11689,10 +14787,8 @@
           "email",
           "name",
           "role",
-          "team",
-          "organization_id",
           "is_active",
-          "is_superuser",
+          "is_verified",
           "last_login_at",
           "created_at",
           "updated_at"
@@ -11736,8 +14832,31 @@
               }
             ],
             "title": "Email"
+          }
+        },
+        "type": "object",
+        "title": "UserSelfUpdate"
+      },
+      "UserSignatureResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
           },
-          "team": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "image_url": {
             "anyOf": [
               {
                 "type": "string"
@@ -11746,11 +14865,28 @@
                 "type": "null"
               }
             ],
-            "title": "Team"
+            "title": "Image Url"
+          },
+          "fingerprint_sha256": {
+            "type": "string",
+            "title": "Fingerprint Sha256",
+            "default": ""
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
           }
         },
         "type": "object",
-        "title": "UserSelfUpdate"
+        "required": [
+          "id",
+          "version",
+          "source",
+          "is_active",
+          "created_at"
+        ],
+        "title": "UserSignatureResponse"
       },
       "UserUpdate": {
         "properties": {
@@ -11777,29 +14913,6 @@
               }
             ]
           },
-          "organization_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Organization Id"
-          },
-          "team": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Team"
-          },
           "is_active": {
             "anyOf": [
               {
@@ -11810,6 +14923,17 @@
               }
             ],
             "title": "Is Active"
+          },
+          "is_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Verified"
           }
         },
         "type": "object",
@@ -11867,7 +14991,11 @@
     },
     {
       "name": "Organizations",
-      "description": "Tenant root records."
+      "description": "Multi-tenant organizations, membership, and join requests."
+    },
+    {
+      "name": "Notifications",
+      "description": "In-app notification inbox."
     },
     {
       "name": "Locations",
@@ -11882,6 +15010,10 @@
       "description": "Calibration analysis, records, points, and certificates."
     },
     {
+      "name": "Certificate Templates",
+      "description": "Org-configurable LaTeX templates used to render calibration certificates."
+    },
+    {
       "name": "Procedures",
       "description": "Reusable calibration procedure templates."
     },
@@ -11894,8 +15026,8 @@
       "description": "User accounts and profiles."
     },
     {
-      "name": "Teams",
-      "description": "Teams within an organization, used for asset ownership."
+      "name": "Signatures",
+      "description": "User signature capture and cryptographic signing/verification."
     },
     {
       "name": "Admin",

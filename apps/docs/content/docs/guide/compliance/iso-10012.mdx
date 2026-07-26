@@ -1,0 +1,148 @@
+---
+title: ISO 10012:2003
+description: Measurement management systems — Requirements for measurement processes and measuring equipment. How Open Gauge supports an organization's internal metrological function.
+---
+
+## Summary
+
+**ISO 10012:2003** — *Measurement management systems — Requirements for measurement processes and
+measuring equipment* — is published by ISO. Where ISO/IEC 17025 governs an accredited
+testing/calibration *laboratory*, ISO 10012 governs the internal **metrological function** of any
+organization that needs to trust its own measurements (a manufacturer's in-house instrumentation,
+a process plant's monitoring equipment) — explicitly, per its own scope: "not intended as a
+substitute for, or as an addition to, the requirements of ISO/IEC 17025." It's the standard most
+likely to apply to an Open Gauge deployment that *isn't* an accredited calibration lab but still
+needs a defensible, auditable measurement management system — arguably the more common Open Gauge
+deployment.
+
+Its structure closely parallels what's already covered on the [ISO/IEC 17025](./iso-17025.mdx)
+and [ISO 9001](./iso-9001.mdx) pages (traceability, records, nonconforming equipment, corrective
+action) with one addition specific to this standard: **§6.2.2, Software** — a direct requirement
+that the software performing measurement calculations itself be validated and version-controlled,
+which applies to Open Gauge as a piece of measurement software, not just to what Open Gauge
+records about other equipment.
+
+## Compliance
+
+| Clause | Requirement | Status | Where addressed |
+|---|---|---|---|
+| [6.2.2](#measurement-software) | Measurement/calculation software documented, tested/validated before use, and archived | ✅ Met | Open Gauge's own release process — versioned, tested, and change-logged |
+| [6.2.3, 6.2.4, 7.1.4](#confirmation-records) | Metrological confirmation records: identity, dates, results, uncertainty, MPE, before/after adjustment, who performed/authorized | ⚠️ Partial | Same coverage as [ISO/IEC 17025 §6.4.13](./iso-17025.mdx#equipment-records); as-found/as-left still missing |
+| [6.3.2](#environmental-conditions) | Environmental conditions monitored and recorded; corrections applied to results | ⚠️ Partial | Temperature/humidity/pressure recorded; no automatic correction term applied to the fitted result |
+| [7.1.3](#equipment-adjustment-control) | Adjustment means safeguarded/sealed against unauthorized change; software/firmware write-protected | ➖ N/A / ✅ Met | Physical sealing is out of software's remit; the software-relevant sub-point (write-protection) is met via calibration immutability |
+| [7.2.1–7.2.2](#measurement-process-specification) | Measurement process specification: equipment, procedure, conditions, operator ability identified | ⚠️ Partial | [Procedures](../procedures/index.mdx) registry links equipment and method; no operator-qualification tracking |
+| [7.3.1–7.3.2](#uncertainty-and-traceability) | Uncertainty estimated per measurement process; traceability to SI | ✅ Met | Same [uncertainty budget](./iso-17025.mdx#uncertainty-evaluation) and [traceability chain](./iso-17025.mdx#traceability-chain) as ISO/IEC 17025 |
+| [8.3.3](#nonconforming-equipment) | Suspect/nonconforming equipment removed from service or prominently labelled | ⚠️ Partial | Same gap as [ISO/IEC 17025 §6.4.9](./iso-17025.mdx#equipment-out-of-service) — no dedicated quarantine state |
+| [8.4.2–8.4.3](#corrective-and-preventive-action) | Corrective and preventive action, documented and reviewed for effectiveness | ❌ Not met | Same gap as [ISO 9001 §10.2](./iso-9001.mdx#corrective-action) — no CAPA tracking |
+
+## Detail
+
+### Measurement software [#measurement-software]
+
+> "6.2.2 Software used in the measurement processes and calculations of results shall be
+> documented, identified and controlled to ensure suitability for continued use. Software, and any
+> revisions to it, shall be tested and/or validated prior to initial use, approved for use, and
+> archived."
+
+This clause applies to Open Gauge itself, not just to what it records about other equipment: it
+*is* the software performing the calibration calculations. Every release carries a single tracked
+version number (`v3.2.1 · self-hosted` shown in the sidebar — see
+[`CONTRIBUTING.md`'s versioning policy](https://github.com/open-gauge/open-gauge/blob/main/docs/CONTRIBUTING.md#versioning)),
+documented per-version in [VERSIONS.md](../reference/versions.mdx); the calculation logic
+has an automated test suite validated against known reference values (see
+[calculation checks](./iso-17025.mdx#calculation-checks)); and git history archives every prior
+version. There's no separate customer-facing "software validation report," but the substance —
+documented, tested, versioned, archived — is in place.
+
+### Confirmation records [#confirmation-records]
+
+> "7.1.4 ...The records shall include...b) the date...; c) the result...; f) the designated
+> maximum permissible error(s); g) the relevant environmental conditions...; h) the uncertainties
+> involved...; i) details of any maintenance...; k) identification of the person(s) performing...;
+> ...p) the calibration results obtained after and, where required, before any adjustment,
+> modification or repair."
+
+Nearly identical in substance to [ISO/IEC 17025 §6.4.13](./iso-17025.mdx#equipment-records), and
+addressed the same way — with the same specific gap: item (p), the paired before/after-adjustment
+result, has no dedicated field (see [As-found / as-left](./iso-17025.mdx#as-found-as-left)).
+6.2.4's requirement that "equipment used in the measurement management system shall be
+distinguishable from other equipment" and have its confirmation status identified is met the same
+way as [ISO/IEC 17025 §6.4.8](./iso-17025.mdx#calibration-status-identification) (QR codes, status
+badges); the narrower case of equipment confirmed for *one specific* process only, and controlled
+to prevent unauthorized use for others, has no equivalent restriction mechanism in Open Gauge.
+
+### Environmental conditions [#environmental-conditions]
+
+> "6.3.2 ...Environmental conditions affecting measurements shall be monitored and recorded.
+> Corrections based on the environmental conditions shall be recorded and applied to measurement
+> results."
+
+Temperature, humidity, and pressure are recorded per calibration and printed on the certificate —
+the "monitored and recorded" half is met. The second half — deriving a correction term from those
+conditions and applying it to the fitted calibration function — is not: environmental readings are
+stored as context, not fed into `calibration_analysis.py`'s regression or uncertainty budget as a
+correction input. A lab whose measurand is genuinely temperature-sensitive (most are, to some
+degree) currently has to apply any such correction manually before entering data.
+
+### Equipment adjustment control [#equipment-adjustment-control]
+
+> "7.1.3 Access to adjusting means and devices on confirmed measuring equipment...shall be sealed
+> or otherwise safeguarded to prevent unauthorized changes...Special attention should be paid to
+> write-protection techniques to prevent unauthorized changes to software and firmware."
+
+The physical half of this clause — sealing a potentiometer or trim screw on a real instrument — is
+inherently outside what a software system can do, so it's marked N/A rather than scored. Its
+software-relevant analogue, though, is met: a calibration's fitted coefficients cannot be edited
+in place once saved (see [Technical records](./iso-17025.mdx#technical-records)), so there is no
+"unauthorized change to the confirmed values" vector inside Open Gauge itself.
+
+### Measurement process specification [#measurement-process-specification]
+
+> "7.2.1 ...The complete specification of each measurement process shall include identification of
+> all relevant equipment, measurement procedures, measurement software, conditions of use, operator
+> abilities, and all other factors affecting the reliability of the measurement result."
+
+The [Procedures](../procedures/index.mdx) registry (`internal_procedure_id` on a calibration) identifies
+the documented method, its version, and the standard it's drawn from — covering equipment,
+procedure, and conditions-of-use identification. What's missing is the "operator abilities"
+element: Open Gauge records *who* performed a calibration (`performed_by_user_id`/`performed_by_name`)
+but has no structured operator qualification/competency record to link against it, unlike the
+personnel-competence requirements already noted as organization-managed in
+[ISO/IEC 17025](./iso-17025.mdx) and [ISO 9001](./iso-9001.mdx).
+
+### Uncertainty and traceability [#uncertainty-and-traceability]
+
+> "7.3.1 The measurement uncertainty shall be estimated for each measurement process...7.3.2 ...all
+> measurement results are traceable to SI unit standards."
+
+Identical requirement to [ISO/IEC 17025 §7.6 and §6.5](./iso-17025.mdx#uncertainty-evaluation),
+addressed by the same uncertainty budget and traceability-chain mechanisms.
+
+### Nonconforming equipment [#nonconforming-equipment]
+
+> "8.3.3 Any confirmed measuring equipment that is suspected or known...to malfunction...to
+> produce incorrect measurement results...shall be removed from service by segregation, or
+> identified by prominent labelling or marking...Such equipment shall not be returned to service
+> until the reasons for its nonconformity have been eliminated and it is again confirmed."
+
+The most detailed statement of the gap already noted at
+[ISO/IEC 17025 §6.4.9](./iso-17025.mdx#equipment-out-of-service): Open Gauge has no dedicated,
+reversible "removed from service pending investigation" state distinct from permanent retirement —
+only the health score and manual notes signal a problem.
+
+### Corrective and preventive action [#corrective-and-preventive-action]
+
+> "8.4.2 ...action shall be taken to identify the cause and eliminate the discrepancy. Correction
+> and corrective action solutions shall be verified before returning the measurement process to
+> use...8.4.3 ...A documented procedure shall be established to define requirements for a)
+> determining potential nonconformities and their causes...d) recording the results of action
+> taken..."
+
+Same gap as [ISO 9001 §10.2](./iso-9001.mdx#corrective-action): no CAPA workflow exists in Open
+Gauge to track a nonconformity through cause analysis, corrective action, and verified closure.
+
+---
+
+*Verified against ISO 10012:2003(E) and the Open Gauge codebase
+(`apps/api/app/models/calibration.py`, `apps/api/app/models/calibration_method.py`,
+`apps/web/package.json`, `VERSIONS.md`) on 2026-07-29.*

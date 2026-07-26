@@ -1,0 +1,130 @@
+---
+title: ISO 9001:2015
+description: Quality management systems — Requirements. The general-QMS clauses relevant to a calibration/asset system, and how Open Gauge addresses them.
+---
+
+## Summary
+
+**ISO 9001:2015** — *Quality management systems — Requirements* — is published by ISO. It's the
+generic quality-management standard that ISO/IEC 17025 §8 Option B explicitly builds on ("a
+laboratory that has established and maintains a management system in accordance with...ISO 9001...
+also fulfils at least the intent" of 17025's own management-system clauses) — see
+[ISO/IEC 17025](./iso-17025.mdx). Unlike 17025, ISO 9001 isn't specific to laboratories: it applies
+to any organization providing products or services, and most of its content (leadership
+commitment, customer focus, HR competence records, internal audits, management review, risk-based
+planning) governs how the *organization* runs its business, not something a LIMS can satisfy on
+its own — the same scope boundary explained in the [overview](./overview.mdx).
+
+The clauses below are the ones with a direct operational/record-keeping component a software
+system actually implements: monitoring/measuring equipment (7.1.5 — effectively a condensed
+version of what ISO/IEC 17025 covers in full), documented-information control (7.5), output
+identification/traceability (8.5.2), release and nonconformity handling (8.6, 8.7), and
+performance monitoring / corrective action (9.1, 10.2).
+
+## Compliance
+
+| Clause | Requirement | Status | Where addressed |
+|---|---|---|---|
+| [7.1.5](#monitoring-and-measuring-resources) | Measuring equipment traceable, status identified, safeguarded from tampering; impact of a later-found fault assessed retroactively | ⚠️ Partial | Same traceability/identification/tamper-safeguard mechanisms as [ISO/IEC 17025 §6.4–6.5](./iso-17025.mdx); no retroactive impact-assessment workflow |
+| [7.5.1–7.5.3](#documented-information) | Documented information identified, versioned, reviewed, access-controlled, retained, protected from unintended alteration | ✅ Met | Immutable calibration records, audit log, certificate versioning, RBAC |
+| [8.5.2](#identification-and-traceability) | Outputs uniquely identified; traceability maintained where required | ✅ Met | Asset IDs, QR codes, certificate numbers, reference-standard linkage |
+| [8.6](#release-of-outputs) | Evidence of conformity to acceptance criteria retained; release traceable to the authorizing person | ✅ Met | `conformity_statement` + performer identity/signature on every certificate |
+| [8.7](#nonconforming-outputs) | Nonconforming outputs identified and controlled, not unintentionally used; documented | ✅ Met | Failed calibrations are never blocked or hidden — decision rule and pass/fail are recorded and printed |
+| [9.1](#monitoring-and-measurement) | Determine what is monitored/measured and evaluate results | ⚠️ Partial | [Health scoring](../health-scoring/overview.mdx) monitors asset/calibration performance; no QMS-level (org-wide process) monitoring |
+| [10.2](#corrective-action) | Nonconformities tracked through to a documented corrective action and effectiveness review | ❌ Not met | No CAPA (corrective/preventive action) tracking feature |
+
+## Detail
+
+### Monitoring and measuring resources [#monitoring-and-measuring-resources]
+
+> "7.1.5.2 ...measuring equipment shall be: a) calibrated or verified...against measurement
+> standards traceable to international or national measurement standards...; b) identified in
+> order to determine their status; c) safeguarded from adjustments, damage or deterioration that
+> would invalidate the calibration status... The organization shall determine if the validity of
+> previous measurement results has been adversely affected when measuring equipment is found to be
+> unfit for its intended purpose, and shall take appropriate action as necessary."
+
+This is a condensed version of what [ISO/IEC 17025 §6.4–6.5](./iso-17025.mdx#traceability-chain)
+covers in full detail, and Open Gauge addresses it the same way: calibration and traceability
+records per asset, QR-coded status identification, and immutable calibration history (nothing can
+silently invalidate a past result). The last sentence — reassessing whether *prior* measurements
+taken with an instrument later found to be out of tolerance are now suspect — is the same gap
+noted for [17025 §6.4.9](./iso-17025.mdx#equipment-out-of-service): Open Gauge doesn't
+automatically flag calibrations or downstream data that predate a discovered fault.
+
+### Documented information [#documented-information]
+
+> "7.5.3.2 ...the organization shall address...c) control of changes (e.g. version control)...
+> Documented information retained as evidence of conformity shall be protected from unintended
+> alterations."
+
+Calibration records are immutable (a correction creates a new version, never an overwrite — see
+[ISO/IEC 17025 §7.5](./iso-17025.mdx#technical-records)), certificates carry an incrementing
+version in their certificate number, and every change is captured in the
+[audit log](../concepts/data-model.mdx) with actor, timestamp, and before/after state — satisfying
+both the version-control and unintended-alteration requirements together.
+
+### Identification and traceability [#identification-and-traceability]
+
+> "8.5.2 ...The organization shall control the unique identification of the outputs when
+> traceability is a requirement, and shall retain the documented information necessary to enable
+> traceability."
+
+Every asset has a unique `asset_id` and QR code; every calibration produces a uniquely numbered
+certificate (`OG-CAL-{asset_id}-v{version}`) linked back to the reference standard used — the same
+mechanism documented under [ISO/IEC 17025's traceability chain](./iso-17025.mdx#traceability-chain).
+
+### Release of outputs [#release-of-outputs]
+
+> "8.6 ...The organization shall retain documented information on the release of products and
+> services. The documented information shall include: a) evidence of conformity with the
+> acceptance criteria; b) traceability to the person(s) authorizing the release."
+
+A calibration certificate **is** the release record for a calibration: it carries the
+[conformity statement](./iso-17025.mdx#conformity-statement) (the acceptance criteria and whether
+they were met) and the performer's identity plus digital signature — both required by (a) and (b)
+together, on the same document.
+
+### Nonconforming outputs [#nonconforming-outputs]
+
+> "8.7.1 The organization shall ensure that outputs that do not conform to their requirements are
+> identified and controlled to prevent their unintended use or delivery... 8.7.2 The organization
+> shall retain documented information that: a) describes the nonconformity; ...d) identifies the
+> authority deciding the action."
+
+A failed calibration is never blocked from saving and never silently hidden — see
+[Decision rules & conformity](../calibration/decision-rules.mdx#decision-rule): saving one requires
+an explicit "Save anyway" confirmation naming the specification and decision rule, and the
+resulting `conformity_statement` (which specification, which rule, pass/fail) is retained and
+printed on the certificate exactly as a nonconformity record would need to be.
+
+### Monitoring and measurement [#monitoring-and-measurement]
+
+> "9.1.1 The organization shall determine: a) what needs to be monitored and measured; ...The
+> organization shall evaluate the performance and the effectiveness of the quality management
+> system."
+
+[Health scoring](../health-scoring/overview.mdx) and the dashboard monitor asset- and
+calibration-level performance (drift, overdue rates, health trends) continuously — but this is
+monitoring of the *assets under management*, not of the organization's own quality management
+system (audit outcomes, process effectiveness, objective attainment), which 9.1 is actually about.
+Open Gauge has no feature addressing the latter; it isn't in scope for an asset/calibration system.
+
+### Corrective action [#corrective-action]
+
+> "10.2.1 When a nonconformity occurs...the organization shall: a) react...and correct it; b)
+> evaluate the need for action to eliminate the cause(s)...10.2.2 The organization shall retain
+> documented information as evidence of: a) the nature of the nonconformities and any subsequent
+> actions taken; b) the results of any corrective action."
+
+**Gap.** Open Gauge records that a nonconformity occurred (a failed calibration, a voided record)
+but has no CAPA workflow: no way to open a corrective action against a nonconformity, assign an
+owner, record root-cause analysis, or track it to a documented, reviewed closure. Today this has
+to be managed entirely outside Open Gauge.
+
+---
+
+*Verified against ISO 9001:2015(E) and the Open Gauge codebase
+(`apps/api/app/models/calibration.py`, `apps/api/app/models/asset.py`,
+`apps/api/app/services/certificate_service.py`, `apps/api/app/models/audit_log.py`,
+`apps/api/app/health/`) on 2026-07-29.*

@@ -225,8 +225,8 @@ def void_calibration(
     current_user: User = Depends(require_admin),
 ) -> None:
     """Mark a calibration invalid rather than deleting it. Calibration history is
-    never destroyed (see AGENTS.md's calibration philosophy): the record, its data
-    points, and its certificate are all preserved. A voided calibration is hidden
+    never destroyed: the record, its data points, and its certificate are all preserved.
+    A voided calibration is hidden
     from listings by default, excluded from due-date/status calculations, and
     excluded from drift/health analysis, until an admin restores it.
     Restricted to admin and superadmin."""

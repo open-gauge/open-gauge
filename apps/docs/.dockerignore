@@ -1,5 +1,6 @@
 node_modules
 .next
+out
 .source
 openapi.json
 content/docs/api

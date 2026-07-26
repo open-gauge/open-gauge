@@ -41,6 +41,23 @@ against a live API.
   is the single source of truth; `apps/web` renders the same files inline, so don't duplicate
   content between the two.
 
+## Testing
+
+Every feature ships with tests before it's considered complete: API integration tests for each new
+endpoint (happy path and error cases), business-logic tests for repository functions with
+non-trivial logic, and a regression test for every bug fix (failing before the fix, passing
+after). Tests live in `apps/api/tests/` and run against a real PostgreSQL instance — the database
+is never mocked. Run the suite via `docker compose -f infrastructure/docker/docker-compose.yml exec api pytest`.
+
+## Versioning
+
+Open Gauge tracks one version number across the frontend and backend (shown at the bottom-left of
+the sidebar, e.g. `v3.2.1 · self-hosted`). Every feature or fix bumps it per
+[semantic versioning](https://semver.org/) in both `apps/web/package.json` and
+`apps/api/app/core/config.py`, with a matching entry in
+[`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root
+(mirrored into the docs site's Reference → Versions page) describing what changed and why.
+
 ## Submitting changes
 
 1. Open an issue first for anything beyond a small fix, so the approach can be discussed before
@@ -52,6 +69,28 @@ against a live API.
 5. If your change touches calibration math, coefficient history, or certificate signing, call
    that out explicitly in the PR description — these paths get extra scrutiny given the
    traceability guarantees Open Gauge makes.
+
+## Compliance documentation workflow
+
+`apps/docs/content/docs/guide/compliance/` holds one page per regulatory/certification standard
+(ISO/IEC 17025, etc.), each with a clause-by-clause table of what Open Gauge does and doesn't
+address yet, sourced from the PDFs in the git-ignored `references/` folder at the repo root.
+
+When a `references/<Standard>/` source document is added or replaced with a new edition:
+
+1. Re-run the extraction for the changed clauses only — read the new/changed text, then grep the
+   current codebase (don't trust a prior page's claims; re-verify against the code as it stands
+   now) before updating any status.
+2. Update the page's compliance table and the corresponding detail section(s). Never mark a
+   clause "Met" without pointing at the specific model/service/UI that satisfies it.
+3. Bump the "Verified against..." footer date at the bottom of the page.
+4. No `VERSIONS.md`/app-version bump is needed for a docs-only update — only when the underlying
+   feature itself changed (see `AGENTS.md`'s versioning rule).
+
+Adding a standard not yet covered follows the same page template — see any existing page under
+`compliance/` for the structure (Summary → Compliance table → Detail, one quoted excerpt and
+explanation per clause) — and gets added to `compliance/meta.json` and the summary table in
+`compliance/overview.mdx`.
 
 ## Reporting bugs
 
