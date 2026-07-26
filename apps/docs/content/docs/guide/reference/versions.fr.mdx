@@ -4,7 +4,7 @@ description: Historique des versions — ce qui a changé dans chaque version d'
 ---
 
 Open Gauge suit un unique numéro de version à travers le frontend et le backend. Il est affiché
-en bas à gauche de la barre latérale (`v3.3.0 · self-hosted`) et dans le schéma OpenAPI. Cette
+en bas à gauche de la barre latérale (`v3.4.0 · self-hosted`) et dans le schéma OpenAPI. Cette
 page reflète le fichier
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) à la racine du
 dépôt.
@@ -14,6 +14,34 @@ numéroté selon l'impact de versionnement sémantique (`0.x` tant que le produi
 pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté, sous licence, et
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
+
+## 3.4.0
+
+### Ajouté
+
+- **Journal d'activité/d'audit granulaire et traduit.** Les mises à jour d'actifs,
+  d'organisations, de procédures, d'emplacements et d'utilisateurs (par un administrateur)
+  enregistrent désormais une véritable différence au niveau des champs plutôt qu'un code d'action
+  générique ou un vidage brut de l'objet entier — p. ex. la mise à jour d'un actif montre
+  exactement quels champs ont changé ainsi que leurs anciennes/nouvelles valeurs, et les
+  changements de champ d'une voie de capteur sont également capturés (p. ex. « voie CH1 :
+  Grandeur physique — Température → Pression »), pas seulement un décompte de voies.
+  `app/utils/audit_diff.py` fournit les fonctions partagées `snapshot()`/`diff_snapshots()`
+  désormais utilisées par chaque endpoint de mise à jour concerné ; une voie correspondante
+  obtient des clés `channel.<id>.<champ>`, et une voie entièrement ajoutée ou supprimée obtient une
+  seule ligne récapitulative plutôt qu'un vidage champ par champ. Les modifications par un
+  administrateur du rôle, de l'organisation, de `is_active` ou de `is_verified` d'un autre
+  utilisateur (`PUT`/`DELETE /users/{id}`) sont désormais auditées, alors qu'elles n'écrivaient
+  auparavant aucune entrée de journal, malgré leur caractère sensible en matière de privilèges.
+  Côté frontend, un nouveau composant partagé `ActivityDiff` affiche ces différences — libellés de
+  champs traduits via un nouveau catalogue `tokens.auditField`, et valeurs traduites pour les
+  champs adossés à une énumération (grandeur physique, technologie, rôle, etc.) via
+  `translateAuditFieldValue` — sur la page Activité, le fil d'activité du tableau de bord et
+  l'onglet Activité de la page de détail de l'actif.
+- `AGENTS.md` a gagné une section de politique **Journalisation d'audit granulaire** : chaque
+  futur endpoint de mise à jour doit capturer une véritable différence au niveau des champs de la
+  même manière, et le frontend doit l'afficher via `ActivityDiff`/`tokens.auditField` plutôt
+  qu'une chaîne de description ad hoc.
 
 ## 3.3.0
 

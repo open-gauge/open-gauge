@@ -28,6 +28,7 @@ from ...schemas.organization import (
 )
 from ...schemas.organization_signing_key import SigningCertificateResponse
 from ...services import organization_notify as org_notify
+from ...utils.audit_diff import diff_snapshots, snapshot
 from ...services import organization_permissions as org_perm
 from ...services import storage as storage_svc
 from ...services import user_profile as user_profile_svc
@@ -225,11 +226,17 @@ def update_organization(
 ) -> OrganizationResponse:
     org = _get_org_or_404(db, org_id, current_user)
     _require_org_admin(db, current_user, org)
-    org = org_repo.update(db, org, **body.model_dump(exclude_none=True))
-    audit_log_repo.create(
-        db, actor_id=current_user.id, actor_email=current_user.email,
-        action="organization.updated", entity_type="organization", entity_id=org.id,
-    )
+    update_data = body.model_dump(exclude_none=True)
+    before = snapshot(org, update_data.keys())
+    org = org_repo.update(db, org, **update_data)
+    after = snapshot(org, update_data.keys())
+    before_state, after_state = diff_snapshots(before, after)
+    if before_state or after_state:
+        audit_log_repo.create(
+            db, actor_id=current_user.id, actor_email=current_user.email,
+            action="organization.updated", entity_type="organization", entity_id=org.id,
+            before_state=before_state, after_state=after_state,
+        )
     return _build_org_response(db, org, current_user)
 
 

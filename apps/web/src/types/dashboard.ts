@@ -43,7 +43,10 @@ export interface ActivityItem {
   actor_name: string | null;
   actor_role: string | null;
   action: string;
+  entity_type: string;
   entity_asset_id: string | null;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
   created_at: string;
 }
 

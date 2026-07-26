@@ -6,6 +6,14 @@
   "language": {
     "label": "Langue"
   },
+  "activityDiff": {
+    "yes": "Oui",
+    "no": "Non",
+    "none": "—",
+    "channelAdded": "Voie {channel} : ajoutée",
+    "channelRemoved": "Voie {channel} : supprimée",
+    "moreChanges": "+{count} de plus"
+  },
   "confirmModal": {
     "confirm": "Confirmer",
     "cancel": "Annuler",

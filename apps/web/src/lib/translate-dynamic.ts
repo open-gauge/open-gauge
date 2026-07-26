@@ -29,3 +29,40 @@ export function translateDynamicAny<T extends (key: never) => string>(
   }
   return key;
 }
+
+/**
+ * Maps an audit-log field name (a backend snake_case attribute, e.g.
+ * "physical_quantity") to the `tokens.*` sub-namespace that translates *its
+ * values* (as opposed to `tokens.auditField`, which translates the field
+ * *name* itself). Only fields whose values come from a known enum catalog
+ * need an entry — anything else renders as a raw value in ActivityDiff.
+ */
+const AUDIT_FIELD_VALUE_NAMESPACE: Record<string, string> = {
+  physical_quantity: "physicalQuantity",
+  technology: "sensorTechnology",
+  measurement_type: "measurementType",
+  output_type: "outputType",
+  mounting_type: "mountingType",
+  hazardous_area_rating: "hazardousArea",
+  location_type: "locationType",
+};
+
+/**
+ * Translate a single audit-log field's before/after value, for the shared
+ * ActivityDiff component. `role` is entity-dependent (an organization
+ * membership role vs. a global user role use different catalogs), so it's
+ * resolved separately from the static `AUDIT_FIELD_VALUE_NAMESPACE` map.
+ */
+export function translateAuditFieldValue<T extends (key: never) => string>(
+  t: T & { has: (key: never) => boolean },
+  field: string,
+  value: string,
+  entityType?: string,
+): string {
+  const ns = field === "role"
+    ? (entityType === "organization" ? "orgRole" : "role")
+    : AUDIT_FIELD_VALUE_NAMESPACE[field];
+  if (!ns) return value;
+  const k = `${ns}.${value}` as Parameters<T>[0];
+  return t.has(k) ? t(k) : value;
+}

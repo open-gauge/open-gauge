@@ -14,6 +14,7 @@ from ..models.organization import Organization
 from ..models.asset_location import AssetLocation
 from ..schemas.sensor import SensorChannelCreate
 from ..schemas.daq import DaqCreate
+from ..utils.audit_diff import diff_snapshots, snapshot
 
 
 def get_by_id(db: Session, asset_pk: uuid.UUID) -> Asset | None:
@@ -246,14 +247,26 @@ def move(db: Session, asset: Asset, location_id: uuid.UUID, moved_by: uuid.UUID,
     return asset
 
 
-def update(db: Session, asset: Asset, **kwargs) -> Asset:
+def update(db: Session, asset: Asset, **kwargs) -> tuple[Asset, dict, dict]:
+    """Apply `kwargs` to `asset` (and, via `sensor_channels`, its channels) and return
+    `(asset, before_state, after_state)` — a granular, field-level diff limited to values that
+    actually changed. Top-level asset fields use their own name as the key; channel fields are
+    namespaced `channel.<channel_id>.<field>`; a wholly added/removed channel gets one summary
+    row keyed `channel.<channel_id>` instead of a per-field dump. See `app/utils/audit_diff.py`.
+    """
     asset.version += 1
 
     # Handle sensor channel replacement separately
     sensor_channels_data = kwargs.pop("sensor_channels", None)
 
+    asset_field_names = [k for k in kwargs if k != "sensor_channels"]
+    before_snapshot = snapshot(asset, asset_field_names)
+
     for key, value in kwargs.items():
         setattr(asset, key, value)  # Allow None to clear optional fields
+
+    after_snapshot = snapshot(asset, asset_field_names)
+    before_state, after_state = diff_snapshots(before_snapshot, after_snapshot)
 
     if sensor_channels_data is not None:
         # Normalize to plain dicts regardless of whether Pydantic models or dicts were passed
@@ -277,14 +290,27 @@ def update(db: Session, asset: Asset, **kwargs) -> Asset:
                 or existing_by_ch_id.get(ch_dict["channel_id"])
             )
             if existing:
+                # Diff against the channel's OWN prior channel_id — a rename shows up as a
+                # channel.<old_id>.channel_id change, grouped under the channel it belonged to.
+                channel_label = existing.channel_id
+                ch_before = snapshot(existing, fields.keys())
+
                 # Update in-place — preserves the sensor UUID so calibrations.sensor_id FK stays valid
                 for k, v in fields.items():
                     setattr(existing, k, v)
                 existing.is_active = True
                 updated_sensor_uuids.add(str(existing.id))
+
+                ch_after = snapshot(existing, fields.keys())
+                ch_before_changed, ch_after_changed = diff_snapshots(ch_before, ch_after)
+                for field_name, old_value in ch_before_changed.items():
+                    before_state[f"channel.{channel_label}.{field_name}"] = old_value
+                for field_name, new_value in ch_after_changed.items():
+                    after_state[f"channel.{channel_label}.{field_name}"] = new_value
             else:
                 new_sensor = Sensor(asset_id=asset.id, **fields)
                 db.add(new_sensor)
+                after_state[f"channel.{fields.get('channel_id')}"] = "added"
 
         for sensor in existing_sensors:
             if str(sensor.id) not in updated_sensor_uuids:
@@ -296,10 +322,12 @@ def update(db: Session, asset: Asset, **kwargs) -> Asset:
                     sensor.is_active = False  # soft-delete: calibrations still reference this sensor
                 else:
                     db.delete(sensor)
+                before_state[f"channel.{sensor.channel_id}"] = "present"
+                after_state[f"channel.{sensor.channel_id}"] = "removed"
 
     db.commit()
     db.refresh(asset)
-    return asset
+    return asset, before_state, after_state
 
 
 def set_picture(db: Session, asset: Asset, file_id: uuid.UUID | None) -> Asset:

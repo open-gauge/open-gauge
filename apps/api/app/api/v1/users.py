@@ -13,6 +13,7 @@ from ...repositories import user as user_repo
 from ...schemas.user import ChangePasswordRequest, UserCreate, UserResponse, UserSelfUpdate, UserUpdate
 from ...services import storage as storage_svc
 from ...services import user_profile as user_profile_svc
+from ...utils.audit_diff import diff_snapshots, snapshot
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -212,7 +213,23 @@ def update_user(
     user = user_repo.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user_repo.update(db, user, **body.model_dump(exclude_none=True))
+    update_data = body.model_dump(exclude_none=True)
+    before = snapshot(user, update_data.keys())
+    user = user_repo.update(db, user, **update_data)
+    after = snapshot(user, update_data.keys())
+    before_state, after_state = diff_snapshots(before, after)
+    if before_state or after_state:
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="user.updated",
+            entity_type="user",
+            entity_id=user.id,
+            before_state=before_state,
+            after_state=after_state,
+        )
+    return user
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -224,4 +241,16 @@ def deactivate_user(
     user = user_repo.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    before_state = snapshot(user, ["is_active"])
     user_repo.deactivate(db, user)
+    after_state = snapshot(user, ["is_active"])
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="user.deactivated",
+        entity_type="user",
+        entity_id=user.id,
+        before_state=before_state,
+        after_state=after_state,
+    )

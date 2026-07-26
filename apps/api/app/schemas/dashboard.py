@@ -48,7 +48,10 @@ class ActivityItem(BaseModel):
     actor_name: str | None = None
     actor_role: str | None = None
     action: str
+    entity_type: str
     entity_asset_id: str | None
+    before_state: dict | None = None
+    after_state: dict | None = None
     created_at: datetime
 
 

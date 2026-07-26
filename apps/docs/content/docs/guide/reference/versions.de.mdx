@@ -4,7 +4,7 @@ description: Release-Historie — was sich in jeder Version von Open Gauge geän
 ---
 
 Open Gauge verfolgt eine einzige Versionsnummer über Frontend und Backend hinweg. Sie wird unten
-links in der Seitenleiste angezeigt (`v3.3.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
+links in der Seitenleiste angezeigt (`v3.4.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
 spiegelt [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) im
 Repository-Root wider.
 
@@ -14,6 +14,33 @@ Veröffentlichung/instabil war, `1.0.0` ab dem Punkt, an dem es zu einem dokumen
 lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern die kleineren
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
+
+## 3.4.0
+
+### Hinzugefügt
+
+- **Granulares, übersetztes Aktivitäts-/Audit-Protokoll.** Aktualisierungen von Anlagen,
+  Organisationen, Verfahren, Standorten und (durch einen Administrator) Benutzern erfassen jetzt
+  eine echte Feld-für-Feld-Differenz statt eines generischen Aktionscodes oder eines groben
+  Gesamtobjekt-Dumps — z. B. zeigt eine Anlagenaktualisierung genau, welche Felder sich geändert
+  haben und ihre alten/neuen Werte, und auch die Feldänderungen eines Sensorkanals werden erfasst
+  (z. B. „Kanal CH1: Physikalische Größe — Temperatur → Druck"), nicht nur eine Kanalanzahl.
+  `app/utils/audit_diff.py` stellt die gemeinsam genutzten Hilfsfunktionen
+  `snapshot()`/`diff_snapshots()` bereit, die jetzt in jedem betroffenen Aktualisierungs-Endpunkt
+  verwendet werden; ein zugeordneter Kanal erhält Schlüssel der Form `channel.<id>.<Feld>`, und ein
+  vollständig hinzugefügter oder entfernter Kanal erhält eine einzelne zusammenfassende Zeile statt
+  eines Feld-für-Feld-Dumps. Admin-Bearbeitungen der Rolle, Organisation, `is_active` oder
+  `is_verified` eines anderen Benutzers (`PUT`/`DELETE /users/{id}`) werden jetzt überhaupt
+  protokolliert — zuvor wurde dafür gar kein Audit-Eintrag geschrieben, obwohl es sich um
+  privilegienrelevante Änderungen handelt. Im Frontend rendert eine neue gemeinsame Komponente
+  `ActivityDiff` diese Differenzen — übersetzte Feldbezeichnungen über einen neuen Katalog
+  `tokens.auditField` und übersetzte Werte für aufzählungsbasierte Felder (physikalische Größe,
+  Technologie, Rolle usw.) über `translateAuditFieldValue` — auf der Aktivitätsseite, im
+  Aktivitäts-Feed des Dashboards und im Aktivitäts-Tab der Anlagendetailseite.
+- `AGENTS.md` erhielt einen neuen Richtlinienabschnitt **Granulare Audit-Protokollierung**: jeder
+  künftige Aktualisierungs-Endpunkt muss auf dieselbe Weise eine echte Feld-für-Feld-Differenz
+  erfassen, und das Frontend muss sie über `ActivityDiff`/`tokens.auditField` statt über eine
+  eigens formulierte Beschreibungszeile darstellen.
 
 ## 3.3.0
 

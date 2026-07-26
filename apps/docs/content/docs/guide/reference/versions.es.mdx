@@ -4,7 +4,7 @@ description: Historial de versiones — qué cambió en cada versión de Open Ga
 ---
 
 Open Gauge lleva un único número de versión en todo el frontend y el backend. Se muestra en la
-parte inferior izquierda de la barra lateral (`v3.3.0 · self-hosted`) y en el esquema OpenAPI. Esta
+parte inferior izquierda de la barra lateral (`v3.4.0 · self-hosted`) y en el esquema OpenAPI. Esta
 página refleja [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) en
 la raíz del repositorio.
 
@@ -13,6 +13,33 @@ según el impacto de versionado semántico (`0.x` mientras el producto estaba en
 lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto documentado, con
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
+
+## 3.4.0
+
+### Agregado
+
+- **Registro de actividad/auditoría granular y traducido.** Las actualizaciones de activos,
+  organizaciones, procedimientos, ubicaciones y usuarios (por un administrador) ahora registran
+  una diferencia real a nivel de campo en lugar de un código de acción genérico o un volcado
+  completo del objeto — p. ej., la actualización de un activo muestra exactamente qué campos
+  cambiaron y sus valores anteriores/nuevos, y los cambios de campo de un canal de sensor también
+  se capturan (p. ej., "canal CH1: Magnitud física — Temperatura → Presión"), no solo un recuento
+  de canales. `app/utils/audit_diff.py` proporciona los ayudantes compartidos
+  `snapshot()`/`diff_snapshots()` que ahora se usan en cada endpoint de actualización afectado; un
+  canal coincidente obtiene claves `channel.<id>.<campo>`, y un canal añadido o eliminado por
+  completo obtiene una única fila de resumen en lugar de un volcado por campo. Las ediciones de un
+  administrador al rol, organización, `is_active` o `is_verified` de otro usuario
+  (`PUT`/`DELETE /users/{id}`) ahora se auditan por completo — antes no escribían ninguna entrada
+  de registro, a pesar de ser cambios que afectan privilegios. En el frontend, un nuevo componente
+  compartido `ActivityDiff` renderiza estas diferencias — etiquetas de campo traducidas mediante un
+  nuevo catálogo `tokens.auditField`, y valores traducidos para campos respaldados por
+  enumeraciones (magnitud física, tecnología, rol, etc.) mediante `translateAuditFieldValue` — en
+  la página de Actividad, el feed de actividad del panel y la pestaña Actividad de la página de
+  detalle del activo.
+- `AGENTS.md` incorporó una sección de política de **Registro de auditoría granular**: todo
+  endpoint de actualización futuro debe capturar una diferencia real a nivel de campo de la misma
+  manera, y el frontend debe renderizarla mediante `ActivityDiff`/`tokens.auditField` en lugar de
+  una cadena de descripción particular.
 
 ## 3.3.0
 

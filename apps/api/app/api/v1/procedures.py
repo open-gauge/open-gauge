@@ -12,6 +12,7 @@ from ...repositories import stored_file as file_repo
 from ...schemas.procedure import ProcedureCreate, ProcedureResponse, ProcedureUpdate
 from ...schemas.stored_file import StoredFileResponse
 from ...services import storage as storage_svc
+from ...utils.audit_diff import diff_snapshots, snapshot
 
 router = APIRouter(prefix="/procedures", tags=["Procedures"])
 
@@ -98,21 +99,28 @@ def update_procedure(
     for field in ("equipment", "materials", "environment", "steps", "acceptance_criteria"):
         if field in data and data[field]:
             data[field] = [item.model_dump() if hasattr(item, "model_dump") else item for item in data[field]]
+
+    before = snapshot(proc, data.keys())
     for k, v in data.items():
         setattr(proc, k, v)
     db.commit()
     db.refresh(proc)
-    audit_log_repo.create(
-        db,
-        actor_id=current_user.id,
-        actor_email=current_user.email,
-        action="procedure.updated",
-        entity_type="procedure",
-        entity_id=proc.id,
-        after_state={"name": proc.name, "proc_id": proc.proc_id, "fields_changed": list(data.keys())},
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-    )
+    after = snapshot(proc, data.keys())
+    before_state, after_state = diff_snapshots(before, after)
+
+    if before_state or after_state:
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="procedure.updated",
+            entity_type="procedure",
+            entity_id=proc.id,
+            before_state=before_state,
+            after_state=after_state,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
     return proc
 
 

@@ -129,7 +129,10 @@ def get_activity(db: Session, days: int = 30, limit: int = 500) -> list[dict]:
             "actor_name": name,
             "actor_role": role.value if role else None,
             "action": log.action,
+            "entity_type": log.entity_type,
             "entity_asset_id": log.entity_asset_id,
+            "before_state": log.before_state,
+            "after_state": log.after_state,
             "created_at": log.created_at,
         }
         for log, name, role, user_id in rows

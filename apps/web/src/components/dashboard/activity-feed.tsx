@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import type { ActivityItem } from "@/types/dashboard";
 import { ExternalLinkIcon } from "@/components/icons";
 import { UserMention } from "@/components/user-mention";
+import { ActivityDiff } from "@/components/activity-diff";
 
 function timeAgo(iso: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -73,6 +74,14 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
                   {item.entity_asset_id}
                 </span>
               )}
+              <ActivityDiff
+                before={item.before_state}
+                after={item.after_state}
+                entityType={item.entity_type}
+                variant="compact"
+                maxCompact={1}
+                className="mt-0.5"
+              />
               <p className="text-gray-400 mt-0.5">{timeAgo(item.created_at, t)}</p>
             </div>
           </li>

@@ -9,6 +9,29 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.4.0
+
+### Added
+
+- **Granular, translated activity/audit log.** Updates to assets, organizations, procedures,
+  locations, and (admin) users now record a real field-level diff instead of a generic action
+  code or a coarse whole-object dump — e.g. an asset update shows exactly which fields changed
+  and their old/new values, and a sensor channel's own field changes are captured too (e.g.
+  "channel CH1: Physical quantity — Temperature → Pressure"), not just a channel count.
+  `app/utils/audit_diff.py` provides the shared `snapshot()`/`diff_snapshots()` helpers now used
+  across every touched update endpoint; a matched channel gets `channel.<id>.<field>` keys, and
+  a wholly added/removed channel gets a single summary row instead of a per-field dump. Admin
+  edits to another user's role, organization, `is_active`, or `is_verified`
+  (`PUT`/`DELETE /users/{id}`) are now audited at all — they previously wrote no log entry
+  whatsoever, despite being privilege-bearing changes. On the frontend, a new shared
+  `ActivityDiff` component renders these diffs — translated field labels via a new
+  `tokens.auditField` catalog, and translated values for enum-backed fields (physical quantity,
+  technology, role, etc.) via `translateAuditFieldValue` — in the Activity page, the dashboard
+  activity feed, and the asset detail page's Activity tab.
+- `AGENTS.md` gained a **Granular Audit Logging** policy section: every future update endpoint
+  must capture a real field-level diff the same way, and the frontend must render it through
+  `ActivityDiff`/`tokens.auditField` rather than a one-off description string.
+
 ## 3.3.0
 
 ### Added

@@ -85,6 +85,7 @@ import { ToggleSwitch } from "@/components/toggle-switch";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { StatRow } from "@/components/stat-row";
+import { ActivityDiff } from "@/components/activity-diff";
 import { ASSET_DOCS_LINKS, CHAN_DOCS_LINKS, STAT_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
 
@@ -2504,7 +2505,16 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
                   actorProfilePictureUrl={log.actor_profile_picture_url}
                   className="text-xs"
                 />
-                <span className="font-medium text-og-text">{actionLabel(log.action)}</span>
+                <div>
+                  <span className="font-medium text-og-text">{actionLabel(log.action)}</span>
+                  <ActivityDiff
+                    before={log.before_state as Record<string, unknown> | null}
+                    after={log.after_state as Record<string, unknown> | null}
+                    entityType={log.entity_type}
+                    variant="full"
+                    className="mt-1"
+                  />
+                </div>
               </div>
             );
           })}

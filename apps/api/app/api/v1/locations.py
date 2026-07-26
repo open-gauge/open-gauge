@@ -9,6 +9,7 @@ from ...models.user import User
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import location as location_repo
 from ...schemas.location import LocationCreate, LocationResponse, LocationUpdate
+from ...utils.audit_diff import diff_snapshots, snapshot
 
 router = APIRouter(prefix="/locations", tags=["Locations"])
 
@@ -81,18 +82,23 @@ def update_location(
     if not loc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
     update_data = body.model_dump(exclude_unset=True)
+    before = snapshot(loc, update_data.keys())
     updated = location_repo.update(db, loc, **update_data)
-    audit_log_repo.create(
-        db,
-        actor_id=current_user.id,
-        actor_email=current_user.email,
-        action="location.updated",
-        entity_type="location",
-        entity_id=updated.id,
-        after_state={"name": updated.name, "fields_changed": list(update_data.keys())},
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
-    )
+    after = snapshot(updated, update_data.keys())
+    before_state, after_state = diff_snapshots(before, after)
+    if before_state or after_state:
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="location.updated",
+            entity_type="location",
+            entity_id=updated.id,
+            before_state=before_state,
+            after_state=after_state,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
     return updated
 
 

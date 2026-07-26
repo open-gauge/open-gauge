@@ -8,6 +8,7 @@ import { listAuditLogs } from "@/services/audit_log.service";
 import type { AuditLogEntry } from "@/types/audit_log";
 import { AUDIT_ENTITY_STYLE } from "@/lib/tokens";
 import { translateDynamic } from "@/lib/translate-dynamic";
+import { ActivityDiff } from "@/components/activity-diff";
 import {
   ActivityIcon,
   AssetRegistryIcon,
@@ -229,8 +230,17 @@ export default function ActivityPage() {
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         <span className="text-sm font-medium text-og-text">{actionLabel(log.action)}</span>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <span className="text-xs font-mono text-gray-500">{describeLog(log)}</span>
+                      <td className="px-4 py-2.5 max-w-xs">
+                        {log.before_state || log.after_state ? (
+                          <ActivityDiff
+                            before={log.before_state as Record<string, unknown> | null}
+                            after={log.after_state as Record<string, unknown> | null}
+                            entityType={log.entity_type}
+                            variant="compact"
+                          />
+                        ) : (
+                          <span className="text-xs font-mono text-gray-500">{describeLog(log)}</span>
+                        )}
                       </td>
                     </tr>
                   );
