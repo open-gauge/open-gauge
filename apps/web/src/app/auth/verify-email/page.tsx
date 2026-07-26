@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { verifyEmail } from "@/services/auth.service";
+import { setToken, verifyEmail } from "@/services/auth.service";
 import { CheckCircleIcon, WarningIcon } from "@/components/icons";
 
 type Status = "verifying" | "success" | "error";
@@ -22,7 +22,7 @@ function VerifyEmailCard() {
     }
     verifyEmail(token)
       .then((accessToken) => {
-        localStorage.setItem("og_token", accessToken);
+        setToken(accessToken);
         setStatus("success");
         setTimeout(() => router.push("/dashboard"), 1500);
       })

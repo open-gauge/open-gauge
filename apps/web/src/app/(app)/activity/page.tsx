@@ -208,6 +208,7 @@ export default function ActivityPage() {
                           actorEmail={log.actor_email}
                           actorName={log.actor_name}
                           actorRole={log.actor_role}
+                          actorProfilePictureUrl={log.actor_profile_picture_url}
                           className="text-xs"
                         />
                       </td>

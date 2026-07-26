@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BuildingIcon, LockIcon, PlusIcon, XIcon, CheckIcon } from "@/components/icons";
 import { useAuth } from "@/lib/auth-context";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import { createOrganization, leaveOrganization, listOrganizations, requestToJoin } from "@/services/organization.service";
 import type { OrganizationListItem } from "@/types/organization";
 
@@ -45,7 +46,7 @@ function NewOrgForm({ onCreated, onCancel }: { onCreated: (id: string) => void; 
         <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Optional" className={`${IB} ${IB_OK}`} />
       </div>
       <label className="flex items-center gap-2 text-xs text-gray-400">
-        <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+        <ToggleSwitch checked={isPrivate} onChange={setIsPrivate} />
         Private — only members can see its details, members, and assets
       </label>
       {err && <p className="text-xs text-red-500">{err}</p>}

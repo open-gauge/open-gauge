@@ -580,3 +580,52 @@ class TestOrganizationRestore:
 def org_creator_id(client: TestClient, creator_headers: dict) -> str:
     """Helper: the calling user's own id, via /users/me."""
     return client.get("/api/v1/users/me", headers=creator_headers).json()["id"]
+
+
+class TestProfilePictureInListings:
+    """A member's uploaded profile picture should surface everywhere they're
+    listed as part of an organization — members roster, eligible-members
+    (Add Member) dropdown, and join requests — not just on their own user
+    record."""
+
+    def test_member_roster_includes_profile_picture_url(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        client.post(
+            "/api/v1/users/me/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        org = _create_org(client, auth_headers)
+        members = client.get(f"/api/v1/organizations/{org['id']}/members", headers=auth_headers).json()
+        assert len(members) == 1
+        assert members[0]["profile_picture_url"]
+
+    def test_eligible_members_includes_profile_picture_url(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        candidate = _viewer(db)
+        client.post(
+            "/api/v1/users/me/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=_headers_for(candidate),
+        )
+        org = _create_org(client, auth_headers)
+        eligible = client.get(f"/api/v1/organizations/{org['id']}/eligible-members", headers=auth_headers).json()
+        match = next(u for u in eligible if u["id"] == str(candidate.id))
+        assert match["profile_picture_url"]
+
+    def test_join_requests_include_requester_profile_picture_url(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        requester = _viewer(db)
+        client.post(
+            "/api/v1/users/me/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=_headers_for(requester),
+        )
+        org = _create_org(client, auth_headers)
+        client.post(f"/api/v1/organizations/{org['id']}/join-requests", headers=_headers_for(requester))
+        requests = client.get(f"/api/v1/organizations/{org['id']}/join-requests", headers=auth_headers).json()
+        assert len(requests) == 1
+        assert requests[0]["user_profile_picture_url"]

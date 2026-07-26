@@ -59,12 +59,31 @@ export async function resetPassword(token: string, newPassword: string): Promise
   return data.access_token;
 }
 
+const TOKEN_KEY = "og_token";
+
+/**
+ * Persists the access token. `persist: true` (the default — used everywhere
+ * except the login form's "Stay signed in" checkbox) writes to localStorage,
+ * so the session survives closing the browser. `persist: false` writes to
+ * sessionStorage instead, clearing when the tab/browser closes.
+ */
+export function setToken(token: string, persist: boolean = true): void {
+  if (persist) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.setItem(TOKEN_KEY, token);
+  }
+}
+
 export function getToken(): string | null {
   if (isDemoMode()) return DEMO_TOKEN;
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("og_token");
+  return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function clearToken(): void {
-  localStorage.removeItem("og_token");
+  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
 }

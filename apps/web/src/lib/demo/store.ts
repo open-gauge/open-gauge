@@ -794,7 +794,7 @@ export function listOrgMembers(orgId: string): OrganizationMember[] {
     .filter((m) => m.organization_id === orgId && m.active)
     .map((m) => {
       const u = usersById.get(m.user_id);
-      return { user_id: m.user_id, name: u?.name ?? "Unknown", email: u?.email ?? "", role: m.role, active: m.active, created_at: m.created_at };
+      return { user_id: m.user_id, name: u?.name ?? "Unknown", email: u?.email ?? "", profile_picture_url: u?.profile_picture_url ?? null, role: m.role, active: m.active, created_at: m.created_at };
     });
 }
 
@@ -805,7 +805,7 @@ export function updateMemberRole(orgId: string, userId: string, role: OrgRole): 
   m.updated_at = nowIso();
   persist();
   const u = getState().users.find((x) => x.id === userId);
-  return { user_id: userId, name: u?.name ?? "", email: u?.email ?? "", role: m.role, active: m.active, created_at: m.created_at };
+  return { user_id: userId, name: u?.name ?? "", email: u?.email ?? "", profile_picture_url: u?.profile_picture_url ?? null, role: m.role, active: m.active, created_at: m.created_at };
 }
 
 export function removeMember(orgId: string, userId: string): void {
@@ -824,7 +824,7 @@ export function listNonMembers(orgId: string, q?: string): EligibleUser[] {
   return getState().users
     .filter((u) => u.is_active && !activeMemberIds.has(u.id))
     .filter((u) => !pattern || u.name.toLowerCase().includes(pattern) || u.email.toLowerCase().includes(pattern))
-    .map((u) => ({ id: u.id, name: u.name, email: u.email }));
+    .map((u) => ({ id: u.id, name: u.name, email: u.email, profile_picture_url: u.profile_picture_url ?? null }));
 }
 
 export function addMembers(orgId: string, userIds: string[]): OrganizationMember[] {
@@ -861,7 +861,7 @@ export function createJoinRequest(orgId: string, userId: string): OrganizationJo
   getState().joinRequests.push(req);
   persist();
   const u = getState().users.find((x) => x.id === userId);
-  return { id: req.id, organization_id: orgId, user_id: userId, user_name: u?.name ?? "", user_email: u?.email ?? "", status: req.status, created_at: req.created_at };
+  return { id: req.id, organization_id: orgId, user_id: userId, user_name: u?.name ?? "", user_email: u?.email ?? "", user_profile_picture_url: u?.profile_picture_url ?? null, status: req.status, created_at: req.created_at };
 }
 
 export function listPendingJoinRequests(orgId: string): OrganizationJoinRequest[] {
@@ -870,7 +870,7 @@ export function listPendingJoinRequests(orgId: string): OrganizationJoinRequest[
     .filter((r) => r.organization_id === orgId && r.status === "pending")
     .map((r) => {
       const u = usersById.get(r.user_id);
-      return { id: r.id, organization_id: r.organization_id, user_id: r.user_id, user_name: u?.name ?? "", user_email: u?.email ?? "", status: r.status, created_at: r.created_at };
+      return { id: r.id, organization_id: r.organization_id, user_id: r.user_id, user_name: u?.name ?? "", user_email: u?.email ?? "", user_profile_picture_url: u?.profile_picture_url ?? null, status: r.status, created_at: r.created_at };
     });
 }
 
@@ -1022,6 +1022,7 @@ export function appendAuditLog(entry: {
     actor_email: actor.email,
     actor_name: actor.name,
     actor_role: actor.role,
+    actor_profile_picture_url: actor.profile_picture_url ?? null,
     action: entry.action,
     entity_type: entry.entityType,
     entity_id: entry.entityId,

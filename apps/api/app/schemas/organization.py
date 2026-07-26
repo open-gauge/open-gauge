@@ -88,6 +88,7 @@ class OrganizationMemberResponse(BaseModel):
     user_id: uuid.UUID
     name: str
     email: str
+    profile_picture_url: str | None = None
     role: OrgRole
     active: bool
     created_at: datetime
@@ -103,6 +104,7 @@ class OrganizationJoinRequestResponse(BaseModel):
     user_id: uuid.UUID
     user_name: str
     user_email: str
+    user_profile_picture_url: str | None = None
     status: str
     created_at: datetime
 
@@ -116,6 +118,7 @@ class EligibleUserResponse(BaseModel):
     id: uuid.UUID
     name: str
     email: str
+    profile_picture_url: str | None = None
 
     model_config = {"from_attributes": True}
 

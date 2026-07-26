@@ -27,6 +27,7 @@ from ...schemas.asset_import import AssetImportPreview, AssetImportResponse
 from ...services import storage as storage_svc
 from ...services import asset_export as export_svc
 from ...services import asset_import as import_svc
+from ...services import audit_log_enrich
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
 
@@ -411,7 +412,8 @@ def list_asset_audit_logs(
     asset = asset_repo.get_by_id(db, asset_pk)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return audit_log_repo.list_logs(db, entity_id=asset_pk, skip=skip, limit=limit)
+    logs = audit_log_repo.list_logs(db, entity_id=asset_pk, skip=skip, limit=limit)
+    return audit_log_enrich.enrich(db, logs)
 
 
 def _enrich_files(files: list) -> list[StoredFileResponse]:

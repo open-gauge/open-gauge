@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { resetPassword } from "@/services/auth.service";
+import { resetPassword, setToken } from "@/services/auth.service";
 import { CheckCircleIcon, WarningIcon } from "@/components/icons";
 
 type Status = "form" | "submitting" | "success" | "error";
@@ -25,7 +25,7 @@ function ResetPasswordCard() {
     setStatus("submitting");
     try {
       const accessToken = await resetPassword(token, password);
-      localStorage.setItem("og_token", accessToken);
+      setToken(accessToken);
       setStatus("success");
       setTimeout(() => router.push("/dashboard"), 1500);
     } catch (e: unknown) {

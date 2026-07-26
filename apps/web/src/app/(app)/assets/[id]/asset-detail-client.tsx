@@ -83,6 +83,7 @@ import { getLocation } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
 import { UserMention } from "@/components/user-mention";
 import { Tooltip } from "@/components/tooltip";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { StatRow } from "@/components/stat-row";
@@ -831,12 +832,7 @@ function ChannelEditor({
 
       {/* Calibration role */}
       <label className="flex items-center gap-2 text-sm text-og-text cursor-pointer">
-        <input
-          type="checkbox"
-          checked={ch.calibration_role}
-          onChange={(e) => onChange({ ...ch, calibration_role: e.target.checked })}
-          className="rounded-sm border-og-border-md"
-        />
+        <ToggleSwitch checked={ch.calibration_role} onChange={(v) => onChange({ ...ch, calibration_role: v })} />
         Reference standard
         <Tooltip content={CHAN_TIPS.calibration_role} docsHref={CHAN_DOCS_LINKS.calibration_role}>
           <InfoIcon size={11} className="text-gray-400 cursor-help shrink-0" />
@@ -2052,12 +2048,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               <p className="text-xs text-gray-400">{filteredCals.length} record{filteredCals.length !== 1 ? "s" : ""}</p>
               {isAdmin && (
                 <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showVoided}
-                    onChange={(e) => setShowVoided(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded accent-og-accent"
-                  />
+                  <ToggleSwitch checked={showVoided} onChange={setShowVoided} size="sm" />
                   Show voided
                 </label>
               )}
@@ -2462,14 +2453,15 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
             const dateStr = d.toLocaleDateString("en-GB", { year: "numeric", month: "2-digit", day: "2-digit" });
             const timeStr = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
             return (
-              <div key={log.id} className="grid grid-cols-[7rem_10rem_1fr] items-start gap-4 py-2.5 text-xs">
+              <div key={log.id} className="grid grid-cols-[7rem_12rem_1fr] items-start gap-4 py-2.5 text-xs">
                 <span className="font-mono text-gray-400">{dateStr} {timeStr}</span>
                 <UserMention
                   actorId={log.actor_id}
                   actorEmail={log.actor_email}
                   actorName={log.actor_name}
                   actorRole={log.actor_role}
-                  className="text-xs truncate"
+                  actorProfilePictureUrl={log.actor_profile_picture_url}
+                  className="text-xs"
                 />
                 <span className="font-medium text-og-text">{actionLabel(log.action)}</span>
               </div>

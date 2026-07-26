@@ -15,6 +15,7 @@ import { getUnitsForQuantity, getOutputUnits, resolveSpecValue } from "@/lib/sen
 import { useAuth } from "@/lib/auth-context";
 import { STAT_DOCS_LINKS } from "@/lib/docs-links";
 import { StatRow } from "@/components/stat-row";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import {
   CheckIcon, ChevronDownIcon, PlusIcon, TrashIcon, WarningIcon, XIcon,
 } from "@/components/icons";
@@ -84,12 +85,7 @@ function WSelect({
 function WCheckbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded-sm border-og-border-md accent-og-accent"
-      />
+      <ToggleSwitch checked={checked} onChange={onChange} />
       <span className="text-sm text-og-text">{label}</span>
     </label>
   );
@@ -1738,12 +1734,7 @@ function Step3({
         {sensorNominalUncertaintyManual.trim() !== "" && !isNaN(parseFloat(sensorNominalUncertaintyManual)) && (
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeSensorNominalUncertainty}
-                onChange={(e) => onIncludeSensorNominalUncertaintyChange(e.target.checked)}
-                className="rounded-sm border-og-border-md"
-              />
+              <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" showLabel={false} />
               Incl. in budget
             </label>
           </div>

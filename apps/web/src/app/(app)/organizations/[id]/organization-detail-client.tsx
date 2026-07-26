@@ -19,6 +19,9 @@ import {
 } from "@/components/icons";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { Avatar } from "@/components/avatar";
+import { UserSummary } from "@/components/user-summary";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import {
   addMembers,
   approveJoinRequest,
@@ -162,13 +165,21 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
               <p className="text-xs text-gray-400 text-center py-6">No matching users.</p>
             )}
             {!loading && users.map((u) => (
-              <label key={u.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-og-surface-alt cursor-pointer">
-                <input type="checkbox" checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
+              <div
+                key={u.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => toggle(u.id)}
+                onKeyDown={(e) => { if (e.key === "Enter") toggle(u.id); }}
+                className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-og-surface-alt cursor-pointer"
+              >
+                <ToggleSwitch checked={selected.has(u.id)} onChange={() => toggle(u.id)} showLabel={false} />
+                <Avatar name={u.name} pictureUrl={u.profile_picture_url} size={28} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-og-text truncate">{u.name}</p>
                   <p className="text-xs text-gray-400 truncate">{u.email}</p>
                 </div>
-              </label>
+              </div>
             ))}
           </div>
           {err && <p className="text-xs text-red-500">{err}</p>}
@@ -509,7 +520,7 @@ export default function OrganizationDetailClient() {
                     </div>
                   </div>
                   <label className="flex items-center gap-2 text-xs text-gray-400">
-                    <input type="checkbox" checked={form?.private ?? false} onChange={(e) => setForm((f) => f && { ...f, private: e.target.checked })} />
+                    <ToggleSwitch checked={form?.private ?? false} onChange={(v) => setForm((f) => f && { ...f, private: v })} />
                     Private — only members can see its details, members, and assets
                   </label>
                 </div>
@@ -556,10 +567,7 @@ export default function OrganizationDetailClient() {
                   <div className="divide-y divide-og-border">
                     {members.map((m) => (
                       <div key={m.user_id} className="flex items-center justify-between px-4 py-2.5 gap-3">
-                        <Link href={`/users/${m.user_id}`} className="min-w-0 flex-1">
-                          <p className="text-sm text-og-text truncate hover:underline">{m.name}</p>
-                          <p className="text-xs text-gray-400 truncate">{m.email}</p>
-                        </Link>
+                        <UserSummary userId={m.user_id} name={m.name} email={m.email} pictureUrl={m.profile_picture_url} className="flex-1" />
                         {org.can_manage && editing ? (
                           <div className="flex items-center gap-2 shrink-0">
                             <select
@@ -586,10 +594,7 @@ export default function OrganizationDetailClient() {
                     ))}
                     {requests && requests.map((r) => (
                       <div key={r.id} className="flex items-center justify-between px-4 py-2.5 gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-og-text truncate">{r.user_name}</p>
-                          <p className="text-xs text-gray-400 truncate">{r.user_email}</p>
-                        </div>
+                        <UserSummary userId={r.user_id} name={r.user_name} email={r.user_email} pictureUrl={r.user_profile_picture_url} className="flex-1" />
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="px-2 py-0.5 text-[10px] font-medium text-gray-400 bg-og-surface-alt border border-og-border-md rounded-full">
                             Pending

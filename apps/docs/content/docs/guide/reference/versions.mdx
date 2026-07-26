@@ -4,13 +4,40 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.1.1 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.2.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.2.0
+
+### Added
+
+- Every place a user appears in a list — organization members, join requests, the Add Member
+  picker, the admin users list, and activity/audit log entries — now shows their profile picture
+  and links their name to `/users/{id}`, via a new shared `UserSummary` component (`UserMention`,
+  used by activity logs, is now a thin wrapper around it). Backend responses that embed a user
+  (`OrganizationMemberResponse`, `OrganizationJoinRequestResponse`, `EligibleUserResponse`,
+  `AuditLogResponse`) gained a `profile_picture_url` field, resolved via a new shared
+  `resolve_picture_url` helper. Fixed a pre-existing gap along the way: the per-asset audit-log
+  endpoint (`GET /assets/{id}/audit-logs`) never enriched `actor_name`/`actor_role` at all (always
+  null) — it now shares the same enrichment as the top-level `/audit-logs` endpoint.
+- All checkboxes across the app are replaced with a new shared `ToggleSwitch` component — a
+  pill-shaped switch with a smooth on/off color transition and an "On"/"Off" state label.
+- Login page: a password-visibility eye icon, and a "Stay signed in" toggle — checked (default)
+  persists the session in `localStorage` as before; unchecked uses `sessionStorage` instead, so
+  signing out is as simple as closing the browser.
+- Clicking a dashboard pie chart segment now navigates to a filtered register: calibration status →
+  assets filtered by status, sensor/DAQ type → assets filtered by that subtype, procedure physical
+  quantity → the procedures register filtered accordingly.
+
+### Fixed
+
+- The user's profile picture didn't show a pointer cursor on hover even where clicking it does
+  something (opens the preview modal, opens the top-bar avatar dropdown).
 
 ## 3.1.1
 

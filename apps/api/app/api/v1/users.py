@@ -12,16 +12,14 @@ from ...repositories import stored_file as file_repo
 from ...repositories import user as user_repo
 from ...schemas.user import ChangePasswordRequest, UserCreate, UserResponse, UserSelfUpdate, UserUpdate
 from ...services import storage as storage_svc
+from ...services import user_profile as user_profile_svc
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
 def _enrich_user(user: User, db: Session) -> UserResponse:
     data = UserResponse.model_validate(user)
-    if user.profile_picture_id:
-        f = file_repo.get_by_id(db, user.profile_picture_id)
-        if f:
-            data.profile_picture_url = storage_svc.get_presigned_url(f.storage_path, f.bucket)
+    data.profile_picture_url = user_profile_svc.resolve_picture_url(db, user.profile_picture_id)
     return data
 
 

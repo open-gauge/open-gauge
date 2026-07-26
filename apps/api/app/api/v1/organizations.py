@@ -28,6 +28,7 @@ from ...schemas.organization import (
 from ...services import organization_notify as org_notify
 from ...services import organization_permissions as org_perm
 from ...services import storage as storage_svc
+from ...services import user_profile as user_profile_svc
 
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
@@ -52,6 +53,7 @@ def _member_response(db: Session, membership) -> OrganizationMemberResponse | No
         return None
     return OrganizationMemberResponse(
         user_id=user.id, name=user.name, email=user.email,
+        profile_picture_url=user_profile_svc.resolve_picture_url(db, user.profile_picture_id),
         role=membership.role, active=membership.active, created_at=membership.created_at,
     )
 
@@ -360,7 +362,13 @@ def list_eligible_members(
     every other member-management endpoint (not global-admin gated)."""
     org = _get_org_or_404(db, org_id, current_user)
     _require_org_admin(db, current_user, org)
-    return org_repo.list_non_members(db, org.id, q=q)
+    return [
+        EligibleUserResponse(
+            id=u.id, name=u.name, email=u.email,
+            profile_picture_url=user_profile_svc.resolve_picture_url(db, u.profile_picture_id),
+        )
+        for u in org_repo.list_non_members(db, org.id, q=q)
+    ]
 
 
 @router.post("/{org_id}/members", response_model=list[OrganizationMemberResponse], status_code=status.HTTP_201_CREATED)
@@ -500,6 +508,7 @@ def create_join_request(
     return OrganizationJoinRequestResponse(
         id=request.id, organization_id=org.id, user_id=current_user.id,
         user_name=current_user.name, user_email=current_user.email,
+        user_profile_picture_url=user_profile_svc.resolve_picture_url(db, current_user.profile_picture_id),
         status=request.status.value, created_at=request.created_at,
     )
 
@@ -521,6 +530,7 @@ def list_join_requests(
         result.append(OrganizationJoinRequestResponse(
             id=r.id, organization_id=org.id, user_id=user.id,
             user_name=user.name, user_email=user.email,
+            user_profile_picture_url=user_profile_svc.resolve_picture_url(db, user.profile_picture_id),
             status=r.status.value, created_at=r.created_at,
         ))
     return result

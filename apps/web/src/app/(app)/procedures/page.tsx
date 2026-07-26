@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   CheckIcon,
@@ -1256,6 +1256,7 @@ function EmptyDetail() {
 
 export default function ProceduresPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const canEdit = user.role !== "viewer";
   const [procedures, setProcedures] = useState<Procedure[]>([]);
@@ -1264,6 +1265,7 @@ export default function ProceduresPage() {
   const [selected, setSelected] = useState<Procedure | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [editNewProcId, setEditNewProcId] = useState<string | null>(null);
+  const [physicalQuantityFilter, setPhysicalQuantityFilter] = useState<{ value: string; label: string } | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -1280,6 +1282,32 @@ export default function ProceduresPage() {
       router.replace("/procedures");
     }
   }, [router]);
+
+  useEffect(() => {
+    const pq = searchParams.get("physical_quantity");
+    const pqLabel = searchParams.get("physical_quantity_label");
+    setPhysicalQuantityFilter(pq ? { value: pq, label: pqLabel ?? pq } : null);
+  }, [searchParams]);
+
+  // Clears both the in-memory filter and the URL params that drive it, matching
+  // the assets register's "View all ✕" convention.
+  function clearUrlParams(keys: string[]) {
+    const next = new URLSearchParams(searchParams.toString());
+    keys.forEach((k) => next.delete(k));
+    const qs = next.toString();
+    router.replace(qs ? `/procedures?${qs}` : "/procedures");
+  }
+
+  const visibleProcedures = physicalQuantityFilter
+    ? procedures.filter((p) => p.physical_quantity === physicalQuantityFilter.value)
+    : procedures;
+
+  useEffect(() => {
+    if (physicalQuantityFilter && visibleProcedures.length > 0 && selected?.physical_quantity !== physicalQuantityFilter.value) {
+      setSelected(visibleProcedures[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [physicalQuantityFilter]);
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -1301,7 +1329,7 @@ export default function ProceduresPage() {
     setEditNewProcId(null);
   }
 
-  const count = procedures.length;
+  const count = visibleProcedures.length;
 
   return (
     <div className="p-6 space-y-5">
@@ -1320,6 +1348,21 @@ export default function ProceduresPage() {
         )}
       </div>
 
+      {physicalQuantityFilter && (
+        <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
+          <span className="text-xs text-og-accent font-medium">
+            Filtered by physical quantity: <span className="font-semibold">{physicalQuantityFilter.label}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => clearUrlParams(["physical_quantity", "physical_quantity_label"])}
+            className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
+          >
+            View all ✕
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-5 items-start">
         {/* Sidebar */}
         <div className="w-72 shrink-0 bg-og-surface rounded-xl border border-og-border shadow-xs overflow-hidden sticky top-0 max-h-[calc(100vh-180px)] flex flex-col">
@@ -1335,11 +1378,11 @@ export default function ProceduresPage() {
               <div className="flex items-center justify-center py-12">
                 <div className="w-5 h-5 border-2 border-og-accent border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : procedures.length === 0 ? (
+            ) : visibleProcedures.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-10">No procedures found</p>
             ) : (
               <ul className="space-y-0.5">
-                {procedures.map((proc) => (
+                {visibleProcedures.map((proc) => (
                   <li key={proc.id}>
                     <ProcedureListItem proc={proc} active={selected?.id === proc.id} onClick={() => handleSidebarSelect(proc)} />
                   </li>

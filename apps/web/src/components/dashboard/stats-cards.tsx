@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PieChart } from "@/components/charts/pie-chart";
 import { PieSlice } from "@/components/charts/pie-slice";
 import { PieCenter } from "@/components/charts/pie-center";
@@ -30,9 +31,13 @@ const CAL_LABEL: Record<string, string> = {
 };
 
 // ── Mini donut ───────────────────────────────────────────────────────────────
-interface Slice { name: string; value: number; color: string; }
+interface Slice { name: string; value: number; color: string; filterValue: string; }
 
-function MiniDonut({ slices, centerLabel }: { slices: Slice[]; centerLabel: string }) {
+function MiniDonut({ slices, centerLabel, onSliceClick }: {
+  slices: Slice[];
+  centerLabel: string;
+  onSliceClick?: (slice: Slice) => void;
+}) {
   const total = slices.reduce((s, d) => s + d.value, 0);
 
   const data: PieData[] = total === 0
@@ -49,7 +54,13 @@ function MiniDonut({ slices, centerLabel }: { slices: Slice[]; centerLabel: stri
         padAngle={total === 0 ? 0 : 0.04}
       >
         {data.map((_, i) => (
-          <PieSlice key={i} index={i} hoverEffect="none" showGlow={false} />
+          <PieSlice
+            key={i}
+            index={i}
+            hoverEffect="none"
+            showGlow={false}
+            onClick={total > 0 && onSliceClick ? () => onSliceClick(slices[i]) : undefined}
+          />
         ))}
         {total > 0 && <PieCenter defaultLabel={centerLabel} />}
       </PieChart>
@@ -65,9 +76,10 @@ interface CardProps {
   iconCls:     string;
   slices:      Slice[];
   filterHref?: string;
+  onSliceClick?: (slice: Slice) => void;
 }
 
-function StatCard({ label, centerLabel, icon, iconCls, slices, filterHref }: CardProps) {
+function StatCard({ label, centerLabel, icon, iconCls, slices, filterHref, onSliceClick }: CardProps) {
   return (
     <div className="bg-og-surface rounded-xl border border-og-border p-4 shadow-xs flex flex-col gap-3">
       {/* Header: icon + label + optional filter */}
@@ -89,7 +101,7 @@ function StatCard({ label, centerLabel, icon, iconCls, slices, filterHref }: Car
 
       {/* Centered donut */}
       <div className="flex justify-center">
-        <MiniDonut slices={slices} centerLabel={centerLabel} />
+        <MiniDonut slices={slices} centerLabel={centerLabel} onSliceClick={onSliceClick} />
       </div>
     </div>
   );
@@ -103,28 +115,34 @@ export default function StatsCards({
   data: DashboardSummary;
   assetTypeDistribution: AssetTypeDistribution;
 }) {
+  const router = useRouter();
+
   const calSlices: Slice[] = data.calibration_status_distribution.map((d) => ({
     name:  CAL_LABEL[d.status] ?? d.status,
     value: d.count,
     color: CAL_COLOR[d.status] ?? "#9ca3af",
+    filterValue: d.status,
   }));
 
   const sensorSlices: Slice[] = assetTypeDistribution.sensors.map((d) => ({
     name:  SUBTYPE_LABEL[d.type] ?? d.type,
     value: d.count,
     color: SUBTYPE_COLOR[d.type] ?? "#6b7280",
+    filterValue: d.type,
   }));
 
   const daqSlices: Slice[] = assetTypeDistribution.daqs.map((d) => ({
     name:  SUBTYPE_LABEL[d.type] ?? d.type,
     value: d.count,
     color: SUBTYPE_COLOR[d.type] ?? "#6b7280",
+    filterValue: d.type,
   }));
 
   const procedureSlices: Slice[] = (data.procedure_distribution ?? []).map((d) => ({
     name:  SUBTYPE_LABEL[d.type] ?? d.type,
     value: d.count,
     color: SUBTYPE_COLOR[d.type] ?? "#6b7280",
+    filterValue: d.type,
   }));
 
   return (
@@ -134,6 +152,7 @@ export default function StatsCards({
         centerLabel="Assets"
         icon={<DatabaseIcon size={16} />} iconCls="text-og-accent"
         slices={calSlices}
+        onSliceClick={(s) => router.push(`/assets?status=${encodeURIComponent(s.filterValue)}`)}
       />
       <StatCard
         label="Sensors"
@@ -141,6 +160,7 @@ export default function StatsCards({
         icon={<ActivityIcon size={16} />} iconCls="text-og-accent"
         slices={sensorSlices}
         filterHref="/assets?asset_type=sensor"
+        onSliceClick={(s) => router.push(`/assets?asset_type=sensor&subtype=${encodeURIComponent(s.filterValue)}&subtype_label=${encodeURIComponent(s.name)}`)}
       />
       <StatCard
         label="DAQ units"
@@ -148,12 +168,14 @@ export default function StatsCards({
         icon={<ApiIcon size={16} />} iconCls="text-og-accent"
         slices={daqSlices}
         filterHref="/assets?asset_type=daq"
+        onSliceClick={(s) => router.push(`/assets?asset_type=daq&subtype=${encodeURIComponent(s.filterValue)}&subtype_label=${encodeURIComponent(s.name)}`)}
       />
       <StatCard
         label="Procedures"
         centerLabel="Procedures"
         icon={<ProceduresIcon size={16} />} iconCls="text-og-accent"
         slices={procedureSlices}
+        onSliceClick={(s) => router.push(`/procedures?physical_quantity=${encodeURIComponent(s.filterValue)}&physical_quantity_label=${encodeURIComponent(s.name)}`)}
       />
     </div>
   );

@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { forgotPassword, login, register, resendVerification } from "@/services/auth.service";
-import { MailIcon } from "@/components/icons";
+import { forgotPassword, login, register, resendVerification, setToken } from "@/services/auth.service";
+import { EyeIcon, EyeOffIcon, MailIcon } from "@/components/icons";
+import { ToggleSwitch } from "@/components/toggle-switch";
 
 type Tab = "signin" | "register" | "forgot";
 
@@ -12,6 +13,8 @@ export default function AuthCard() {
   const [tab, setTab] = useState<Tab>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [stayLoggedIn, setStayLoggedIn] = useState(true);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +29,7 @@ export default function AuthCard() {
     try {
       if (tab === "signin") {
         const token = await login(email, password);
-        localStorage.setItem("og_token", token);
+        setToken(token, stayLoggedIn);
         router.push("/dashboard");
         return;
       }
@@ -190,14 +193,31 @@ export default function AuthCard() {
               </button>
             )}
           </div>
-          <input
-            id="password" type="password"
-            autoComplete={tab === "signin" ? "current-password" : "new-password"}
-            required minLength={tab === "register" ? 8 : 1} placeholder="••••••••"
-            value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass}
-          />
+          <div className="relative">
+            <input
+              id="password" type={showPassword ? "text" : "password"}
+              autoComplete={tab === "signin" ? "current-password" : "new-password"}
+              required minLength={tab === "register" ? 8 : 1} placeholder="••••••••"
+              value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} pr-9`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              tabIndex={-1}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              {showPassword ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
+            </button>
+          </div>
           {tab === "register" && (
             <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+          )}
+          {tab === "signin" && (
+            <label className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+              <ToggleSwitch checked={stayLoggedIn} onChange={setStayLoggedIn} showLabel={false} />
+              Stay signed in
+            </label>
           )}
         </div>
 

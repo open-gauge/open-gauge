@@ -36,6 +36,7 @@ import {
 } from "@/services/location.service";
 import type { LocationUpdateBody } from "@/services/location.service";
 import type { LocationItem, LocationTreeNode } from "@/types/location";
+import { ToggleSwitch } from "@/components/toggle-switch";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -260,12 +261,7 @@ function FCheckbox({ label, checked, onChange }: {
 }) {
   return (
     <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded-sm border-og-border-md accent-og-accent"
-      />
+      <ToggleSwitch checked={checked} onChange={onChange} />
       <span className="text-sm text-og-text">{label}</span>
     </label>
   );

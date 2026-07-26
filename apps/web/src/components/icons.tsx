@@ -783,6 +783,17 @@ export function EyeIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+/** Eye with a slash through it — "hide password" state of a visibility toggle. */
+export function EyeOffIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M2 2 14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** Locked padlock — marks a private organization. */
 export function LockIcon({ size = 16, className }: IconProps = {}) {
   return (

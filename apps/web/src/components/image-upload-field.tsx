@@ -50,7 +50,7 @@ export function ImageUploadField({
         onClick={() => imageUrl && setPreviewOpen(true)}
         disabled={!imageUrl}
         style={{ width: size, height: size }}
-        className="rounded-full overflow-hidden disabled:cursor-default"
+        className="rounded-full overflow-hidden cursor-pointer disabled:cursor-default"
       >
         {children}
       </button>

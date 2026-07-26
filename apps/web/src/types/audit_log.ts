@@ -4,6 +4,7 @@ export interface AuditLogEntry {
   actor_email: string;
   actor_name: string | null;
   actor_role: string | null;
+  actor_profile_picture_url: string | null;
   action: string;
   entity_type: string;
   entity_id: string | null;

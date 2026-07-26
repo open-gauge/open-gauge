@@ -9,6 +9,42 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.2.0
+
+### Added
+
+- Every place a user appears in a list — organization members, join requests, the Add Member
+  picker, the admin users list, and activity/audit log entries — now shows their profile picture
+  and links their name to `/users/{id}`, via a new shared `UserSummary` component (`UserMention`,
+  used by activity logs, is now a thin wrapper around it). Backend responses that embed a user
+  (`OrganizationMemberResponse`, `OrganizationJoinRequestResponse`, `EligibleUserResponse`,
+  `AuditLogResponse`) gained a `profile_picture_url` field, resolved via a new shared
+  `resolve_picture_url` helper. Fixed a pre-existing gap along the way: the per-asset audit-log
+  endpoint (`GET /assets/{id}/audit-logs`) never enriched `actor_name`/`actor_role` at all (always
+  null) — it now shares the same enrichment as the top-level `/audit-logs` endpoint.
+- All checkboxes across the app are replaced with a new shared `ToggleSwitch` component — a
+  pill-shaped switch with a smooth on/off color transition and an "On"/"Off" state label. See
+  UI.md's new "Toggle Switch" section for when to use `size="sm"`/`showLabel={false}` in dense
+  list contexts.
+- Login page: a password-visibility eye icon, and a "Stay signed in" toggle — checked (default)
+  persists the session in `localStorage` as before; unchecked uses `sessionStorage` instead, so
+  signing out is as simple as closing the browser. `auth.service.ts` gained a `setToken(token,
+  persist)` helper shared by the login form and the email-verification/password-reset flows (which
+  always persist, matching prior behavior).
+- Clicking a dashboard pie chart segment now navigates to a filtered register: calibration status →
+  assets filtered by status, sensor/DAQ type → assets filtered by that subtype, procedure physical
+  quantity → the procedures register filtered accordingly (new client-side filter there, since the
+  procedures register had no URL-param filtering at all before this). The shared `PieSlice` chart
+  primitive gained an optional `onClick` prop to support this, with no change to its many other
+  (non-clickable) call sites.
+
+### Fixed
+
+- The user's profile picture didn't show a pointer cursor on hover even where clicking it does
+  something (opens the preview modal in `ImageUploadField`, opens the avatar dropdown in the top
+  bar) — both `<button>` elements were missing an explicit `cursor-pointer` class, since browsers
+  don't apply one to buttons by default.
+
 ## 3.1.1
 
 ### Fixed

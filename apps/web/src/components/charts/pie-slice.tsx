@@ -66,6 +66,8 @@ export interface PieSliceProps {
   hoverOffset?: number;
   /** Additional CSS class */
   className?: string;
+  /** Optional click handler for this slice — e.g. drilling into a filtered list. */
+  onClick?: () => void;
 }
 
 interface AnimatedSliceTranslateProps {
@@ -328,6 +330,7 @@ export const PieSlice = memo(function PieSlice({
   showGlow = true,
   hoverEffect = "translate",
   hoverOffset: hoverOffsetProp,
+  onClick,
 }: PieSliceProps) {
   const {
     arcs,
@@ -498,6 +501,7 @@ export const PieSlice = memo(function PieSlice({
         fill="transparent"
         onMouseEnter={() => setHoveredIndex(index)}
         onMouseLeave={() => setHoveredIndex(null)}
+        onClick={onClick}
       />
 
       {/* Visible slice - animates based on hover effect, no pointer events */}

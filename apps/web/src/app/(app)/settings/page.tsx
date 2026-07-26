@@ -18,6 +18,7 @@ import {
 } from "@/components/icons";
 import { Avatar } from "@/components/avatar";
 import { ImageUploadField } from "@/components/image-upload-field";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { SignaturePad } from "@/components/signature-pad";
 import {
@@ -542,19 +543,19 @@ function NotificationsSection() {
                     <p className="text-xs text-gray-400">{description}</p>
                   </div>
                   <div className="flex justify-center">
-                    <input
-                      type="checkbox"
+                    <ToggleSwitch
                       checked={pref?.email_enabled ?? true}
                       disabled={savingCategory === category}
-                      onChange={(e) => handleToggle(category, "email_enabled", e.target.checked)}
+                      onChange={(v) => handleToggle(category, "email_enabled", v)}
+                      showLabel={false}
                     />
                   </div>
                   <div className="flex justify-center">
-                    <input
-                      type="checkbox"
+                    <ToggleSwitch
                       checked={pref?.in_app_enabled ?? true}
                       disabled={savingCategory === category}
-                      onChange={(e) => handleToggle(category, "in_app_enabled", e.target.checked)}
+                      onChange={(v) => handleToggle(category, "in_app_enabled", v)}
+                      showLabel={false}
                     />
                   </div>
                 </div>

@@ -130,6 +130,36 @@ class TestAuditLogOnUpdate:
         emails = [l["actor_email"] for l in logs if l["action"] == "asset.updated"]
         assert test_user.email in emails
 
+    def test_audit_entry_includes_actor_name_role_and_picture(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        asset_with_numerics: dict,
+        test_user,
+    ) -> None:
+        """Regression: the per-asset audit-log endpoint used to return raw,
+        unenriched rows — actor_name/actor_role/actor_profile_picture_url were
+        always null even though the top-level /audit-logs endpoint populated
+        them via a live join against the current User row."""
+        client.post(
+            "/api/v1/users/me/picture",
+            files={"file": ("photo.png", b"fake-image-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        asset_id = asset_with_numerics["id"]
+        client.put(
+            f"/api/v1/assets/{asset_id}",
+            json={"name": "Actor Enrichment Check"},
+            headers=auth_headers,
+        )
+        logs = client.get(
+            f"/api/v1/assets/{asset_id}/audit-logs", headers=auth_headers
+        ).json()
+        entry = next(l for l in logs if l["action"] == "asset.updated")
+        assert entry["actor_name"] == test_user.name
+        assert entry["actor_role"] == test_user.role.value
+        assert entry["actor_profile_picture_url"]
+
     def test_sensor_channel_update_is_logged(
         self,
         client: TestClient,

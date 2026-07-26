@@ -204,6 +204,70 @@ or `Avatar` for initials-based fallback):
 
 ---
 
+## User in a List
+
+Anywhere a user appears as part of a list — members roster, join requests, the admin users list,
+activity/audit log entries — use the shared `UserSummary` component
+(`@/components/user-summary`) rather than rendering name/email by hand:
+
+```tsx
+<UserSummary userId={m.user_id} name={m.name} email={m.email} pictureUrl={m.profile_picture_url} />
+```
+
+- Renders the user's avatar (via `Avatar`), then the name and email stacked to its right.
+- The name is a link to `/users/{userId}` (via `hover:underline`) when `userId` is known; plain
+  text otherwise (e.g. an external calibration lab with no internal account).
+- The email renders below the name in `text-xs text-gray-400` — smaller and lighter than the name's
+  `text-sm font-medium text-og-text`.
+- `size` (default 32) controls the avatar's pixel size — use a smaller size (e.g. 24) in dense
+  table rows.
+
+`UserMention` (`@/components/user-mention`) is the audit-log-flavored wrapper around the same
+component — it derives a display name from the email when no name is set, and shows the actor's
+role as a native `title` tooltip on hover.
+
+**Exception:** a per-row user-selection picker (e.g. the Add Member modal's eligible-users list)
+shows the avatar but does not turn the name into a link — the row's click target is already the
+`ToggleSwitch` selection control, and a competing navigation link inside it would be confusing.
+
+**Rule: never hand-roll a name+email block for a user in a list — use `UserSummary`, or
+`UserMention` for audit-log-style actor references.**
+
+---
+
+## Toggle Switch
+
+All on/off controls use the shared `ToggleSwitch` component (`@/components/toggle-switch`)
+instead of a raw `<input type="checkbox">`:
+
+```tsx
+<label className="flex items-center gap-2 text-xs text-gray-400">
+  <ToggleSwitch checked={enabled} onChange={setEnabled} />
+  Enabled
+</label>
+```
+
+- A pill-shaped track that smoothly transitions color (`bg-og-accent` when on, `bg-gray-300`/
+  `dark:bg-gray-600` when off) and slides a white thumb across, both via
+  `transition-colors`/`transition-transform duration-200`.
+- Shows an "On"/"Off" text label next to the control by default (`showLabel`) — the control itself
+  is `role="switch"`/`aria-checked`, so the label is a redundant-but-required visual affordance per
+  spec, not the accessible name.
+- Pass `showLabel={false}` in dense per-row contexts (a multi-select list, a settings grid with its
+  own column headers) where an "On"/"Off" label on every row would be noise — the switch itself
+  still replaces the checkbox either way.
+- Pass `size="sm"` for compact inline filters (matches the footprint of the old 14px checkbox);
+  default `size="md"` for standalone settings toggles.
+- Keep the surrounding `<label>` wrapper when the adjacent text should also toggle the control —
+  a `<label>` auto-delegates clicks to a single wrapped `<button>` (which is what `ToggleSwitch`
+  renders), so no extra `onClick` is needed. Only reach for an explicit container `onClick` (with
+  `ToggleSwitch` itself calling `stopPropagation()`) when the row has other interactive/link
+  content alongside the switch that would otherwise steal the click.
+
+**Rule: never render a raw `<input type="checkbox">` — use `ToggleSwitch`.**
+
+---
+
 ## Color Rules (Summary)
 
 | Use case | Token |
@@ -241,3 +305,5 @@ or `Avatar` for initials-based fallback):
 - Define inline SVG icons — add to `icons.tsx` and import
 - Use `bg-white`, `bg-gray-50`, `border-gray-100`, `border-gray-200` for structural UI
 - Build a bespoke picture-upload UI — use the shared `ImageUploadField` component
+- Hand-roll a name+email block for a user in a list — use `UserSummary`/`UserMention`
+- Render a raw `<input type="checkbox">` — use the shared `ToggleSwitch` component

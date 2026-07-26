@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
+import { Avatar } from "@/components/avatar";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import type { UserProfile } from "@/types/user";
 import {
   CameraIcon,
@@ -257,8 +260,9 @@ function UserRow({
       {editing ? (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
+            <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={32} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-og-text truncate">{user.name}</p>
+              <Link href={`/users/${user.id}`} className="text-sm font-medium text-og-text truncate hover:underline block">{user.name}</Link>
               <p className="text-xs text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
@@ -299,9 +303,10 @@ function UserRow({
               user.is_active ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"
             }`}
           />
+          <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={32} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-medium text-og-text truncate">{user.name}</p>
+              <Link href={`/users/${user.id}`} className="text-sm font-medium text-og-text truncate hover:underline">{user.name}</Link>
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
                 {ROLE_LABELS[user.role] ?? user.role}
               </span>
@@ -631,7 +636,7 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
             placeholder="e.g. ISO 17025 Certificate" />
         </div>
         <label className="flex items-center gap-2 text-xs text-gray-400">
-          <input type="checkbox" checked={uploadDefault} onChange={(e) => setUploadDefault(e.target.checked)} />
+          <ToggleSwitch checked={uploadDefault} onChange={setUploadDefault} />
           Set as default for this scope
         </label>
         {uploadErr && <p className="text-xs text-red-500">{uploadErr}</p>}
@@ -789,12 +794,7 @@ function EmailSettingsSection() {
             </div>
           </div>
           <label className="flex items-center gap-2 text-xs font-medium text-og-text cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.enabled}
-              onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
-              className="w-4 h-4 rounded accent-og-accent"
-            />
+            <ToggleSwitch checked={form.enabled} onChange={(v) => setForm((f) => ({ ...f, enabled: v }))} />
             Enabled
           </label>
         </div>
@@ -866,12 +866,7 @@ function EmailSettingsSection() {
 
           <div className="grid grid-cols-2 gap-3 items-end">
             <label className="flex items-center gap-2 text-xs font-medium text-og-text cursor-pointer pb-2">
-              <input
-                type="checkbox"
-                checked={form.smtp_use_tls}
-                onChange={(e) => setForm((f) => ({ ...f, smtp_use_tls: e.target.checked }))}
-                className="w-4 h-4 rounded accent-og-accent"
-              />
+              <ToggleSwitch checked={form.smtp_use_tls} onChange={(v) => setForm((f) => ({ ...f, smtp_use_tls: v }))} />
               Use STARTTLS (uncheck for implicit SSL)
             </label>
             <div className="space-y-1">

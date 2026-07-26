@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
 import { ROLE_LABELS } from "@/lib/roles";
+import { UserSummary } from "@/components/user-summary";
 
 function deriveDisplayName(name: string | null, email: string): string {
   if (name) return name;
@@ -18,57 +16,27 @@ interface UserMentionProps {
   actorEmail: string;
   actorName:  string | null;
   actorRole?: string | null;
+  actorProfilePictureUrl?: string | null;
   className?: string;
 }
 
 /**
- * Renders a user's display name with a hover tooltip (name, email, role)
- * and a click link to the user profile page when an actor ID is available.
+ * A user shown as part of an audit-log-style list: avatar, name (linking to
+ * the user's profile page when an actor ID is available), email below. See
+ * UI.md's "User in a list" convention.
  */
 export function UserMention({
   actorId,
   actorEmail,
   actorName,
   actorRole,
+  actorProfilePictureUrl,
   className = "",
 }: UserMentionProps) {
   const displayName = deriveDisplayName(actorName, actorEmail);
-
-  const tooltip = (
-    <span
-      className="
-        pointer-events-none absolute bottom-full left-0 mb-1.5 z-50
-        hidden group-hover/mention:flex flex-col
-        bg-gray-900 dark:bg-gray-800 text-white rounded-lg px-3 py-2
-        shadow-lg whitespace-nowrap text-[11px] gap-0.5
-      "
-    >
-      <span className="font-semibold">{actorName ?? displayName}</span>
-      <span className="text-gray-400">{actorEmail}</span>
-      {actorRole && (
-        <span className="text-gray-400">{ROLE_LABELS[actorRole] ?? actorRole}</span>
-      )}
-    </span>
-  );
-
-  const sharedCls = `relative group/mention inline-block font-semibold ${className}`;
-
-  if (actorId) {
-    return (
-      <Link
-        href={`/users/${actorId}`}
-        className={`${sharedCls} text-og-text hover:text-og-accent transition-colors`}
-      >
-        {displayName}
-        {tooltip}
-      </Link>
-    );
-  }
-
   return (
-    <span className={`${sharedCls} text-og-text cursor-default`}>
-      {displayName}
-      {tooltip}
-    </span>
+    <div className={className} title={actorRole ? (ROLE_LABELS[actorRole] ?? actorRole) : undefined}>
+      <UserSummary userId={actorId} name={displayName} email={actorEmail} pictureUrl={actorProfilePictureUrl} size={24} />
+    </div>
   );
 }

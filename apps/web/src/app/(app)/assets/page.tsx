@@ -41,6 +41,7 @@ import {
   XIcon,
 } from "@/components/icons";
 import { Tooltip } from "@/components/tooltip";
+import { ToggleSwitch } from "@/components/toggle-switch";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -261,7 +262,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
   return (
     <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer hover:text-og-text">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-og-action" />
+      <ToggleSwitch checked={checked} onChange={onChange} showLabel={false} />
       {label}
     </label>
   );
@@ -643,7 +644,7 @@ function BulkExportModal({ assets, onClose }: BulkExportModalProps) {
         <div className="overflow-y-auto max-h-96 divide-y divide-og-border">
           {assets.map((a) => (
             <label key={a.id} className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-og-surface-alt transition-colors">
-              <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleOne(a.id)} className="accent-og-action shrink-0" />
+              <ToggleSwitch checked={selected.has(a.id)} onChange={() => toggleOne(a.id)} showLabel={false} />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-og-text truncate">{a.name}</p>
                 <p className="text-xs font-mono text-gray-400">{a.asset_id}</p>
@@ -1373,7 +1374,8 @@ export default function AssetsPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [locationFilter, setLocationFilter] = useState<{ id: string; name: string; includeDescendants?: boolean } | null>(null);
   const [organizationFilter, setOrganizationFilter] = useState<{ id: string; name: string } | null>(null);
-  const [quickFilter, setQuickFilter] = useState<{ label: string; type: "asset_type" | "health_max"; value: string } | null>(null);
+  const [quickFilter, setQuickFilter] = useState<{ label: string; type: "asset_type" | "health_max" | "status"; value: string } | null>(null);
+  const [subtypeFilter, setSubtypeFilter] = useState<{ value: string; label: string } | null>(null);
   const [newAssetOpen, setNewAssetOpen] = useState(false);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
@@ -1391,10 +1393,16 @@ export default function AssetsPage() {
 
     const at = searchParams.get("asset_type");
     const hm = searchParams.get("health_max");
+    const st = searchParams.get("status");
     if (at === "sensor") setQuickFilter({ type: "asset_type", value: "sensor", label: "Sensors only" });
     else if (at === "daq") setQuickFilter({ type: "asset_type", value: "daq", label: "DAQ units only" });
     else if (hm) setQuickFilter({ type: "health_max", value: hm, label: `Health score ≤ ${hm}%` });
+    else if (st) setQuickFilter({ type: "status", value: st, label: `Status: ${CALIBRATION_STATUS_LABEL[st] ?? st}` });
     else setQuickFilter(null);
+
+    const sub = searchParams.get("subtype");
+    const subLabel = searchParams.get("subtype_label");
+    setSubtypeFilter(sub ? { value: sub, label: subLabel ?? sub } : null);
   }, [searchParams]);
 
   // Clears both the in-memory filter and the URL params that drive it, so a later
@@ -1495,10 +1503,21 @@ export default function AssetsPage() {
     const q = search.toLowerCase();
 
     let list = assets.filter((a) => {
-      // Quick filter (from URL param: ?asset_type or ?health_max)
+      // Quick filter (from URL param: ?asset_type, ?health_max, or ?status)
       if (quickFilter) {
         if (quickFilter.type === "asset_type" && a.asset_type !== quickFilter.value) return false;
         if (quickFilter.type === "health_max"  && a.health_score > Number(quickFilter.value)) return false;
+        if (quickFilter.type === "status"      && a.calibration_status !== quickFilter.value) return false;
+      }
+
+      // Subtype quick filter (from URL param: ?subtype — e.g. a sensor's physical
+      // quantity or a DAQ's daq_type), independent of the manual filter dropdown's
+      // own subtype checkboxes.
+      if (subtypeFilter) {
+        const assetSubtypes = a.asset_type === "sensor"
+          ? a.channels.map((ch) => ch.physical_quantity)
+          : a.subtype ? [a.subtype] : [];
+        if (!assetSubtypes.includes(subtypeFilter.value)) return false;
       }
 
       // Search
@@ -1564,7 +1583,7 @@ export default function AssetsPage() {
     }
 
     return list;
-  }, [assets, search, filters, sortCol, sortDir, quickFilter]);
+  }, [assets, search, filters, sortCol, sortDir, quickFilter, subtypeFilter]);
 
   function handleSort(col: SortKey) {
     if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -1720,7 +1739,22 @@ export default function AssetsPage() {
           </span>
           <button
             type="button"
-            onClick={() => clearUrlParams(["asset_type", "health_max"])}
+            onClick={() => clearUrlParams(["asset_type", "health_max", "status"])}
+            className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
+          >
+            View all ✕
+          </button>
+        </div>
+      )}
+
+      {subtypeFilter && (
+        <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
+          <span className="text-xs text-og-accent font-medium">
+            Filtered by type: <span className="font-semibold">{subtypeFilter.label}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => clearUrlParams(["subtype", "subtype_label"])}
             className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
             View all ✕

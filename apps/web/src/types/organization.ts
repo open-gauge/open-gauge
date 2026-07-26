@@ -42,6 +42,7 @@ export interface OrganizationMember {
   user_id: string;
   name: string;
   email: string;
+  profile_picture_url: string | null;
   role: OrgRole;
   active: boolean;
   created_at: string;
@@ -51,6 +52,7 @@ export interface EligibleUser {
   id: string;
   name: string;
   email: string;
+  profile_picture_url: string | null;
 }
 
 export interface OrganizationJoinRequest {
@@ -59,6 +61,7 @@ export interface OrganizationJoinRequest {
   user_id: string;
   user_name: string;
   user_email: string;
+  user_profile_picture_url: string | null;
   status: "pending" | "approved" | "rejected";
   created_at: string;
 }
