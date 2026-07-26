@@ -7,6 +7,7 @@ import "../globals.css";
 import { ThemeProvider } from "@/store/theme";
 import { routing } from "@/i18n/routing";
 import { getLocaleMeta } from "@/i18n/locales";
+import { GoogleAnalytics } from "@/components/google-analytics";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
@@ -57,6 +58,7 @@ export default async function LocaleLayout({
             __html: `try{const t=localStorage.getItem('og_theme');const d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(_){}`,
           }}
         />
+        <GoogleAnalytics />
         <NextIntlClientProvider>
           <ThemeProvider>{children}</ThemeProvider>
         </NextIntlClientProvider>

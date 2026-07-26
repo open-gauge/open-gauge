@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import AuthCard from "@/components/auth-card";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import ParticleBackground from "@/components/particle-background";
 import ThemeToggle from "@/components/theme-toggle";
 import { isDemoMode } from "@/lib/demo/is-demo-mode";
@@ -127,6 +128,8 @@ export default async function LoginPage({
           </div>
         </footer>
       </div>
+
+      <CookieConsentBanner />
     </div>
   );
 }

@@ -34,6 +34,7 @@ export default async function PrivacyPage({
 
       <h2>{t("section5Title")}</h2>
       <p>{t("section5Body")}</p>
+      {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && <p>{t("section5AnalyticsNotice")}</p>}
 
       <h2>{t("section6Title")}</h2>
       <p>{t("section6Body")}</p>

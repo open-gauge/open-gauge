@@ -13,6 +13,7 @@
     "section4Body": "Security- and traceability-sensitive actions (record creation, edits, calibration voids/restores, settings changes) are recorded in an immutable audit log, including the acting user, a timestamp, and — where applicable — the IP address and user agent of the request. This is a core feature for ISO/IEC 17025-style traceability, not data shared outside the Instance.",
     "section5Title": "5. Cookies and local storage",
     "section5Body": "Open Gauge stores your session token and theme preference in your browser’s local storage. It does not use third-party tracking cookies or analytics scripts.",
+    "section5AnalyticsNotice": "The project’s own public marketing site and the demo instance at demo.opengauge.org additionally use Google Analytics to understand visitor traffic. This does not apply to your own self-hosted Instance, which remains free of third-party analytics regardless of this policy template.",
     "section6Title": "6. Data retention and deletion",
     "section6Body": "Calibration records are intentionally immutable for traceability — see the Instance’s documentation for how “voiding” a record works. Other records (assets, locations, procedures) support soft deletion. The Operator controls all retention periods and backup policies; contact your administrator to request deletion of your personal account data.",
     "section7Title": "7. Your rights",

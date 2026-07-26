@@ -9,6 +9,31 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.5.0
+
+### Added
+
+- **Google Analytics on project-operated deployments only.** A new `<GoogleAnalytics />`
+  component (`apps/web/src/components/google-analytics.tsx`) conditionally loads gtag.js when
+  `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set at build time, mounted once in the shared root layout
+  so it covers both the marketing/login page and every route under the demo build. The variable
+  is set only in the build environment of the project's own deployments (the marketing/login
+  site and `demo.opengauge.org`'s Cloudflare Pages project) — see `apps/web/README.md`. It is
+  intentionally absent from `infrastructure/docker/.env.example`, so self-hosted Docker Compose
+  installs never load it, keeping the existing Privacy Policy commitment (self-hosted Instances
+  use no third-party analytics) intact. The Privacy Policy page now also discloses this usage,
+  but only renders the disclosure when the variable is actually present at build time.
+- **Cookie consent banner on the marketing/login page.** A new `<CookieConsentBanner />`
+  (`apps/web/src/components/cookie-consent-banner.tsx`), translated into all four locales via
+  the new `common.cookieConsent` message namespace, gates Google Analytics behind an explicit
+  Accept/Decline choice — `<GoogleAnalytics />` now waits for `"granted"` consent
+  (`apps/web/src/lib/consent.ts` + `apps/web/src/hooks/use-consent.ts`) before loading gtag.js on
+  that page. A visitor who has already sent a Global Privacy Control or Do Not Track signal is
+  opted out automatically and never sees the banner. The demo build has no login page to show a
+  banner on (visitors skip straight to `/dashboard`), so it keeps loading analytics unconditionally
+  once the env var is set, unchanged from before — a gap to revisit if the demo needs the same
+  consent flow later.
+
 ## 3.4.0
 
 ### Added

@@ -52,6 +52,13 @@
     "openDocumentation": "Open documentation",
     "viewDocumentation": "View documentation →"
   },
+  "cookieConsent": {
+    "title": "Cookie consent",
+    "message": "We use Google Analytics on this site to understand visitor traffic. You can accept or decline.",
+    "privacyLink": "Privacy Policy",
+    "accept": "Accept",
+    "decline": "Decline"
+  },
   "legalPage": {
     "lastUpdated": "Last updated: {date}",
     "termsOfService": "Terms of Service",

@@ -52,6 +52,13 @@
     "openDocumentation": "Abrir documentación",
     "viewDocumentation": "Ver documentación →"
   },
+  "cookieConsent": {
+    "title": "Consentimiento de cookies",
+    "message": "Utilizamos Google Analytics en este sitio para entender el tráfico de visitantes. Puedes aceptar o rechazar.",
+    "privacyLink": "Política de privacidad",
+    "accept": "Aceptar",
+    "decline": "Rechazar"
+  },
   "legalPage": {
     "lastUpdated": "Última actualización: {date}",
     "termsOfService": "Términos de servicio",

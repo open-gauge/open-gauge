@@ -80,3 +80,30 @@ node scripts/generate-demo-data.mjs
 
 Cloudflare rebuilds automatically on every push to `main`, so the demo always
 tracks the latest UI — no separate deploy workflow needed.
+
+## Google Analytics (project-operated deployments only)
+
+`src/components/google-analytics.tsx` conditionally loads gtag.js when
+`NEXT_PUBLIC_GA_MEASUREMENT_ID` is set at build time. It covers both the
+landing/login page and every route under the demo build, since both are
+rendered by the same root layout (`src/app/[locale]/layout.tsx`).
+
+This variable must only be set in the build environment of the project's own
+deployments — the marketing/login site's Cloudflare Pages project *and*,
+separately, the `demo.opengauge.org` Cloudflare Pages project. Each is its own
+project with its own **Settings → Environment variables**; setting it on one
+does not set it on the other, and since `NEXT_PUBLIC_*` values are inlined at
+build time, a fresh deploy is required after adding it (a push to the tracked
+branch triggers one automatically for both). **Never** add it to
+`infrastructure/docker/.env.example` or any self-hosted Operator's `.env`: the
+Privacy Policy template shipped with the app (`privacy/page.tsx`) states that
+self-hosted Instances stay free of third-party analytics, and this component
+only discloses Google Analytics on the privacy page when the variable is
+actually present, so self-hosted builds render unaffected by default.
+
+On the marketing/login page, `<GoogleAnalytics />` additionally waits for consent: it won't
+load gtag.js until `<CookieConsentBanner />` (`src/components/cookie-consent-banner.tsx`)
+records an explicit "granted" decision (`src/lib/consent.ts`). A visitor who already sends a
+Global Privacy Control or Do Not Track signal is opted out automatically, without seeing the
+banner. The demo build has no login page (visitors skip straight to `/dashboard`), so it has no
+banner either and keeps loading analytics unconditionally once the env var is set.
