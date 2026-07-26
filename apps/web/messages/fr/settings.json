@@ -1,0 +1,92 @@
+{
+  "page": {
+    "title": "Paramètres",
+    "subtitle": "Gérez votre profil et votre espace de travail"
+  },
+  "nav": {
+    "account": "Compte",
+    "profile": "Profil",
+    "notifications": "Notifications",
+    "deleteAccount": "Supprimer le compte"
+  },
+  "profilePicture": {
+    "title": "Photo de profil",
+    "hint": "JPG, PNG ou GIF. 5 Mo maximum.",
+    "errorUpload": "Échec de l'envoi de la photo",
+    "errorRemove": "Échec de la suppression de la photo"
+  },
+  "signature": {
+    "title": "Signature",
+    "loading": "Chargement…",
+    "saving": "Enregistrement…",
+    "replace": "Remplacer",
+    "uploadImage": "Importer une image",
+    "draw": "Dessiner",
+    "remove": "Supprimer",
+    "hint": "PNG à fond transparent. Signée cryptographiquement et utilisée pour signer les certificats que vous établissez.",
+    "verified": "Vérifiée",
+    "notVerified": "Non vérifiée",
+    "verify": "Vérifier",
+    "verifying": "Vérification…",
+    "fingerprintTitle": "Empreinte de clé publique Ed25519 : {fingerprint}",
+    "previewTitle": "Signature",
+    "previewAlt": "Signature",
+    "errorLoad": "Échec du chargement de la signature",
+    "errorUpload": "Échec de l'envoi de la signature",
+    "errorSave": "Échec de l'enregistrement de la signature",
+    "errorRemove": "Échec de la suppression de la signature",
+    "errorVerify": "Échec de la vérification de la signature"
+  },
+  "displayName": {
+    "title": "Nom affiché",
+    "label": "Nom",
+    "placeholder": "Votre nom affiché",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "edit": "Modifier",
+    "errorSave": "Échec de l'enregistrement"
+  },
+  "email": {
+    "title": "Adresse e-mail",
+    "label": "E-mail",
+    "placeholder": "vous@exemple.com",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "edit": "Modifier",
+    "errorSave": "Échec de l'enregistrement"
+  },
+  "password": {
+    "title": "Changer le mot de passe",
+    "updated": "Mot de passe mis à jour",
+    "currentLabel": "Mot de passe actuel",
+    "newLabel": "Nouveau mot de passe",
+    "newHint": "(8 caractères minimum)",
+    "confirmLabel": "Confirmer le nouveau mot de passe",
+    "mismatch": "Les mots de passe ne correspondent pas",
+    "submit": "Mettre à jour le mot de passe",
+    "saving": "Enregistrement…",
+    "errorSave": "Échec du changement de mot de passe"
+  },
+  "notifications": {
+    "title": "Préférences de notification",
+    "loading": "Chargement…",
+    "errorLoad": "Échec du chargement des préférences",
+    "errorSave": "Échec de l'enregistrement",
+    "columnType": "Type de notification",
+    "columnEmail": "E-mail",
+    "columnInternal": "Interne"
+  },
+  "deleteAccount": {
+    "title": "Supprimer le compte",
+    "warningTitle": "Cette action est définitive et irréversible.",
+    "warningBody": "Votre compte sera désactivé. Tous les enregistrements de calibration et les données que vous avez créés seront conservés à des fins de traçabilité, mais vous ne pourrez plus vous connecter.",
+    "confirmPrefix": "Saisissez",
+    "confirmSuffix": "pour confirmer",
+    "confirmPhrase": "supprimer mon compte",
+    "submit": "Supprimer mon compte",
+    "deleting": "Suppression…",
+    "errorDelete": "Échec de la suppression du compte"
+  }
+}

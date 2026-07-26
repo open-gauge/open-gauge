@@ -8,7 +8,7 @@ function tokenHeader(): Record<string, string> {
   return authHeader(token);
 }
 
-export async function updateMe(body: { name?: string; email?: string }): Promise<UserProfile> {
+export async function updateMe(body: { name?: string; email?: string; language?: string }): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/v1/users/me", {
     method: "PATCH",
     headers: { ...tokenHeader(), "Content-Type": "application/json" },

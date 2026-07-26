@@ -1,0 +1,14 @@
+{
+  "detail": {
+    "back": "Atrás",
+    "loading": "Cargando…",
+    "active": "Activo",
+    "disabled": "Deshabilitado",
+    "email": "Correo",
+    "role": "Rol",
+    "status": "Estado",
+    "memberSince": "Miembro desde",
+    "activityLog": "Registro de actividad",
+    "viewActivity": "Ver actividad"
+  }
+}

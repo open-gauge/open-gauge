@@ -1,0 +1,70 @@
+{
+  "page": {
+    "title": "Tableau de bord des opérations",
+    "subtitle": "État en temps réel de tous les sites, laboratoires et instruments."
+  },
+  "cards": {
+    "registeredAssets": "Actifs enregistrés",
+    "assetsCenter": "Actifs",
+    "sensors": "Capteurs",
+    "sensorsCenter": "Capteurs",
+    "daqUnits": "Unités DAQ",
+    "daqCenter": "DAQ",
+    "procedures": "Procédures",
+    "proceduresCenter": "Procédures",
+    "filterTitle": "Voir dans le registre des actifs"
+  },
+  "calStatus": {
+    "valid": "Calibré",
+    "due_soon": "Échéance proche",
+    "expired": "En retard",
+    "not_calibrated": "Non calibré"
+  },
+  "activity": {
+    "title": "Activité",
+    "subtitle": "Événements d'audit récents",
+    "viewAll": "Tout voir",
+    "minAgo": "il y a {count} min",
+    "hoursAgo": "il y a {count} h",
+    "yesterday": "hier",
+    "daysAgo": "il y a {count} jours"
+  },
+  "calendar": {
+    "title": "Activité de calibration",
+    "subtitle": "Calibrations effectuées et échéances pour tous les actifs",
+    "prevYear": "Année précédente",
+    "nextYear": "Année suivante",
+    "monthShort": ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
+    "dayLabels": ["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"],
+    "legendNone": "Aucun événement",
+    "legendPerformed": "Calibré",
+    "legendUpcoming": "Échéance à venir",
+    "legendExpired": "En retard",
+    "tooltipCalibrated": "Calibré",
+    "tooltipOverdue": "En retard",
+    "tooltipDue": "À échéance"
+  },
+  "categoryDistribution": {
+    "title": "Répartition des actifs",
+    "subtitle": "Capteurs par type · DAQ par interface",
+    "sensorLabel": "Capteur",
+    "daqLabel": "DAQ",
+    "noSensors": "Aucun capteur",
+    "noDaqs": "Aucun DAQ"
+  },
+  "recentAssets": {
+    "title": "Actifs récemment mis à jour",
+    "subtitle": "Modifications les plus récentes, tous emplacements confondus",
+    "sensor": "Capteur",
+    "daq": "DAQ"
+  },
+  "upcoming": {
+    "title": "Calibrations à venir",
+    "subtitle": "Échéances les plus proches en premier — cliquez pour ouvrir l'actif",
+    "viewAll": "Tout voir",
+    "empty": "Aucune calibration programmée",
+    "overdue": "en retard de {days} j",
+    "dueToday": "Échéance aujourd'hui",
+    "inDays": "Dans {days} jours"
+  }
+}

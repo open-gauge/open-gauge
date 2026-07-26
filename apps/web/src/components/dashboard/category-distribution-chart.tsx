@@ -1,8 +1,10 @@
 "use client";
 
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import { useTranslations } from "next-intl";
 import type { AssetTypeDistribution } from "@/types/dashboard";
-import { SUBTYPE_COLOR, SUBTYPE_LABEL } from "@/lib/tokens";
+import { SUBTYPE_COLOR } from "@/lib/tokens";
+import { translateDynamic } from "@/lib/translate-dynamic";
 
 interface PieData {
   name: string;
@@ -10,9 +12,12 @@ interface PieData {
   color: string;
 }
 
-function buildPieData(items: { type: string; count: number }[]): PieData[] {
+function buildPieData(
+  items: { type: string; count: number }[],
+  tSubtype: ReturnType<typeof useTranslations>,
+): PieData[] {
   return items.map((item) => ({
-    name:  SUBTYPE_LABEL[item.type] ?? item.type,
+    name:  translateDynamic(tSubtype, item.type),
     value: item.count,
     color: SUBTYPE_COLOR[item.type] ?? "#6b7280",
   }));
@@ -23,10 +28,11 @@ const EMPTY_DATA: PieData[] = [{ name: "empty", value: 1, color: "#e5e7eb" }];
 interface SinglePieProps {
   data: PieData[];
   label: string;
+  emptyLabel: string;
   total: number;
 }
 
-function SinglePie({ data, label, total }: SinglePieProps) {
+function SinglePie({ data, label, emptyLabel, total }: SinglePieProps) {
   const isEmpty = total === 0;
   const displayData = isEmpty ? EMPTY_DATA : data;
 
@@ -74,7 +80,7 @@ function SinglePie({ data, label, total }: SinglePieProps) {
 
       <div className="w-full space-y-1.5 px-1">
         {isEmpty ? (
-          <p className="text-center text-[10px] text-gray-400">No {label.toLowerCase()}s</p>
+          <p className="text-center text-[10px] text-gray-400">{emptyLabel}</p>
         ) : (
           data.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -90,22 +96,24 @@ function SinglePie({ data, label, total }: SinglePieProps) {
 }
 
 export default function CategoryDistributionChart({ data }: { data: AssetTypeDistribution }) {
-  const sensorData = buildPieData(data.sensors);
-  const daqData = buildPieData(data.daqs);
+  const t = useTranslations("dashboard.categoryDistribution");
+  const tSubtype = useTranslations("tokens.subtype");
+  const sensorData = buildPieData(data.sensors, tSubtype);
+  const daqData = buildPieData(data.daqs, tSubtype);
   const sensorTotal = data.sensors.reduce((s, d) => s + d.count, 0);
   const daqTotal = data.daqs.reduce((s, d) => s + d.count, 0);
 
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 h-full">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-og-text">Asset distribution</h3>
-        <p className="text-xs text-gray-400 mt-0.5">Sensors by type · DAQs by interface</p>
+        <h3 className="text-sm font-semibold text-og-text">{t("title")}</h3>
+        <p className="text-xs text-gray-400 mt-0.5">{t("subtitle")}</p>
       </div>
 
       <div className="flex gap-4 items-start">
-        <SinglePie data={sensorData} label="Sensor" total={sensorTotal} />
+        <SinglePie data={sensorData} label={t("sensorLabel")} emptyLabel={t("noSensors")} total={sensorTotal} />
         <div className="w-px self-stretch bg-og-border" />
-        <SinglePie data={daqData} label="DAQ" total={daqTotal} />
+        <SinglePie data={daqData} label={t("daqLabel")} emptyLabel={t("noDaqs")} total={daqTotal} />
       </div>
     </div>
   );

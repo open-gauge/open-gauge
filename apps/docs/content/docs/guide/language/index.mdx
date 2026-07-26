@@ -1,0 +1,65 @@
+---
+title: Language & localization
+description: Switching the app's display language, how the preference is stored, and what stays English-only.
+---
+
+Open Gauge's web app is available in English (the canonical language), Spanish, French, and
+German. Each user picks their own display language independently of everyone else in their
+organization.
+
+## Switching language
+
+Click the globe icon next to the light/dark theme toggle in the top bar, and pick a language from
+the dropdown. The page reloads immediately in the new language — there's no separate save step.
+
+## Where the preference is stored
+
+The choice is saved in two places so it behaves correctly whether or not you're signed in:
+
+- **A cookie**, set the moment you pick a language. This is what a signed-out visitor's choice
+  relies on, and it also gives an immediate switch before any server round-trip.
+- **Your user profile** (once signed in) — the same `PATCH /users/me` request used for your name
+  and email also accepts a `language` field. On your next sign-in from a different browser or
+  device, your saved profile language wins over that device's cookie or browser locale, so your
+  preference follows you around rather than being tied to one machine.
+
+## URL structure
+
+English pages are unprefixed (`/dashboard`, `/assets`, …). Spanish, French, and German pages carry
+a locale prefix (`/es/dashboard`, `/fr/assets`, `/de/...`). This means every link and bookmark that
+existed before multilingual support shipped keeps working exactly as it did — only non-English
+locales gained a prefix, nothing changed for English.
+
+## What's translated — and what isn't
+
+Every page and control in the authenticated app is translated: navigation, forms, tables, modals,
+error and empty states, the admin screens, and the sign-in/register/forgot-password/reset-password/
+verify-email flow.
+
+Two categories are deliberately **not** translated, on purpose rather than by omission:
+
+- **User-entered content** — asset names, calibration notes, audit-log free text, and anything
+  else a person typed in. Machine-translating someone else's data would silently change what they
+  wrote; it's shown back exactly as entered, regardless of the viewer's chosen language.
+- **The Privacy Policy and Terms of Service pages** — these are legal documents, shipped as an
+  editable template that operators are expected to have reviewed by their own counsel (see the
+  note at the bottom of each page). Machine-translating legal text carries real accuracy risk, so
+  both pages stay English-only for every viewer, independent of their selected app language.
+
+## The marketing site
+
+The separate marketing site at [opengauge.org](https://opengauge.org) — a different codebase from
+the app itself — has its own matching language switcher next to its light/dark toggle, with full
+Spanish, French, and German versions of the homepage. First-time visitors are redirected based on
+their browser's `Accept-Language` header; picking a language explicitly overrides that for future
+visits. Its Privacy Policy and Terms of Service pages are English-only for the same reason as the
+app's.
+
+## Adding a language (for self-hosters modifying their own instance)
+
+The app's locale list is a single config array
+(`apps/web/src/i18n/locales.ts`) plus one JSON message file per feature area under
+`apps/web/messages/{locale}/`. Supporting an additional language is a content-only change — add a
+`LocaleMeta` entry and the translated JSON files; no application code needs to change. This isn't
+something a running instance can do without rebuilding the app, though — it's a source change for
+whoever maintains the deployment, not an in-app setting.

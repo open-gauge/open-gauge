@@ -9,7 +9,9 @@ import type {
 } from "@/types/calibration";
 import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listProcedures } from "@/services/asset.service";
 import { listCalibrationLabs } from "@/services/location.service";
-import { COLORS, DECISION_RULE_LABEL, UNCERTAINTY_SOURCE_LABEL } from "@/lib/tokens";
+import { useTranslations } from "next-intl";
+import { COLORS } from "@/lib/tokens";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
 import { getUnitsForQuantity, getOutputUnits, resolveSpecValue } from "@/lib/sensor-options";
 import { useAuth } from "@/lib/auth-context";
@@ -65,6 +67,7 @@ function WSelect({
   options: { value: string; label: string }[];
   required?: boolean; placeholder?: string;
 }) {
+  const t = useTranslations("assets.fields");
   return (
     <div className="flex flex-col gap-1">
       <WLabel text={label} required={required} />
@@ -73,7 +76,7 @@ function WSelect({
         onChange={(e) => onChange(e.target.value)}
         className={`${IB} ${IB_OK}`}
       >
-        <option value="">{placeholder ?? "Select…"}</option>
+        <option value="">{placeholder ?? t("select")}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -142,8 +145,8 @@ function todayIso(): string {
 const SUPERS: Record<number, string> = { 2: "²", 3: "³", 4: "⁴", 5: "⁵" };
 
 // Label for a polynomial coefficient's power of x, e.g. "× x²", "× x", "Constant".
-function coeffPowerLabel(power: number): string {
-  if (power === 0) return "Constant";
+function coeffPowerLabel(power: number, t: ReturnType<typeof useTranslations>): string {
+  if (power === 0) return t("constant");
   if (power === 1) return "× x";
   return `× x${SUPERS[power] ?? `^${power}`}`;
 }
@@ -223,6 +226,8 @@ interface CalibrationWizardProps {
 }
 
 export function CalibrationWizard({ assetId, profile, onClose, onSaved }: CalibrationWizardProps) {
+  const t = useTranslations("assets.wizard");
+  const tDecisionRule = useTranslations("tokens.decisionRule");
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -715,7 +720,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       setConfirmOpen(false);
       onSaved();
     } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : "Failed to save calibration");
+      setSaveError(e instanceof Error ? e.message : t("errorSaveCalibration"));
     } finally {
       setSaving(false);
     }
@@ -735,13 +740,15 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-og-border shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-og-text">Add Calibration Record</h2>
+            <h2 className="text-base font-semibold text-og-text">{t("addCalibrationRecord")}</h2>
             <p className="text-xs text-gray-400 mt-0.5">{profile.name} · {profile.asset_id}</p>
           </div>
           <div className="flex items-center gap-6">
             <StepIndicator
               step={step}
-              steps={step1.coefficients_only ? ["General Info", "Coefficients", "Review"] : ["General Info", "Raw Data", "Analysis"]}
+              steps={step1.coefficients_only
+                ? [t("stepGeneralInfo"), t("stepCoefficients"), t("stepReview")]
+                : [t("stepGeneralInfo"), t("stepRawData"), t("stepAnalysis")]}
             />
             <button
               type="button"
@@ -832,7 +839,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
             disabled={step === 1}
             className="px-4 py-2 text-sm font-medium rounded-lg border border-og-border-md text-og-text hover:bg-og-surface-alt disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            Back
+            {t("back")}
           </button>
 
           {step < 3 ? (
@@ -846,7 +853,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               disabled={(step === 1 && !step1Valid) || (step === 2 && !step2Valid)}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-og-action hover:bg-og-action-dark text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Next
+              {t("next")}
             </button>
           ) : (
             <button
@@ -855,7 +862,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               disabled={step1.coefficients_only ? !manualCoeffValid : (analyzing || !analysisResult)}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Confirm &amp; Save
+              {t("confirmAndSave")}
             </button>
           )}
         </div>
@@ -865,12 +872,12 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
       {confirmOpen && (
         <div className="absolute inset-0 z-20 flex items-center justify-center">
           <div className="bg-og-surface border border-og-border rounded-xl shadow-2xl p-6 w-96 mx-auto">
-            <h3 className="text-sm font-semibold text-og-text mb-3">Save calibration record?</h3>
+            <h3 className="text-sm font-semibold text-og-text mb-3">{t("saveCalibrationRecord")}</h3>
             {hasConformityCheck && conformityStatement!.passed && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 mb-3">
                 <CheckIcon size={13} className="text-emerald-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                  Conforms to {conformityStatement!.specification} under the {DECISION_RULE_LABEL[conformityStatement!.decision_rule] ?? conformityStatement!.decision_rule} rule. You can safely save this record.
+                  {t("conformsMessage", { specification: conformityStatement!.specification ?? "", rule: translateDynamic(tDecisionRule, conformityStatement!.decision_rule) })}
                 </p>
               </div>
             )}
@@ -878,12 +885,12 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 mb-3">
                 <WarningIcon size={13} className="text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  This calibration does not conform to {conformityStatement!.specification} under the {DECISION_RULE_LABEL[conformityStatement!.decision_rule] ?? conformityStatement!.decision_rule} rule. Do you want to save it anyway?
+                  {t("doesNotConformMessage", { specification: conformityStatement!.specification ?? "", rule: translateDynamic(tDecisionRule, conformityStatement!.decision_rule) })}
                 </p>
               </div>
             )}
             <p className="text-xs text-gray-400 mb-4">
-              This will permanently create a new calibration version. Calibration records cannot be modified after creation.
+              {t("permanentVersionHint")}
             </p>
             {saveError && <p className="text-xs text-red-500 mb-3">{saveError}</p>}
             <div className="flex gap-2 justify-end">
@@ -893,7 +900,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
                 disabled={saving}
                 className="px-3 py-1.5 text-sm rounded-lg border border-og-border-md text-og-text hover:bg-og-surface-alt transition-colors"
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -906,7 +913,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
                 }`}
               >
                 {saving && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                {hasConformityCheck && !conformityStatement!.passed ? "Save anyway" : "Save"}
+                {hasConformityCheck && !conformityStatement!.passed ? t("saveAnyway") : t("save")}
               </button>
             </div>
           </div>
@@ -934,6 +941,7 @@ function Step1({
   onReferenceUnitChange: (u: string) => void;
   onMeasuredUnitChange: (u: string) => void;
 }) {
+  const t = useTranslations("assets.wizard");
   const set = (key: keyof Step1State) => (value: string | boolean) =>
     onChange({ ...state, [key]: value });
 
@@ -945,7 +953,7 @@ function Step1({
       <div className={`grid gap-4 ${profile.sensor_channels.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
         {profile.sensor_channels.length > 1 && (
           <WSelect
-            label="Channel"
+            label={t("channel")}
             value={state.sensor_id}
             onChange={(v) => {
               const ch = profile.sensor_channels.find((c) => c.id === v);
@@ -961,7 +969,7 @@ function Step1({
           />
         )}
         <WInput
-          label="Calibration date"
+          label={t("calibrationDate")}
           type="date"
           value={state.calibration_date}
           onChange={set("calibration_date")}
@@ -972,7 +980,7 @@ function Step1({
       <div className="grid grid-cols-2 gap-4">
         {/* Performed by: dropdown with current user + Other */}
         <div className="flex flex-col gap-1">
-          <WLabel text="Performed by" required />
+          <WLabel text={t("performedBy")} required />
           {!state.performed_by_other ? (
             <select
               value={state.performed_by_name || currentUserName}
@@ -986,7 +994,7 @@ function Step1({
               className={`${IB} ${IB_OK}`}
             >
               <option value={currentUserName}>{currentUserName}</option>
-              <option value="__other__">Other…</option>
+              <option value="__other__">{t("other")}</option>
             </select>
           ) : (
             <div className="flex items-center gap-2">
@@ -994,13 +1002,13 @@ function Step1({
                 type="text"
                 value={state.performed_by_name}
                 onChange={(e) => onChange({ ...state, performed_by_name: e.target.value })}
-                placeholder="Name or organization"
+                placeholder={t("nameOrOrganization")}
                 className={`${IB} ${IB_OK} flex-1`}
                 autoFocus
               />
               <button
                 type="button"
-                title="Use my name"
+                title={t("useMyName")}
                 onClick={() => onChange({ ...state, performed_by_other: false, performed_by_name: currentUserName })}
                 className="shrink-0 text-gray-400 hover:text-og-text text-lg leading-none px-1"
               >
@@ -1010,7 +1018,7 @@ function Step1({
           )}
         </div>
         <WInput
-          label="Calibration interval (months)"
+          label={t("calibrationIntervalMonths")}
           type="number"
           value={state.calibration_interval}
           onChange={set("calibration_interval") as (v: string) => void}
@@ -1022,21 +1030,21 @@ function Step1({
       {/* Calibration type + lab */}
       <div className="grid grid-cols-2 gap-4">
         <WSelect
-          label="Calibration type"
+          label={t("calibrationType")}
           value={state.calibration_type}
           onChange={set("calibration_type") as (v: string) => void}
           options={[
-            { value: "external", label: "External" },
-            { value: "internal", label: "Internal" },
+            { value: "external", label: t("external") },
+            { value: "internal", label: t("internal") },
           ]}
           required
         />
         <WSelect
-          label="Calibration lab"
+          label={t("calibrationLab")}
           value={state.calibration_location_id}
           onChange={set("calibration_location_id") as (v: string) => void}
           options={calibrationLabs.map((l) => ({ value: l.id, label: l.name }))}
-          placeholder={calibrationLabs.length === 0 ? "No calibration labs configured" : "Select lab…"}
+          placeholder={calibrationLabs.length === 0 ? t("noLabsConfigured") : t("selectLab")}
         />
       </div>
 
@@ -1044,12 +1052,12 @@ function Step1({
       {state.calibration_type === "external" && (
         <div className="space-y-4 pl-4 border-l-2 border-og-border">
           <div className="grid grid-cols-2 gap-4">
-            <WInput label="Calibration provider" value={state.external_lab_name} onChange={set("external_lab_name") as (v: string) => void} />
-            <WInput label="Certificate number" value={state.external_lab_certificate_number} onChange={set("external_lab_certificate_number") as (v: string) => void} />
+            <WInput label={t("calibrationProvider")} value={state.external_lab_name} onChange={set("external_lab_name") as (v: string) => void} />
+            <WInput label={t("certificateNumber")} value={state.external_lab_certificate_number} onChange={set("external_lab_certificate_number") as (v: string) => void} />
           </div>
           <div className="flex items-center pt-1">
             <WCheckbox
-              label="Coefficients only (no raw data)"
+              label={t("coefficientsOnlyLabel")}
               checked={state.coefficients_only}
               onChange={set("coefficients_only") as (v: boolean) => void}
             />
@@ -1062,18 +1070,18 @@ function Step1({
         <div className="space-y-4 pl-4 border-l-2 border-og-border">
           <div className="grid grid-cols-2 gap-4">
             <WSelect
-              label="Reference asset"
+              label={t("referenceAsset")}
               value={state.internal_reference_asset_id}
               onChange={set("internal_reference_asset_id") as (v: string) => void}
               options={referenceAssets.map((a) => ({ value: a.id, label: `${a.name} (${a.asset_id})` }))}
-              placeholder="Select reference…"
+              placeholder={t("selectReference")}
             />
             <WSelect
-              label="Calibration method"
+              label={t("calibrationMethod")}
               value={state.internal_procedure_id}
               onChange={set("internal_procedure_id") as (v: string) => void}
               options={calibrationMethods.map((m) => ({ value: m.id, label: m.name }))}
-              placeholder="Select method…"
+              placeholder={t("selectMethod")}
             />
           </div>
         </div>
@@ -1086,37 +1094,37 @@ function Step1({
           onClick={() => onChange({ ...state, env_expanded: !state.env_expanded })}
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-og-text hover:bg-og-surface-alt transition-colors"
         >
-          <span>Environmental conditions <span className="text-xs text-gray-400 font-normal ml-1">(optional)</span></span>
+          <span>{t("environmentalConditions")} <span className="text-xs text-gray-400 font-normal ml-1">{t("optional")}</span></span>
           <ChevronDownIcon size={14} className={`text-gray-400 transition-transform ${state.env_expanded ? "rotate-180" : ""}`} />
         </button>
         {state.env_expanded && (
           <div className="px-4 pb-4 pt-2 space-y-4 border-t border-og-border">
             {(() => {
               const numErr = (v: string) =>
-                v.trim() !== "" && isNaN(parseFloat(v.trim())) ? "Must be a number" : undefined;
+                v.trim() !== "" && isNaN(parseFloat(v.trim())) ? t("mustBeNumber") : undefined;
               return (
                 <>
                   <div className="grid grid-cols-3 gap-3">
-                    <WInput label="Temperature" value={state.temperature_value}
+                    <WInput label={t("temperature")} value={state.temperature_value}
                       onChange={set("temperature_value") as (v: string) => void}
                       placeholder="e.g. 23" error={numErr(state.temperature_value)} />
-                    <WSelect label="Unit" value={state.temperature_unit}
+                    <WSelect label={t("unit")} value={state.temperature_unit}
                       onChange={set("temperature_unit") as (v: string) => void}
                       options={[{ value: "°C", label: "°C" }, { value: "K", label: "K" }, { value: "°F", label: "°F" }]} />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <WInput label="Pressure" value={state.pressure_value}
+                    <WInput label={t("pressure")} value={state.pressure_value}
                       onChange={set("pressure_value") as (v: string) => void}
                       placeholder="e.g. 1013.25" error={numErr(state.pressure_value)} />
-                    <WSelect label="Unit" value={state.pressure_unit}
+                    <WSelect label={t("unit")} value={state.pressure_unit}
                       onChange={set("pressure_unit") as (v: string) => void}
                       options={[{ value: "hPa", label: "hPa" }, { value: "Pa", label: "Pa" }, { value: "bar", label: "bar" }, { value: "psi", label: "psi" }]} />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <WInput label="Humidity" value={state.humidity_value}
+                    <WInput label={t("humidity")} value={state.humidity_value}
                       onChange={set("humidity_value") as (v: string) => void}
                       placeholder="e.g. 45" error={numErr(state.humidity_value)} />
-                    <WSelect label="Unit" value={state.humidity_unit}
+                    <WSelect label={t("unit")} value={state.humidity_unit}
                       onChange={set("humidity_unit") as (v: string) => void}
                       options={[{ value: "%RH", label: "%RH" }]} />
                   </div>
@@ -1129,12 +1137,12 @@ function Step1({
 
       {/* Notes */}
       <div className="flex flex-col gap-1">
-        <WLabel text="Notes" />
+        <WLabel text={t("notes")} />
         <textarea
           value={state.notes}
           onChange={(e) => set("notes")(e.target.value)}
           rows={2}
-          placeholder="Any additional notes…"
+          placeholder={t("notesPlaceholder")}
           className={`${IB} ${IB_OK} resize-none`}
         />
       </div>
@@ -1165,6 +1173,7 @@ function Step2({
   onFileUpload: (f: File) => void;
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
 }) {
+  const t = useTranslations("assets.wizard");
   const [dragging, setDragging] = useState(false);
 
   function updatePoint(idx: number, key: "reference" | "measured", val: string) {
@@ -1200,7 +1209,7 @@ function Step2({
       {/* Unit selectors */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <WLabel text="Reference unit" />
+          <WLabel text={t("referenceUnit")} />
           <select
             value={referenceUnit}
             onChange={(e) => onReferenceUnitChange(e.target.value)}
@@ -1212,7 +1221,7 @@ function Step2({
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <WLabel text="Measured unit" />
+          <WLabel text={t("measuredUnit")} />
           <select
             value={measuredUnit}
             onChange={(e) => onMeasuredUnitChange(e.target.value)}
@@ -1236,7 +1245,7 @@ function Step2({
               inputMode === m ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
             }`}
           >
-            {m === "manual" ? "Manual entry" : "CSV upload"}
+            {m === "manual" ? t("manualEntry") : t("csvUpload")}
           </button>
         ))}
       </div>
@@ -1250,10 +1259,10 @@ function Step2({
                 <tr className="border-b border-og-border bg-og-surface-alt">
                   <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium w-10">#</th>
                   <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
-                    Reference {referenceUnit && <span className="font-mono ml-1">({referenceUnit})</span>}
+                    {t("reference")} {referenceUnit && <span className="font-mono ml-1">({referenceUnit})</span>}
                   </th>
                   <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
-                    Measured {measuredUnit && <span className="font-mono ml-1">({measuredUnit})</span>}
+                    {t("measured")} {measuredUnit && <span className="font-mono ml-1">({measuredUnit})</span>}
                   </th>
                   <th className="w-10" />
                 </tr>
@@ -1304,7 +1313,7 @@ function Step2({
             className="flex items-center gap-1.5 text-xs text-og-accent hover:text-og-accent-dark font-medium transition-colors"
           >
             <PlusIcon size={13} />
-            Add row
+            {t("addRow")}
           </button>
         </div>
       )}
@@ -1332,8 +1341,8 @@ function Step2({
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileUpload(f); }}
             />
-            <p className="text-sm font-medium text-og-text">Drop CSV file here or click to browse</p>
-            <p className="text-xs text-gray-400 mt-1">Expected format: header row (Reference, Measured), then data rows</p>
+            <p className="text-sm font-medium text-og-text">{t("dropCsvHint")}</p>
+            <p className="text-xs text-gray-400 mt-1">{t("csvFormatHint")}</p>
           </div>
           {csvError && (
             <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-900/30">
@@ -1358,6 +1367,7 @@ function ManualCoefficientsStep({
   onChange: (s: ManualCoeffState) => void;
   referenceUnit: string;
 }) {
+  const t = useTranslations("assets.wizard");
   function setOrder(order: number) {
     const coefficients = [...state.coefficients];
     while (coefficients.length < order + 1) coefficients.push("");
@@ -1377,11 +1387,11 @@ function ManualCoefficientsStep({
   return (
     <div className="p-6 space-y-5">
       <p className="text-xs text-gray-400">
-        Enter the calibration coefficients directly from the certificate — no raw data points are required in this mode.
+        {t("manualCoeffHint")}
       </p>
 
       <div className="flex flex-col gap-1 w-40">
-        <WLabel text="Polynomial order" required />
+        <WLabel text={t("polynomialOrder")} required />
         <select
           value={state.poly_order}
           onChange={(e) => setOrder(parseInt(e.target.value))}
@@ -1397,7 +1407,7 @@ function ManualCoefficientsStep({
           return (
             <WInput
               key={i}
-              label={`Coefficient (${coeffPowerLabel(power)})`}
+              label={t("coefficientLabel", { power: coeffPowerLabel(power, t) })}
               type="number"
               value={c}
               onChange={(v) => setCoeff(i, v)}
@@ -1410,21 +1420,21 @@ function ManualCoefficientsStep({
 
       {previewValid && (
         <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
-          <span className="text-[11px] text-gray-400 mr-2">Equation</span>
+          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
           <span className="text-xs font-mono text-og-text">{formatEquation(numericCoeffs, state.poly_order)}</span>
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-4">
         <WInput
-          label={`Valid range min${referenceUnit ? ` (${referenceUnit})` : ""}`}
+          label={referenceUnit ? t("validRangeMinUnit", { unit: referenceUnit }) : t("validRangeMin")}
           type="number"
           value={state.range_min}
           onChange={(v) => onChange({ ...state, range_min: v })}
           required
         />
         <WInput
-          label={`Valid range max${referenceUnit ? ` (${referenceUnit})` : ""}`}
+          label={referenceUnit ? t("validRangeMaxUnit", { unit: referenceUnit }) : t("validRangeMax")}
           type="number"
           value={state.range_max}
           onChange={(v) => onChange({ ...state, range_max: v })}
@@ -1435,7 +1445,7 @@ function ManualCoefficientsStep({
       <div className="border border-og-border rounded-lg overflow-hidden">
         <div className="px-4 py-3">
           <WCheckbox
-            label="Uncertainty stated on certificate"
+            label={t("uncertaintyStatedOnCert")}
             checked={state.has_uncertainty}
             onChange={(v) => onChange({ ...state, has_uncertainty: v })}
           />
@@ -1443,14 +1453,14 @@ function ManualCoefficientsStep({
         {state.has_uncertainty && (
           <div className="px-4 pb-4 pt-1 grid grid-cols-2 gap-4 border-t border-og-border">
             <WInput
-              label={`Expanded uncertainty (±)${referenceUnit ? ` (${referenceUnit})` : ""}`}
+              label={referenceUnit ? t("expandedUncertaintyUnit", { unit: referenceUnit }) : t("expandedUncertainty")}
               type="number"
               value={state.expanded_uncertainty}
               onChange={(v) => onChange({ ...state, expanded_uncertainty: v })}
               required
             />
             <WInput
-              label="Coverage factor k"
+              label={t("coverageFactorK")}
               type="number"
               value={state.coverage_factor}
               onChange={(v) => onChange({ ...state, coverage_factor: v })}
@@ -1517,6 +1527,9 @@ function Step3({
   referenceStandardManualCoverageFactor: string;
   onReferenceStandardManualCoverageFactorChange: (v: string) => void;
 }) {
+  const t = useTranslations("assets.wizard");
+  const tUncertaintySource = useTranslations("tokens.uncertaintySource");
+  const tDecisionRule = useTranslations("tokens.decisionRule");
   const [rightView, setRightView] = useState<"chart" | "table">("chart");
   const plotDivRef = useRef<HTMLDivElement>(null);
   const plotlyRef = useRef<typeof import("plotly.js-dist-min").default | null>(null);
@@ -1575,10 +1588,10 @@ function Step3({
           },
           customdata: scatter.map((d) => [d.idx + 1, d.residual] as [number, number]),
           hovertemplate:
-            `<b>Point %{customdata[0]}</b><br>` +
-            `Measured: %{x:.4g} ${measuredUnit}<br>` +
-            `Reference: %{y:.4g} ${referenceUnit}<br>` +
-            `Residual: %{customdata[1]:.4g} ${referenceUnit}` +
+            `<b>${t("hoverPoint")} %{customdata[0]}</b><br>` +
+            `${t("measured")}: %{x:.4g} ${measuredUnit}<br>` +
+            `${t("reference")}: %{y:.4g} ${referenceUnit}<br>` +
+            `${t("residual")}: %{customdata[1]:.4g} ${referenceUnit}` +
             `<extra></extra>`,
           showlegend: false,
         },
@@ -1589,7 +1602,7 @@ function Step3({
         paper_bgcolor: "transparent",
         plot_bgcolor: "transparent",
         xaxis: {
-          title: { text: `Measured (${measuredUnit})`, font: { size: 10, color: "#9ca3af" } },
+          title: { text: `${t("measured")} (${measuredUnit})`, font: { size: 10, color: "#9ca3af" } },
           tickfont: { size: 10, color: "#9ca3af" },
           gridcolor: "rgba(156,163,175,0.15)",
           linecolor: "rgba(156,163,175,0.3)",
@@ -1597,7 +1610,7 @@ function Step3({
           automargin: true,
         },
         yaxis: {
-          title: { text: `Reference (${referenceUnit})`, font: { size: 10, color: "#9ca3af" } },
+          title: { text: `${t("reference")} (${referenceUnit})`, font: { size: 10, color: "#9ca3af" } },
           tickfont: { size: 10, color: "#9ca3af" },
           gridcolor: "rgba(156,163,175,0.15)",
           linecolor: "rgba(156,163,175,0.3)",
@@ -1645,24 +1658,24 @@ function Step3({
     return (
       <div className="p-6 space-y-4">
         <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
-          <span className="text-[11px] text-gray-400 mr-2">Equation</span>
+          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
           <span className="text-xs font-mono text-og-text">{formatEquation(numericCoeffs, manualCoeff.poly_order)}</span>
           {referenceUnit && <span className="text-[11px] text-gray-400 ml-2">({referenceUnit})</span>}
         </div>
         <div className="rounded-xl border border-og-border p-4 bg-og-surface-alt max-w-sm">
-          <StatRow label="Valid range" value={`${fmtN(rangeMin)} – ${fmtN(rangeMax)} ${referenceUnit}`} />
-          <StatRow label="Polynomial order" value={String(manualCoeff.poly_order)} />
+          <StatRow label={t("validRange")} value={`${fmtN(rangeMin)} – ${fmtN(rangeMax)} ${referenceUnit}`} />
+          <StatRow label={t("polynomialOrder")} value={String(manualCoeff.poly_order)} />
           {hasUncertainty && (
             <StatRow
-              label="Expanded uncertainty (±)"
+              label={t("expandedUncertainty")}
               value={`${fmtN(expandedU)} ${referenceUnit}`}
-              tip={`As stated on the calibration certificate, k=${fmtN(covFactor, 3)}.`}
+              tip={t("statedOnCertTip", { k: fmtN(covFactor, 3) })}
               docsHref="/docs/guide/calibration/coefficients-only"
             />
           )}
         </div>
         <p className="text-xs text-gray-400 max-w-md">
-          No raw data was recorded for this calibration, so fit residuals and a conformity statement cannot be computed. Only the coefficients{hasUncertainty ? " and certificate-stated uncertainty" : ""} above will be saved.
+          {hasUncertainty ? t("noRawDataHintWithUncertainty") : t("noRawDataHint")}
         </p>
       </div>
     );
@@ -1673,30 +1686,30 @@ function Step3({
       {/* Controls row */}
       <div className="flex flex-wrap gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
         <div className="flex flex-col gap-1 min-w-[120px]">
-          <WLabel text="Regression degree" />
+          <WLabel text={t("regressionDegree")} />
           <select
             value={analyzeParams.poly_degree === null ? "auto" : String(analyzeParams.poly_degree)}
             onChange={(e) => setParam("poly_degree")(e.target.value === "auto" ? null : parseInt(e.target.value))}
             className={`${IB} ${IB_OK} py-1.5`}
           >
-            <option value="auto">Auto</option>
+            <option value="auto">{t("auto")}</option>
             {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
         <div className="flex flex-col gap-1 min-w-[130px]">
-          <WLabel text="Distribution" />
+          <WLabel text={t("distribution")} />
           <select
             value={analyzeParams.distribution_type}
             onChange={(e) => setParam("distribution_type")(e.target.value as DistributionType)}
             className={`${IB} ${IB_OK} py-1.5`}
           >
-            <option value="normal">Normal</option>
-            <option value="t">t-distribution</option>
-            <option value="chi_squared">Chi-squared</option>
+            <option value="normal">{t("distributionNormal")}</option>
+            <option value="t">{t("distributionT")}</option>
+            <option value="chi_squared">{t("distributionChiSquared")}</option>
           </select>
         </div>
         <div className="flex flex-col gap-1 w-24">
-          <WLabel text="Confidence %" />
+          <WLabel text={t("confidencePercent")} />
           <input
             type="number"
             value={analyzeParams.confidence_level}
@@ -1706,28 +1719,28 @@ function Step3({
           />
         </div>
         <div className="flex flex-col gap-1 min-w-[170px]">
-          <WLabel text="Decision rule" />
+          <WLabel text={t("decisionRuleLabel")} />
           <select
             value={decisionRule}
             onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
             className={`${IB} ${IB_OK} py-1.5`}
           >
-            <option value="simple_acceptance">Simple acceptance</option>
-            <option value="guard_band_w_uncertainty">Guard band (tolerance − U)</option>
-            <option value="shared_risk">Shared risk (tolerance + U)</option>
+            <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
+            <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
+            <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
           </select>
         </div>
         {/* Sensor nominal accuracy (Type B) — pre-filled from the channel's
             manufacturer spec but editable per calibration; the uncertainty
             actually used belongs to this calibration event, not the channel. */}
         <div className="flex flex-col gap-1 w-36">
-          <WLabel text="Sensor nominal accuracy" />
+          <WLabel text={t("sensorNominalAccuracy")} />
           <input
             type="number"
             value={sensorNominalUncertaintyManual}
             onChange={(e) => onSensorNominalUncertaintyManualChange(e.target.value)}
             min={0} step="any"
-            placeholder="from datasheet"
+            placeholder={t("fromDatasheet")}
             className={`${IB} ${IB_OK} py-1.5`}
           />
         </div>
@@ -1735,7 +1748,7 @@ function Step3({
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
               <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" showLabel={false} />
-              Incl. in budget
+              {t("includeInBudget")}
             </label>
           </div>
         )}
@@ -1746,32 +1759,32 @@ function Step3({
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <span className="text-xs text-gray-400 flex items-center gap-1.5">
               <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-              Loading reference standard…
+              {t("loadingReferenceStandard")}
             </span>
           </div>
         ) : referenceStandardAuto ? (
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <span className="text-xs text-gray-400">
-              Ref. standard U: <span className="font-mono text-og-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
-              {referenceAssetName && <span className="text-gray-400"> (last calibration of {referenceAssetName})</span>}
+              {t("refStandardU")}: <span className="font-mono text-og-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
+              {referenceAssetName && <span className="text-gray-400"> {t("lastCalibrationOf", { name: referenceAssetName })}</span>}
             </span>
           </div>
         ) : (
           <>
             <div className="flex flex-col gap-1 w-36">
-              <WLabel text="Ref. standard U (manual)" />
+              <WLabel text={t("refStandardUManual")} />
               <input
                 type="number"
                 value={referenceStandardManualUncertainty}
                 onChange={(e) => onReferenceStandardManualUncertaintyChange(e.target.value)}
                 min={0} step="any"
-                placeholder="from cert"
+                placeholder={t("fromCert")}
                 className={`${IB} ${IB_OK} py-1.5`}
               />
             </div>
             {referenceStandardManualUncertainty.trim() !== "" && (
               <div className="flex flex-col gap-1 w-20">
-                <WLabel text="Ref. std. k" />
+                <WLabel text={t("refStdK")} />
                 <input
                   type="number"
                   value={referenceStandardManualCoverageFactor}
@@ -1787,7 +1800,7 @@ function Step3({
           <div className="ml-auto flex items-end">
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-              Analyzing…
+              {t("analyzing")}
             </div>
           </div>
         )}
@@ -1796,7 +1809,7 @@ function Step3({
       {/* Equation display */}
       {result && !analyzing && (
         <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
-          <span className="text-[11px] text-gray-400 mr-2">Equation</span>
+          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
           <span className="text-xs font-mono text-og-text">
             {formatEquation(result.coefficients, result.poly_degree)}
           </span>
@@ -1817,67 +1830,67 @@ function Step3({
         <div className="flex gap-4 min-h-0">
           {/* Left: stats + uncertainty (40%) */}
           <div className="w-[40%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt">
-            <p className="text-xs font-semibold text-og-text mb-2">Calibration</p>
-            <StatRow label="Valid range" value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
-            <StatRow label="Polynomial degree" value={String(result.poly_degree)} />
-            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">Statistics</p>
-            <StatRow label="R²" value={fmtN(result.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." docsHref={STAT_DOCS_LINKS.r_squared} />
-            <StatRow label="RMSE" value={`${fmtN(result.rmse)} ${referenceUnit}`} tip="Root mean square error — typical magnitude of residuals." docsHref={STAT_DOCS_LINKS.rmse} />
-            <StatRow label="Max error" value={`${fmtN(result.max_error)} ${referenceUnit}`} tip="Largest absolute residual." docsHref={STAT_DOCS_LINKS.max_error} />
-            <StatRow label="%FS error" value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip="Max error as % of full measurement span." docsHref={STAT_DOCS_LINKS.full_scale_error} />
-            <StatRow label="Non-linearity" value={`${fmtN(result.non_linearity_pct, 3)}%`} tip="Max deviation of fitted curve from a straight line, as % FS." docsHref={STAT_DOCS_LINKS.non_linearity} />
+            <p className="text-xs font-semibold text-og-text mb-2">{t("calibration")}</p>
+            <StatRow label={t("validRange")} value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
+            <StatRow label={t("polynomialDegree")} value={String(result.poly_degree)} />
+            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("statistics")}</p>
+            <StatRow label={t("rSquared")} value={fmtN(result.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
+            <StatRow label={t("rmse")} value={`${fmtN(result.rmse)} ${referenceUnit}`} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
+            <StatRow label={t("maxError")} value={`${fmtN(result.max_error)} ${referenceUnit}`} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
+            <StatRow label={t("fsError")} value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
+            <StatRow label={t("nonLinearity")} value={`${fmtN(result.non_linearity_pct, 3)}%`} tip={t("tips.nonLinearity")} docsHref={STAT_DOCS_LINKS.non_linearity} />
             {result.repeatability != null && (
-              <StatRow label="Repeatability†" value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip="Std deviation at repeated reference values." docsHref={STAT_DOCS_LINKS.repeatability} />
+              <StatRow label={t("repeatability")} value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
             )}
             {result.hysteresis != null && (
-              <StatRow label="Hysteresis†" value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip="Max difference between ascending and descending sweeps." docsHref={STAT_DOCS_LINKS.hysteresis} />
+              <StatRow label={t("hysteresis")} value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
             )}
-            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">Uncertainty budget</p>
+            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("uncertaintyBudget")}</p>
             {result.uncertainty_budget.map((c) => (
               <StatRow
                 key={c.source}
-                label={UNCERTAINTY_SOURCE_LABEL[c.source] ?? c.source}
+                label={translateDynamic(tUncertaintySource, c.source)}
                 value={`${fmtN(c.standard_uncertainty)} ${referenceUnit}`}
-                tip={`${c.description} (${c.distribution} distribution, divisor=${fmtN(c.divisor, 3)}).`}
+                tip={t("tips.uncertaintyBudgetRow", { description: c.description, distribution: c.distribution, divisor: fmtN(c.divisor, 3) })}
                 docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
               />
             ))}
             <StatRow
-              label="Combined (RSS)"
+              label={t("combinedRss")}
               value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`}
-              tip="Root-sum-square of the budget rows above (GUM Eq. 10)."
+              tip={t("tips.combinedRss")}
               docsHref={STAT_DOCS_LINKS.combined_uncertainty}
             />
             <StatRow
-              label="Expanded (±)"
+              label={t("expanded")}
               value={`${fmtN(roundToSigFigs(result.expanded_uncertainty, 2))} ${referenceUnit}`}
               tip={
                 (result.effective_degrees_of_freedom != null
-                  ? `k=${fmtN(result.coverage_factor, 3)} at ${result.confidence_level}% confidence, ν_eff=${fmtN(result.effective_degrees_of_freedom, 1)} (Welch-Satterthwaite).`
-                  : `k=${fmtN(result.coverage_factor, 3)} at ${result.confidence_level}% confidence.`)
-                + " Rounded to 2 significant figures (GUM §7.2.6)."
+                  ? t("tips.expandedWithDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level, dof: fmtN(result.effective_degrees_of_freedom, 1) })
+                  : t("tips.expandedNoDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level }))
+                + " " + t("tips.expandedRoundedCert")
               }
               docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
             />
             {result.conformity_statement.specification && (
               <>
-                <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">Conformity</p>
+                <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("conformity")}</p>
                 <div className="flex items-center justify-between gap-2 py-1">
-                  <span className="text-xs text-gray-400">Statement</span>
+                  <span className="text-xs text-gray-400">{t("statement")}</span>
                   <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
                     result.passed
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
                       : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
                   }`}>
                     {result.passed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
-                    {result.passed ? "CONFORMS" : "DOES NOT CONFORM"}
+                    {result.passed ? t("conforms") : t("doesNotConform")}
                   </span>
                 </div>
-                <StatRow label="Specification" value={result.conformity_statement.specification} />
+                <StatRow label={t("specification")} value={result.conformity_statement.specification} />
                 <StatRow
-                  label="Decision rule"
-                  value={DECISION_RULE_LABEL[result.conformity_statement.decision_rule] ?? result.conformity_statement.decision_rule}
-                  tip="How measurement uncertainty is factored into this conformity statement, per ISO/IEC 17025 §7.1.3 and §7.8.6. Stored and printed on the certificate."
+                  label={t("decisionRuleLabel")}
+                  value={translateDynamic(tDecisionRule, result.conformity_statement.decision_rule)}
+                  tip={t("tips.decisionRuleCert")}
                   docsHref={STAT_DOCS_LINKS.decision_rule}
                 />
               </>
@@ -1897,7 +1910,7 @@ function Step3({
                     rightView === v ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
                   }`}
                 >
-                  {v === "chart" ? "Chart" : "Data Table"}
+                  {v === "chart" ? t("chart") : t("dataTable")}
                 </button>
               ))}
             </div>
@@ -1907,12 +1920,12 @@ function Step3({
                 {/* Gradient legend overlay */}
                 <div className="absolute bottom-20 right-3 z-20 pointer-events-none">
                   <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
-                    <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
+                    <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">{t("residual")}</p>
                     <div className="flex items-center gap-1.5">
                       <div className="w-3 rounded-xs" style={{ height: 48, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
                       <div className="flex flex-col justify-between h-12 text-[10px] text-gray-400">
-                        <span>High</span>
-                        <span>Low</span>
+                        <span>{t("high")}</span>
+                        <span>{t("low")}</span>
                       </div>
                     </div>
                   </div>
@@ -1928,11 +1941,11 @@ function Step3({
                     <tr className="border-b border-og-border bg-og-surface-alt">
                       {[
                         "#",
-                        `Measured (${measuredUnit})`,
-                        `Reference (${referenceUnit})`,
-                        `Fitted (${referenceUnit})`,
-                        `Residual (${referenceUnit})`,
-                        "Residual (%)",
+                        `${t("measured")} (${measuredUnit})`,
+                        `${t("reference")} (${referenceUnit})`,
+                        `${t("fitted")} (${referenceUnit})`,
+                        `${t("residual")} (${referenceUnit})`,
+                        t("residualPercent"),
                       ].map((h) => (
                         <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
                       ))}
@@ -1968,7 +1981,7 @@ function Step3({
 
       {!result && !analyzing && !analyzeError && (
         <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-          <p className="text-sm">Waiting for analysis…</p>
+          <p className="text-sm">{t("waitingForAnalysis")}</p>
         </div>
       )}
     </div>

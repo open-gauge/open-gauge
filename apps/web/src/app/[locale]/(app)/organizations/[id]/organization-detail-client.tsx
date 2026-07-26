@@ -1,9 +1,11 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import {
   BuildingIcon,
   CheckIcon,
@@ -108,6 +110,7 @@ function toForm(org: Organization): EditForm {
 // ---------------------------------------------------------------------------
 
 function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: () => void; onAdded: () => void }) {
+  const t = useTranslations("organizations.detail.addMemberModal");
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<EligibleUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +147,7 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
       onAdded();
       onClose();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to add members");
+      setErr(e instanceof Error ? e.message : t("failed"));
     } finally {
       setSaving(false);
     }
@@ -154,7 +157,7 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-md flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
-          <h2 className="text-sm font-semibold text-og-text">Add member</h2>
+          <h2 className="text-sm font-semibold text-og-text">{t("title")}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -167,14 +170,14 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or email…"
+            placeholder={t("searchPlaceholder")}
             className={`${IB} ${IB_OK}`}
             autoFocus
           />
           <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-1">
-            {loading && <p className="text-xs text-gray-400 text-center py-6">Loading…</p>}
+            {loading && <p className="text-xs text-gray-400 text-center py-6">{t("loading")}</p>}
             {!loading && users.length === 0 && (
-              <p className="text-xs text-gray-400 text-center py-6">No matching users.</p>
+              <p className="text-xs text-gray-400 text-center py-6">{t("empty")}</p>
             )}
             {!loading && users.map((u) => (
               <div
@@ -202,7 +205,7 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
             onClick={onClose}
             className="px-3 py-1.5 text-sm border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors text-og-text"
           >
-            Cancel
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -210,7 +213,7 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
             disabled={selected.size === 0 || saving}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {saving ? "Adding…" : `Add${selected.size ? ` (${selected.size})` : ""}`}
+            {saving ? t("adding") : (selected.size ? t("addWithCount", { count: selected.size }) : t("add"))}
           </button>
         </div>
       </div>
@@ -223,6 +226,8 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
 // ---------------------------------------------------------------------------
 
 export default function OrganizationDetailClient() {
+  const t = useTranslations("organizations.detail");
+  const tOrgRole = useTranslations("tokens.orgRole");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
@@ -265,9 +270,9 @@ export default function OrganizationDetailClient() {
           getSigningCertificate(id).then(setSigningCert).catch(() => setSigningCert(null));
         }
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load organization"))
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : t("failedToLoad")))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
 
@@ -308,7 +313,7 @@ export default function OrganizationDetailClient() {
       setOrg(updated);
       setEditing(false);
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Failed to save");
+      setActionError(e instanceof Error ? e.message : t("failedToSave"));
     } finally {
       setSaving(false);
     }
@@ -321,7 +326,7 @@ export default function OrganizationDetailClient() {
       const updated = await uploadOrgLogo(org.id, file);
       setOrg(updated);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Failed to upload logo");
+      setActionError(err instanceof Error ? err.message : t("failedToUploadLogo"));
     } finally {
       setLogoUploading(false);
     }
@@ -334,7 +339,7 @@ export default function OrganizationDetailClient() {
       const updated = await deleteOrgLogo(org.id);
       setOrg(updated);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Failed to remove logo");
+      setActionError(err instanceof Error ? err.message : t("failedToRemoveLogo"));
     } finally {
       setLogoUploading(false);
     }
@@ -356,17 +361,17 @@ export default function OrganizationDetailClient() {
       const updated = await updateMemberRole(id, userId, role);
       setMembers((prev) => prev?.map((m) => (m.user_id === userId ? updated : m)) ?? null);
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Failed to change role");
+      setActionError(e instanceof Error ? e.message : t("failedToChangeRole"));
     }
   }
 
   async function handleRemoveMember(userId: string) {
-    if (!confirm("Remove this member from the organization?")) return;
+    if (!confirm(t("removeMemberConfirm"))) return;
     try {
       await removeMember(id, userId);
       setMembers((prev) => prev?.filter((m) => m.user_id !== userId) ?? null);
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Failed to remove member");
+      setActionError(e instanceof Error ? e.message : t("failedToRemoveMember"));
     }
   }
 
@@ -377,7 +382,7 @@ export default function OrganizationDetailClient() {
       if (org?.is_member) listOrgMembers(id).then(setMembers).catch(() => {});
       setOrg((prev) => prev && { ...prev, member_count: (prev.member_count ?? 0) + 1 });
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Failed to approve request");
+      setActionError(e instanceof Error ? e.message : t("failedToApprove"));
     }
   }
 
@@ -386,7 +391,7 @@ export default function OrganizationDetailClient() {
       await rejectJoinRequest(id, requestId);
       setRequests((prev) => prev?.filter((r) => r.id !== requestId) ?? null);
     } catch (e: unknown) {
-      setActionError(e instanceof Error ? e.message : "Failed to reject request");
+      setActionError(e instanceof Error ? e.message : t("failedToReject"));
     }
   }
 
@@ -399,13 +404,13 @@ export default function OrganizationDetailClient() {
         onClick={() => router.back()}
         className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-og-text transition-colors"
       >
-        <ChevronLeftIcon size={13} /> Back
+        <ChevronLeftIcon size={13} /> {t("back")}
       </button>
 
       {loading && (
         <div className="flex items-center justify-center py-20 text-gray-400">
           <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
-          Loading…
+          {t("loading")}
         </div>
       )}
 
@@ -443,7 +448,7 @@ export default function OrganizationDetailClient() {
                 <h1 className="text-xl font-bold text-og-text truncate">{org.name}</h1>
                 {org.private && (
                   <span className="flex items-center gap-1 text-xs font-medium text-gray-400">
-                    <LockIcon size={12} /> Private
+                    <LockIcon size={12} /> {t("private")}
                   </span>
                 )}
               </div>
@@ -457,7 +462,7 @@ export default function OrganizationDetailClient() {
                     onClick={startEdit}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
                   >
-                    <EditIcon size={12} /> Edit
+                    <EditIcon size={12} /> {t("edit")}
                   </button>
                 )}
                 {showJoinLeave && (
@@ -467,7 +472,7 @@ export default function OrganizationDetailClient() {
                       onClick={() => setLeaveModalOpen(true)}
                       className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-colors"
                     >
-                      Leave
+                      {t("leave")}
                     </button>
                   ) : org.has_pending_join_request ? (
                     <button
@@ -475,7 +480,7 @@ export default function OrganizationDetailClient() {
                       disabled
                       className="px-3 py-1.5 bg-og-surface-alt text-gray-400 text-xs font-medium rounded-lg border border-og-border-md cursor-default"
                     >
-                      Request pending
+                      {t("pending")}
                     </button>
                   ) : (
                     <button
@@ -483,7 +488,7 @@ export default function OrganizationDetailClient() {
                       onClick={() => setJoinModalOpen(true)}
                       className="px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
                     >
-                      Request to join
+                      {t("requestToJoin")}
                     </button>
                   )
                 )}
@@ -492,10 +497,10 @@ export default function OrganizationDetailClient() {
             {editing && (
               <div className="flex items-center gap-2">
                 <button onClick={() => setEditing(false)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-                  <XIcon size={12} /> Cancel
+                  <XIcon size={12} /> {t("cancel")}
                 </button>
                 <button onClick={saveEdit} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-                  <CheckIcon size={12} /> {saving ? "Saving…" : "Save"}
+                  <CheckIcon size={12} /> {saving ? t("saving") : t("save")}
                 </button>
               </div>
             )}
@@ -507,7 +512,7 @@ export default function OrganizationDetailClient() {
           {org.private && !org.is_member ? (
             <div className="bg-og-surface rounded-xl border border-og-border shadow-xs px-5 py-10 flex flex-col items-center gap-3 text-center">
               <LockIcon size={24} className="text-gray-300" />
-              <p className="text-sm text-gray-400">This organization is private. Only members can see its details.</p>
+              <p className="text-sm text-gray-400">{t("privateGateMessage")}</p>
             </div>
           ) : (
             <>
@@ -515,64 +520,64 @@ export default function OrganizationDetailClient() {
                 <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-400">Name <span className="text-red-400">*</span></label>
+                      <label className="text-xs text-gray-400">{t("name")} <span className="text-red-400">*</span></label>
                       <input value={form?.name ?? ""} onChange={(e) => setForm((f) => f && { ...f, name: e.target.value })} className={`${IB} ${IB_OK}`} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-400">Full legal name</label>
+                      <label className="text-xs text-gray-400">{t("fullName")}</label>
                       <input value={form?.full_name ?? ""} onChange={(e) => setForm((f) => f && { ...f, full_name: e.target.value })} className={`${IB} ${IB_OK}`} />
                     </div>
                     <div className="sm:col-span-2 space-y-1">
-                      <label className="text-xs text-gray-400">Description</label>
+                      <label className="text-xs text-gray-400">{t("description")}</label>
                       <textarea value={form?.description ?? ""} onChange={(e) => setForm((f) => f && { ...f, description: e.target.value })} className={`${IB} ${IB_OK}`} rows={2} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-400">Website</label>
+                      <label className="text-xs text-gray-400">{t("website")}</label>
                       <input value={form?.website ?? ""} onChange={(e) => setForm((f) => f && { ...f, website: e.target.value })} placeholder="https://…" className={`${IB} ${IB_OK}`} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-400">Location</label>
+                      <label className="text-xs text-gray-400">{t("location")}</label>
                       <select value={form?.location_id ?? ""} onChange={(e) => setForm((f) => f && { ...f, location_id: e.target.value })} className={`${IB} ${IB_OK}`}>
-                        <option value="">— None —</option>
+                        <option value="">{t("none")}</option>
                         {locations.map((l) => <option key={l.id} value={l.id}>{l.path}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-400">Email</label>
+                      <label className="text-xs text-gray-400">{t("email")}</label>
                       <input value={form?.email ?? ""} onChange={(e) => setForm((f) => f && { ...f, email: e.target.value })} className={`${IB} ${IB_OK}`} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-400">Phone</label>
+                      <label className="text-xs text-gray-400">{t("phone")}</label>
                       <input value={form?.phone ?? ""} onChange={(e) => setForm((f) => f && { ...f, phone: e.target.value })} className={`${IB} ${IB_OK}`} />
                     </div>
                   </div>
                   <label className="flex items-center gap-2 text-xs text-gray-400">
                     <ToggleSwitch checked={form?.private ?? false} onChange={(v) => setForm((f) => f && { ...f, private: v })} />
-                    Private — only members can see its details, members, and assets
+                    {t("privateToggle")}
                   </label>
                 </div>
               )}
 
               {!editing && (
                 <div className="bg-og-surface rounded-xl border border-og-border shadow-xs px-5 py-2">
-                  {org.description && <InfoRow label="Description" value={org.description} />}
+                  {org.description && <InfoRow label={t("description")} value={org.description} />}
                   {org.website && (
-                    <InfoRow label="Website" icon={<GlobeIcon size={12} />} value={
+                    <InfoRow label={t("website")} icon={<GlobeIcon size={12} />} value={
                       <a href={websiteHref(org.website)} target="_blank" rel="noopener noreferrer" className="text-og-accent hover:underline">{org.website}</a>
                     } />
                   )}
-                  {org.location_name && <InfoRow label="Location" value={org.location_name} />}
-                  {org.email && <InfoRow label="Email" icon={<MailIcon size={12} />} value={<a href={`mailto:${org.email}`} className="text-og-accent hover:underline">{org.email}</a>} />}
-                  {org.phone && <InfoRow label="Phone" icon={<PhoneIcon size={12} />} value={org.phone} />}
+                  {org.location_name && <InfoRow label={t("location")} value={org.location_name} />}
+                  {org.email && <InfoRow label={t("email")} icon={<MailIcon size={12} />} value={<a href={`mailto:${org.email}`} className="text-og-accent hover:underline">{org.email}</a>} />}
+                  {org.phone && <InfoRow label={t("phone")} icon={<PhoneIcon size={12} />} value={org.phone} />}
                   {org.asset_count !== null && (
-                    <InfoRow label="Assets" value={
+                    <InfoRow label={t("assets")} value={
                       <Link href={`/assets?organization_id=${org.id}&organization_name=${encodeURIComponent(org.name)}`} className="text-og-accent hover:underline">
-                        {org.asset_count} asset{org.asset_count === 1 ? "" : "s"}
+                        {t("assetCount", { count: org.asset_count })}
                       </Link>
                     } />
                   )}
-                  {org.member_count !== null && <InfoRow label="Members" value={`${org.member_count} member${org.member_count === 1 ? "" : "s"}`} />}
-                  <InfoRow label="Created" value={fmtDate(org.created_at)} />
+                  {org.member_count !== null && <InfoRow label={t("members")} value={t("memberCount", { count: org.member_count })} />}
+                  <InfoRow label={t("created")} value={fmtDate(org.created_at)} />
                 </div>
               )}
 
@@ -580,14 +585,14 @@ export default function OrganizationDetailClient() {
               {members && (
                 <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
-                    <p className="text-xs font-semibold text-og-text">Members</p>
+                    <p className="text-xs font-semibold text-og-text">{t("members")}</p>
                     {org.can_manage && editing && (
                       <button
                         type="button"
                         onClick={() => setAddMemberOpen(true)}
                         className="flex items-center gap-1 text-[11px] font-medium text-og-accent hover:underline"
                       >
-                        <PlusIcon size={11} /> Add member
+                        <PlusIcon size={11} /> {t("addMember")}
                       </button>
                     )}
                   </div>
@@ -602,20 +607,20 @@ export default function OrganizationDetailClient() {
                               onChange={(e) => handleRoleChange(m.user_id, e.target.value as OrgRole)}
                               className="px-2 py-1 text-xs rounded-lg border border-og-border-md bg-og-surface text-og-text"
                             >
-                              <option value="member">Member</option>
-                              <option value="admin">Admin</option>
+                              <option value="member">{translateDynamic(tOrgRole, "member")}</option>
+                              <option value="admin">{translateDynamic(tOrgRole, "admin")}</option>
                             </select>
                             <button
                               type="button"
                               onClick={() => handleRemoveMember(m.user_id)}
                               className="p-1 text-gray-400 hover:text-red-500 rounded-sm transition-colors"
-                              title="Remove member"
+                              title={t("removeMember")}
                             >
                               <TrashIcon size={13} />
                             </button>
                           </div>
                         ) : (
-                          <span className="text-xs font-medium text-gray-400 shrink-0 capitalize">{m.role}</span>
+                          <span className="text-xs font-medium text-gray-400 shrink-0">{translateDynamic(tOrgRole, m.role)}</span>
                         )}
                       </div>
                     ))}
@@ -624,13 +629,13 @@ export default function OrganizationDetailClient() {
                         <UserSummary userId={r.user_id} name={r.user_name} email={r.user_email} pictureUrl={r.user_profile_picture_url} className="flex-1" />
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="px-2 py-0.5 text-[10px] font-medium text-gray-400 bg-og-surface-alt border border-og-border-md rounded-full">
-                            Pending
+                            {t("requestPending")}
                           </span>
                           <button onClick={() => handleApprove(r.id)} className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-og-action hover:bg-og-action-dark text-white rounded-sm transition-colors">
-                            <CheckIcon size={10} /> Approve
+                            <CheckIcon size={10} /> {t("approve")}
                           </button>
                           <button onClick={() => handleReject(r.id)} className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-sm hover:bg-og-surface-alt transition-colors">
-                            <XIcon size={10} /> Reject
+                            <XIcon size={10} /> {t("reject")}
                           </button>
                         </div>
                       </div>
@@ -645,9 +650,9 @@ export default function OrganizationDetailClient() {
                   <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
                     <div className="flex items-center gap-1.5">
                       <ShieldCheckIcon size={13} className="text-og-accent" />
-                      <p className="text-xs font-semibold text-og-text">Certificate signing</p>
+                      <p className="text-xs font-semibold text-og-text">{t("certificateSigning")}</p>
                       <Tooltip
-                        content="Every calibration certificate PDF issued for this organization is digitally signed (PAdES) with this certificate — any PDF viewer with signature support (Adobe Acrobat, Chrome, Preview) can verify it was issued by this organization and has not been altered since."
+                        content={t("certificateSigningTooltip")}
                         docsHref={CERTIFICATE_DOCS_LINKS.signing_certificate}
                       >
                         <span className="text-gray-300 cursor-help text-[11px]">ⓘ</span>
@@ -659,21 +664,20 @@ export default function OrganizationDetailClient() {
                         onClick={handleDownloadCertificate}
                         className="flex items-center gap-1.5 text-[11px] font-medium text-og-accent hover:underline"
                       >
-                        <DownloadIcon size={11} /> Download certificate
+                        <DownloadIcon size={11} /> {t("downloadCertificate")}
                       </button>
                     )}
                   </div>
                   <div className="px-5 py-2">
                     {signingCert ? (
                       <>
-                        <InfoRow label="Algorithm" value={signingCert.algorithm} />
-                        <InfoRow label="Fingerprint" value={<span className="font-mono text-xs break-all">{signingCert.fingerprint_sha256}</span>} />
-                        <InfoRow label="Valid" value={`${fmtDate(signingCert.not_valid_before)} – ${fmtDate(signingCert.not_valid_after)}`} />
+                        <InfoRow label={t("algorithm")} value={signingCert.algorithm} />
+                        <InfoRow label={t("fingerprint")} value={<span className="font-mono text-xs break-all">{signingCert.fingerprint_sha256}</span>} />
+                        <InfoRow label={t("valid")} value={`${fmtDate(signingCert.not_valid_before)} – ${fmtDate(signingCert.not_valid_after)}`} />
                       </>
                     ) : (
                       <p className="text-xs text-gray-400 py-3">
-                        No certificate yet — generated automatically the first time a calibration
-                        certificate is issued for this organization.
+                        {t("noCertificate")}
                       </p>
                     )}
                   </div>
@@ -684,26 +688,26 @@ export default function OrganizationDetailClient() {
               {editing && org.can_manage && (
                 <div className="bg-og-surface rounded-xl border border-red-200 dark:border-red-900/50 shadow-xs">
                   <div className="px-4 py-3 border-b border-red-100 dark:border-red-900/40">
-                    <p className="text-xs font-semibold text-red-600 dark:text-red-400">Danger zone</p>
+                    <p className="text-xs font-semibold text-red-600 dark:text-red-400">{t("dangerZone")}</p>
                   </div>
                   <div className="p-4 flex items-center justify-between gap-3">
                     {org.is_active ? (
                       <>
                         <p className="text-xs text-gray-400">
-                          Deleting an organization deactivates it — it becomes invisible to everyone except Super Admin, who can restore it from here.
+                          {t("deactivateDesc")}
                         </p>
                         <button
                           type="button"
                           onClick={() => setDeleteModalOpen(true)}
                           className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors"
                         >
-                          Delete organization
+                          {t("deleteOrganization")}
                         </button>
                       </>
                     ) : (
                       <>
                         <p className="text-xs text-gray-400">
-                          This organization is deactivated — invisible to everyone except Super Admin. Restoring makes it active and visible to all users again.
+                          {t("deactivatedDesc")}
                         </p>
                         <button
                           type="button"
@@ -713,14 +717,14 @@ export default function OrganizationDetailClient() {
                             try {
                               setOrg(await restoreOrganization(org.id));
                             } catch (e: unknown) {
-                              setActionError(e instanceof Error ? e.message : "Failed to restore organization");
+                              setActionError(e instanceof Error ? e.message : t("failedToRestore"));
                             } finally {
                               setRestoring(false);
                             }
                           }}
                           className="shrink-0 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
                         >
-                          {restoring ? "Restoring…" : "Restore organization"}
+                          {restoring ? t("restoring") : t("restoreOrganization")}
                         </button>
                       </>
                     )}
@@ -742,9 +746,9 @@ export default function OrganizationDetailClient() {
 
       {deleteModalOpen && org && (
         <ConfirmModal
-          title="Delete organization?"
-          message={`Delete ${org.name}? It will be deactivated and hidden from everyone except Super Admin.`}
-          confirmLabel="Delete"
+          title={t("deleteModal.title")}
+          message={t("deleteModal.message", { name: org.name })}
+          confirmLabel={t("deleteModal.confirm")}
           danger
           onConfirm={async () => {
             await deactivateOrganization(org.id);
@@ -756,9 +760,9 @@ export default function OrganizationDetailClient() {
 
       {joinModalOpen && org && (
         <ConfirmModal
-          title="Request to join?"
-          message={`Request to join ${org.name}? An organization admin will need to approve it.`}
-          confirmLabel="Send request"
+          title={t("joinModal.title")}
+          message={t("joinModal.message", { name: org.name })}
+          confirmLabel={t("joinModal.confirm")}
           onConfirm={async () => {
             await requestToJoin(id);
             await load();
@@ -771,24 +775,24 @@ export default function OrganizationDetailClient() {
         org.is_last_admin ? (
           (org.member_count ?? 0) > 1 ? (
             <ConfirmModal
-              title="You're the only admin"
-              message="Promote another member to admin before leaving this organization."
+              title={t("leaveOnlyAdmin.title")}
+              message={t("leaveOnlyAdmin.message")}
               onClose={() => setLeaveModalOpen(false)}
             />
           ) : (
             <ConfirmModal
-              title="You're the only member"
-              message="There's no one else to hand this organization to — delete it instead of leaving."
-              confirmLabel="Go to Danger Zone"
+              title={t("leaveOnlyMember.title")}
+              message={t("leaveOnlyMember.message")}
+              confirmLabel={t("leaveOnlyMember.confirm")}
               onConfirm={() => { startEdit(); }}
               onClose={() => setLeaveModalOpen(false)}
             />
           )
         ) : (
           <ConfirmModal
-            title="Leave organization?"
-            message={`Leave ${org.name}? You'll need to request to join again to regain access.`}
-            confirmLabel="Leave"
+            title={t("leaveModal.title")}
+            message={t("leaveModal.message", { name: org.name })}
+            confirmLabel={t("leaveModal.confirm")}
             danger
             onConfirm={async () => {
               await leaveOrganization(id);

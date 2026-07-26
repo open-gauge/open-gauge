@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
   AssetRegistryIcon,
@@ -15,11 +16,12 @@ import {
   XIcon,
 } from "@/components/icons";
 import ThemeToggle from "@/components/theme-toggle";
+import LanguageSwitcher from "@/components/language-switcher";
 import { NotificationBell } from "@/components/notification-bell";
 import { Avatar } from "@/components/avatar";
 import { listAssets } from "@/services/asset.service";
 import type { AssetListItem } from "@/types/asset";
-import { ROLE_LABELS as ROLE_LABEL } from "@/lib/roles";
+import { translateDynamic } from "@/lib/translate-dynamic";
 
 interface DocSearchResult {
   id: string;
@@ -31,6 +33,8 @@ interface DocSearchResult {
 export default function TopBar() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const t = useTranslations("nav");
+  const tRole = useTranslations("tokens.role");
 
   // Avatar dropdown
   const [avatarOpen, setAvatarOpen] = useState(false);
@@ -168,7 +172,7 @@ export default function TopBar() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={handleFocus}
-            placeholder="Search assets & docs..."
+            placeholder={t("search.placeholder")}
             className="flex-1 bg-transparent text-xs text-og-text placeholder-gray-400 outline-hidden min-w-0"
           />
           {query ? (
@@ -191,7 +195,7 @@ export default function TopBar() {
           <div className="absolute top-full mt-1 left-0 right-0 bg-og-surface rounded-xl border border-og-border shadow-lg z-50 overflow-hidden max-h-96 overflow-y-auto">
             {results.length > 0 && (
               <div className="py-1">
-                <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Assets</p>
+                <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("search.assets")}</p>
                 {results.map((asset) => (
                   <button
                     key={asset.id}
@@ -210,7 +214,7 @@ export default function TopBar() {
             )}
             {docResults.length > 0 && (
               <div className="py-1 border-t border-og-border">
-                <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Documentation</p>
+                <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("search.documentation")}</p>
                 {docResults.map((doc) => (
                   <button
                     key={doc.id}
@@ -244,7 +248,7 @@ export default function TopBar() {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
           >
             <PlusIcon size={13} />
-            New
+            {t("newMenu.new")}
             <ChevronDownIcon size={11} />
           </button>
           {newMenuOpen && (
@@ -254,20 +258,22 @@ export default function TopBar() {
                 onClick={() => { setNewMenuOpen(false); router.push("/assets?new=1"); }}
                 className="w-full text-left px-3 py-2 text-xs text-og-text hover:bg-og-surface-alt transition-colors"
               >
-                New Asset
+                {t("newMenu.newAsset")}
               </button>
               <button
                 type="button"
                 onClick={() => { setNewMenuOpen(false); router.push("/procedures?new=1"); }}
                 className="w-full text-left px-3 py-2 text-xs text-og-text hover:bg-og-surface-alt transition-colors"
               >
-                New Procedure
+                {t("newMenu.newProcedure")}
               </button>
             </div>
           )}
         </div>
 
         <NotificationBell />
+
+        <LanguageSwitcher />
 
         <ThemeToggle />
 
@@ -291,7 +297,7 @@ export default function TopBar() {
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{user.email}</p>
                 <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-sm text-[10px] font-medium bg-og-accent/10 text-og-action dark:text-og-accent">
-                  {ROLE_LABEL[user.role] ?? user.role}
+                  {translateDynamic(tRole, user.role)}
                 </span>
               </div>
 
@@ -303,7 +309,7 @@ export default function TopBar() {
                     className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-og-border hover:text-og-text transition-colors text-left"
                   >
                     <ShieldCheckIcon size={14} />
-                    Admin Panel
+                    {t("userMenu.adminPanel")}
                   </button>
                 )}
                 <button
@@ -312,7 +318,7 @@ export default function TopBar() {
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-og-border hover:text-og-text transition-colors text-left"
                 >
                   <SettingsIcon size={14} />
-                  Settings
+                  {t("userMenu.settings")}
                 </button>
                 <button
                   type="button"
@@ -320,7 +326,7 @@ export default function TopBar() {
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-og-border hover:text-red-500 transition-colors text-left"
                 >
                   <SignOutIcon size={14} />
-                  Sign out
+                  {t("userMenu.signOut")}
                 </button>
               </div>
             </div>

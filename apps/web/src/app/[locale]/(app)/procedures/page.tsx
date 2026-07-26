@@ -1,8 +1,11 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -48,10 +51,6 @@ const PHYSICAL_QUANTITIES = [
   "pressure", "temperature", "humidity", "flow", "level",
   "electrical", "force", "vibration", "displacement", "torque",
 ];
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 const INPUT_CLS =
   "w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:ring-og-accent/40 focus:border-og-accent/60 transition-colors placeholder-gray-400";
@@ -194,6 +193,7 @@ function ProcedureListItem({ proc, active, onClick }: { proc: Procedure; active:
 function DeleteProcedureModal({ procName, onConfirm, onClose }: {
   procName: string; onConfirm: () => Promise<void>; onClose: () => void;
 }) {
+  const t = useTranslations("procedures.deleteModal");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -203,7 +203,7 @@ function DeleteProcedureModal({ procName, onConfirm, onClose }: {
     try {
       await onConfirm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove procedure");
+      setError(err instanceof Error ? err.message : t("failed"));
       setDeleting(false);
     }
   }
@@ -215,21 +215,21 @@ function DeleteProcedureModal({ procName, onConfirm, onClose }: {
           <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center shrink-0">
             <TrashIcon size={16} className="text-red-500" />
           </div>
-          <h2 className="text-sm font-semibold text-og-text">Remove procedure?</h2>
+          <h2 className="text-sm font-semibold text-og-text">{t("title")}</h2>
         </div>
         <p className="text-sm text-gray-400 mb-2">
-          <span className="font-medium text-og-text">{procName}</span> will be deactivated and removed from the procedures list.
+          {t("body", { name: procName })}
         </p>
         {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
         <div className="flex items-center justify-end gap-2 mt-4">
           <button type="button" onClick={onClose} disabled={deleting}
             className="px-3 py-1.5 text-sm border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors text-og-text disabled:opacity-50">
-            Cancel
+            {t("cancel")}
           </button>
           <button type="button" disabled={deleting} onClick={handleConfirm}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
             {deleting ? <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <TrashIcon size={14} />}
-            {deleting ? "Removing…" : "Remove"}
+            {deleting ? t("removing") : t("remove")}
           </button>
         </div>
       </div>
@@ -242,6 +242,7 @@ function DeleteProcedureModal({ procName, onConfirm, onClose }: {
 // ---------------------------------------------------------------------------
 
 function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  const t = useTranslations("procedures.lightbox");
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -251,7 +252,7 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-8 cursor-zoom-out" onClick={onClose}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="Attachment preview" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
+      <img src={url} alt={t("alt")} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
       <button type="button" onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
         <XIcon size={18} />
       </button>
@@ -307,6 +308,8 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
   step: ProcedureStep; index: number; total: number;
   onChange: (s: ProcedureStep) => void; onRemove: () => void; onMoveUp: () => void; onMoveDown: () => void;
 }) {
+  const t = useTranslations("procedures.stepEditor");
+  const tUnit = useTranslations("procedures.stepEditor.units");
   const [durUnit, setDurUnit] = useState<DurationUnit>(() => bestUnit(step.duration_min));
 
   const displayDurValue = step.duration_min != null
@@ -331,24 +334,24 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
       {/* Labeled fields */}
       <div className="flex-1 min-w-0 space-y-3">
         <div className="flex items-center gap-3">
-          <span className={LABEL_CLS}>Title</span>
+          <span className={LABEL_CLS}>{t("title")}</span>
           <input type="text" value={step.title} onChange={(e) => onChange({ ...step, title: e.target.value })}
-            placeholder="Step title" className={`${INPUT_CLS} flex-1`} />
+            placeholder={t("titlePlaceholder")} className={`${INPUT_CLS} flex-1`} />
         </div>
         <div className="flex items-start gap-3">
-          <span className={`${LABEL_CLS} pt-2`}>Description</span>
+          <span className={`${LABEL_CLS} pt-2`}>{t("description")}</span>
           <textarea value={step.description ?? ""} onChange={(e) => onChange({ ...step, description: e.target.value || null })}
-            placeholder="Optional description" rows={2} className={`${INPUT_CLS} flex-1 resize-none`} />
+            placeholder={t("descriptionPlaceholder")} rows={2} className={`${INPUT_CLS} flex-1 resize-none`} />
         </div>
         <div className="flex items-center gap-3">
-          <span className={LABEL_CLS}>Duration</span>
+          <span className={LABEL_CLS}>{t("duration")}</span>
           <div className="flex items-center gap-2">
             <input type="number" min={0} max={9999} step="any" value={displayDurValue}
               onChange={(e) => handleDurChange(e.target.value)}
               placeholder="0" className={`${INPUT_CLS} w-24`} />
             <select value={durUnit} onChange={(e) => setDurUnit(e.target.value as DurationUnit)}
               className={`${INPUT_CLS} w-32`}>
-              {DURATION_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+              {DURATION_UNITS.map((u) => <option key={u} value={u}>{translateDynamic(tUnit, u)}</option>)}
             </select>
           </div>
         </div>
@@ -357,15 +360,15 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
       {/* Controls */}
       <div className="flex flex-col gap-1 shrink-0 mt-1">
         <button type="button" onClick={onMoveUp} disabled={index === 0}
-          className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move up">
+          className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title={t("moveUp")}>
           <ChevronUpIcon size={14} />
         </button>
         <button type="button" onClick={onMoveDown} disabled={index === total - 1}
-          className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Move down">
+          className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title={t("moveDown")}>
           <ChevronDownIcon size={14} />
         </button>
         <button type="button" onClick={onRemove}
-          className="p-1 rounded-sm text-red-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors" title="Remove step">
+          className="p-1 rounded-sm text-red-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors" title={t("removeStep")}>
           <TrashIcon size={14} />
         </button>
       </div>
@@ -384,6 +387,7 @@ function TwoColListEditor<T>({ items, col1Label, col2Label, col1Key, col2Key, co
   onAdd: () => void; onUpdate: (i: number, item: T) => void; onRemove: (i: number) => void;
   addLabel: string;
 }) {
+  const t = useTranslations("procedures.listEditor");
   return (
     <div className="space-y-2">
       {items.length > 0 && (
@@ -398,7 +402,7 @@ function TwoColListEditor<T>({ items, col1Label, col2Label, col1Key, col2Key, co
             placeholder={col1Label} className={INPUT_CLS} />
           <input type="text" value={String(item[col2Key] ?? "")}
             onChange={(e) => onUpdate(i, { ...item, [col2Key]: e.target.value || (col2Optional ? null : "") })}
-            placeholder={col2Optional ? `${col2Label} (opt.)` : col2Label} className={INPUT_CLS} />
+            placeholder={col2Optional ? t("optSuffix", { label: col2Label }) : col2Label} className={INPUT_CLS} />
           <button type="button" onClick={() => onRemove(i)}
             className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors">
             <TrashIcon size={13} />
@@ -416,13 +420,14 @@ function TwoColListEditor<T>({ items, col1Label, col2Label, col1Key, col2Key, co
 function SafetyEditor({ notes, onAdd, onUpdate, onRemove }: {
   notes: string[]; onAdd: () => void; onUpdate: (i: number, v: string) => void; onRemove: (i: number) => void;
 }) {
+  const t = useTranslations("procedures.safetyEditor");
   return (
     <div className="space-y-2">
       {notes.map((note, i) => (
         <div key={i} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
           <input type="text" value={note} onChange={(e) => onUpdate(i, e.target.value)}
-            placeholder="Safety note" className={`${INPUT_CLS} flex-1`} />
+            placeholder={t("placeholder")} className={`${INPUT_CLS} flex-1`} />
           <button type="button" onClick={() => onRemove(i)}
             className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors">
             <TrashIcon size={13} />
@@ -431,7 +436,7 @@ function SafetyEditor({ notes, onAdd, onUpdate, onRemove }: {
       ))}
       <button type="button" onClick={onAdd}
         className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 hover:opacity-80 transition-opacity mt-1">
-        <PlusIcon size={11} />Add note
+        <PlusIcon size={11} />{t("addNote")}
       </button>
     </div>
   );
@@ -449,6 +454,8 @@ interface ProcedureDetailProps {
 }
 
 function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: ProcedureDetailProps) {
+  const t = useTranslations("procedures.detail");
+  const tPhysicalQuantity = useTranslations("tokens.physicalQuantity");
   const { user } = useAuth();
   const canEdit = user.role !== "viewer";
   const [isEditing, setIsEditing] = useState(initialEditing);
@@ -494,10 +501,10 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
   }
 
   async function handleSave() {
-    if (!draft.proc_id?.trim()) { setSaveError("Procedure ID is required"); return; }
-    if (!draft.name.trim()) { setSaveError("Name is required"); return; }
+    if (!draft.proc_id?.trim()) { setSaveError(t("procIdRequired")); return; }
+    if (!draft.name.trim()) { setSaveError(t("nameRequired")); return; }
     // Flush any pending tags still in the text box
-    const pendingTags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+    const pendingTags = tagsInput.split(",").map((s) => s.trim()).filter(Boolean);
     const finalDraft = { ...draft, tags: pendingTags.length > 0 ? pendingTags : null };
     setSaving(true);
     setSaveError(null);
@@ -508,7 +515,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
       setIsEditing(false);
       onSaved(updated);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save changes");
+      setSaveError(err instanceof Error ? err.message : t("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -674,7 +681,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               <span>v{draft.version}</span>
             )}
             <span>·</span>
-            <span>updated {formatDate(proc.updated_at)}</span>
+            <span>{t("updated", { date: formatDate(proc.updated_at) })}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -682,28 +689,28 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               <>
                 <button type="button" onClick={() => setDeleteModalOpen(true)} disabled={saving}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-500 hover:text-red-600 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50">
-                  <TrashIcon size={12} />Remove
+                  <TrashIcon size={12} />{t("remove")}
                 </button>
                 <button type="button" onClick={handleCancel} disabled={saving}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50">
-                  <XIcon size={12} />Cancel
+                  <XIcon size={12} />{t("cancel")}
                 </button>
                 <button type="button" onClick={handleSave} disabled={saving}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50">
                   {saving ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckIcon size={12} />}
-                  {saving ? "Saving…" : "Save"}
+                  {saving ? t("saving") : t("save")}
                 </button>
               </>
             ) : (
               <>
                 <button type="button"
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-                  <PrinterIcon size={12} />Print
+                  <PrinterIcon size={12} />{t("print")}
                 </button>
                 {canEdit && (
                   <button type="button" onClick={handleStartEdit}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-                    <EditIcon size={12} />Edit
+                    <EditIcon size={12} />{t("edit")}
                   </button>
                 )}
               </>
@@ -714,7 +721,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         {/* Name */}
         {isEditing ? (
           <input type="text" value={draft.name} onChange={(e) => setDraftField("name", e.target.value)}
-            placeholder="Procedure name" className={`${INPUT_CLS} text-base font-bold mb-2`} />
+            placeholder={t("namePlaceholder")} className={`${INPUT_CLS} text-base font-bold mb-2`} />
         ) : (
           <h2 className="text-lg font-bold text-og-text mb-1">{draft.name}</h2>
         )}
@@ -722,7 +729,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         {/* Description */}
         {isEditing ? (
           <textarea value={draft.description ?? ""} onChange={(e) => setDraftField("description", e.target.value || null)}
-            placeholder="Description (optional)" rows={2} className={`${INPUT_CLS} resize-none mb-4`} />
+            placeholder={t("descriptionPlaceholder")} rows={2} className={`${INPUT_CLS} resize-none mb-4`} />
         ) : (
           draft.description && <p className="text-sm text-gray-400 mb-4">{draft.description}</p>
         )}
@@ -731,7 +738,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         <div className="grid grid-cols-4 gap-4 py-3 border-t border-b border-og-border mb-4">
           {/* Duration: always computed, never an input */}
           <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Duration</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("duration")}</p>
             <p className="text-xs text-og-text flex items-center gap-1">
               {formattedDuration ? (
                 <><ClockIcon size={11} className="text-gray-400" />{formattedDuration}</>
@@ -744,27 +751,27 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           {isEditing ? (
             <>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Physical quantity</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("physicalQuantity")}</p>
                 <select value={draft.physical_quantity} onChange={(e) => setDraftField("physical_quantity", e.target.value)} className={INPUT_CLS}>
-                  {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{capitalize(q)}</option>)}
+                  {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{translateDynamic(tPhysicalQuantity, q)}</option>)}
                 </select>
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Standard</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("standard")}</p>
                 <input type="text" value={draft.standard_ref ?? ""} onChange={(e) => setDraftField("standard_ref", e.target.value || null)}
-                  placeholder="e.g. IEC 60751" className={INPUT_CLS} />
+                  placeholder={t("standardPlaceholder")} className={INPUT_CLS} />
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Author</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("author")}</p>
                 <input type="text" value={draft.author ?? ""} onChange={(e) => setDraftField("author", e.target.value || null)}
-                  placeholder="Name" className={INPUT_CLS} />
+                  placeholder={t("authorPlaceholder")} className={INPUT_CLS} />
               </div>
             </>
           ) : (
             <>
-              <MetaCell label="Physical quantity" value={capitalize(draft.physical_quantity)} />
-              <MetaCell label="Standard" value={draft.standard_ref} />
-              <MetaCell label="Author" value={draft.author} />
+              <MetaCell label={t("physicalQuantity")} value={translateDynamic(tPhysicalQuantity, draft.physical_quantity)} />
+              <MetaCell label={t("standard")} value={draft.standard_ref} />
+              <MetaCell label={t("author")} value={draft.author} />
             </>
           )}
         </div>
@@ -777,19 +784,19 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 
         {isEditing ? (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Tags</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("tags")}</p>
             <input
               type="text"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               onBlur={(e) => {
-                const tags = e.target.value.split(",").map((t) => t.trim()).filter(Boolean);
+                const tags = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                 setDraftField("tags", tags.length > 0 ? tags : null);
               }}
-              placeholder="tag1, tag2, tag3"
+              placeholder={t("tagsPlaceholder")}
               className={INPUT_CLS}
             />
-            <p className="text-[10px] text-gray-400 mt-1">Comma-separated</p>
+            <p className="text-[10px] text-gray-400 mt-1">{t("tagsHint")}</p>
           </div>
         ) : hasTags ? (
           <div className="flex flex-wrap gap-1.5">
@@ -808,15 +815,15 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           {/* Equipment */}
           {(isEditing || hasEquipment) && (
             <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4">
-              <SectionHeader>Equipment</SectionHeader>
+              <SectionHeader>{t("equipment")}</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
                   items={draft.equipment ?? []}
-                  col1Label="Name" col2Label="Model" col1Key="name" col2Key="model" col2Optional
+                  col1Label={t("name")} col2Label={t("model")} col1Key="name" col2Key="model" col2Optional
                   onAdd={addEquipment}
                   onUpdate={(i, item) => updateEquipment(i, item as ProcedureEquipmentItem)}
                   onRemove={removeEquipment}
-                  addLabel="Add equipment"
+                  addLabel={t("addEquipment")}
                 />
               ) : (
                 <ul className="space-y-3">
@@ -834,15 +841,15 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           {/* Materials */}
           {(isEditing || hasMaterials) && (
             <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4">
-              <SectionHeader>Materials</SectionHeader>
+              <SectionHeader>{t("materials")}</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
                   items={draft.materials ?? []}
-                  col1Label="Name" col2Label="Quantity" col1Key="name" col2Key="quantity" col2Optional
+                  col1Label={t("name")} col2Label={t("quantity")} col1Key="name" col2Key="quantity" col2Optional
                   onAdd={addMaterial}
                   onUpdate={(i, item) => updateMaterial(i, item as ProcedureMaterialItem)}
                   onRemove={removeMaterial}
-                  addLabel="Add material"
+                  addLabel={t("addMaterial")}
                 />
               ) : (
                 <ul className="space-y-2">
@@ -860,15 +867,15 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
           {/* Environment */}
           {(isEditing || hasEnvironment) && (
             <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4">
-              <SectionHeader>Environment</SectionHeader>
+              <SectionHeader>{t("environment")}</SectionHeader>
               {isEditing ? (
                 <TwoColListEditor
                   items={draft.environment ?? []}
-                  col1Label="Parameter" col2Label="Value" col1Key="parameter" col2Key="value"
+                  col1Label={t("parameter")} col2Label={t("value")} col1Key="parameter" col2Key="value"
                   onAdd={addEnvItem}
                   onUpdate={(i, item) => updateEnvItem(i, item as ProcedureEnvironmentItem)}
                   onRemove={removeEnvItem}
-                  addLabel="Add condition"
+                  addLabel={t("addCondition")}
                 />
               ) : (
                 <ul className="space-y-2">
@@ -890,7 +897,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
         <div className="bg-og-surface rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-xs p-4">
           <div className="flex items-center gap-2 mb-3">
             <ShieldIcon size={13} className="text-amber-500" />
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">Safety</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">{t("safety")}</p>
           </div>
           {isEditing ? (
             <SafetyEditor
@@ -915,23 +922,23 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
       {/* ── Steps ── */}
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
         <div className="flex items-center justify-between px-5 py-3 border-b border-og-border">
-          <p className="text-xs font-semibold text-og-text uppercase tracking-wide">Procedure</p>
+          <p className="text-xs font-semibold text-og-text uppercase tracking-wide">{t("procedure")}</p>
           <span className="text-xs text-gray-400">
-            {steps.length} step{steps.length !== 1 ? "s" : ""}
+            {t("stepCount", { count: steps.length })}
             {formattedDuration && ` · ${formattedDuration}`}
           </span>
         </div>
 
         {steps.length === 0 && !isEditing ? (
           <div className="py-10 text-center">
-            <p className="text-sm text-gray-400">No steps defined</p>
+            <p className="text-sm text-gray-400">{t("noSteps")}</p>
           </div>
         ) : steps.length === 0 && isEditing ? (
           <div className="flex flex-col items-center py-10 text-center">
-            <p className="text-sm text-gray-400 mb-3">No steps yet</p>
+            <p className="text-sm text-gray-400 mb-3">{t("noStepsYet")}</p>
             <button type="button" onClick={addStep}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-og-accent border border-og-accent/30 rounded-lg hover:bg-og-accent/10 transition-colors">
-              <PlusIcon size={12} />Add first step
+              <PlusIcon size={12} />{t("addFirstStep")}
             </button>
           </div>
         ) : isEditing ? (
@@ -956,7 +963,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
                         <button type="button" onClick={() => handleAttachClick(i)} disabled={uploading === i}
                           className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-og-accent disabled:opacity-50 transition-colors">
                           <PaperclipIcon size={11} />
-                          {uploading === i ? "Uploading…" : "Attach file"}
+                          {uploading === i ? t("uploading") : t("attachFile")}
                         </button>
                       </>
                     );
@@ -967,7 +974,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
             <div className="px-5 py-3 border-t border-og-border">
               <button type="button" onClick={addStep}
                 className="flex items-center gap-1.5 text-xs font-medium text-og-accent hover:text-og-accent-dark transition-colors">
-                <PlusIcon size={12} />Add step
+                <PlusIcon size={12} />{t("addStep")}
               </button>
             </div>
           </>
@@ -1010,20 +1017,20 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
       {/* ── Acceptance criteria ── */}
       {(isEditing || hasCriteria) && (
         <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Acceptance Criteria</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-4">{t("acceptanceCriteria")}</p>
           {isEditing ? (
             <div className="space-y-2">
               {(draft.acceptance_criteria ?? []).length > 0 && (
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-1">
-                  <span>Criteria</span><span>Acceptance condition</span><span />
+                  <span>{t("criteria")}</span><span>{t("acceptanceCondition")}</span><span />
                 </div>
               )}
               {(draft.acceptance_criteria ?? []).map((c, i) => (
                 <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                   <input type="text" value={c.label} onChange={(e) => updateCriterion(i, { ...c, label: e.target.value })}
-                    placeholder="Criteria" className={INPUT_CLS} />
+                    placeholder={t("criteria")} className={INPUT_CLS} />
                   <input type="text" value={c.limit} onChange={(e) => updateCriterion(i, { ...c, limit: e.target.value })}
-                    placeholder="Acceptance condition" className={INPUT_CLS} />
+                    placeholder={t("acceptanceCondition")} className={INPUT_CLS} />
                   <button type="button" onClick={() => removeCriterion(i)}
                     className="p-1.5 rounded-sm text-gray-400 hover:text-red-500 hover:bg-og-surface-alt transition-colors">
                     <TrashIcon size={13} />
@@ -1032,7 +1039,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               ))}
               <button type="button" onClick={addCriterion}
                 className="flex items-center gap-1.5 text-xs text-og-accent hover:text-og-accent-dark transition-colors mt-1">
-                <PlusIcon size={11} />Add criterion
+                <PlusIcon size={11} />{t("addCriterion")}
               </button>
             </div>
           ) : (
@@ -1064,6 +1071,8 @@ interface NewProcedureModalProps {
 }
 
 function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalProps) {
+  const t = useTranslations("procedures.newModal");
+  const tPhysicalQuantity = useTranslations("tokens.physicalQuantity");
   const [mode, setMode] = useState<ModalMode>("choose");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1084,25 +1093,25 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
   async function handleCreateNew(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!newForm.proc_id.trim()) errs.proc_id = "Required";
-    else if (newForm.proc_id.trim().length > 20) errs.proc_id = "Max 20 characters";
-    if (!newForm.name.trim()) errs.name = "Required";
+    if (!newForm.proc_id.trim()) errs.proc_id = t("required");
+    else if (newForm.proc_id.trim().length > 20) errs.proc_id = t("maxChars");
+    if (!newForm.name.trim()) errs.name = t("required");
     if (Object.keys(errs).length > 0) { setNewErrors(errs); return; }
     setSaving(true); setError(null);
     try {
       const created = await createProcedure({ proc_id: newForm.proc_id.trim(), name: newForm.name.trim(), physical_quantity: newForm.physical_quantity });
       onCreate(created);
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed to create procedure"); }
+    } catch (err) { setError(err instanceof Error ? err.message : t("createFailed")); }
     finally { setSaving(false); }
   }
 
   async function handleCreateCopy(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!sourceId) errs.source = "Select a procedure to copy";
-    if (!copyProcId.trim()) errs.proc_id = "Required";
-    else if (copyProcId.trim().length > 20) errs.proc_id = "Max 20 characters";
-    if (!copyName.trim()) errs.name = "Required";
+    if (!sourceId) errs.source = t("selectSource");
+    if (!copyProcId.trim()) errs.proc_id = t("required");
+    else if (copyProcId.trim().length > 20) errs.proc_id = t("maxChars");
+    if (!copyName.trim()) errs.name = t("required");
     if (Object.keys(errs).length > 0) { setCopyErrors(errs); return; }
     const src = procedures.find((p) => p.id === sourceId);
     if (!src) return;
@@ -1116,7 +1125,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
         safety_notes: src.safety_notes, steps: src.steps, acceptance_criteria: src.acceptance_criteria,
       });
       onCreate(created);
-    } catch (err) { setError(err instanceof Error ? err.message : "Failed to copy procedure"); }
+    } catch (err) { setError(err instanceof Error ? err.message : t("copyFailed")); }
     finally { setSaving(false); }
   }
 
@@ -1124,7 +1133,7 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-og-border">
-          <h2 className="text-sm font-semibold text-og-text">New procedure</h2>
+          <h2 className="text-sm font-semibold text-og-text">{t("title")}</h2>
           <button type="button" onClick={onClose} className="p-1 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
             <XIcon size={16} />
           </button>
@@ -1132,15 +1141,15 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
 
         {mode === "choose" && (
           <div className="p-6 space-y-3">
-            <p className="text-xs text-gray-400 mb-4">How do you want to create the new procedure?</p>
+            <p className="text-xs text-gray-400 mb-4">{t("chooseQuestion")}</p>
             <button type="button" onClick={() => setMode("new")}
               className="w-full flex items-start gap-4 p-4 border border-og-border-md rounded-xl hover:bg-og-surface-alt hover:border-og-accent/40 transition-colors text-left">
               <div className="shrink-0 w-9 h-9 rounded-lg bg-og-accent/10 text-og-accent flex items-center justify-center">
                 <PlusIcon size={16} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-og-text mb-0.5">Create from scratch</p>
-                <p className="text-xs text-gray-400">Start with an empty procedure and define steps in the editor</p>
+                <p className="text-sm font-semibold text-og-text mb-0.5">{t("fromScratchTitle")}</p>
+                <p className="text-xs text-gray-400">{t("fromScratchDesc")}</p>
               </div>
             </button>
             <button type="button" onClick={() => setMode("copy")}
@@ -1149,8 +1158,8 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
                 <CopyIcon size={16} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-og-text mb-0.5">Copy existing procedure</p>
-                <p className="text-xs text-gray-400">Duplicate an existing procedure as a starting point</p>
+                <p className="text-sm font-semibold text-og-text mb-0.5">{t("copyTitle")}</p>
+                <p className="text-xs text-gray-400">{t("copyDesc")}</p>
               </div>
             </button>
           </div>
@@ -1159,31 +1168,31 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
         {mode === "new" && (
           <form onSubmit={handleCreateNew} className="p-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-og-text mb-1">Procedure ID *</label>
-              <input type="text" maxLength={20} placeholder="PROC-XX-001" value={newForm.proc_id}
+              <label className="block text-xs font-semibold text-og-text mb-1">{t("procId")}</label>
+              <input type="text" maxLength={20} placeholder={t("procIdPlaceholder")} value={newForm.proc_id}
                 onChange={(e) => setNewForm((f) => ({ ...f, proc_id: e.target.value }))} className={inputCls(!!newErrors.proc_id)} />
               {newErrors.proc_id && <p className="mt-1 text-xs text-red-500">{newErrors.proc_id}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-og-text mb-1">Name *</label>
-              <input type="text" placeholder="Procedure name" value={newForm.name}
+              <label className="block text-xs font-semibold text-og-text mb-1">{t("name")}</label>
+              <input type="text" placeholder={t("namePlaceholder")} value={newForm.name}
                 onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))} className={inputCls(!!newErrors.name)} />
               {newErrors.name && <p className="mt-1 text-xs text-red-500">{newErrors.name}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-og-text mb-1">Physical quantity *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">{t("physicalQuantity")}</label>
               <select value={newForm.physical_quantity} onChange={(e) => setNewForm((f) => ({ ...f, physical_quantity: e.target.value }))} className={inputCls(false)}>
-                {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{capitalize(q)}</option>)}
+                {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{translateDynamic(tPhysicalQuantity, q)}</option>)}
               </select>
             </div>
             {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">{error}</p>}
             <div className="flex justify-between items-center pt-1">
-              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-og-text transition-colors">← Back</button>
+              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-og-text transition-colors">{t("back")}</button>
               <div className="flex gap-2">
-                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-og-border-md rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50">Cancel</button>
+                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-og-border-md rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50">{t("cancel")}</button>
                 <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
                   {saving ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : <CheckIcon size={14} />}
-                  {saving ? "Creating…" : "Create & edit"}
+                  {saving ? t("creating") : t("createAndEdit")}
                 </button>
               </div>
             </div>
@@ -1193,37 +1202,37 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
         {mode === "copy" && (
           <form onSubmit={handleCreateCopy} className="p-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-og-text mb-1">Copy from *</label>
+              <label className="block text-xs font-semibold text-og-text mb-1">{t("copyFrom")}</label>
               <select value={sourceId} onChange={(e) => {
                 const id = e.target.value; setSourceId(id);
                 const src = procedures.find((p) => p.id === id);
-                if (src) { setCopyName(`Copy of ${src.name}`); setCopyProcId(""); }
+                if (src) { setCopyName(t("copyOf", { name: src.name })); setCopyProcId(""); }
               }} className={inputCls(!!copyErrors.source)}>
-                <option value="">Select a procedure…</option>
+                <option value="">{t("selectProcedure")}</option>
                 {procedures.map((p) => <option key={p.id} value={p.id}>{p.proc_id ? `[${p.proc_id}] ` : ""}{p.name}</option>)}
               </select>
               {copyErrors.source && <p className="mt-1 text-xs text-red-500">{copyErrors.source}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-og-text mb-1">New procedure ID *</label>
-              <input type="text" maxLength={20} placeholder="PROC-XX-002" value={copyProcId}
+              <label className="block text-xs font-semibold text-og-text mb-1">{t("newProcId")}</label>
+              <input type="text" maxLength={20} placeholder={t("newProcIdPlaceholder")} value={copyProcId}
                 onChange={(e) => setCopyProcId(e.target.value)} className={inputCls(!!copyErrors.proc_id)} />
               {copyErrors.proc_id && <p className="mt-1 text-xs text-red-500">{copyErrors.proc_id}</p>}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-og-text mb-1">Name *</label>
-              <input type="text" placeholder="Name for the new procedure" value={copyName}
+              <label className="block text-xs font-semibold text-og-text mb-1">{t("name")}</label>
+              <input type="text" placeholder={t("newNamePlaceholder")} value={copyName}
                 onChange={(e) => setCopyName(e.target.value)} className={inputCls(!!copyErrors.name)} />
               {copyErrors.name && <p className="mt-1 text-xs text-red-500">{copyErrors.name}</p>}
             </div>
             {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">{error}</p>}
             <div className="flex justify-between items-center pt-1">
-              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-og-text transition-colors">← Back</button>
+              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-og-text transition-colors">{t("back")}</button>
               <div className="flex gap-2">
-                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-og-border-md rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50">Cancel</button>
+                <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-sm font-medium border border-og-border-md rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50">{t("cancel")}</button>
                 <button type="submit" disabled={saving} className="flex items-center gap-1.5 px-4 py-2 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
                   {saving ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : <CopyIcon size={14} />}
-                  {saving ? "Copying…" : "Create copy & edit"}
+                  {saving ? t("copying") : t("createCopyAndEdit")}
                 </button>
               </div>
             </div>
@@ -1239,13 +1248,14 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
 // ---------------------------------------------------------------------------
 
 function EmptyDetail() {
+  const t = useTranslations("procedures.emptyDetail");
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs flex flex-col items-center justify-center py-24 text-center">
       <div className="w-10 h-10 rounded-xl bg-og-border flex items-center justify-center mb-3">
         <ProceduresIcon size={18} className="text-gray-400" />
       </div>
-      <p className="text-sm font-medium text-og-text mb-1">Select a procedure</p>
-      <p className="text-xs text-gray-400">Choose a procedure from the list to view its details</p>
+      <p className="text-sm font-medium text-og-text mb-1">{t("title")}</p>
+      <p className="text-xs text-gray-400">{t("desc")}</p>
     </div>
   );
 }
@@ -1255,6 +1265,7 @@ function EmptyDetail() {
 // ---------------------------------------------------------------------------
 
 export default function ProceduresPage() {
+  const t = useTranslations("procedures.page");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -1335,14 +1346,14 @@ export default function ProceduresPage() {
     <div className="p-6 space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-og-text">Calibration procedures</h1>
-          <p className="text-sm text-gray-400 mt-1">{count} procedure{count !== 1 ? "s" : ""} registered.</p>
+          <h1 className="text-xl font-bold text-og-text">{t("title")}</h1>
+          <p className="text-sm text-gray-400 mt-1">{t("count", { count })}</p>
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setShowNewModal(true)}
               className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
-              <PlusIcon size={13} />New procedure
+              <PlusIcon size={13} />{t("newProcedure")}
             </button>
           </div>
         )}
@@ -1351,14 +1362,14 @@ export default function ProceduresPage() {
       {physicalQuantityFilter && (
         <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
           <span className="text-xs text-og-accent font-medium">
-            Filtered by physical quantity: <span className="font-semibold">{physicalQuantityFilter.label}</span>
+            {t("filteredBy", { label: physicalQuantityFilter.label })}
           </span>
           <button
             type="button"
             onClick={() => clearUrlParams(["physical_quantity", "physical_quantity_label"])}
             className="ml-auto text-[10px] text-gray-400 hover:text-og-text transition-colors"
           >
-            View all ✕
+            {t("viewAll")}
           </button>
         </div>
       )}
@@ -1369,7 +1380,7 @@ export default function ProceduresPage() {
           <div className="px-3 py-2.5 border-b border-og-border shrink-0">
             <div className="relative">
               <SearchIcon size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Search procedures..." value={search} onChange={(e) => handleSearchChange(e.target.value)}
+              <input type="text" placeholder={t("searchPlaceholder")} value={search} onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-7 pr-3 py-1.5 text-xs bg-og-surface-alt border border-og-border rounded-md text-og-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-og-accent/40 focus:border-og-accent/60 transition-colors" />
             </div>
           </div>
@@ -1379,7 +1390,7 @@ export default function ProceduresPage() {
                 <div className="w-5 h-5 border-2 border-og-accent border-t-transparent rounded-full animate-spin" />
               </div>
             ) : visibleProcedures.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-10">No procedures found</p>
+              <p className="text-xs text-gray-400 text-center py-10">{t("empty")}</p>
             ) : (
               <ul className="space-y-0.5">
                 {visibleProcedures.map((proc) => (

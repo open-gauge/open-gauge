@@ -1,0 +1,20 @@
+{
+  "title": "Aktivitätsprotokoll",
+  "loading": "Wird geladen…",
+  "entriesLoaded": "{filtered} von {total} Einträgen geladen",
+  "filteredByUser": "Nach Benutzer gefiltert",
+  "filteredByUserHint": "Aktivität eines bestimmten Benutzers wird angezeigt.",
+  "clearFilter": "Filter zurücksetzen",
+  "searchPlaceholder": "Suche nach Benutzer, Aktion, Anlagen-ID…",
+  "allEntities": "Alle",
+  "errorLoad": "Aktivität konnte nicht geladen werden: {error}",
+  "loadingActivity": "Aktivität wird geladen…",
+  "columnDate": "Datum",
+  "columnUser": "Benutzer",
+  "columnEntity": "Entität",
+  "columnAction": "Aktion",
+  "columnDescription": "Beschreibung",
+  "empty": "Noch keine Aktivität aufgezeichnet.",
+  "loadMore": "Mehr laden",
+  "errorLoadMore": "Weitere Einträge konnten nicht geladen werden"
+}

@@ -1,0 +1,14 @@
+{
+  "detail": {
+    "back": "Back",
+    "loading": "Loading…",
+    "active": "Active",
+    "disabled": "Disabled",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "memberSince": "Member since",
+    "activityLog": "Activity log",
+    "viewActivity": "View activity"
+  }
+}

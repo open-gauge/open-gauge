@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { setRequestLocale } from "next-intl/server";
 import { LegalPageLayout } from "@/components/legal-page-layout";
 
 export const metadata: Metadata = {
@@ -6,7 +7,14 @@ export const metadata: Metadata = {
   description: "Terms governing the use of a self-hosted Open Gauge instance.",
 };
 
-export default function TermsPage() {
+export default async function TermsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   return (
     <LegalPageLayout title="Terms of Service" updated="July 13, 2026">
       <p>

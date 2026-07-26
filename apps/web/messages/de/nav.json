@@ -1,0 +1,29 @@
+{
+  "workspace": "Arbeitsbereich",
+  "system": "System",
+  "dashboard": "Dashboard",
+  "assetRegistry": "Anlagenregister",
+  "locations": "Standorte",
+  "procedures": "Verfahren",
+  "organizations": "Organisationen",
+  "activity": "Aktivität",
+  "settings": "Einstellungen",
+  "collapseSidebar": "Seitenleiste einklappen",
+  "expandSidebar": "Seitenleiste ausklappen",
+  "versionFooter": "v{version} · selbst gehostet",
+  "search": {
+    "placeholder": "Anlagen & Dokumentation durchsuchen...",
+    "assets": "Anlagen",
+    "documentation": "Dokumentation"
+  },
+  "newMenu": {
+    "new": "Neu",
+    "newAsset": "Neue Anlage",
+    "newProcedure": "Neues Verfahren"
+  },
+  "userMenu": {
+    "adminPanel": "Admin-Bereich",
+    "settings": "Einstellungen",
+    "signOut": "Abmelden"
+  }
+}

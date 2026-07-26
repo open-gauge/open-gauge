@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
 import type { UserProfile, UserSignature } from "@/types/user";
 import type { NotificationPreference } from "@/types/notification";
 import { NOTIFICATION_CATEGORIES } from "@/constants/notifications";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import { getNotificationPreferences, updateNotificationPreferences } from "@/services/notification.service";
 import {
   CameraIcon,
@@ -58,6 +60,7 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 // ---------------------------------------------------------------------------
 
 function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh: () => Promise<void> }) {
+  const t = useTranslations("settings.profilePicture");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -68,7 +71,7 @@ function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh:
       await uploadMyPicture(file);
       await onRefresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to upload picture");
+      setError(err instanceof Error ? err.message : t("errorUpload"));
     } finally {
       setUploading(false);
     }
@@ -81,7 +84,7 @@ function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh:
       await deleteMyPicture();
       await onRefresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to remove picture");
+      setError(err instanceof Error ? err.message : t("errorRemove"));
     } finally {
       setUploading(false);
     }
@@ -90,7 +93,7 @@ function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh:
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       <div className="px-4 py-3 border-b border-og-border">
-        <p className="text-xs font-semibold text-og-text">Profile Picture</p>
+        <p className="text-xs font-semibold text-og-text">{t("title")}</p>
       </div>
       <div className="p-4 flex items-center gap-4">
         <ImageUploadField
@@ -105,7 +108,7 @@ function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh:
           <Avatar name={user.name} pictureUrl={user.profile_picture_url} size={64} />
         </ImageUploadField>
         <div className="flex flex-col gap-2">
-          <p className="text-[11px] text-gray-400">JPG, PNG or GIF. Max 5MB.</p>
+          <p className="text-[11px] text-gray-400">{t("hint")}</p>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
       </div>
@@ -118,6 +121,7 @@ function ProfilePictureCard({ user, onRefresh }: { user: UserProfile; onRefresh:
 // ---------------------------------------------------------------------------
 
 function SignatureCard({ user }: { user: UserProfile }) {
+  const t = useTranslations("settings.signature");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [signature, setSignature] = useState<UserSignature | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,7 +135,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
   useEffect(() => {
     getMySignature()
       .then(setSignature)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load signature"))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : t("errorLoad")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -145,7 +149,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
       setSignature(await uploadMySignature(file, "upload"));
       setVerifyResult(null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to upload signature");
+      setError(err instanceof Error ? err.message : t("errorUpload"));
     } finally {
       setUploading(false);
     }
@@ -159,7 +163,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
       setVerifyResult(null);
       setDrawing(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save signature");
+      setError(err instanceof Error ? err.message : t("errorSave"));
     } finally {
       setUploading(false);
     }
@@ -173,7 +177,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
       setSignature(null);
       setVerifyResult(null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to remove signature");
+      setError(err instanceof Error ? err.message : t("errorRemove"));
     } finally {
       setUploading(false);
     }
@@ -185,7 +189,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
     try {
       setVerifyResult(await verifyUserSignature(user.id));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to verify signature");
+      setError(err instanceof Error ? err.message : t("errorVerify"));
     } finally {
       setVerifying(false);
     }
@@ -196,11 +200,11 @@ function SignatureCard({ user }: { user: UserProfile }) {
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       <div className="px-4 py-3 border-b border-og-border">
-        <p className="text-xs font-semibold text-og-text">Signature</p>
+        <p className="text-xs font-semibold text-og-text">{t("title")}</p>
       </div>
       <div className="p-4 space-y-3">
         {loading ? (
-          <p className="text-xs text-gray-400">Loading…</p>
+          <p className="text-xs text-gray-400">{t("loading")}</p>
         ) : drawing ? (
           <SignaturePad onSave={handleDrawSave} onCancel={() => setDrawing(false)} />
         ) : (
@@ -217,7 +221,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
               >
                 {signature?.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={signature.image_url} alt="Signature" className="max-w-full max-h-full object-contain" />
+                  <img src={signature.image_url} alt={t("previewAlt")} className="max-w-full max-h-full object-contain" />
                 ) : (
                   <SignatureIcon size={20} className="text-gray-300" />
                 )}
@@ -230,7 +234,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
                     disabled={uploading}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
                   >
-                    <CameraIcon size={12} /> {uploading ? "Saving…" : signature ? "Replace" : "Upload image"}
+                    <CameraIcon size={12} /> {uploading ? t("saving") : signature ? t("replace") : t("uploadImage")}
                   </button>
                   <button
                     type="button"
@@ -238,7 +242,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
                     disabled={uploading}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
                   >
-                    <EditIcon size={12} /> Draw
+                    <EditIcon size={12} /> {t("draw")}
                   </button>
                   {signature && (
                     <button
@@ -247,12 +251,12 @@ function SignatureCard({ user }: { user: UserProfile }) {
                       disabled={uploading}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
                     >
-                      <TrashIcon size={12} /> Remove
+                      <TrashIcon size={12} /> {t("remove")}
                     </button>
                   )}
                 </div>
                 <p className="text-[11px] text-gray-400">
-                  PNG with a transparent background. Cryptographically signed and used to sign certificates you perform.
+                  {t("hint")}
                 </p>
                 {error && <p className="text-xs text-red-500">{error}</p>}
               </div>
@@ -262,7 +266,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
               <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-og-surface-alt border border-og-border">
                 <span
                   className="text-xs text-gray-400 font-mono truncate"
-                  title={`Ed25519 public key fingerprint: ${signature.fingerprint_sha256}`}
+                  title={t("fingerprintTitle", { fingerprint: signature.fingerprint_sha256 })}
                 >
                   {signature.fingerprint_sha256.slice(0, 4)}…{signature.fingerprint_sha256.slice(-4)}
                 </span>
@@ -271,7 +275,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
                     <span
                       className={`flex items-center gap-1 text-xs ${verifyResult.verified ? "text-emerald-500" : "text-red-500"}`}
                     >
-                      <CheckIcon size={11} /> {verifyResult.verified ? "Verified" : "Not verified"}
+                      <CheckIcon size={11} /> {verifyResult.verified ? t("verified") : t("notVerified")}
                     </span>
                   )}
                   <button
@@ -280,7 +284,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
                     disabled={verifying}
                     className="text-xs font-medium text-og-accent hover:underline disabled:opacity-60"
                   >
-                    {verifying ? "Verifying…" : "Verify"}
+                    {verifying ? t("verifying") : t("verify")}
                   </button>
                 </div>
               </div>
@@ -291,7 +295,7 @@ function SignatureCard({ user }: { user: UserProfile }) {
       </div>
 
       {previewOpen && signature?.image_url && (
-        <ImagePreviewModal src={signature.image_url} alt="Signature" title="Signature" onClose={() => setPreviewOpen(false)} />
+        <ImagePreviewModal src={signature.image_url} alt={t("previewAlt")} title={t("previewTitle")} onClose={() => setPreviewOpen(false)} />
       )}
     </div>
   );
@@ -302,6 +306,9 @@ function SignatureCard({ user }: { user: UserProfile }) {
 // ---------------------------------------------------------------------------
 
 function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () => Promise<void> }) {
+  const tName = useTranslations("settings.displayName");
+  const tEmail = useTranslations("settings.email");
+  const tPw = useTranslations("settings.password");
   // --- Name ---
   const [editName, setEditName] = useState(false);
   const [nameVal, setNameVal] = useState(user.name);
@@ -319,7 +326,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       setNameSave("saved");
       setTimeout(() => setNameSave("idle"), 2000);
     } catch (e: unknown) {
-      setNameErr(e instanceof Error ? e.message : "Failed to save");
+      setNameErr(e instanceof Error ? e.message : tName("errorSave"));
       setNameSave("error");
     }
   }
@@ -341,7 +348,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       setEmailSave("saved");
       setTimeout(() => setEmailSave("idle"), 2000);
     } catch (e: unknown) {
-      setEmailErr(e instanceof Error ? e.message : "Failed to save");
+      setEmailErr(e instanceof Error ? e.message : tEmail("errorSave"));
       setEmailSave("error");
     }
   }
@@ -366,7 +373,7 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       setPwSave("saved");
       setTimeout(() => setPwSave("idle"), 2000);
     } catch (e: unknown) {
-      setPwErr(e instanceof Error ? e.message : "Failed to change password");
+      setPwErr(e instanceof Error ? e.message : tPw("errorSave"));
       setPwSave("error");
     }
   }
@@ -379,22 +386,22 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       {/* Display Name */}
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
         <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
-          <p className="text-xs font-semibold text-og-text">Display Name</p>
+          <p className="text-xs font-semibold text-og-text">{tName("title")}</p>
           {editName ? (
             <div className="flex items-center gap-2">
               <button onClick={() => { setEditName(false); setNameVal(user.name); setNameErr(""); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-                <XIcon size={12} /> Cancel
+                <XIcon size={12} /> {tName("cancel")}
               </button>
               <button onClick={saveName} disabled={nameSave === "saving" || !nameVal.trim()}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-                <CheckIcon size={12} /> {nameSave === "saving" ? "Saving…" : "Save"}
+                <CheckIcon size={12} /> {nameSave === "saving" ? tName("saving") : tName("save")}
               </button>
             </div>
           ) : (
             <button onClick={() => setEditName(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-              <EditIcon size={12} /> Edit
+              <EditIcon size={12} /> {tName("edit")}
             </button>
           )}
         </div>
@@ -403,11 +410,11 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
             <div className="space-y-1">
               <input value={nameVal} onChange={(e) => setNameVal(e.target.value)}
                 className={`${IB} ${nameErr ? IB_ERR : IB_OK}`}
-                placeholder="Your display name" autoFocus />
+                placeholder={tName("placeholder")} autoFocus />
               {nameErr && <p className="text-xs text-red-500">{nameErr}</p>}
             </div>
           ) : (
-            <Field label="Name" value={user.name} />
+            <Field label={tName("label")} value={user.name} />
           )}
         </div>
       </div>
@@ -415,22 +422,22 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       {/* Email */}
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
         <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
-          <p className="text-xs font-semibold text-og-text">Email Address</p>
+          <p className="text-xs font-semibold text-og-text">{tEmail("title")}</p>
           {editEmail ? (
             <div className="flex items-center gap-2">
               <button onClick={() => { setEditEmail(false); setEmailVal(user.email); setEmailErr(""); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-                <XIcon size={12} /> Cancel
+                <XIcon size={12} /> {tEmail("cancel")}
               </button>
               <button onClick={saveEmail} disabled={emailSave === "saving" || !emailVal.trim()}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-                <CheckIcon size={12} /> {emailSave === "saving" ? "Saving…" : "Save"}
+                <CheckIcon size={12} /> {emailSave === "saving" ? tEmail("saving") : tEmail("save")}
               </button>
             </div>
           ) : (
             <button onClick={() => setEditEmail(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-              <EditIcon size={12} /> Edit
+              <EditIcon size={12} /> {tEmail("edit")}
             </button>
           )}
         </div>
@@ -439,11 +446,11 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
             <div className="space-y-1">
               <input type="email" value={emailVal} onChange={(e) => setEmailVal(e.target.value)}
                 className={`${IB} ${emailErr ? IB_ERR : IB_OK}`}
-                placeholder="your@email.com" autoFocus />
+                placeholder={tEmail("placeholder")} autoFocus />
               {emailErr && <p className="text-xs text-red-500">{emailErr}</p>}
             </div>
           ) : (
-            <Field label="Email" value={user.email} />
+            <Field label={tEmail("label")} value={user.email} />
           )}
         </div>
       </div>
@@ -451,34 +458,34 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
       {/* Change Password */}
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
         <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
-          <p className="text-xs font-semibold text-og-text">Change Password</p>
+          <p className="text-xs font-semibold text-og-text">{tPw("title")}</p>
           {pwSave === "saved" && (
             <span className="flex items-center gap-1 text-xs text-emerald-500">
-              <CheckIcon size={11} /> Password updated
+              <CheckIcon size={11} /> {tPw("updated")}
             </span>
           )}
         </div>
         <div className="p-4 space-y-3">
           <div className="space-y-1">
-            <label className="text-xs text-gray-400">Current password</label>
+            <label className="text-xs text-gray-400">{tPw("currentLabel")}</label>
             <input type="password" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)}
               className={`${IB} ${IB_OK}`} placeholder="••••••••" autoComplete="current-password" />
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-gray-400">New password <span className="text-gray-500">(min. 8 characters)</span></label>
+            <label className="text-xs text-gray-400">{tPw("newLabel")} <span className="text-gray-500">{tPw("newHint")}</span></label>
             <input type="password" value={pwNew} onChange={(e) => setPwNew(e.target.value)}
               className={`${IB} ${IB_OK}`} placeholder="••••••••" autoComplete="new-password" />
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-gray-400">Confirm new password</label>
+            <label className="text-xs text-gray-400">{tPw("confirmLabel")}</label>
             <input type="password" value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)}
               className={`${IB} ${pwMismatch ? IB_ERR : IB_OK}`} placeholder="••••••••" autoComplete="new-password" />
-            {pwMismatch && <p className="text-xs text-red-500">Passwords do not match</p>}
+            {pwMismatch && <p className="text-xs text-red-500">{tPw("mismatch")}</p>}
           </div>
           {pwErr && <p className="text-xs text-red-500">{pwErr}</p>}
           <button onClick={savePassword} disabled={!pwValid || pwSave === "saving"}
             className="flex items-center gap-1.5 px-4 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-            <CheckIcon size={12} /> {pwSave === "saving" ? "Saving…" : "Update Password"}
+            <CheckIcon size={12} /> {pwSave === "saving" ? tPw("saving") : tPw("submit")}
           </button>
         </div>
       </div>
@@ -491,6 +498,9 @@ function ProfileSection({ user, onRefresh }: { user: UserProfile; onRefresh: () 
 // ---------------------------------------------------------------------------
 
 function NotificationsSection() {
+  const t = useTranslations("settings.notifications");
+  const tLabel = useTranslations("tokens.notificationCategory.label");
+  const tDesc = useTranslations("tokens.notificationCategory.description");
   const [prefs, setPrefs] = useState<NotificationPreference[] | null>(null);
   const [error, setError] = useState("");
   const [savingCategory, setSavingCategory] = useState<string | null>(null);
@@ -498,8 +508,8 @@ function NotificationsSection() {
   useEffect(() => {
     getNotificationPreferences()
       .then(setPrefs)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load preferences"));
-  }, []);
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : t("errorLoad")));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleToggle(category: string, field: "email_enabled" | "in_app_enabled", value: boolean) {
     if (!prefs) return;
@@ -512,7 +522,7 @@ function NotificationsSection() {
     try {
       setPrefs(await updateNotificationPreferences([updated]));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to save");
+      setError(e instanceof Error ? e.message : t("errorSave"));
       setPrefs((prev) => prev!.map((p) => (p.category === category ? current : p)));
     } finally {
       setSavingCategory(null);
@@ -522,25 +532,25 @@ function NotificationsSection() {
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       <div className="px-4 py-3 border-b border-og-border">
-        <p className="text-xs font-semibold text-og-text">Notification Preferences</p>
+        <p className="text-xs font-semibold text-og-text">{t("title")}</p>
       </div>
       <div className="p-4">
-        {!prefs && !error && <p className="text-xs text-gray-400">Loading…</p>}
+        {!prefs && !error && <p className="text-xs text-gray-400">{t("loading")}</p>}
         {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
         {prefs && (
           <div className="divide-y divide-og-border">
             <div className="grid grid-cols-[1fr_4.5rem_4.5rem] gap-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-              <span>Notification type</span>
-              <span className="text-center">Email</span>
-              <span className="text-center">Internal</span>
+              <span>{t("columnType")}</span>
+              <span className="text-center">{t("columnEmail")}</span>
+              <span className="text-center">{t("columnInternal")}</span>
             </div>
-            {NOTIFICATION_CATEGORIES.map(({ category, label, description }) => {
+            {NOTIFICATION_CATEGORIES.map((category) => {
               const pref = prefs.find((p) => p.category === category);
               return (
                 <div key={category} className="grid grid-cols-[1fr_4.5rem_4.5rem] gap-2 items-center py-3">
                   <div>
-                    <p className="text-sm text-og-text">{label}</p>
-                    <p className="text-xs text-gray-400">{description}</p>
+                    <p className="text-sm text-og-text">{translateDynamic(tLabel, category)}</p>
+                    <p className="text-xs text-gray-400">{translateDynamic(tDesc, category)}</p>
                   </div>
                   <div className="flex justify-center">
                     <ToggleSwitch
@@ -573,10 +583,11 @@ function NotificationsSection() {
 // ---------------------------------------------------------------------------
 
 function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
+  const t = useTranslations("settings.deleteAccount");
   const [confirmed, setConfirmed] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
-  const CONFIRM_PHRASE = "delete my account";
+  const CONFIRM_PHRASE = t("confirmPhrase");
 
   async function handleDelete() {
     if (confirmed !== CONFIRM_PHRASE) return;
@@ -586,7 +597,7 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
       await deleteMe();
       onDeleted();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to delete account");
+      setError(e instanceof Error ? e.message : t("errorDelete"));
       setDeleting(false);
     }
   }
@@ -594,20 +605,20 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
   return (
     <div className="bg-og-surface rounded-xl border border-red-400/30 shadow-xs">
       <div className="px-4 py-3 border-b border-red-400/20">
-        <p className="text-xs font-semibold text-red-500">Delete Account</p>
+        <p className="text-xs font-semibold text-red-500">{t("title")}</p>
       </div>
       <div className="p-4 space-y-4">
         <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30">
           <WarningIcon size={14} className="text-red-500 shrink-0 mt-0.5" />
           <div className="text-xs text-red-700 dark:text-red-400 space-y-1">
-            <p className="font-semibold">This action is permanent and cannot be undone.</p>
-            <p>Your account will be deactivated. All calibration records and data you created will remain for traceability purposes but you will no longer be able to log in.</p>
+            <p className="font-semibold">{t("warningTitle")}</p>
+            <p>{t("warningBody")}</p>
           </div>
         </div>
 
         <div className="space-y-1">
           <label className="text-xs text-gray-400">
-            Type <span className="font-mono text-og-text">{CONFIRM_PHRASE}</span> to confirm
+            {t("confirmPrefix")} <span className="font-mono text-og-text">{CONFIRM_PHRASE}</span> {t("confirmSuffix")}
           </label>
           <input
             value={confirmed}
@@ -625,7 +636,7 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
           className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <TrashIcon size={12} />
-          {deleting ? "Deleting…" : "Delete My Account"}
+          {deleting ? t("deleting") : t("submit")}
         </button>
       </div>
     </div>
@@ -638,15 +649,16 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
 
 type Section = "profile" | "notifications" | "delete";
 
-const NAV: { id: Section; label: string }[] = [
-  { id: "profile", label: "Profile" },
-  { id: "notifications", label: "Notifications" },
-  { id: "delete", label: "Delete Account" },
+const NAV: { id: Section; labelKey: "profile" | "notifications" | "deleteAccount" }[] = [
+  { id: "profile", labelKey: "profile" },
+  { id: "notifications", labelKey: "notifications" },
+  { id: "delete", labelKey: "deleteAccount" },
 ];
 
 export default function SettingsPage() {
   const { user, logout, refreshUser } = useAuth();
   const router = useRouter();
+  const t = useTranslations("settings");
   const [section, setSection] = useState<Section>("profile");
 
   function handleDeleted() {
@@ -657,15 +669,15 @@ export default function SettingsPage() {
   return (
     <div className="p-6 space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-og-text">Settings</h1>
-        <p className="text-sm text-gray-400 mt-1">Manage your profile and workspace</p>
+        <h1 className="text-xl font-bold text-og-text">{t("page.title")}</h1>
+        <p className="text-sm text-gray-400 mt-1">{t("page.subtitle")}</p>
       </div>
 
       <div className="flex gap-5 items-start">
         {/* Sidebar nav */}
         <div className="w-52 shrink-0 bg-og-surface rounded-xl border border-og-border shadow-xs sticky top-4">
           <div className="px-3 py-3 border-b border-og-border">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Account</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("nav.account")}</p>
           </div>
           <div className="p-2">
             {NAV.map((item) => (
@@ -681,7 +693,7 @@ export default function SettingsPage() {
                   ${item.id === "delete" ? "mt-1 text-red-500 hover:text-red-500" : ""}
                 `}
               >
-                {item.label}
+                {t(`nav.${item.labelKey}`)}
               </button>
             ))}
           </div>

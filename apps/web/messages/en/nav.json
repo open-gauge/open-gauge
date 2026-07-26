@@ -1,0 +1,29 @@
+{
+  "workspace": "Workspace",
+  "system": "System",
+  "dashboard": "Dashboard",
+  "assetRegistry": "Asset Registry",
+  "locations": "Locations",
+  "procedures": "Procedures",
+  "organizations": "Organizations",
+  "activity": "Activity",
+  "settings": "Settings",
+  "collapseSidebar": "Collapse sidebar",
+  "expandSidebar": "Expand sidebar",
+  "versionFooter": "v{version} · self-hosted",
+  "search": {
+    "placeholder": "Search assets & docs...",
+    "assets": "Assets",
+    "documentation": "Documentation"
+  },
+  "newMenu": {
+    "new": "New",
+    "newAsset": "New Asset",
+    "newProcedure": "New Procedure"
+  },
+  "userMenu": {
+    "adminPanel": "Admin Panel",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  }
+}

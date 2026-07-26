@@ -959,7 +959,7 @@ export function getNotificationPreferences(userId: string): NotificationPreferen
       .filter((p) => p.user_id === userId)
       .map((p) => [p.category, p] as const)
   );
-  return NOTIFICATION_CATEGORIES.map(({ category }) => {
+  return NOTIFICATION_CATEGORIES.map((category) => {
     const pref = saved.get(category);
     return pref
       ? { category, email_enabled: pref.email_enabled, in_app_enabled: pref.in_app_enabled }

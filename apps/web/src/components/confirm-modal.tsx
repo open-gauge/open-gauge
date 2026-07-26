@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { WarningIcon } from "@/components/icons";
 
 interface ConfirmModalProps {
@@ -18,12 +19,13 @@ interface ConfirmModalProps {
 export function ConfirmModal({
   title,
   message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   danger = false,
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
+  const t = useTranslations("common.confirmModal");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -35,7 +37,7 @@ export function ConfirmModal({
       await onConfirm();
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t("somethingWrong"));
       setBusy(false);
     }
   }
@@ -56,7 +58,7 @@ export function ConfirmModal({
             disabled={busy}
             className="px-3 py-1.5 text-sm border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors text-og-text disabled:opacity-50"
           >
-            {onConfirm ? cancelLabel : "Close"}
+            {onConfirm ? (cancelLabel ?? t("cancel")) : t("close")}
           </button>
           {onConfirm && (
             <button
@@ -68,7 +70,7 @@ export function ConfirmModal({
               }`}
             >
               {busy && <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              {busy ? "Working…" : confirmLabel}
+              {busy ? t("working") : (confirmLabel ?? t("confirm"))}
             </button>
           )}
         </div>

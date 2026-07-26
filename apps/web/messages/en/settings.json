@@ -1,0 +1,92 @@
+{
+  "page": {
+    "title": "Settings",
+    "subtitle": "Manage your profile and workspace"
+  },
+  "nav": {
+    "account": "Account",
+    "profile": "Profile",
+    "notifications": "Notifications",
+    "deleteAccount": "Delete Account"
+  },
+  "profilePicture": {
+    "title": "Profile Picture",
+    "hint": "JPG, PNG or GIF. Max 5MB.",
+    "errorUpload": "Failed to upload picture",
+    "errorRemove": "Failed to remove picture"
+  },
+  "signature": {
+    "title": "Signature",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "replace": "Replace",
+    "uploadImage": "Upload image",
+    "draw": "Draw",
+    "remove": "Remove",
+    "hint": "PNG with a transparent background. Cryptographically signed and used to sign certificates you perform.",
+    "verified": "Verified",
+    "notVerified": "Not verified",
+    "verify": "Verify",
+    "verifying": "Verifying…",
+    "fingerprintTitle": "Ed25519 public key fingerprint: {fingerprint}",
+    "previewTitle": "Signature",
+    "previewAlt": "Signature",
+    "errorLoad": "Failed to load signature",
+    "errorUpload": "Failed to upload signature",
+    "errorSave": "Failed to save signature",
+    "errorRemove": "Failed to remove signature",
+    "errorVerify": "Failed to verify signature"
+  },
+  "displayName": {
+    "title": "Display Name",
+    "label": "Name",
+    "placeholder": "Your display name",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "edit": "Edit",
+    "errorSave": "Failed to save"
+  },
+  "email": {
+    "title": "Email Address",
+    "label": "Email",
+    "placeholder": "your@email.com",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "edit": "Edit",
+    "errorSave": "Failed to save"
+  },
+  "password": {
+    "title": "Change Password",
+    "updated": "Password updated",
+    "currentLabel": "Current password",
+    "newLabel": "New password",
+    "newHint": "(min. 8 characters)",
+    "confirmLabel": "Confirm new password",
+    "mismatch": "Passwords do not match",
+    "submit": "Update Password",
+    "saving": "Saving…",
+    "errorSave": "Failed to change password"
+  },
+  "notifications": {
+    "title": "Notification Preferences",
+    "loading": "Loading…",
+    "errorLoad": "Failed to load preferences",
+    "errorSave": "Failed to save",
+    "columnType": "Notification type",
+    "columnEmail": "Email",
+    "columnInternal": "Internal"
+  },
+  "deleteAccount": {
+    "title": "Delete Account",
+    "warningTitle": "This action is permanent and cannot be undone.",
+    "warningBody": "Your account will be deactivated. All calibration records and data you created will remain for traceability purposes but you will no longer be able to log in.",
+    "confirmPrefix": "Type",
+    "confirmSuffix": "to confirm",
+    "confirmPhrase": "delete my account",
+    "submit": "Delete My Account",
+    "deleting": "Deleting…",
+    "errorDelete": "Failed to delete account"
+  }
+}

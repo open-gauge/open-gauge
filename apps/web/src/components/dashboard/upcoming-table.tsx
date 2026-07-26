@@ -1,15 +1,20 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { CalibrationEvent } from "@/types/dashboard";
 import { ExternalLinkIcon } from "@/components/icons";
 
-function formatDaysUntil(dateStr: string, todayStr: string): { label: string; cls: string } {
+function formatDaysUntil(
+  dateStr: string,
+  todayStr: string,
+  t: ReturnType<typeof useTranslations>,
+): { label: string; cls: string } {
   const todayMs = new Date(todayStr + "T00:00:00").getTime();
   const dueMs   = new Date(dateStr  + "T00:00:00").getTime();
   const diff    = Math.round((dueMs - todayMs) / 86_400_000);
-  if (diff < 0)   return { label: `${Math.abs(diff)}d overdue`, cls: "text-red-500" };
-  if (diff === 0) return { label: "Due today",                  cls: "text-red-400" };
-  if (diff <= 30) return { label: `In ${diff} days`,            cls: "text-amber-500" };
-  return               { label: `In ${diff} days`,              cls: "text-gray-400" };
+  if (diff < 0)   return { label: t("overdue", { days: Math.abs(diff) }), cls: "text-red-500" };
+  if (diff === 0) return { label: t("dueToday"),                         cls: "text-red-400" };
+  if (diff <= 30) return { label: t("inDays", { days: diff }),           cls: "text-amber-500" };
+  return               { label: t("inDays", { days: diff }),            cls: "text-gray-400" };
 }
 
 function toTodayStr(): string {
@@ -18,6 +23,7 @@ function toTodayStr(): string {
 }
 
 export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
+  const t = useTranslations("dashboard.upcoming");
   const todayStr = toTodayStr();
   // Most overdue / closest due first
   const sorted = [...data].sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -26,25 +32,25 @@ export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 h-full flex flex-col">
       <div className="flex items-start justify-between mb-4 shrink-0">
         <div>
-          <h3 className="text-sm font-semibold text-og-text">Upcoming calibrations</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Closest due dates first — click to open asset</p>
+          <h3 className="text-sm font-semibold text-og-text">{t("title")}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{t("subtitle")}</p>
         </div>
-        <a
+        <Link
           href="/assets"
           className="text-xs text-gray-400 hover:text-og-accent flex items-center gap-1 transition-colors shrink-0"
         >
-          View all
+          {t("viewAll")}
           <ExternalLinkIcon />
-        </a>
+        </Link>
       </div>
 
       {/* Scrollable list fills remaining panel height */}
       <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 pr-1">
         {sorted.length === 0 ? (
-          <p className="text-center text-xs text-gray-400 py-6">No calibrations scheduled</p>
+          <p className="text-center text-xs text-gray-400 py-6">{t("empty")}</p>
         ) : (
           sorted.map((event, i) => {
-            const { label, cls } = formatDaysUntil(event.due_date, todayStr);
+            const { label, cls } = formatDaysUntil(event.due_date, todayStr, t);
             const dueDate = new Date(event.due_date + "T00:00:00");
             return (
               <Link

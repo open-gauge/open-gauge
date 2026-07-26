@@ -1,0 +1,92 @@
+{
+  "page": {
+    "title": "Einstellungen",
+    "subtitle": "Verwalten Sie Ihr Profil und Ihren Arbeitsbereich"
+  },
+  "nav": {
+    "account": "Konto",
+    "profile": "Profil",
+    "notifications": "Benachrichtigungen",
+    "deleteAccount": "Konto löschen"
+  },
+  "profilePicture": {
+    "title": "Profilbild",
+    "hint": "JPG, PNG oder GIF. Max. 5 MB.",
+    "errorUpload": "Bild konnte nicht hochgeladen werden",
+    "errorRemove": "Bild konnte nicht entfernt werden"
+  },
+  "signature": {
+    "title": "Signatur",
+    "loading": "Wird geladen…",
+    "saving": "Wird gespeichert…",
+    "replace": "Ersetzen",
+    "uploadImage": "Bild hochladen",
+    "draw": "Zeichnen",
+    "remove": "Entfernen",
+    "hint": "PNG mit transparentem Hintergrund. Kryptografisch signiert und wird zum Signieren der von Ihnen erstellten Zertifikate verwendet.",
+    "verified": "Verifiziert",
+    "notVerified": "Nicht verifiziert",
+    "verify": "Verifizieren",
+    "verifying": "Wird verifiziert…",
+    "fingerprintTitle": "Ed25519-Fingerabdruck des öffentlichen Schlüssels: {fingerprint}",
+    "previewTitle": "Signatur",
+    "previewAlt": "Signatur",
+    "errorLoad": "Signatur konnte nicht geladen werden",
+    "errorUpload": "Signatur konnte nicht hochgeladen werden",
+    "errorSave": "Signatur konnte nicht gespeichert werden",
+    "errorRemove": "Signatur konnte nicht entfernt werden",
+    "errorVerify": "Signatur konnte nicht verifiziert werden"
+  },
+  "displayName": {
+    "title": "Anzeigename",
+    "label": "Name",
+    "placeholder": "Ihr Anzeigename",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "edit": "Bearbeiten",
+    "errorSave": "Speichern fehlgeschlagen"
+  },
+  "email": {
+    "title": "E-Mail-Adresse",
+    "label": "E-Mail",
+    "placeholder": "sie@beispiel.de",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "edit": "Bearbeiten",
+    "errorSave": "Speichern fehlgeschlagen"
+  },
+  "password": {
+    "title": "Passwort ändern",
+    "updated": "Passwort aktualisiert",
+    "currentLabel": "Aktuelles Passwort",
+    "newLabel": "Neues Passwort",
+    "newHint": "(mind. 8 Zeichen)",
+    "confirmLabel": "Neues Passwort bestätigen",
+    "mismatch": "Passwörter stimmen nicht überein",
+    "submit": "Passwort aktualisieren",
+    "saving": "Wird gespeichert…",
+    "errorSave": "Passwort konnte nicht geändert werden"
+  },
+  "notifications": {
+    "title": "Benachrichtigungseinstellungen",
+    "loading": "Wird geladen…",
+    "errorLoad": "Einstellungen konnten nicht geladen werden",
+    "errorSave": "Speichern fehlgeschlagen",
+    "columnType": "Benachrichtigungstyp",
+    "columnEmail": "E-Mail",
+    "columnInternal": "Intern"
+  },
+  "deleteAccount": {
+    "title": "Konto löschen",
+    "warningTitle": "Diese Aktion ist endgültig und kann nicht rückgängig gemacht werden.",
+    "warningBody": "Ihr Konto wird deaktiviert. Alle Kalibrierdatensätze und Daten, die Sie erstellt haben, bleiben zu Rückverfolgbarkeitszwecken erhalten, Sie können sich jedoch nicht mehr anmelden.",
+    "confirmPrefix": "Geben Sie zur Bestätigung",
+    "confirmSuffix": "ein",
+    "confirmPhrase": "mein konto löschen",
+    "submit": "Mein Konto löschen",
+    "deleting": "Wird gelöscht…",
+    "errorDelete": "Konto konnte nicht gelöscht werden"
+  }
+}

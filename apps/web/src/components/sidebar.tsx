@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/navigation";
 import type * as PageTree from "fumadocs-core/page-tree";
 import {
   ActivityIcon,
@@ -23,25 +23,26 @@ import { APP_VERSION } from "@/lib/version";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: "dashboard" | "assetRegistry" | "locations" | "procedures" | "organizations" | "activity" | "settings";
   icon: React.ReactNode;
 }
 
 const WORKSPACE_NAV: NavItem[] = [
-  { href: "/dashboard",    label: "Dashboard",        icon: <DashboardIcon size={15} /> },
-  { href: "/assets",       label: "Asset Registry",   icon: <AssetRegistryIcon size={15} /> },
-  { href: "/sites",        label: "Locations",        icon: <MapPinIcon size={15} /> },
-  { href: "/procedures",    label: "Procedures",       icon: <ProceduresIcon size={15} /> },
-  { href: "/organizations", label: "Organizations",    icon: <BuildingIcon size={15} /> },
-  { href: "/activity",     label: "Activity",         icon: <ActivityIcon size={15} /> },
+  { href: "/dashboard",     labelKey: "dashboard",     icon: <DashboardIcon size={15} /> },
+  { href: "/assets",        labelKey: "assetRegistry", icon: <AssetRegistryIcon size={15} /> },
+  { href: "/sites",         labelKey: "locations",     icon: <MapPinIcon size={15} /> },
+  { href: "/procedures",    labelKey: "procedures",    icon: <ProceduresIcon size={15} /> },
+  { href: "/organizations", labelKey: "organizations", icon: <BuildingIcon size={15} /> },
+  { href: "/activity",      labelKey: "activity",      icon: <ActivityIcon size={15} /> },
 ];
 
 const SYSTEM_NAV: NavItem[] = [
-  { href: "/settings", label: "Settings", icon: <SettingsIcon size={15} /> },
+  { href: "/settings", labelKey: "settings", icon: <SettingsIcon size={15} /> },
 ];
 
 export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
   const pathname = usePathname();
+  const t = useTranslations("nav");
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -113,7 +114,7 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
         <div className={collapsed ? "mb-3" : "mb-5"}>
           {!collapsed && (
             <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400 whitespace-nowrap">
-              Workspace
+              {t("workspace")}
             </p>
           )}
           <ul className="space-y-0.5">
@@ -121,6 +122,7 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
               <li key={item.href}>
                 <NavLink
                   item={item}
+                  label={t(item.labelKey)}
                   active={
                     pathname === item.href ||
                     pathname.startsWith(item.href + "/")
@@ -136,7 +138,7 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
         <div>
           {!collapsed && (
             <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400 whitespace-nowrap">
-              System
+              {t("system")}
             </p>
           )}
           <ul className="space-y-0.5">
@@ -155,6 +157,7 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
               <li key={item.href}>
                 <NavLink
                   item={item}
+                  label={t(item.labelKey)}
                   active={pathname === item.href}
                   collapsed={collapsed}
                 />
@@ -173,14 +176,14 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
         {!collapsed && (
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <p className="text-[11px] text-gray-400 whitespace-nowrap">v{APP_VERSION} · self-hosted</p>
+            <p className="text-[11px] text-gray-400 whitespace-nowrap">{t("versionFooter", { version: APP_VERSION })}</p>
           </div>
         )}
         <button
           type="button"
           onClick={toggle}
           className="p-1 rounded-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-og-border transition-colors shrink-0"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
         >
           {collapsed ? <ChevronRightIcon size={14} /> : <ChevronLeftIcon size={14} />}
         </button>
@@ -191,10 +194,12 @@ export default function Sidebar({ docsTree }: { docsTree: PageTree.Root }) {
 
 function NavLink({
   item,
+  label,
   active,
   collapsed,
 }: {
   item: NavItem;
+  label: string;
   active: boolean;
   collapsed: boolean;
 }) {
@@ -217,12 +222,12 @@ function NavLink({
       >
         {item.icon}
       </span>
-      {!collapsed && item.label}
+      {!collapsed && label}
     </>
   );
 
   return (
-    <Link href={item.href} title={collapsed ? item.label : undefined} className={className}>
+    <Link href={item.href} title={collapsed ? label : undefined} className={className}>
       {content}
     </Link>
   );

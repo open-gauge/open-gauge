@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { setRequestLocale } from "next-intl/server";
 import { LegalPageLayout } from "@/components/legal-page-layout";
 
 export const metadata: Metadata = {
@@ -6,7 +7,14 @@ export const metadata: Metadata = {
   description: "How a self-hosted Open Gauge instance handles personal and organizational data.",
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   return (
     <LegalPageLayout title="Privacy Policy" updated="July 13, 2026">
       <p>

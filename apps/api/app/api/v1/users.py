@@ -208,7 +208,7 @@ def update_user(
 ) -> UserResponse:
     """Admin-only: role, organization, is_active, and is_verified are all
     privilege-bearing fields. Self-service updates go through PATCH /users/me
-    (UserSelfUpdate) instead, which only allows name/email."""
+    (UserSelfUpdate) instead, which only allows name/email/language."""
     user = user_repo.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

@@ -1,0 +1,70 @@
+{
+  "page": {
+    "title": "Betriebs-Dashboard",
+    "subtitle": "Echtzeitstatus für alle Standorte, Labore und Messtechnik."
+  },
+  "cards": {
+    "registeredAssets": "Registrierte Anlagen",
+    "assetsCenter": "Anlagen",
+    "sensors": "Sensoren",
+    "sensorsCenter": "Sensoren",
+    "daqUnits": "DAQ-Einheiten",
+    "daqCenter": "DAQ",
+    "procedures": "Verfahren",
+    "proceduresCenter": "Verfahren",
+    "filterTitle": "Im Anlagenregister anzeigen"
+  },
+  "calStatus": {
+    "valid": "Kalibriert",
+    "due_soon": "Bald fällig",
+    "expired": "Überfällig",
+    "not_calibrated": "Nicht kalibriert"
+  },
+  "activity": {
+    "title": "Aktivität",
+    "subtitle": "Aktuelle Audit-Ereignisse",
+    "viewAll": "Alle anzeigen",
+    "minAgo": "vor {count} Min.",
+    "hoursAgo": "vor {count} Std.",
+    "yesterday": "gestern",
+    "daysAgo": "vor {count} Tagen"
+  },
+  "calendar": {
+    "title": "Kalibrieraktivität",
+    "subtitle": "Durchgeführte Kalibrierungen und Fälligkeitsdaten aller Anlagen",
+    "prevYear": "Vorheriges Jahr",
+    "nextYear": "Nächstes Jahr",
+    "monthShort": ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"],
+    "dayLabels": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+    "legendNone": "Keine Ereignisse",
+    "legendPerformed": "Kalibriert",
+    "legendUpcoming": "Demnächst fällig",
+    "legendExpired": "Überfällig",
+    "tooltipCalibrated": "Kalibriert",
+    "tooltipOverdue": "Überfällig",
+    "tooltipDue": "Fällig"
+  },
+  "categoryDistribution": {
+    "title": "Anlagenverteilung",
+    "subtitle": "Sensoren nach Typ · DAQ nach Schnittstelle",
+    "sensorLabel": "Sensor",
+    "daqLabel": "DAQ",
+    "noSensors": "Keine Sensoren",
+    "noDaqs": "Keine DAQ"
+  },
+  "recentAssets": {
+    "title": "Zuletzt aktualisierte Anlagen",
+    "subtitle": "Neueste Änderungen an allen Standorten",
+    "sensor": "Sensor",
+    "daq": "DAQ"
+  },
+  "upcoming": {
+    "title": "Anstehende Kalibrierungen",
+    "subtitle": "Nächste Fälligkeiten zuerst — klicken, um die Anlage zu öffnen",
+    "viewAll": "Alle anzeigen",
+    "empty": "Keine Kalibrierungen geplant",
+    "overdue": "{days} T. überfällig",
+    "dueToday": "Heute fällig",
+    "inDays": "In {days} Tagen"
+  }
+}

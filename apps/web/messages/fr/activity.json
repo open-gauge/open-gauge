@@ -1,0 +1,20 @@
+{
+  "title": "Journal d'activité",
+  "loading": "Chargement…",
+  "entriesLoaded": "{filtered} sur {total} entrées chargées",
+  "filteredByUser": "Filtré par utilisateur",
+  "filteredByUserHint": "Affichage de l'activité d'un utilisateur spécifique.",
+  "clearFilter": "Effacer le filtre",
+  "searchPlaceholder": "Rechercher par utilisateur, action, ID d'actif…",
+  "allEntities": "Tous",
+  "errorLoad": "Échec du chargement de l'activité : {error}",
+  "loadingActivity": "Chargement de l'activité…",
+  "columnDate": "Date",
+  "columnUser": "Utilisateur",
+  "columnEntity": "Entité",
+  "columnAction": "Action",
+  "columnDescription": "Description",
+  "empty": "Aucune activité enregistrée pour le moment.",
+  "loadMore": "Charger plus",
+  "errorLoadMore": "Échec du chargement d'entrées supplémentaires"
+}

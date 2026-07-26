@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { CameraIcon, TrashIcon } from "@/components/icons";
 import { ImagePreviewModal } from "@/components/image-preview-modal";
 
@@ -34,6 +35,7 @@ export function ImageUploadField({
   previewTitle,
   children,
 }: ImageUploadFieldProps) {
+  const t = useTranslations("common.imageUpload");
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -60,7 +62,7 @@ export function ImageUploadField({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            title={imageUrl ? "Change picture" : "Upload picture"}
+            title={imageUrl ? t("changePicture") : t("uploadPicture")}
             className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-og-action hover:bg-og-action-dark text-white flex items-center justify-center shadow-sm transition-colors disabled:opacity-60"
           >
             <CameraIcon size={13} />
@@ -70,7 +72,7 @@ export function ImageUploadField({
               type="button"
               onClick={onRemove}
               disabled={uploading}
-              title="Remove picture"
+              title={t("removePicture")}
               className="absolute -bottom-1 -left-1 w-7 h-7 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-sm transition-colors disabled:opacity-60"
             >
               <TrashIcon size={13} />

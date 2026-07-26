@@ -1,0 +1,20 @@
+{
+  "title": "Registro de actividad",
+  "loading": "Cargando…",
+  "entriesLoaded": "{filtered} de {total} entradas cargadas",
+  "filteredByUser": "Filtrado por usuario",
+  "filteredByUserHint": "Mostrando la actividad de un usuario específico.",
+  "clearFilter": "Quitar filtro",
+  "searchPlaceholder": "Buscar por usuario, acción, ID de activo…",
+  "allEntities": "Todos",
+  "errorLoad": "No se pudo cargar la actividad: {error}",
+  "loadingActivity": "Cargando actividad…",
+  "columnDate": "Fecha",
+  "columnUser": "Usuario",
+  "columnEntity": "Entidad",
+  "columnAction": "Acción",
+  "columnDescription": "Descripción",
+  "empty": "Aún no se ha registrado actividad.",
+  "loadMore": "Cargar más",
+  "errorLoadMore": "No se pudieron cargar más entradas"
+}

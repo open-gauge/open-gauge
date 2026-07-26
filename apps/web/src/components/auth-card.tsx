@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { forgotPassword, login, register, resendVerification, setToken } from "@/services/auth.service";
 import { EyeIcon, EyeOffIcon, MailIcon } from "@/components/icons";
 import { ToggleSwitch } from "@/components/toggle-switch";
@@ -9,6 +10,7 @@ import { ToggleSwitch } from "@/components/toggle-switch";
 type Tab = "signin" | "register" | "forgot";
 
 export default function AuthCard() {
+  const t = useTranslations("auth.card");
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("signin");
   const [email, setEmail] = useState("");
@@ -41,7 +43,7 @@ export default function AuthCard() {
       const result = await register(email, name, password);
       setPendingMessage(result.message);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+      setError(err instanceof Error ? err.message : t("unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ export default function AuthCard() {
     return (
       <div className="bg-og-surface rounded-2xl shadow-xl border border-og-border p-8 w-full text-center">
         <MailIcon size={28} className="text-og-accent mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-og-text">Check your account</h2>
+        <h2 className="text-xl font-semibold text-og-text">{t("checkAccount")}</h2>
         <p className="text-sm text-gray-500 mt-2">{pendingMessage}</p>
         <button
           type="button"
@@ -75,7 +77,7 @@ export default function AuthCard() {
           disabled={resendState !== "idle"}
           className="mt-6 text-sm text-og-accent hover:underline disabled:opacity-60 disabled:no-underline"
         >
-          {resendState === "sent" ? "Verification email resent" : resendState === "sending" ? "Sending…" : "Resend verification email"}
+          {resendState === "sent" ? t("resendSent") : resendState === "sending" ? t("sending") : t("resendVerification")}
         </button>
       </div>
     );
@@ -88,9 +90,9 @@ export default function AuthCard() {
     return (
       <div className="bg-og-surface rounded-2xl shadow-xl border border-og-border p-8 w-full">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-og-text">Reset your password</h2>
+          <h2 className="text-xl font-semibold text-og-text">{t("resetTitle")}</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Enter your account email. If email notifications are configured, we&apos;ll send you a reset link.
+            {t("resetDesc")}
           </p>
         </div>
 
@@ -98,16 +100,14 @@ export default function AuthCard() {
           <div className="text-center py-4">
             <MailIcon size={28} className="text-og-accent mx-auto mb-4" />
             <p className="text-sm text-gray-500">
-              If an account exists for <span className="font-medium text-og-text">{email}</span>  and email
-              notifications are configured, a reset link is on its way. If your administrator hasn&apos;t
-              configured email, contact them directly to reset your password.
+              {t("resetSentMessage", { email })}
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="forgot-email" className="block text-sm font-medium text-og-text mb-1">Email</label>
-              <input id="forgot-email" type="email" autoComplete="email" required placeholder="engineer@lab.io"
+              <label htmlFor="forgot-email" className="block text-sm font-medium text-og-text mb-1">{t("email")}</label>
+              <input id="forgot-email" type="email" autoComplete="email" required placeholder={t("emailPlaceholder")}
                 value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
             </div>
             {error && (
@@ -123,7 +123,7 @@ export default function AuthCard() {
               {loading ? (
                 <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <>Send reset link <span aria-hidden>→</span></>
+                <>{t("sendResetLink")} <span aria-hidden>→</span></>
               )}
             </button>
           </form>
@@ -134,7 +134,7 @@ export default function AuthCard() {
           onClick={() => switchTab("signin")}
           className="mt-6 w-full text-center text-sm text-gray-400 hover:text-og-accent transition-colors"
         >
-          Back to sign in
+          {t("backToSignIn")}
         </button>
       </div>
     );
@@ -143,24 +143,24 @@ export default function AuthCard() {
   return (
     <div className="bg-og-surface rounded-2xl shadow-xl border border-og-border p-8 w-full">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-og-text">Access your workspace</h2>
-        <p className="text-sm text-gray-500 mt-1">Authenticate to continue to the registry.</p>
+        <h2 className="text-xl font-semibold text-og-text">{t("accessWorkspace")}</h2>
+        <p className="text-sm text-gray-500 mt-1">{t("authenticateDesc")}</p>
       </div>
 
       {/* Tabs */}
       <div className="flex bg-og-surface-alt rounded-lg p-1 mb-6 border border-og-border">
-        {(["signin", "register"] as Tab[]).map((t) => (
+        {(["signin", "register"] as Tab[]).map((tabOption) => (
           <button
-            key={t}
+            key={tabOption}
             type="button"
-            onClick={() => switchTab(t)}
+            onClick={() => switchTab(tabOption)}
             className={`flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all ${
-              tab === t
+              tab === tabOption
                 ? "bg-og-surface text-og-text shadow-xs"
                 : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
-            {t === "signin" ? "Sign in" : "Create account"}
+            {tabOption === "signin" ? t("signIn") : t("createAccount")}
           </button>
         ))}
       </div>
@@ -168,28 +168,28 @@ export default function AuthCard() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {tab === "register" && (
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-og-text mb-1">Name</label>
-            <input id="name" type="text" autoComplete="name" required placeholder="Jane Smith"
+            <label htmlFor="name" className="block text-sm font-medium text-og-text mb-1">{t("name")}</label>
+            <input id="name" type="text" autoComplete="name" required placeholder={t("namePlaceholder")}
               value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-og-text mb-1">Email</label>
-          <input id="email" type="email" autoComplete="email" required placeholder="engineer@lab.io"
+          <label htmlFor="email" className="block text-sm font-medium text-og-text mb-1">{t("email")}</label>
+          <input id="email" type="email" autoComplete="email" required placeholder={t("emailPlaceholder")}
             value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label htmlFor="password" className="block text-sm font-medium text-og-text">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-og-text">{t("password")}</label>
             {tab === "signin" && (
               <button
                 type="button"
                 onClick={() => switchTab("forgot")}
                 className="text-xs text-gray-400 hover:text-og-accent transition-colors"
               >
-                Forgot?
+                {t("forgot")}
               </button>
             )}
           </div>
@@ -204,19 +204,19 @@ export default function AuthCard() {
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               tabIndex={-1}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("hidePassword") : t("showPassword")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               {showPassword ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
             </button>
           </div>
           {tab === "register" && (
-            <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+            <p className="text-xs text-gray-400 mt-1">{t("minChars")}</p>
           )}
           {tab === "signin" && (
             <label className="flex items-center gap-2 mt-3 text-xs text-gray-400">
               <ToggleSwitch checked={stayLoggedIn} onChange={setStayLoggedIn} showLabel={false} />
-              Stay signed in
+              {t("stayLoggedIn")}
             </label>
           )}
         </div>
@@ -235,16 +235,16 @@ export default function AuthCard() {
           {loading ? (
             <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
-            <>{tab === "signin" ? "Sign in" : "Create account"} <span aria-hidden>→</span></>
+            <>{tab === "signin" ? t("signIn") : t("createAccount")} <span aria-hidden>→</span></>
           )}
         </button>
       </form>
 
       <p className="mt-6 text-center text-xs text-gray-400">
-        By continuing you agree to the{" "}
-        <a href="/terms" className="underline hover:text-gray-600 dark:hover:text-gray-200 transition-colors">Terms</a>
-        {" "}and{" "}
-        <a href="/privacy" className="underline hover:text-gray-600 dark:hover:text-gray-200 transition-colors">Privacy Policy</a>.
+        {t("agreePrefix")}{" "}
+        <a href="/terms" className="underline hover:text-gray-600 dark:hover:text-gray-200 transition-colors">{t("termsLink")}</a>
+        {" "}{t("agreeAnd")}{" "}
+        <a href="/privacy" className="underline hover:text-gray-600 dark:hover:text-gray-200 transition-colors">{t("privacyLink")}</a>.
       </p>
     </div>
   );

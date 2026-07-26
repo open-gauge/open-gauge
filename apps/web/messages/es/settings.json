@@ -1,0 +1,92 @@
+{
+  "page": {
+    "title": "Configuración",
+    "subtitle": "Gestiona tu perfil y tu espacio de trabajo"
+  },
+  "nav": {
+    "account": "Cuenta",
+    "profile": "Perfil",
+    "notifications": "Notificaciones",
+    "deleteAccount": "Eliminar cuenta"
+  },
+  "profilePicture": {
+    "title": "Foto de perfil",
+    "hint": "JPG, PNG o GIF. Máximo 5 MB.",
+    "errorUpload": "No se pudo subir la foto",
+    "errorRemove": "No se pudo eliminar la foto"
+  },
+  "signature": {
+    "title": "Firma",
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "replace": "Reemplazar",
+    "uploadImage": "Subir imagen",
+    "draw": "Dibujar",
+    "remove": "Eliminar",
+    "hint": "PNG con fondo transparente. Firmada criptográficamente y utilizada para firmar los certificados que emitas.",
+    "verified": "Verificada",
+    "notVerified": "No verificada",
+    "verify": "Verificar",
+    "verifying": "Verificando…",
+    "fingerprintTitle": "Huella de clave pública Ed25519: {fingerprint}",
+    "previewTitle": "Firma",
+    "previewAlt": "Firma",
+    "errorLoad": "No se pudo cargar la firma",
+    "errorUpload": "No se pudo subir la firma",
+    "errorSave": "No se pudo guardar la firma",
+    "errorRemove": "No se pudo eliminar la firma",
+    "errorVerify": "No se pudo verificar la firma"
+  },
+  "displayName": {
+    "title": "Nombre visible",
+    "label": "Nombre",
+    "placeholder": "Tu nombre visible",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "edit": "Editar",
+    "errorSave": "No se pudo guardar"
+  },
+  "email": {
+    "title": "Correo electrónico",
+    "label": "Correo electrónico",
+    "placeholder": "tu@correo.com",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "edit": "Editar",
+    "errorSave": "No se pudo guardar"
+  },
+  "password": {
+    "title": "Cambiar contraseña",
+    "updated": "Contraseña actualizada",
+    "currentLabel": "Contraseña actual",
+    "newLabel": "Nueva contraseña",
+    "newHint": "(mín. 8 caracteres)",
+    "confirmLabel": "Confirmar nueva contraseña",
+    "mismatch": "Las contraseñas no coinciden",
+    "submit": "Actualizar contraseña",
+    "saving": "Guardando…",
+    "errorSave": "No se pudo cambiar la contraseña"
+  },
+  "notifications": {
+    "title": "Preferencias de notificación",
+    "loading": "Cargando…",
+    "errorLoad": "No se pudieron cargar las preferencias",
+    "errorSave": "No se pudo guardar",
+    "columnType": "Tipo de notificación",
+    "columnEmail": "Correo",
+    "columnInternal": "Interna"
+  },
+  "deleteAccount": {
+    "title": "Eliminar cuenta",
+    "warningTitle": "Esta acción es permanente y no se puede deshacer.",
+    "warningBody": "Tu cuenta será desactivada. Todos los registros de calibración y datos que hayas creado se conservarán por motivos de trazabilidad, pero ya no podrás iniciar sesión.",
+    "confirmPrefix": "Escribe",
+    "confirmSuffix": "para confirmar",
+    "confirmPhrase": "eliminar mi cuenta",
+    "submit": "Eliminar mi cuenta",
+    "deleting": "Eliminando…",
+    "errorDelete": "No se pudo eliminar la cuenta"
+  }
+}

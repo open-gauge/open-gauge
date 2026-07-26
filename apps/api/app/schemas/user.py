@@ -1,9 +1,13 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..models.user import UserRole
+
+# Mirrors apps/web/src/i18n/locales.ts's LOCALE_CODES — the UI only ever sends one of
+# these, but validate server-side too so a bad value can't get persisted directly via the API.
+SUPPORTED_LANGUAGES = ("en", "es", "fr", "de")
 
 
 class UserCreate(BaseModel):
@@ -23,6 +27,14 @@ class UserUpdate(BaseModel):
 class UserSelfUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     email: str | None = Field(None, min_length=3, max_length=255)
+    language: str | None = Field(None, min_length=2, max_length=10)
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, value: str | None) -> str | None:
+        if value is not None and value not in SUPPORTED_LANGUAGES:
+            raise ValueError(f"Unsupported language: {value}")
+        return value
 
 
 class ChangePasswordRequest(BaseModel):
@@ -39,6 +51,7 @@ class UserResponse(BaseModel):
     is_verified: bool
     profile_picture_id: uuid.UUID | None = None
     profile_picture_url: str | None = None
+    language: str
     last_login_at: datetime | None
     created_at: datetime
     updated_at: datetime

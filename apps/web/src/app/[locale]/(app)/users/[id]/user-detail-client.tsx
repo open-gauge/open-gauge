@@ -1,8 +1,9 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import { getUserById } from "@/services/admin.service";
 import type { UserProfile } from "@/types/user";
 import {
@@ -12,7 +13,8 @@ import {
   WarningIcon,
 } from "@/components/icons";
 import { Avatar } from "@/components/avatar";
-import { ROLE_LABELS, ROLE_COLORS } from "@/lib/roles";
+import { ROLE_COLORS } from "@/lib/roles";
+import { translateDynamic } from "@/lib/translate-dynamic";
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -32,6 +34,8 @@ function fmtDate(iso: string): string {
 export default function UserDetailClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const t = useTranslations("users.detail");
+  const tRole = useTranslations("tokens.role");
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +56,13 @@ export default function UserDetailClient() {
         className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-og-text transition-colors"
       >
         <ChevronLeftIcon size={13} />
-        Back
+        {t("back")}
       </button>
 
       {loading && (
         <div className="flex items-center justify-center py-20 text-gray-400">
           <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
-          Loading…
+          {t("loading")}
         </div>
       )}
 
@@ -79,15 +83,15 @@ export default function UserDetailClient() {
             </div>
             <div className="ml-2 flex items-center gap-2">
               <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
-                {ROLE_LABELS[user.role] ?? user.role}
+                {translateDynamic(tRole, user.role)}
               </span>
               {user.is_active ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                  <CheckCircleIcon size={11} /> Active
+                  <CheckCircleIcon size={11} /> {t("active")}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                  <WarningIcon size={11} /> Disabled
+                  <WarningIcon size={11} /> {t("disabled")}
                 </span>
               )}
             </div>
@@ -95,31 +99,31 @@ export default function UserDetailClient() {
 
           {/* Details card */}
           <div className="bg-og-surface rounded-xl border border-og-border shadow-xs px-5 py-2">
-            <InfoRow label="Email" value={user.email} />
-            <InfoRow label="Role" value={
+            <InfoRow label={t("email")} value={user.email} />
+            <InfoRow label={t("role")} value={
               <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${ROLE_COLORS[user.role] ?? ROLE_COLORS.viewer}`}>
-                {ROLE_LABELS[user.role] ?? user.role}
+                {translateDynamic(tRole, user.role)}
               </span>
             } />
-            <InfoRow label="Status" value={
+            <InfoRow label={t("status")} value={
               user.is_active
-                ? <span className="text-emerald-600 dark:text-emerald-400">Active</span>
-                : <span className="text-red-500">Disabled</span>
+                ? <span className="text-emerald-600 dark:text-emerald-400">{t("active")}</span>
+                : <span className="text-red-500">{t("disabled")}</span>
             } />
-            <InfoRow label="Member since" value={fmtDate(user.created_at)} />
+            <InfoRow label={t("memberSince")} value={fmtDate(user.created_at)} />
           </div>
 
           {/* Activity link */}
           <div className="bg-og-surface rounded-xl border border-og-border shadow-xs px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ActivityIcon size={15} className="text-gray-400" />
-              <span className="text-sm font-medium text-og-text">Activity log</span>
+              <span className="text-sm font-medium text-og-text">{t("activityLog")}</span>
             </div>
             <Link
               href={`/activity?actor_id=${user.id}`}
               className="text-xs text-og-accent hover:underline"
             >
-              View activity →
+              {t("viewActivity")}
             </Link>
           </div>
         </>

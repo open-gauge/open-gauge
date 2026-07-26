@@ -1,0 +1,138 @@
+{
+  "newOrgForm": {
+    "title": "Neue Organisation",
+    "name": "Name",
+    "namePlaceholder": "z. B. Meridian Calibration Labs",
+    "fullName": "Vollständiger rechtlicher Name",
+    "optional": "Optional",
+    "private": "Privat — nur Mitglieder können Details, Mitglieder und Anlagen sehen",
+    "cancel": "Abbrechen",
+    "creating": "Wird erstellt…",
+    "create": "Erstellen",
+    "createFailed": "Organisation konnte nicht erstellt werden"
+  },
+  "joinLeave": {
+    "leave": "Verlassen",
+    "pending": "Anfrage ausstehend",
+    "requestToJoin": "Beitritt anfragen"
+  },
+  "page": {
+    "title": "Organisationen",
+    "count": "{count, plural, one {# Organisation} other {# Organisationen}}",
+    "newOrganization": "Neue Organisation",
+    "loading": "Wird geladen…",
+    "loadFailed": "Organisationen konnten nicht geladen werden",
+    "empty": "Noch keine Organisationen.",
+    "deleted": "Gelöscht",
+    "private": "Privat",
+    "joinModal": {
+      "title": "Beitritt anfragen?",
+      "message": "Beitritt zu {name} anfragen? Ein Administrator der Organisation muss dies genehmigen.",
+      "confirm": "Anfrage senden"
+    },
+    "leaveOnlyAdmin": {
+      "title": "Sie sind der einzige Administrator",
+      "message": "Befördern Sie ein anderes Mitglied zum Administrator, bevor Sie diese Organisation verlassen."
+    },
+    "leaveOnlyMember": {
+      "title": "Sie sind das einzige Mitglied",
+      "message": "Es gibt niemanden sonst, dem diese Organisation übergeben werden könnte — löschen Sie sie stattdessen, statt sie zu verlassen. Öffnen Sie die Organisationsseite, um den Gefahrenbereich zu nutzen.",
+      "confirm": "Organisation öffnen"
+    },
+    "leaveModal": {
+      "title": "Organisation verlassen?",
+      "message": "{name} verlassen? Sie müssen erneut einen Beitritt anfragen, um wieder Zugriff zu erhalten.",
+      "confirm": "Verlassen"
+    }
+  },
+  "detail": {
+    "back": "Zurück",
+    "loading": "Wird geladen…",
+    "private": "Privat",
+    "edit": "Bearbeiten",
+    "leave": "Verlassen",
+    "pending": "Anfrage ausstehend",
+    "requestToJoin": "Beitritt anfragen",
+    "cancel": "Abbrechen",
+    "saving": "Wird gespeichert…",
+    "save": "Speichern",
+    "privateGateMessage": "Diese Organisation ist privat. Nur Mitglieder können ihre Details sehen.",
+    "name": "Name",
+    "fullName": "Vollständiger rechtlicher Name",
+    "description": "Beschreibung",
+    "website": "Website",
+    "location": "Standort",
+    "none": "— Keiner —",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "privateToggle": "Privat — nur Mitglieder können Details, Mitglieder und Anlagen sehen",
+    "assets": "Anlagen",
+    "assetCount": "{count, plural, one {# Anlage} other {# Anlagen}}",
+    "members": "Mitglieder",
+    "memberCount": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+    "created": "Erstellt",
+    "addMember": "Mitglied hinzufügen",
+    "removeMember": "Mitglied entfernen",
+    "requestPending": "Ausstehend",
+    "approve": "Genehmigen",
+    "reject": "Ablehnen",
+    "certificateSigning": "Zertifikatssignierung",
+    "certificateSigningTooltip": "Jedes für diese Organisation ausgestellte Kalibrierzertifikat-PDF wird mit diesem Zertifikat digital signiert (PAdES) — jeder PDF-Viewer mit Signaturunterstützung (Adobe Acrobat, Chrome, Preview) kann überprüfen, dass es von dieser Organisation ausgestellt und seitdem nicht verändert wurde.",
+    "downloadCertificate": "Zertifikat herunterladen",
+    "algorithm": "Algorithmus",
+    "fingerprint": "Fingerabdruck",
+    "valid": "Gültig",
+    "noCertificate": "Noch kein Zertifikat — wird automatisch generiert, sobald erstmals ein Kalibrierzertifikat für diese Organisation ausgestellt wird.",
+    "dangerZone": "Gefahrenbereich",
+    "deactivateDesc": "Das Löschen einer Organisation deaktiviert sie — sie wird für alle außer dem Superadministrator unsichtbar, der sie von hier aus wiederherstellen kann.",
+    "deleteOrganization": "Organisation löschen",
+    "deactivatedDesc": "Diese Organisation ist deaktiviert — für alle außer dem Superadministrator unsichtbar. Durch die Wiederherstellung wird sie wieder aktiv und für alle Benutzer sichtbar.",
+    "restoring": "Wird wiederhergestellt…",
+    "restoreOrganization": "Organisation wiederherstellen",
+    "failedToLoad": "Organisation konnte nicht geladen werden",
+    "failedToSave": "Speichern fehlgeschlagen",
+    "failedToUploadLogo": "Logo konnte nicht hochgeladen werden",
+    "failedToRemoveLogo": "Logo konnte nicht entfernt werden",
+    "failedToChangeRole": "Rolle konnte nicht geändert werden",
+    "removeMemberConfirm": "Dieses Mitglied aus der Organisation entfernen?",
+    "failedToRemoveMember": "Mitglied konnte nicht entfernt werden",
+    "failedToApprove": "Anfrage konnte nicht genehmigt werden",
+    "failedToReject": "Anfrage konnte nicht abgelehnt werden",
+    "failedToRestore": "Organisation konnte nicht wiederhergestellt werden",
+    "addMemberModal": {
+      "title": "Mitglied hinzufügen",
+      "searchPlaceholder": "Nach Name oder E-Mail suchen…",
+      "loading": "Wird geladen…",
+      "empty": "Keine passenden Benutzer.",
+      "cancel": "Abbrechen",
+      "adding": "Wird hinzugefügt…",
+      "add": "Hinzufügen",
+      "addWithCount": "Hinzufügen ({count})",
+      "failed": "Mitglieder konnten nicht hinzugefügt werden"
+    },
+    "deleteModal": {
+      "title": "Organisation löschen?",
+      "message": "{name} löschen? Sie wird deaktiviert und für alle außer dem Superadministrator ausgeblendet.",
+      "confirm": "Löschen"
+    },
+    "joinModal": {
+      "title": "Beitritt anfragen?",
+      "message": "Beitritt zu {name} anfragen? Ein Administrator der Organisation muss dies genehmigen.",
+      "confirm": "Anfrage senden"
+    },
+    "leaveOnlyAdmin": {
+      "title": "Sie sind der einzige Administrator",
+      "message": "Befördern Sie ein anderes Mitglied zum Administrator, bevor Sie diese Organisation verlassen."
+    },
+    "leaveOnlyMember": {
+      "title": "Sie sind das einzige Mitglied",
+      "message": "Es gibt niemanden sonst, dem diese Organisation übergeben werden könnte — löschen Sie sie stattdessen, statt sie zu verlassen.",
+      "confirm": "Zum Gefahrenbereich"
+    },
+    "leaveModal": {
+      "title": "Organisation verlassen?",
+      "message": "{name} verlassen? Sie müssen erneut einen Beitritt anfragen, um wieder Zugriff zu erhalten.",
+      "confirm": "Verlassen"
+    }
+  }
+}

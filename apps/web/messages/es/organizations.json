@@ -1,0 +1,138 @@
+{
+  "newOrgForm": {
+    "title": "Nueva organización",
+    "name": "Nombre",
+    "namePlaceholder": "p. ej. Meridian Calibration Labs",
+    "fullName": "Nombre legal completo",
+    "optional": "Opcional",
+    "private": "Privada — solo los miembros pueden ver sus detalles, miembros y activos",
+    "cancel": "Cancelar",
+    "creating": "Creando…",
+    "create": "Crear",
+    "createFailed": "Error al crear la organización"
+  },
+  "joinLeave": {
+    "leave": "Salir",
+    "pending": "Solicitud pendiente",
+    "requestToJoin": "Solicitar unirse"
+  },
+  "page": {
+    "title": "Organizaciones",
+    "count": "{count, plural, one {# organización} other {# organizaciones}}",
+    "newOrganization": "Nueva organización",
+    "loading": "Cargando…",
+    "loadFailed": "Error al cargar las organizaciones",
+    "empty": "Aún no hay organizaciones.",
+    "deleted": "Eliminada",
+    "private": "Privada",
+    "joinModal": {
+      "title": "¿Solicitar unirse?",
+      "message": "¿Solicitar unirte a {name}? Un administrador de la organización deberá aprobarlo.",
+      "confirm": "Enviar solicitud"
+    },
+    "leaveOnlyAdmin": {
+      "title": "Eres el único administrador",
+      "message": "Asciende a otro miembro a administrador antes de salir de esta organización."
+    },
+    "leaveOnlyMember": {
+      "title": "Eres el único miembro",
+      "message": "No hay nadie más a quien traspasar esta organización — elimínala en lugar de salir. Abre la página de la organización para usar la Zona de peligro.",
+      "confirm": "Abrir organización"
+    },
+    "leaveModal": {
+      "title": "¿Salir de la organización?",
+      "message": "¿Salir de {name}? Tendrás que solicitar unirte de nuevo para recuperar el acceso.",
+      "confirm": "Salir"
+    }
+  },
+  "detail": {
+    "back": "Atrás",
+    "loading": "Cargando…",
+    "private": "Privada",
+    "edit": "Editar",
+    "leave": "Salir",
+    "pending": "Solicitud pendiente",
+    "requestToJoin": "Solicitar unirse",
+    "cancel": "Cancelar",
+    "saving": "Guardando…",
+    "save": "Guardar",
+    "privateGateMessage": "Esta organización es privada. Solo los miembros pueden ver sus detalles.",
+    "name": "Nombre",
+    "fullName": "Nombre legal completo",
+    "description": "Descripción",
+    "website": "Sitio web",
+    "location": "Ubicación",
+    "none": "— Ninguna —",
+    "email": "Correo",
+    "phone": "Teléfono",
+    "privateToggle": "Privada — solo los miembros pueden ver sus detalles, miembros y activos",
+    "assets": "Activos",
+    "assetCount": "{count, plural, one {# activo} other {# activos}}",
+    "members": "Miembros",
+    "memberCount": "{count, plural, one {# miembro} other {# miembros}}",
+    "created": "Creada",
+    "addMember": "Añadir miembro",
+    "removeMember": "Eliminar miembro",
+    "requestPending": "Pendiente",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "certificateSigning": "Firma de certificados",
+    "certificateSigningTooltip": "Todo PDF de certificado de calibración emitido para esta organización se firma digitalmente (PAdES) con este certificado — cualquier visor de PDF compatible con firmas (Adobe Acrobat, Chrome, Preview) puede verificar que fue emitido por esta organización y no ha sido alterado desde entonces.",
+    "downloadCertificate": "Descargar certificado",
+    "algorithm": "Algoritmo",
+    "fingerprint": "Huella digital",
+    "valid": "Válido",
+    "noCertificate": "Aún no hay certificado — se genera automáticamente la primera vez que se emite un certificado de calibración para esta organización.",
+    "dangerZone": "Zona de peligro",
+    "deactivateDesc": "Eliminar una organización la desactiva — se vuelve invisible para todos excepto el superadministrador, quien puede restaurarla desde aquí.",
+    "deleteOrganization": "Eliminar organización",
+    "deactivatedDesc": "Esta organización está desactivada — invisible para todos excepto el superadministrador. Restaurarla la vuelve activa y visible para todos los usuarios de nuevo.",
+    "restoring": "Restaurando…",
+    "restoreOrganization": "Restaurar organización",
+    "failedToLoad": "Error al cargar la organización",
+    "failedToSave": "Error al guardar",
+    "failedToUploadLogo": "Error al subir el logotipo",
+    "failedToRemoveLogo": "Error al eliminar el logotipo",
+    "failedToChangeRole": "Error al cambiar el rol",
+    "removeMemberConfirm": "¿Eliminar a este miembro de la organización?",
+    "failedToRemoveMember": "Error al eliminar al miembro",
+    "failedToApprove": "Error al aprobar la solicitud",
+    "failedToReject": "Error al rechazar la solicitud",
+    "failedToRestore": "Error al restaurar la organización",
+    "addMemberModal": {
+      "title": "Añadir miembro",
+      "searchPlaceholder": "Buscar por nombre o correo…",
+      "loading": "Cargando…",
+      "empty": "No hay usuarios coincidentes.",
+      "cancel": "Cancelar",
+      "adding": "Añadiendo…",
+      "add": "Añadir",
+      "addWithCount": "Añadir ({count})",
+      "failed": "Error al añadir miembros"
+    },
+    "deleteModal": {
+      "title": "¿Eliminar organización?",
+      "message": "¿Eliminar {name}? Se desactivará y se ocultará para todos excepto el superadministrador.",
+      "confirm": "Eliminar"
+    },
+    "joinModal": {
+      "title": "¿Solicitar unirse?",
+      "message": "¿Solicitar unirte a {name}? Un administrador de la organización deberá aprobarlo.",
+      "confirm": "Enviar solicitud"
+    },
+    "leaveOnlyAdmin": {
+      "title": "Eres el único administrador",
+      "message": "Asciende a otro miembro a administrador antes de salir de esta organización."
+    },
+    "leaveOnlyMember": {
+      "title": "Eres el único miembro",
+      "message": "No hay nadie más a quien traspasar esta organización — elimínala en lugar de salir.",
+      "confirm": "Ir a la Zona de peligro"
+    },
+    "leaveModal": {
+      "title": "¿Salir de la organización?",
+      "message": "¿Salir de {name}? Tendrás que solicitar unirte de nuevo para recuperar el acceso.",
+      "confirm": "Salir"
+    }
+  }
+}

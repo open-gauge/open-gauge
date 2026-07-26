@@ -1,4 +1,5 @@
 import { createMDX } from "fumadocs-mdx/next";
+import createNextIntlPlugin from "next-intl/plugin";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,5 +28,6 @@ const nextConfig = {
 };
 
 const withMDX = createMDX();
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
-export default withMDX(nextConfig);
+export default withNextIntl(withMDX(nextConfig));

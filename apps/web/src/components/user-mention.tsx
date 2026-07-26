@@ -1,4 +1,5 @@
-import { ROLE_LABELS } from "@/lib/roles";
+import { useTranslations } from "next-intl";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import { UserSummary } from "@/components/user-summary";
 
 function deriveDisplayName(name: string | null, email: string): string {
@@ -33,9 +34,10 @@ export function UserMention({
   actorProfilePictureUrl,
   className = "",
 }: UserMentionProps) {
+  const t = useTranslations("tokens.role");
   const displayName = deriveDisplayName(actorName, actorEmail);
   return (
-    <div className={className} title={actorRole ? (ROLE_LABELS[actorRole] ?? actorRole) : undefined}>
+    <div className={className} title={actorRole ? translateDynamic(t, actorRole) : undefined}>
       <UserSummary userId={actorId} name={displayName} email={actorEmail} pictureUrl={actorProfilePictureUrl} size={24} />
     </div>
   );

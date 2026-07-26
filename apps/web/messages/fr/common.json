@@ -1,0 +1,54 @@
+{
+  "theme": {
+    "switchToLight": "Passer en mode clair",
+    "switchToDark": "Passer en mode sombre"
+  },
+  "language": {
+    "label": "Langue"
+  },
+  "confirmModal": {
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "working": "En cours…",
+    "somethingWrong": "Une erreur est survenue"
+  },
+  "demoBanner": {
+    "message": "Vous consultez une démo en direct d'Open Gauge avec des données fictives — rien de ce que vous faites ici n'est enregistré.",
+    "viewOnGithub": "Voir sur GitHub"
+  },
+  "notifications": {
+    "ariaLabel": "Notifications",
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "clearAll": "Tout effacer",
+    "empty": "Aucune notification pour le moment.",
+    "removeNotification": "Supprimer la notification",
+    "justNow": "à l'instant",
+    "minutesAgo": "il y a {count} min",
+    "hoursAgo": "il y a {count} h",
+    "daysAgo": "il y a {count} j"
+  },
+  "imageUpload": {
+    "changePicture": "Changer l'image",
+    "uploadPicture": "Téléverser une image",
+    "removePicture": "Supprimer l'image"
+  },
+  "pdfThumbnail": {
+    "previewOf": "Aperçu de {title}",
+    "failedToRender": "Échec de l'affichage de l'aperçu",
+    "rendering": "Génération de l'aperçu…",
+    "failed": "Échec"
+  },
+  "tooltip": {
+    "openDocumentation": "Ouvrir la documentation",
+    "viewDocumentation": "Voir la documentation →"
+  },
+  "legalPage": {
+    "lastUpdated": "Dernière mise à jour : {date}",
+    "termsOfService": "Conditions d'utilisation",
+    "privacyPolicy": "Politique de confidentialité",
+    "backToSignIn": "Retour à la connexion",
+    "copyright": "© 2026 Open Gauge · édition auto-hébergée"
+  }
+}

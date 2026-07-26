@@ -1,0 +1,138 @@
+{
+  "newOrgForm": {
+    "title": "Nouvelle organisation",
+    "name": "Nom",
+    "namePlaceholder": "p. ex. Meridian Calibration Labs",
+    "fullName": "Raison sociale complète",
+    "optional": "Facultatif",
+    "private": "Privée — seuls les membres peuvent voir ses détails, ses membres et ses actifs",
+    "cancel": "Annuler",
+    "creating": "Création…",
+    "create": "Créer",
+    "createFailed": "Échec de la création de l'organisation"
+  },
+  "joinLeave": {
+    "leave": "Quitter",
+    "pending": "Demande en attente",
+    "requestToJoin": "Demander à rejoindre"
+  },
+  "page": {
+    "title": "Organisations",
+    "count": "{count, plural, one {# organisation} other {# organisations}}",
+    "newOrganization": "Nouvelle organisation",
+    "loading": "Chargement…",
+    "loadFailed": "Échec du chargement des organisations",
+    "empty": "Aucune organisation pour le moment.",
+    "deleted": "Supprimée",
+    "private": "Privée",
+    "joinModal": {
+      "title": "Demander à rejoindre ?",
+      "message": "Demander à rejoindre {name} ? Un administrateur de l'organisation devra approuver la demande.",
+      "confirm": "Envoyer la demande"
+    },
+    "leaveOnlyAdmin": {
+      "title": "Vous êtes le seul administrateur",
+      "message": "Promouvez un autre membre au rang d'administrateur avant de quitter cette organisation."
+    },
+    "leaveOnlyMember": {
+      "title": "Vous êtes le seul membre",
+      "message": "Il n'y a personne d'autre à qui confier cette organisation — supprimez-la plutôt que de la quitter. Ouvrez la page de l'organisation pour utiliser la zone dangereuse.",
+      "confirm": "Ouvrir l'organisation"
+    },
+    "leaveModal": {
+      "title": "Quitter l'organisation ?",
+      "message": "Quitter {name} ? Vous devrez demander à la rejoindre à nouveau pour retrouver l'accès.",
+      "confirm": "Quitter"
+    }
+  },
+  "detail": {
+    "back": "Retour",
+    "loading": "Chargement…",
+    "private": "Privée",
+    "edit": "Modifier",
+    "leave": "Quitter",
+    "pending": "Demande en attente",
+    "requestToJoin": "Demander à rejoindre",
+    "cancel": "Annuler",
+    "saving": "Enregistrement…",
+    "save": "Enregistrer",
+    "privateGateMessage": "Cette organisation est privée. Seuls les membres peuvent voir ses détails.",
+    "name": "Nom",
+    "fullName": "Raison sociale complète",
+    "description": "Description",
+    "website": "Site web",
+    "location": "Emplacement",
+    "none": "— Aucun —",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "privateToggle": "Privée — seuls les membres peuvent voir ses détails, ses membres et ses actifs",
+    "assets": "Actifs",
+    "assetCount": "{count, plural, one {# actif} other {# actifs}}",
+    "members": "Membres",
+    "memberCount": "{count, plural, one {# membre} other {# membres}}",
+    "created": "Créée",
+    "addMember": "Ajouter un membre",
+    "removeMember": "Retirer le membre",
+    "requestPending": "En attente",
+    "approve": "Approuver",
+    "reject": "Refuser",
+    "certificateSigning": "Signature de certificat",
+    "certificateSigningTooltip": "Chaque certificat de calibration PDF émis pour cette organisation est signé numériquement (PAdES) avec ce certificat — tout lecteur de PDF prenant en charge les signatures (Adobe Acrobat, Chrome, Preview) peut vérifier qu'il a été émis par cette organisation et n'a pas été modifié depuis.",
+    "downloadCertificate": "Télécharger le certificat",
+    "algorithm": "Algorithme",
+    "fingerprint": "Empreinte",
+    "valid": "Valide",
+    "noCertificate": "Pas encore de certificat — généré automatiquement la première fois qu'un certificat de calibration est émis pour cette organisation.",
+    "dangerZone": "Zone dangereuse",
+    "deactivateDesc": "Supprimer une organisation la désactive — elle devient invisible pour tout le monde sauf le super administrateur, qui peut la restaurer depuis ici.",
+    "deleteOrganization": "Supprimer l'organisation",
+    "deactivatedDesc": "Cette organisation est désactivée — invisible pour tout le monde sauf le super administrateur. La restaurer la rend à nouveau active et visible pour tous les utilisateurs.",
+    "restoring": "Restauration…",
+    "restoreOrganization": "Restaurer l'organisation",
+    "failedToLoad": "Échec du chargement de l'organisation",
+    "failedToSave": "Échec de l'enregistrement",
+    "failedToUploadLogo": "Échec du téléversement du logo",
+    "failedToRemoveLogo": "Échec de la suppression du logo",
+    "failedToChangeRole": "Échec du changement de rôle",
+    "removeMemberConfirm": "Retirer ce membre de l'organisation ?",
+    "failedToRemoveMember": "Échec du retrait du membre",
+    "failedToApprove": "Échec de l'approbation de la demande",
+    "failedToReject": "Échec du refus de la demande",
+    "failedToRestore": "Échec de la restauration de l'organisation",
+    "addMemberModal": {
+      "title": "Ajouter un membre",
+      "searchPlaceholder": "Rechercher par nom ou e-mail…",
+      "loading": "Chargement…",
+      "empty": "Aucun utilisateur correspondant.",
+      "cancel": "Annuler",
+      "adding": "Ajout…",
+      "add": "Ajouter",
+      "addWithCount": "Ajouter ({count})",
+      "failed": "Échec de l'ajout des membres"
+    },
+    "deleteModal": {
+      "title": "Supprimer l'organisation ?",
+      "message": "Supprimer {name} ? Elle sera désactivée et masquée pour tout le monde sauf le super administrateur.",
+      "confirm": "Supprimer"
+    },
+    "joinModal": {
+      "title": "Demander à rejoindre ?",
+      "message": "Demander à rejoindre {name} ? Un administrateur de l'organisation devra approuver la demande.",
+      "confirm": "Envoyer la demande"
+    },
+    "leaveOnlyAdmin": {
+      "title": "Vous êtes le seul administrateur",
+      "message": "Promouvez un autre membre au rang d'administrateur avant de quitter cette organisation."
+    },
+    "leaveOnlyMember": {
+      "title": "Vous êtes le seul membre",
+      "message": "Il n'y a personne d'autre à qui confier cette organisation — supprimez-la plutôt que de la quitter.",
+      "confirm": "Aller à la zone dangereuse"
+    },
+    "leaveModal": {
+      "title": "Quitter l'organisation ?",
+      "message": "Quitter {name} ? Vous devrez demander à la rejoindre à nouveau pour retrouver l'accès.",
+      "confirm": "Quitter"
+    }
+  }
+}

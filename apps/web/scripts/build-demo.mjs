@@ -31,12 +31,12 @@ function file(...segments) {
 // of replacing one.
 const PATCHES = [
   {
-    path: file("src/app/(app)/dashboard/page.tsx"),
+    path: file("src/app/[locale]/(app)/dashboard/page.tsx"),
     find: 'export const dynamic = "force-dynamic";',
     replace: 'export const dynamic = "force-static";',
   },
   {
-    path: file("src/app/(app)/documentation/api/[[...slug]]/page.tsx"),
+    path: file("src/app/[locale]/(app)/documentation/api/[[...slug]]/page.tsx"),
     find: 'export const dynamic = "force-dynamic";',
     replace: 'export const dynamic = "force-static";',
   },

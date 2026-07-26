@@ -1,9 +1,6 @@
-export const ROLE_LABELS: Record<string, string> = {
-  superadmin: "Super Admin",
-  admin: "Admin",
-  technician: "Technician",
-  viewer: "Viewer",
-};
+// Display labels live in translation catalogs (messages/{locale}/tokens.json under
+// "role") since they're user-facing text — look them up with
+// useTranslations("tokens.role") instead of a ROLE_LABELS constant here.
 
 export const ROLE_COLORS: Record<string, string> = {
   superadmin: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",

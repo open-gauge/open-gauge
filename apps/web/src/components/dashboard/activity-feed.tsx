@@ -1,19 +1,20 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 import type { ActivityItem } from "@/types/dashboard";
 import { ExternalLinkIcon } from "@/components/icons";
 import { UserMention } from "@/components/user-mention";
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 60) return t("minAgo", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return t("hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  return days === 1 ? "yesterday" : `${days} days ago`;
+  return days === 1 ? t("yesterday") : t("daysAgo", { count: days });
 }
 
 function humanAction(action: string): string {
@@ -26,18 +27,19 @@ function humanAction(action: string): string {
 }
 
 export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
+  const t = useTranslations("dashboard.activity");
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 h-full flex flex-col">
       <div className="flex items-start justify-between mb-4 shrink-0">
         <div>
-          <h3 className="text-sm font-semibold text-og-text">Activity</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Recent audit events</p>
+          <h3 className="text-sm font-semibold text-og-text">{t("title")}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{t("subtitle")}</p>
         </div>
         <Link
           href="/activity"
           className="text-xs text-gray-400 hover:text-og-accent flex items-center gap-1 transition-colors shrink-0"
         >
-          View all
+          {t("viewAll")}
           <ExternalLinkIcon />
         </Link>
       </div>
@@ -60,7 +62,7 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
                   {item.entity_asset_id}
                 </span>
               )}
-              <p className="text-gray-400 mt-0.5">{timeAgo(item.created_at)}</p>
+              <p className="text-gray-400 mt-0.5">{timeAgo(item.created_at, t)}</p>
             </div>
           </li>
         ))}

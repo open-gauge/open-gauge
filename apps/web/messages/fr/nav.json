@@ -1,0 +1,29 @@
+{
+  "workspace": "Espace de travail",
+  "system": "Système",
+  "dashboard": "Tableau de bord",
+  "assetRegistry": "Registre des actifs",
+  "locations": "Emplacements",
+  "procedures": "Procédures",
+  "organizations": "Organisations",
+  "activity": "Activité",
+  "settings": "Paramètres",
+  "collapseSidebar": "Réduire la barre latérale",
+  "expandSidebar": "Développer la barre latérale",
+  "versionFooter": "v{version} · auto-hébergé",
+  "search": {
+    "placeholder": "Rechercher des actifs et la documentation...",
+    "assets": "Actifs",
+    "documentation": "Documentation"
+  },
+  "newMenu": {
+    "new": "Nouveau",
+    "newAsset": "Nouvel actif",
+    "newProcedure": "Nouvelle procédure"
+  },
+  "userMenu": {
+    "adminPanel": "Panneau d'administration",
+    "settings": "Paramètres",
+    "signOut": "Déconnexion"
+  }
+}

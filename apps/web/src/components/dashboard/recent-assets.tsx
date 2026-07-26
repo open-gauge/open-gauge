@@ -1,23 +1,22 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { RecentAsset } from "@/types/dashboard";
 import { ActivityIcon } from "@/components/icons";
+import { translateDynamic } from "@/lib/translate-dynamic";
 
 const ASSET_TYPE_STYLE: Record<string, string> = {
   sensor: "bg-teal-50 text-teal-700 border-teal-100",
   daq:    "bg-amber-50 text-amber-700 border-amber-100",
 };
-const ASSET_TYPE_LABEL: Record<string, string> = {
-  sensor: "Sensor",
-  daq:    "DAQ",
-};
 
 export default function RecentAssets({ data }: { data: RecentAsset[] }) {
+  const t = useTranslations("dashboard.recentAssets");
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-og-text">Recently updated assets</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Most recent edits across all locations</p>
+          <h3 className="text-sm font-semibold text-og-text">{t("title")}</h3>
+          <p className="text-xs text-gray-400 mt-0.5">{t("subtitle")}</p>
         </div>
         <ActivityIcon size={14} className="text-gray-300 mt-0.5" />
       </div>
@@ -25,7 +24,7 @@ export default function RecentAssets({ data }: { data: RecentAsset[] }) {
       <div className="flex gap-4 overflow-x-auto pb-1">
         {data.map((asset) => {
           const typeCls   = ASSET_TYPE_STYLE[asset.asset_type] ?? "bg-gray-50 text-gray-500 border-gray-100";
-          const typeLabel = ASSET_TYPE_LABEL[asset.asset_type] ?? asset.asset_type;
+          const typeLabel = translateDynamic(t, asset.asset_type);
 
           return (
             <Link

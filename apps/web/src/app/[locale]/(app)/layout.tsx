@@ -1,3 +1,4 @@
+import { setRequestLocale } from "next-intl/server";
 import { AuthProvider } from "@/lib/auth-context";
 import Sidebar from "@/components/sidebar";
 import TopBar from "@/components/top-bar";
@@ -5,7 +6,16 @@ import DemoBanner from "@/components/demo-banner";
 import { docsSource } from "@/lib/docs-source";
 import { isDemoMode } from "@/lib/demo/is-demo-mode";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   return (
     <AuthProvider>
       <div className="flex flex-col h-screen overflow-hidden bg-og-surface-alt">

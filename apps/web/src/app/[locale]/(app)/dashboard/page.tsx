@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 // Next.js route segment config (`dynamic`) must be a static string literal — it cannot be a
 // computed/conditional expression (confirmed via Next's own static AST analysis in
@@ -25,6 +26,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const currentYear = new Date().getFullYear();
+  const t = await getTranslations("dashboard.page");
 
   const [summary, calEvents, calendarEvents, assetTypeDistribution, activity, recentAssets] =
     await Promise.all([
@@ -47,9 +49,9 @@ export default async function DashboardPage() {
 
         {/* Page header */}
         <div className="shrink-0">
-          <h1 className="text-xl font-bold text-og-text">Operations dashboard</h1>
+          <h1 className="text-xl font-bold text-og-text">{t("title")}</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Real-time status across all sites, labs and instrumentation.
+            {t("subtitle")}
           </p>
         </div>
 

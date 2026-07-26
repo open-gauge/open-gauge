@@ -1,0 +1,54 @@
+{
+  "theme": {
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "confirmModal": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "close": "Close",
+    "working": "Working…",
+    "somethingWrong": "Something went wrong"
+  },
+  "demoBanner": {
+    "message": "You're viewing a live demo of Open Gauge with fictional data — nothing you do here is saved.",
+    "viewOnGithub": "View on GitHub"
+  },
+  "notifications": {
+    "ariaLabel": "Notifications",
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "clearAll": "Clear all",
+    "empty": "No notifications yet.",
+    "removeNotification": "Remove notification",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "imageUpload": {
+    "changePicture": "Change picture",
+    "uploadPicture": "Upload picture",
+    "removePicture": "Remove picture"
+  },
+  "pdfThumbnail": {
+    "previewOf": "Preview {title}",
+    "failedToRender": "Failed to render preview",
+    "rendering": "Rendering preview…",
+    "failed": "Failed"
+  },
+  "tooltip": {
+    "openDocumentation": "Open documentation",
+    "viewDocumentation": "View documentation →"
+  },
+  "legalPage": {
+    "lastUpdated": "Last updated: {date}",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "backToSignIn": "Back to sign in",
+    "copyright": "© 2026 Open Gauge · self-hosted edition"
+  }
+}

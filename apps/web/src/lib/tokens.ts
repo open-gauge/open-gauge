@@ -44,32 +44,14 @@ export const CALIBRATION_STATUS_STYLE: Record<string, string> = {
   retired:        "bg-gray-100 text-gray-400 border-gray-200",
 };
 
-export const CALIBRATION_STATUS_LABEL: Record<string, string> = {
-  valid:          "Active",
-  due_soon:       "Due soon",
-  expired:        "Expired",
-  not_calibrated: "Uncalibrated",
-  retired:        "Retired",
-};
+// Enumerates the known status keys (for iterating filter checkboxes etc.) —
+// display text comes from useTranslations("tokens.calibrationStatus") instead.
+export const CALIBRATION_STATUSES = ["valid", "due_soon", "expired", "not_calibrated", "retired"] as const;
 
-// ---------------------------------------------------------------------------
-// Asset categories
-// ---------------------------------------------------------------------------
-export const ASSET_CATEGORY_LABEL: Record<string, string> = {
-  sensor:             "Sensor",
-  instrument:         "Instrument",
-  reference_standard: "Ref. Standard",
-  data_acquisition:   "DAQ",
-  other:              "Other",
-};
-
-export const ASSET_CATEGORY_LABEL_PLURAL: Record<string, string> = {
-  sensor:             "Sensors",
-  instrument:         "Instruments",
-  reference_standard: "Ref. Standards",
-  data_acquisition:   "DAQ",
-  other:              "Other",
-};
+// Human-readable labels for the maps above now live in translation catalogs
+// (messages/{locale}/tokens.json) since they're user-facing text — look them
+// up with useTranslations("tokens.calibrationStatus") / "tokens.assetCategory"
+// / "tokens.assetCategoryPlural" etc. instead of a *_LABEL constant here.
 
 // ---------------------------------------------------------------------------
 // Asset subtypes — used by the category distribution donut charts
@@ -103,44 +85,11 @@ export const SUBTYPE_COLOR: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Audit log entity types
 // ---------------------------------------------------------------------------
-export const AUDIT_ENTITY_LABEL: Record<string, string> = {
-  asset:       "Asset",
-  calibration: "Calibration",
-  procedure:   "Procedure",
-  location:    "Location",
-};
-
 export const AUDIT_ENTITY_STYLE: Record<string, string> = {
   asset:       "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40",
   calibration: "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40",
   procedure:   "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/40",
   location:    "bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/40",
-};
-
-export const SUBTYPE_LABEL: Record<string, string> = {
-  // physical quantities
-  temperature:        "Temperature",
-  pressure:           "Pressure",
-  flow:               "Flow",
-  humidity:           "Humidity",
-  electrical:         "Electrical",
-  distance:           "Distance",
-  angle:              "Angle",
-  force:              "Force",
-  angular_speed:      "Ang. Speed",
-  acceleration:       "Accel.",
-  // daq_type values
-  USB:                "USB",
-  Wireless:           "Wireless",
-  Ethernet:           "Ethernet",
-  PCIe:               "PCIe",
-  PXI:                "PXI",
-  // legacy / fallback
-  data_logger:        "Data Logger",
-  signal_conditioner: "Sig. Cond.",
-  gateway:            "Gateway",
-  reference_standard: "Ref. Std.",
-  other:              "Other",
 };
 
 // ---------------------------------------------------------------------------
@@ -168,18 +117,6 @@ export const HEALTH_METRIC_COLOR: Record<string, string> = {
   r_squared:            "#22c55e",
 };
 
-// Human-readable labels for uncertainty budget contribution sources (GUM Annex H.1 rows).
-export const UNCERTAINTY_SOURCE_LABEL: Record<string, string> = {
-  fit_residuals:           "Fit residuals (Type A)",
-  reference_standard:      "Reference standard (Type B)",
-  resolution:               "Resolution (Type B)",
-  sensor_nominal_accuracy: "Sensor nominal accuracy (Type B)",
-  external_certificate_stated: "Stated on external certificate (Type B)",
-};
-
-// Human-readable labels for ISO/IEC 17025 §7.1.3/§7.8.6 decision rules.
-export const DECISION_RULE_LABEL: Record<string, string> = {
-  simple_acceptance:         "Simple acceptance (tolerance only)",
-  guard_band_w_uncertainty:  "Guard band (tolerance − U)",
-  shared_risk:               "Shared risk (tolerance + U)",
-};
+// Labels for uncertainty budget contribution sources (GUM Annex H.1 rows) and
+// ISO/IEC 17025 §7.1.3/§7.8.6 decision rules live in tokens.json under
+// "tokens.uncertaintySource" / "tokens.decisionRule" — see note above.

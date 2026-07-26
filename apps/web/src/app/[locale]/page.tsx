@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { redirect } from "next/navigation";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import AuthCard from "@/components/auth-card";
 import ParticleBackground from "@/components/particle-background";
 import ThemeToggle from "@/components/theme-toggle";
@@ -18,10 +19,21 @@ export const metadata: Metadata = {
     "Version control for metrology. Manage sensors, calibration coefficients, and traceable certificates in one auditable registry.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   // Demo mode skips the login step entirely — visitors land straight on the
   // dashboard as a fixed demo user (see lib/demo/router.ts).
-  if (isDemoMode()) redirect("/dashboard");
+  if (isDemoMode()) {
+    redirect({ href: "/dashboard", locale });
+  }
+
+  const t = await getTranslations("auth.landing");
 
   return (
     <div className="relative min-h-screen bg-[#dce8ec] dark:bg-og-bg og-grid-bg">
@@ -35,7 +47,7 @@ export default function LoginPage() {
               {/* Light mode logo */}
               <Image
                 src="/assets/Logo dark.png"
-                alt="Open Gauge icon"
+                alt={t("logoAlt")}
                 width={300}
                 height={100}
                 priority
@@ -45,7 +57,7 @@ export default function LoginPage() {
               {/* Dark mode logo */}
               <Image
                 src="/assets/Logo light.png"
-                alt="Open Gauge icon"
+                alt={t("logoAlt")}
                 width={300}
                 height={100}
                 priority
@@ -64,39 +76,37 @@ export default function LoginPage() {
             {/* Status badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/60 dark:bg-og-action/30 backdrop-blur-xs rounded-full text-xs text-gray-600 dark:text-gray-300 border border-white/80 dark:border-white/10 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              v{APP_VERSION} · self-hosted
+              {t("versionBadge", { version: APP_VERSION })}
             </div>
 
             {/* Headline */}
             <div>
               <h1 className="text-5xl font-bold text-og-text leading-[1.1] tracking-tight">
-                Version control
+                {t("headline1")}
               </h1>
               <h1 className="text-5xl font-bold text-og-accent leading-[1.1] tracking-tight">
-                for metrology.
+                {t("headline2")}
               </h1>
             </div>
 
             {/* Subtitle */}
             <p className="text-gray-500 dark:text-gray-400 text-base leading-relaxed max-w-[420px]">
-              Sign in to your workspace to manage sensors, calibration
-              coefficients, and traceable certificates — all in one auditable
-              registry.
+              {t("subtitle")}
             </p>
 
             {/* Feature list */}
             <ul className="space-y-3.5">
               <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
                 <GitBranchIcon size={16} className="text-og-accent shrink-0" />
-                Git-style history for every coefficient change
+                {t("feature1")}
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
                 <ShieldCheckIcon size={16} className="text-og-accent shrink-0" />
-                Cryptographically signed calibration certificates
+                {t("feature2")}
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
                 <ActivityIcon size={16} className="text-og-accent shrink-0" />
-                Live telemetry &amp; drift monitoring
+                {t("feature3")}
               </li>
             </ul>
           </div>
@@ -109,11 +119,11 @@ export default function LoginPage() {
 
         {/* Footer */}
         <footer className="flex items-center justify-between px-8 py-4 text-xs text-gray-400">
-          <span>© 2026 Open Gauge · self-hosted edition</span>
+          <span>{t("copyright")}</span>
           <div className="flex items-center gap-4">
-            <a href="/terms" className="hover:text-og-accent transition-colors">Terms of Service</a>
-            <a href="/privacy" className="hover:text-og-accent transition-colors">Privacy Policy</a>
-            <span>build c8f1e2a · region eu-west</span>
+            <a href="/terms" className="hover:text-og-accent transition-colors">{t("termsOfService")}</a>
+            <a href="/privacy" className="hover:text-og-accent transition-colors">{t("privacyPolicy")}</a>
+            <span>{t("buildInfo")}</span>
           </div>
         </footer>
       </div>

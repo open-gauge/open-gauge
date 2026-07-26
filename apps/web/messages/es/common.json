@@ -1,0 +1,54 @@
+{
+  "theme": {
+    "switchToLight": "Cambiar a modo claro",
+    "switchToDark": "Cambiar a modo oscuro"
+  },
+  "language": {
+    "label": "Idioma"
+  },
+  "confirmModal": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "working": "Procesando…",
+    "somethingWrong": "Algo salió mal"
+  },
+  "demoBanner": {
+    "message": "Estás viendo una demo en vivo de Open Gauge con datos ficticios — nada de lo que hagas aquí se guarda.",
+    "viewOnGithub": "Ver en GitHub"
+  },
+  "notifications": {
+    "ariaLabel": "Notificaciones",
+    "title": "Notificaciones",
+    "markAllRead": "Marcar todo como leído",
+    "clearAll": "Borrar todo",
+    "empty": "Aún no hay notificaciones.",
+    "removeNotification": "Eliminar notificación",
+    "justNow": "ahora mismo",
+    "minutesAgo": "hace {count} min",
+    "hoursAgo": "hace {count} h",
+    "daysAgo": "hace {count} d"
+  },
+  "imageUpload": {
+    "changePicture": "Cambiar imagen",
+    "uploadPicture": "Subir imagen",
+    "removePicture": "Eliminar imagen"
+  },
+  "pdfThumbnail": {
+    "previewOf": "Vista previa de {title}",
+    "failedToRender": "Error al generar la vista previa",
+    "rendering": "Generando vista previa…",
+    "failed": "Error"
+  },
+  "tooltip": {
+    "openDocumentation": "Abrir documentación",
+    "viewDocumentation": "Ver documentación →"
+  },
+  "legalPage": {
+    "lastUpdated": "Última actualización: {date}",
+    "termsOfService": "Términos de servicio",
+    "privacyPolicy": "Política de privacidad",
+    "backToSignIn": "Volver a iniciar sesión",
+    "copyright": "© 2026 Open Gauge · edición autoalojada"
+  }
+}

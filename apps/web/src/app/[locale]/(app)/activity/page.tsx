@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { listAuditLogs } from "@/services/audit_log.service";
 import type { AuditLogEntry } from "@/types/audit_log";
-import { AUDIT_ENTITY_LABEL, AUDIT_ENTITY_STYLE } from "@/lib/tokens";
+import { AUDIT_ENTITY_STYLE } from "@/lib/tokens";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import {
   ActivityIcon,
   AssetRegistryIcon,
@@ -17,13 +20,7 @@ import { UserMention } from "@/components/user-mention";
 
 const LIMIT = 50;
 
-const ENTITY_FILTERS: { value: string; label: string }[] = [
-  { value: "",            label: "All" },
-  { value: "asset",       label: "Asset" },
-  { value: "calibration", label: "Calibration" },
-  { value: "procedure",   label: "Procedure" },
-  { value: "location",    label: "Location" },
-];
+const ENTITY_FILTER_VALUES = ["", "asset", "calibration", "procedure", "location"] as const;
 
 const ENTITY_ICON: Record<string, ReactNode> = {
   asset:       <AssetRegistryIcon size={11} />,
@@ -51,8 +48,9 @@ function describeLog(log: AuditLogEntry): string {
 }
 
 function EntityBadge({ entityType }: { entityType: string }) {
+  const t = useTranslations("tokens.auditEntity");
   const style = AUDIT_ENTITY_STYLE[entityType] ?? "bg-gray-50 text-gray-500 border-gray-100";
-  const label = AUDIT_ENTITY_LABEL[entityType] ?? entityType;
+  const label = translateDynamic(t, entityType);
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap ${style}`}>
       {ENTITY_ICON[entityType] ?? <ActivityIcon size={11} />}
@@ -62,6 +60,8 @@ function EntityBadge({ entityType }: { entityType: string }) {
 }
 
 export default function ActivityPage() {
+  const t = useTranslations("activity");
+  const tEntity = useTranslations("tokens.auditEntity");
   const searchParams = useSearchParams();
   const actorIdParam = searchParams.get("actor_id") ?? undefined;
 
@@ -92,7 +92,7 @@ export default function ActivityPage() {
       setLogs((prev) => [...prev, ...next]);
       setHasMore(next.length === LIMIT);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load more entries");
+      setError(e instanceof Error ? e.message : t("errorLoadMore"));
     } finally {
       setLoadingMore(false);
     }
@@ -115,18 +115,18 @@ export default function ActivityPage() {
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-og-text">Activity log</h1>
+          <h1 className="text-xl font-bold text-og-text">{t("title")}</h1>
           <p className="text-sm text-gray-400 mt-1">
-            {loading ? "Loading…" : `${filtered.length} of ${logs.length} entries loaded`}
+            {loading ? t("loading") : t("entriesLoaded", { filtered: filtered.length, total: logs.length })}
           </p>
         </div>
       </div>
 
       {actorIdParam && (
         <div className="rounded-lg bg-og-surface border border-og-accent/30 px-4 py-2 flex items-center gap-2 text-xs text-og-text">
-          <span className="text-og-accent font-semibold">Filtered by user</span>
-          <span className="text-gray-400">Showing activity for a specific user.</span>
-          <a href="/activity" className="ml-auto text-og-accent hover:underline">Clear filter</a>
+          <span className="text-og-accent font-semibold">{t("filteredByUser")}</span>
+          <span className="text-gray-400">{t("filteredByUserHint")}</span>
+          <Link href="/activity" className="ml-auto text-og-accent hover:underline">{t("clearFilter")}</Link>
         </div>
       )}
 
@@ -139,23 +139,23 @@ export default function ActivityPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by user, action, asset ID…"
+              placeholder={t("searchPlaceholder")}
               className="flex-1 bg-transparent text-xs text-og-text placeholder:text-gray-400 outline-hidden"
             />
           </div>
           <div className="flex items-center gap-1 p-1 bg-og-surface-alt border border-og-border rounded-lg">
-            {ENTITY_FILTERS.map((f) => (
+            {ENTITY_FILTER_VALUES.map((value) => (
               <button
-                key={f.value}
+                key={value}
                 type="button"
-                onClick={() => setEntityType(f.value)}
+                onClick={() => setEntityType(value)}
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  entityType === f.value
+                  entityType === value
                     ? "bg-og-surface text-og-text shadow-xs border border-og-border"
                     : "text-gray-400 hover:text-og-text"
                 }`}
               >
-                {f.label}
+                {value === "" ? t("allEntities") : tEntity(value)}
               </button>
             ))}
           </div>
@@ -164,32 +164,32 @@ export default function ActivityPage() {
 
       {error && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-4 py-3 text-sm text-red-600 dark:text-red-400">
-          Failed to load activity: {error}
+          {t("errorLoad", { error })}
         </div>
       )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-gray-400">
           <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
-          Loading activity…
+          {t("loadingActivity")}
         </div>
       ) : (
         <div className="bg-og-surface rounded-xl border border-og-border shadow-xs overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-og-border">
-                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Date</th>
-                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">User</th>
-                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Entity</th>
-                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">Action</th>
-                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Description</th>
+                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{t("columnDate")}</th>
+                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{t("columnUser")}</th>
+                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{t("columnEntity")}</th>
+                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">{t("columnAction")}</th>
+                <th className="px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t("columnDescription")}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-16 text-center text-sm text-gray-400">
-                    No activity recorded yet.
+                    {t("empty")}
                   </td>
                 </tr>
               ) : (
@@ -236,7 +236,7 @@ export default function ActivityPage() {
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50"
               >
                 {loadingMore && <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />}
-                {loadingMore ? "Loading…" : "Load more"}
+                {loadingMore ? t("loading") : t("loadMore")}
               </button>
             </div>
           )}

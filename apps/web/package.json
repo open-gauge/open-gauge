@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -24,6 +24,7 @@
     "katex": "^0.16.11",
     "motion": "^12.42.2",
     "next": "16.2.10",
+    "next-intl": "^4.13.4",
     "pdfjs-dist": "^6.1.200",
     "plotly.js-dist-min": "^3.6.0",
     "react": "19.2.7",

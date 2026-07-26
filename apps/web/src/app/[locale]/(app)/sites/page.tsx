@@ -2,8 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -43,20 +45,20 @@ import { ToggleSwitch } from "@/components/toggle-switch";
 // ---------------------------------------------------------------------------
 
 const LOCATION_TYPES = [
-  { value: "organization",        label: "Organization" },
-  { value: "site",                label: "Site" },
-  { value: "building",            label: "Building" },
-  { value: "laboratory",          label: "Laboratory" },
-  { value: "office",              label: "Office" },
-  { value: "production",          label: "Production" },
-  { value: "industrial_process",  label: "Industrial process" },
-  { value: "test_facility",       label: "Test facility" },
-  { value: "field",               label: "Field" },
-  { value: "vehicle",             label: "Vehicle" },
-  { value: "storage",             label: "Storage" },
-  { value: "external",            label: "External" },
-  { value: "other",               label: "Other" },
-];
+  "organization",
+  "site",
+  "building",
+  "laboratory",
+  "office",
+  "production",
+  "industrial_process",
+  "test_facility",
+  "field",
+  "vehicle",
+  "storage",
+  "external",
+  "other",
+] as const;
 
 // ---------------------------------------------------------------------------
 // Tree utilities
@@ -247,7 +249,7 @@ function FSelect({ label, value, onChange, options, required, placeholder }: {
         onChange={(e) => onChange(e.target.value)}
         className={`${IB} ${IOK}`}
       >
-        <option value="">{placeholder ?? "Select…"}</option>
+        <option value="">{placeholder}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -282,6 +284,7 @@ function TreeItem({
   depth: number;
   inheritedCounts: Map<string, number>;
 }) {
+  const t = useTranslations("sites");
   const hasChildren = node.children.length > 0;
   const isExpanded = expanded.has(node.id);
   const isSelected = selectedId === node.id;
@@ -313,7 +316,7 @@ function TreeItem({
         <span className="flex-1 truncate text-xs">{node.name}</span>
         {node.is_calibration_lab && (
           <span
-            title="This is a location where sensors can be calibrated."
+            title={t("calibrationLabTooltip")}
             className="shrink-0 w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"
           />
         )}
@@ -374,20 +377,20 @@ function RemoveLocationModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  const t = useTranslations("sites.removeModal");
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-og-surface border border-og-border rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
         <div className="flex items-center gap-3 mb-4">
           <WarningIcon size={20} className="text-red-500 shrink-0" />
-          <h2 className="text-base font-semibold text-og-text">Remove location?</h2>
+          <h2 className="text-base font-semibold text-og-text">{t("title")}</h2>
         </div>
         <p className="text-sm text-gray-500 mb-2">
-          You are about to permanently remove{" "}
-          <span className="font-semibold text-og-text">{locationName}</span>.
+          {t("body1", { name: locationName })}
         </p>
         <p className="text-sm text-gray-500 mb-5">
-          All assets currently assigned to this location will be unassigned. This action cannot be undone.
+          {t("body2")}
         </p>
         <div className="flex justify-end gap-2">
           <button
@@ -396,7 +399,7 @@ function RemoveLocationModal({
             disabled={removing}
             className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
           >
-            Cancel
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -407,7 +410,7 @@ function RemoveLocationModal({
             {removing
               ? <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               : <WarningIcon size={12} />}
-            {removing ? "Removing…" : "Remove location"}
+            {removing ? t("removing") : t("remove")}
           </button>
         </div>
       </div>
@@ -432,6 +435,8 @@ function LocationDetail({
   onRemoved: (fresh: LocationItem[]) => void;
   inheritedCount?: number;
 }) {
+  const t = useTranslations("sites.detail");
+  const tLocationType = useTranslations("tokens.locationType");
   const { user } = useAuth();
   const canEdit = user.role !== "viewer";
   const [editing, setEditing] = useState(false);
@@ -465,8 +470,8 @@ function LocationDetail({
   }
 
   async function handleSave() {
-    if (!form.name.trim()) { setFormError("Name is required"); return; }
-    if (!form.location_type) { setFormError("Type is required"); return; }
+    if (!form.name.trim()) { setFormError(t("nameRequired")); return; }
+    if (!form.location_type) { setFormError(t("typeRequired")); return; }
     setFormError(null);
     setSaving(true);
     setSaveError(null);
@@ -476,7 +481,7 @@ function LocationDetail({
       onEditSaved(fresh);
       setEditing(false);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Save failed");
+      setSaveError(e instanceof Error ? e.message : t("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -489,7 +494,7 @@ function LocationDetail({
       const fresh = await listAllLocations();
       onRemoved(fresh);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Failed to remove location.");
+      setSaveError(e instanceof Error ? e.message : t("removeFailed"));
       setRemoveModalOpen(false);
     } finally {
       setRemoving(false);
@@ -518,14 +523,18 @@ function LocationDetail({
         .sort((a, b) => a.label.localeCompare(b.label)),
     [allLocations, location.id, pathMap]
   );
+  const locationTypeOptions = useMemo(
+    () => LOCATION_TYPES.map((v) => ({ value: v, label: translateDynamic(tLocationType, v) })),
+    [tLocationType]
+  );
 
   // Visible info cards (only non-empty fields)
   const infoCards: { label: string; value: React.ReactNode }[] = [];
-  if (location.location_type) infoCards.push({ label: "Type", value: location.location_type });
-  if (location.code)          infoCards.push({ label: "Code", value: <span className="font-mono text-xs">{location.code}</span> });
-  if (location.address)       infoCards.push({ label: "Address", value: location.address });
+  if (location.location_type) infoCards.push({ label: t("infoType"), value: translateDynamic(tLocationType, location.location_type) });
+  if (location.code)          infoCards.push({ label: t("infoCode"), value: <span className="font-mono text-xs">{location.code}</span> });
+  if (location.address)       infoCards.push({ label: t("infoAddress"), value: location.address });
   if (hasMap) infoCards.push({
-    label: "GPS Coordinates",
+    label: t("infoGps"),
     value: <span className="font-mono text-xs">{location.latitude!.toFixed(5)},&nbsp;{location.longitude!.toFixed(5)}</span>,
   });
 
@@ -547,11 +556,11 @@ function LocationDetail({
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <FInput
-                  label="Name"
+                  label={t("name")}
                   value={form.name}
                   onChange={field("name")}
                   required
-                  placeholder="Location name"
+                  placeholder={t("locationName")}
                   error={formError && !form.name.trim() ? formError : undefined}
                 />
               </div>
@@ -563,7 +572,7 @@ function LocationDetail({
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
                 >
                   <XIcon size={12} />
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button
                   type="button"
@@ -572,7 +581,7 @@ function LocationDetail({
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
                 >
                   <CheckIcon size={12} />
-                  {saving ? "Saving…" : "Save"}
+                  {saving ? t("saving") : t("save")}
                 </button>
               </div>
             </div>
@@ -594,13 +603,13 @@ function LocationDetail({
                     {inheritedCount}
                   </p>
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 group-hover:text-og-accent transition-colors">
-                    Assets ↗
+                    {t("assetsLink")}
                   </p>
                 </Link>
               ) : (
                 <div>
                   <p className="text-3xl font-bold text-gray-300 dark:text-gray-600 tabular-nums">0</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Assets</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("assets")}</p>
                 </div>
               )}
             </div>
@@ -612,9 +621,9 @@ function LocationDetail({
                 <div className="flex justify-center mt-1">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/40">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 shrink-0" />
-                    Calibration location
+                    {t("calibrationLocation")}
                     <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/lab:block w-56 bg-gray-900 dark:bg-gray-700 text-white text-[10px] rounded-lg px-3 py-2 z-50 shadow-lg whitespace-normal text-left leading-relaxed">
-                      This is a location where sensors can be calibrated.
+                      {t("calibrationLabTooltip")}
                     </span>
                   </span>
                 </div>
@@ -633,7 +642,7 @@ function LocationDetail({
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors"
                 >
                   <EditIcon size={12} />
-                  Edit
+                  {t("edit")}
                 </button>
               )}
             </div>
@@ -645,42 +654,42 @@ function LocationDetail({
       {editing && (
         <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 space-y-4">
           <FTextArea
-            label="Description"
+            label={t("description")}
             value={form.description}
             onChange={field("description")}
-            placeholder="Optional description"
+            placeholder={t("descriptionPlaceholder")}
           />
           <div className="grid grid-cols-2 gap-3">
             <FSelect
-              label="Type"
+              label={t("type")}
               value={form.location_type}
               onChange={field("location_type")}
-              options={LOCATION_TYPES}
+              options={locationTypeOptions}
               required
             />
             <FInput
-              label="Code"
+              label={t("code")}
               value={form.code}
               onChange={field("code")}
-              placeholder="e.g. LAB-01"
+              placeholder={t("codePlaceholder")}
             />
           </div>
           <FInput
-            label="Address"
+            label={t("address")}
             value={form.address}
             onChange={field("address")}
-            placeholder="Street address"
+            placeholder={t("addressPlaceholder")}
           />
           <div className="grid grid-cols-2 gap-3">
             <FInput
-              label="Latitude"
+              label={t("latitude")}
               type="number"
               value={form.latitude}
               onChange={field("latitude")}
               placeholder="e.g. 40.71280"
             />
             <FInput
-              label="Longitude"
+              label={t("longitude")}
               type="number"
               value={form.longitude}
               onChange={field("longitude")}
@@ -688,14 +697,14 @@ function LocationDetail({
             />
           </div>
           <FSelect
-            label="Parent Location"
+            label={t("parentLocation")}
             value={form.parent_location_id}
             onChange={field("parent_location_id")}
             options={parentOptions}
-            placeholder="None (root)"
+            placeholder={t("none")}
           />
           <FCheckbox
-            label="Calibration laboratory"
+            label={t("calibrationLab")}
             checked={form.is_calibration_lab}
             onChange={(v) => setForm((prev) => ({ ...prev, is_calibration_lab: v }))}
           />
@@ -707,7 +716,7 @@ function LocationDetail({
               className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-600 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               <WarningIcon size={12} />
-              Remove location
+              {t("removeLocation")}
             </button>
           </div>
         </div>
@@ -730,7 +739,7 @@ function LocationDetail({
           <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
             <div className="flex items-center gap-2 text-sm font-semibold text-og-text">
               <MapPinIcon size={14} className="text-og-accent" />
-              Map
+              {t("map")}
             </div>
             <a
               href={mapLink!}
@@ -738,7 +747,7 @@ function LocationDetail({
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs text-gray-400 hover:text-og-accent transition-colors"
             >
-              Open ↗
+              {t("open")}
             </a>
           </div>
           <div className="h-72">
@@ -746,7 +755,7 @@ function LocationDetail({
               src={mapSrc}
               className="w-full h-full border-0"
               loading="lazy"
-              title={`Map for ${location.name}`}
+              title={t("mapTitle", { name: location.name })}
             />
           </div>
         </div>
@@ -787,6 +796,8 @@ function NewLocationForm({
   onCreated: (fresh: LocationItem[]) => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("sites.newForm");
+  const tLocationType = useTranslations("tokens.locationType");
   const [form, setForm] = useState<NewLocForm>(EMPTY_NEW_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -799,19 +810,23 @@ function NewLocationForm({
         .sort((a, b) => a.label.localeCompare(b.label)),
     [allLocations, pathMap]
   );
+  const locationTypeOptions = useMemo(
+    () => LOCATION_TYPES.map((v) => ({ value: v, label: translateDynamic(tLocationType, v) })),
+    [tLocationType]
+  );
 
   function field<K extends keyof NewLocForm>(key: K) {
     return (v: string) => setForm((prev) => ({ ...prev, [key]: v }));
   }
 
   async function handleCreate() {
-    if (!form.name.trim()) { setError("Name is required"); return; }
-    if (!form.location_type) { setError("Type is required"); return; }
+    if (!form.name.trim()) { setError(t("nameRequired")); return; }
+    if (!form.location_type) { setError(t("typeRequired")); return; }
     setError(null);
     setSaving(true);
     try {
       const orgId = await getMyOrganizationId();
-      if (!orgId) { setError("Could not determine your organization. Contact an admin."); return; }
+      if (!orgId) { setError(t("orgError")); return; }
       const parseNum = (s: string): number | null => {
         if (!s.trim()) return null;
         const n = parseFloat(s);
@@ -832,7 +847,7 @@ function NewLocationForm({
       const fresh = await listAllLocations();
       onCreated(fresh);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create location");
+      setError(e instanceof Error ? e.message : t("createFailed"));
     } finally {
       setSaving(false);
     }
@@ -842,12 +857,12 @@ function NewLocationForm({
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       {/* Form header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
-        <p className="text-sm font-semibold text-og-text">New Location</p>
+        <p className="text-sm font-semibold text-og-text">{t("title")}</p>
         <button
           type="button"
           onClick={onClose}
           className="p-1 rounded-sm text-gray-400 hover:text-og-text hover:bg-og-surface-alt transition-colors"
-          aria-label="Close"
+          aria-label={t("close")}
         >
           <XIcon size={14} />
         </button>
@@ -857,57 +872,57 @@ function NewLocationForm({
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <FInput
-            label="Name"
+            label={t("name")}
             value={form.name}
             onChange={field("name")}
             required
-            placeholder="Location name"
+            placeholder={t("locationName")}
           />
           <FSelect
-            label="Type"
+            label={t("type")}
             value={form.location_type}
             onChange={field("location_type")}
-            options={LOCATION_TYPES}
+            options={locationTypeOptions}
             required
           />
         </div>
         <FTextArea
-          label="Description"
+          label={t("description")}
           value={form.description}
           onChange={field("description")}
-          placeholder="Optional description"
+          placeholder={t("descriptionPlaceholder")}
         />
         <div className="grid grid-cols-2 gap-3">
           <FInput
-            label="Code"
+            label={t("code")}
             value={form.code}
             onChange={field("code")}
-            placeholder="e.g. LAB-01"
+            placeholder={t("codePlaceholder")}
           />
           <FSelect
-            label="Parent Location"
+            label={t("parentLocation")}
             value={form.parent_location_id}
             onChange={field("parent_location_id")}
             options={parentOptions}
-            placeholder="None (root)"
+            placeholder={t("none")}
           />
         </div>
         <FInput
-          label="Address"
+          label={t("address")}
           value={form.address}
           onChange={field("address")}
-          placeholder="Street address"
+          placeholder={t("addressPlaceholder")}
         />
         <div className="grid grid-cols-2 gap-3">
           <FInput
-            label="Latitude"
+            label={t("latitude")}
             type="number"
             value={form.latitude}
             onChange={field("latitude")}
             placeholder="e.g. 40.71280"
           />
           <FInput
-            label="Longitude"
+            label={t("longitude")}
             type="number"
             value={form.longitude}
             onChange={field("longitude")}
@@ -915,7 +930,7 @@ function NewLocationForm({
           />
         </div>
         <FCheckbox
-          label="Calibration laboratory"
+          label={t("calibrationLab")}
           checked={form.is_calibration_lab}
           onChange={(v) => setForm((prev) => ({ ...prev, is_calibration_lab: v }))}
         />
@@ -929,7 +944,7 @@ function NewLocationForm({
             disabled={saving}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
           >
-            Cancel
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -938,7 +953,7 @@ function NewLocationForm({
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60"
           >
             <CheckIcon size={12} />
-            {saving ? "Creating…" : "Create location"}
+            {saving ? t("creating") : t("create")}
           </button>
         </div>
       </div>
@@ -951,6 +966,7 @@ function NewLocationForm({
 // ---------------------------------------------------------------------------
 
 export default function LocationsPage() {
+  const t = useTranslations("sites.page");
   const { user } = useAuth();
   const canEdit = user.role !== "viewer";
   const searchParams = useSearchParams();
@@ -984,7 +1000,7 @@ export default function LocationsPage() {
         }
         setExpanded(ids);
       })
-      .catch(() => setError("Failed to load locations."))
+      .catch(() => setError(t("loadFailed")))
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1028,11 +1044,9 @@ export default function LocationsPage() {
       {/* Page header — floats over grid background */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-og-text">Locations</h1>
+          <h1 className="text-xl font-bold text-og-text">{t("title")}</h1>
           <p className="text-sm text-gray-400 mt-1">
-            {loading
-              ? "Loading…"
-              : `${locations.length} location${locations.length !== 1 ? "s" : ""} across your organization`}
+            {loading ? t("loading") : t("count", { count: locations.length })}
           </p>
         </div>
         {canEdit && (
@@ -1042,7 +1056,7 @@ export default function LocationsPage() {
             className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
           >
             <PlusIcon size={13} />
-            New location
+            {t("newLocation")}
           </button>
         )}
       </div>
@@ -1062,10 +1076,10 @@ export default function LocationsPage() {
         <div className="w-72 shrink-0 bg-og-surface rounded-xl border border-og-border shadow-xs overflow-y-auto max-h-[calc(100vh-180px)] sticky top-0">
 
           <div className="p-2">
-            {loading && <p className="text-xs text-gray-400 px-3 py-4">Loading…</p>}
+            {loading && <p className="text-xs text-gray-400 px-3 py-4">{t("loading")}</p>}
             {error && <p className="text-xs text-red-500 px-3 py-4">{error}</p>}
             {!loading && !error && tree.length === 0 && (
-              <p className="text-xs text-gray-400 px-3 py-4">No locations found.</p>
+              <p className="text-xs text-gray-400 px-3 py-4">{t("empty")}</p>
             )}
             {tree.map((root) => (
               <TreeItem
@@ -1097,7 +1111,7 @@ export default function LocationsPage() {
             <div className="bg-og-surface rounded-xl border border-og-border shadow-xs flex items-center justify-center py-24">
               <div className="text-center">
                 <LocationOrgIcon size={32} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-sm text-gray-400">Select a location from the tree to view details.</p>
+                <p className="text-sm text-gray-400">{t("selectPrompt")}</p>
               </div>
             </div>
           )}

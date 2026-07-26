@@ -7,6 +7,7 @@ export interface UserProfile {
   is_verified: boolean;
   profile_picture_id: string | null;
   profile_picture_url: string | null;
+  language: string;
   created_at: string;
   updated_at: string;
 }

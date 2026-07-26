@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { apiFetch, authHeader } from "@/lib/api";
 import { clearToken, getToken } from "@/services/auth.service";
 import type { UserProfile } from "@/types/user";

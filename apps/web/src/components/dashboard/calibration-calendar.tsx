@@ -1,16 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { CalendarEvent } from "@/types/dashboard";
 import { getCalendarEvents } from "@/services/dashboard.service";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,7 +61,7 @@ interface CalendarGrid {
   monthLabels: Record<number, string>; // wi → month abbreviation
 }
 
-function buildGrid(year: number): CalendarGrid {
+function buildGrid(year: number, monthShort: string[]): CalendarGrid {
   const jan1 = new Date(year, 0, 1);
   const dec31 = new Date(year, 11, 31);
 
@@ -91,7 +85,7 @@ function buildGrid(year: number): CalendarGrid {
       if (cur.getFullYear() === year) {
         const ds = toDateStr(cur);
         week.push(ds);
-        if (cur.getDate() === 1) monthLabels[wi] = MONTH_SHORT[cur.getMonth()];
+        if (cur.getDate() === 1) monthLabels[wi] = monthShort[cur.getMonth()];
       } else {
         week.push(null);
       }
@@ -126,6 +120,9 @@ interface Props {
 }
 
 export default function CalibrationCalendar({ initialEvents, initialYear }: Props) {
+  const t = useTranslations("dashboard.calendar");
+  const monthShort = t.raw("monthShort") as string[];
+  const dayLabels = t.raw("dayLabels") as string[];
   const today = new Date();
   const todayStr = toDateStr(today);
 
@@ -134,7 +131,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
   const [loading, setLoading] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-  const { weeks, monthLabels } = buildGrid(year);
+  const { weeks, monthLabels } = buildGrid(year, monthShort);
   const grouped = groupByDate(events);
 
   async function changeYear(newYear: number) {
@@ -159,8 +156,8 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-5 w-fit flex flex-col">
       {/* Title row */}
       <div className="mb-3 shrink-0">
-        <h3 className="text-sm font-semibold text-og-text">Calibration activity</h3>
-        <p className="text-xs text-gray-400 mt-0.5">Performed calibrations and due dates across all assets</p>
+        <h3 className="text-sm font-semibold text-og-text">{t("title")}</h3>
+        <p className="text-xs text-gray-400 mt-0.5">{t("subtitle")}</p>
       </div>
 
       {/* Year navigator — right-aligned, sits directly above the grid */}
@@ -169,7 +166,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
           onClick={() => changeYear(year - 1)}
           disabled={loading}
           className="p-1 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors disabled:opacity-40"
-          aria-label="Previous year"
+          aria-label={t("prevYear")}
         >
           <ChevronLeftIcon size={13} />
         </button>
@@ -178,7 +175,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
           onClick={() => changeYear(year + 1)}
           disabled={loading}
           className="p-1 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors disabled:opacity-40"
-          aria-label="Next year"
+          aria-label={t("nextYear")}
         >
           <ChevronRightIcon size={13} />
         </button>
@@ -189,7 +186,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
         <div className="flex gap-2 items-start" style={{ minWidth: "fit-content" }}>
           {/* Day-of-week labels */}
           <div className="flex flex-col" style={{ paddingTop: 20 }}>
-            {DAY_LABELS.map((label, di) => (
+            {dayLabels.map((label, di) => (
               <div
                 key={di}
                 className="text-[10px] text-gray-400 flex items-center justify-end pr-1.5"
@@ -257,7 +254,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
         {(["none", "performed", "upcoming", "expired"] as const).map((s) => (
           <span key={s} className="flex items-center gap-1.5 text-[10px] text-gray-400">
             <span className={`w-2.5 h-2.5 rounded-xs ${STATUS_BG[s]}`} />
-            {{ none: "No events", performed: "Calibrated", upcoming: "Upcoming due", expired: "Overdue" }[s]}
+            {{ none: t("legendNone"), performed: t("legendPerformed"), upcoming: t("legendUpcoming"), expired: t("legendExpired") }[s]}
           </span>
         ))}
         <span className="text-[10px] text-gray-400"></span>
@@ -283,7 +280,7 @@ export default function CalibrationCalendar({ initialEvents, initialYear }: Prop
               const isPerformed = e.event_type === "performed";
               const isExpired = e.event_type === "due" && e.date < todayStr;
               const dotCls = isPerformed ? "text-teal-400" : isExpired ? "text-red-400" : "text-amber-400";
-              const typeLabel = isPerformed ? "Calibrated" : isExpired ? "Overdue" : "Due";
+              const typeLabel = isPerformed ? t("tooltipCalibrated") : isExpired ? t("tooltipOverdue") : t("tooltipDue");
               return (
                 <div key={i} className="flex items-start gap-1.5">
                   <span className={`text-[10px] font-bold mt-px ${dotCls}`}>●</span>

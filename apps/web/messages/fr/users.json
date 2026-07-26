@@ -1,0 +1,14 @@
+{
+  "detail": {
+    "back": "Retour",
+    "loading": "Chargement…",
+    "active": "Actif",
+    "disabled": "Désactivé",
+    "email": "E-mail",
+    "role": "Rôle",
+    "status": "Statut",
+    "memberSince": "Membre depuis",
+    "activityLog": "Journal d'activité",
+    "viewActivity": "Voir l'activité"
+  }
+}

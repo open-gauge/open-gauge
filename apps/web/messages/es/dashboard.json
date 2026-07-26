@@ -1,0 +1,70 @@
+{
+  "page": {
+    "title": "Panel de operaciones",
+    "subtitle": "Estado en tiempo real de todas las sedes, laboratorios e instrumentación."
+  },
+  "cards": {
+    "registeredAssets": "Activos registrados",
+    "assetsCenter": "Activos",
+    "sensors": "Sensores",
+    "sensorsCenter": "Sensores",
+    "daqUnits": "Unidades DAQ",
+    "daqCenter": "DAQ",
+    "procedures": "Procedimientos",
+    "proceduresCenter": "Procedimientos",
+    "filterTitle": "Ver en el registro de activos"
+  },
+  "calStatus": {
+    "valid": "Calibrado",
+    "due_soon": "Próximo a vencer",
+    "expired": "Vencido",
+    "not_calibrated": "Sin calibrar"
+  },
+  "activity": {
+    "title": "Actividad",
+    "subtitle": "Eventos de auditoría recientes",
+    "viewAll": "Ver todo",
+    "minAgo": "hace {count} min",
+    "hoursAgo": "hace {count} h",
+    "yesterday": "ayer",
+    "daysAgo": "hace {count} días"
+  },
+  "calendar": {
+    "title": "Actividad de calibración",
+    "subtitle": "Calibraciones realizadas y fechas de vencimiento de todos los activos",
+    "prevYear": "Año anterior",
+    "nextYear": "Año siguiente",
+    "monthShort": ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"],
+    "dayLabels": ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"],
+    "legendNone": "Sin eventos",
+    "legendPerformed": "Calibrado",
+    "legendUpcoming": "Próximo vencimiento",
+    "legendExpired": "Vencido",
+    "tooltipCalibrated": "Calibrado",
+    "tooltipOverdue": "Vencido",
+    "tooltipDue": "Pendiente"
+  },
+  "categoryDistribution": {
+    "title": "Distribución de activos",
+    "subtitle": "Sensores por tipo · DAQ por interfaz",
+    "sensorLabel": "Sensor",
+    "daqLabel": "DAQ",
+    "noSensors": "Sin sensores",
+    "noDaqs": "Sin DAQ"
+  },
+  "recentAssets": {
+    "title": "Activos actualizados recientemente",
+    "subtitle": "Ediciones más recientes en todas las ubicaciones",
+    "sensor": "Sensor",
+    "daq": "DAQ"
+  },
+  "upcoming": {
+    "title": "Próximas calibraciones",
+    "subtitle": "Fechas de vencimiento más próximas primero — haz clic para abrir el activo",
+    "viewAll": "Ver todo",
+    "empty": "No hay calibraciones programadas",
+    "overdue": "vencido hace {days} d",
+    "dueToday": "Vence hoy",
+    "inDays": "En {days} días"
+  }
+}

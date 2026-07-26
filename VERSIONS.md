@@ -9,6 +9,30 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.3.0
+
+### Added
+
+- **Multilingual support.** The web app now ships in English (canonical), Spanish, French, and
+  German, with the architecture designed so adding language #5+ later is a content-only change (a
+  `LocaleMeta` entry in `apps/web/src/i18n/locales.ts` plus a `messages/{locale}/*.json` set) —
+  never an app-code change. Built on [next-intl](https://next-intl.dev), with non-English locales
+  prefixed in the URL (`/es/...`, `/fr/...`, `/de/...`) while English stays unprefixed at the root,
+  so existing links and bookmarks keep working. A new globe-icon language switcher sits next to the
+  theme toggle in the top bar; the chosen language is written to a `NEXT_LOCALE` cookie immediately
+  and, once signed in, to the user's profile (`PATCH /users/me` gained a validated `language`
+  field) so it follows a returning user across devices and browsers. Every page and shared
+  component in the authenticated app, the login/register/forgot-password/reset-password/verify-email
+  flow, and admin/settings screens are translated; user-entered content (asset names, notes, audit
+  free text) and the Privacy Policy/Terms of Service pages are deliberately left English-only —
+  machine-translating legal text or user data isn't appropriate here. The separate marketing site
+  (`landing/`, a static HTML/CSS/JS Cloudflare Worker project) gained its own matching language
+  switcher next to its light/dark toggle, full Spanish/French/German copies of the marketing
+  homepage, and a first-visit `Accept-Language`-based redirect in its Worker.
+- Backend: `User` gained a `language` column (`SUPPORTED_LANGUAGES`-validated, defaults to `en`),
+  migrated via `028_add_user_language.py`, with test coverage for valid/invalid values on
+  `UserSelfUpdate`.
+
 ## 3.2.1
 
 ### Fixed

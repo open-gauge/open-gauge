@@ -1,0 +1,20 @@
+{
+  "title": "Activity log",
+  "loading": "Loading…",
+  "entriesLoaded": "{filtered} of {total} entries loaded",
+  "filteredByUser": "Filtered by user",
+  "filteredByUserHint": "Showing activity for a specific user.",
+  "clearFilter": "Clear filter",
+  "searchPlaceholder": "Search by user, action, asset ID…",
+  "allEntities": "All",
+  "errorLoad": "Failed to load activity: {error}",
+  "loadingActivity": "Loading activity…",
+  "columnDate": "Date",
+  "columnUser": "User",
+  "columnEntity": "Entity",
+  "columnAction": "Action",
+  "columnDescription": "Description",
+  "empty": "No activity recorded yet.",
+  "loadMore": "Load more",
+  "errorLoadMore": "Failed to load more entries"
+}

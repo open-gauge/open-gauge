@@ -1,0 +1,138 @@
+{
+  "newOrgForm": {
+    "title": "New organization",
+    "name": "Name",
+    "namePlaceholder": "e.g. Meridian Calibration Labs",
+    "fullName": "Full legal name",
+    "optional": "Optional",
+    "private": "Private — only members can see its details, members, and assets",
+    "cancel": "Cancel",
+    "creating": "Creating…",
+    "create": "Create",
+    "createFailed": "Failed to create organization"
+  },
+  "joinLeave": {
+    "leave": "Leave",
+    "pending": "Request pending",
+    "requestToJoin": "Request to join"
+  },
+  "page": {
+    "title": "Organizations",
+    "count": "{count, plural, one {# organization} other {# organizations}}",
+    "newOrganization": "New Organization",
+    "loading": "Loading…",
+    "loadFailed": "Failed to load organizations",
+    "empty": "No organizations yet.",
+    "deleted": "Deleted",
+    "private": "Private",
+    "joinModal": {
+      "title": "Request to join?",
+      "message": "Request to join {name}? An organization admin will need to approve it.",
+      "confirm": "Send request"
+    },
+    "leaveOnlyAdmin": {
+      "title": "You're the only admin",
+      "message": "Promote another member to admin before leaving this organization."
+    },
+    "leaveOnlyMember": {
+      "title": "You're the only member",
+      "message": "There's no one else to hand this organization to — delete it instead of leaving. Open the organization page to use the Danger Zone.",
+      "confirm": "Open organization"
+    },
+    "leaveModal": {
+      "title": "Leave organization?",
+      "message": "Leave {name}? You'll need to request to join again to regain access.",
+      "confirm": "Leave"
+    }
+  },
+  "detail": {
+    "back": "Back",
+    "loading": "Loading…",
+    "private": "Private",
+    "edit": "Edit",
+    "leave": "Leave",
+    "pending": "Request pending",
+    "requestToJoin": "Request to join",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "save": "Save",
+    "privateGateMessage": "This organization is private. Only members can see its details.",
+    "name": "Name",
+    "fullName": "Full legal name",
+    "description": "Description",
+    "website": "Website",
+    "location": "Location",
+    "none": "— None —",
+    "email": "Email",
+    "phone": "Phone",
+    "privateToggle": "Private — only members can see its details, members, and assets",
+    "assets": "Assets",
+    "assetCount": "{count, plural, one {# asset} other {# assets}}",
+    "members": "Members",
+    "memberCount": "{count, plural, one {# member} other {# members}}",
+    "created": "Created",
+    "addMember": "Add member",
+    "removeMember": "Remove member",
+    "requestPending": "Pending",
+    "approve": "Approve",
+    "reject": "Reject",
+    "certificateSigning": "Certificate signing",
+    "certificateSigningTooltip": "Every calibration certificate PDF issued for this organization is digitally signed (PAdES) with this certificate — any PDF viewer with signature support (Adobe Acrobat, Chrome, Preview) can verify it was issued by this organization and has not been altered since.",
+    "downloadCertificate": "Download certificate",
+    "algorithm": "Algorithm",
+    "fingerprint": "Fingerprint",
+    "valid": "Valid",
+    "noCertificate": "No certificate yet — generated automatically the first time a calibration certificate is issued for this organization.",
+    "dangerZone": "Danger zone",
+    "deactivateDesc": "Deleting an organization deactivates it — it becomes invisible to everyone except Super Admin, who can restore it from here.",
+    "deleteOrganization": "Delete organization",
+    "deactivatedDesc": "This organization is deactivated — invisible to everyone except Super Admin. Restoring makes it active and visible to all users again.",
+    "restoring": "Restoring…",
+    "restoreOrganization": "Restore organization",
+    "failedToLoad": "Failed to load organization",
+    "failedToSave": "Failed to save",
+    "failedToUploadLogo": "Failed to upload logo",
+    "failedToRemoveLogo": "Failed to remove logo",
+    "failedToChangeRole": "Failed to change role",
+    "removeMemberConfirm": "Remove this member from the organization?",
+    "failedToRemoveMember": "Failed to remove member",
+    "failedToApprove": "Failed to approve request",
+    "failedToReject": "Failed to reject request",
+    "failedToRestore": "Failed to restore organization",
+    "addMemberModal": {
+      "title": "Add member",
+      "searchPlaceholder": "Search by name or email…",
+      "loading": "Loading…",
+      "empty": "No matching users.",
+      "cancel": "Cancel",
+      "adding": "Adding…",
+      "add": "Add",
+      "addWithCount": "Add ({count})",
+      "failed": "Failed to add members"
+    },
+    "deleteModal": {
+      "title": "Delete organization?",
+      "message": "Delete {name}? It will be deactivated and hidden from everyone except Super Admin.",
+      "confirm": "Delete"
+    },
+    "joinModal": {
+      "title": "Request to join?",
+      "message": "Request to join {name}? An organization admin will need to approve it.",
+      "confirm": "Send request"
+    },
+    "leaveOnlyAdmin": {
+      "title": "You're the only admin",
+      "message": "Promote another member to admin before leaving this organization."
+    },
+    "leaveOnlyMember": {
+      "title": "You're the only member",
+      "message": "There's no one else to hand this organization to — delete it instead of leaving.",
+      "confirm": "Go to Danger Zone"
+    },
+    "leaveModal": {
+      "title": "Leave organization?",
+      "message": "Leave {name}? You'll need to request to join again to regain access.",
+      "confirm": "Leave"
+    }
+  }
+}

@@ -1,13 +1,16 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { resetPassword, setToken } from "@/services/auth.service";
 import { CheckCircleIcon, WarningIcon } from "@/components/icons";
 
 type Status = "form" | "submitting" | "success" | "error";
 
 function ResetPasswordCard() {
+  const t = useTranslations("auth.resetPassword");
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -19,7 +22,7 @@ function ResetPasswordCard() {
     e.preventDefault();
     if (!token) {
       setStatus("error");
-      setError("Missing reset token.");
+      setError(t("missingToken"));
       return;
     }
     setStatus("submitting");
@@ -30,7 +33,7 @@ function ResetPasswordCard() {
       setTimeout(() => router.push("/dashboard"), 1500);
     } catch (e: unknown) {
       setStatus("error");
-      setError(e instanceof Error ? e.message : "Failed to reset password");
+      setError(e instanceof Error ? e.message : t("failed"));
     }
   }
 
@@ -42,30 +45,30 @@ function ResetPasswordCard() {
       {status === "success" ? (
         <div className="text-center">
           <CheckCircleIcon size={28} className="text-emerald-500 mx-auto mb-4" />
-          <h1 className="text-lg font-semibold text-og-text">Password updated</h1>
-          <p className="text-sm text-gray-500 mt-2">Redirecting to your workspace…</p>
+          <h1 className="text-lg font-semibold text-og-text">{t("passwordUpdated")}</h1>
+          <p className="text-sm text-gray-500 mt-2">{t("redirecting")}</p>
         </div>
       ) : !token ? (
         <div className="text-center">
           <WarningIcon size={28} className="text-red-500 mx-auto mb-4" />
-          <h1 className="text-lg font-semibold text-og-text">Invalid reset link</h1>
-          <p className="text-sm text-gray-500 mt-2">This link is missing its token.</p>
-          <a href="/" className="inline-block mt-6 text-sm text-og-accent hover:underline">Back to sign in</a>
+          <h1 className="text-lg font-semibold text-og-text">{t("invalidLink")}</h1>
+          <p className="text-sm text-gray-500 mt-2">{t("missingTokenLink")}</p>
+          <a href="/" className="inline-block mt-6 text-sm text-og-accent hover:underline">{t("backToSignIn")}</a>
         </div>
       ) : (
         <>
           <div className="mb-6 text-center">
-            <h1 className="text-lg font-semibold text-og-text">Choose a new password</h1>
+            <h1 className="text-lg font-semibold text-og-text">{t("chooseNewPassword")}</h1>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="new-password" className="block text-sm font-medium text-og-text mb-1">New password</label>
+              <label htmlFor="new-password" className="block text-sm font-medium text-og-text mb-1">{t("newPassword")}</label>
               <input
                 id="new-password" type="password" autoComplete="new-password" required minLength={8}
                 placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
                 className={inputClass}
               />
-              <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
+              <p className="text-xs text-gray-400 mt-1">{t("minChars")}</p>
             </div>
             {status === "error" && (
               <div className="rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-3 py-2 text-sm text-red-600 dark:text-red-400">
@@ -80,7 +83,7 @@ function ResetPasswordCard() {
               {status === "submitting" ? (
                 <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <>Reset password <span aria-hidden>→</span></>
+                <>{t("resetPassword")} <span aria-hidden>→</span></>
               )}
             </button>
           </form>

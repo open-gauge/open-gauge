@@ -123,6 +123,32 @@ class TestUserPicture:
         assert response.status_code == 200
         assert response.json()["profile_picture_url"]
 
+
+class TestUserSelfUpdateLanguage:
+    def test_get_me_defaults_language_to_en(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        response = client.get("/api/v1/users/me", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json()["language"] == "en"
+
+    def test_update_language_accepts_supported_locale(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        response = client.patch(
+            "/api/v1/users/me", json={"language": "es"}, headers=auth_headers
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["language"] == "es"
+
+    def test_update_language_rejects_unsupported_locale(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        response = client.patch(
+            "/api/v1/users/me", json={"language": "xx"}, headers=auth_headers
+        )
+        assert response.status_code == 422
+
     def test_get_user_by_id_nonexistent_returns_404(
         self, client: TestClient, auth_headers: dict
     ) -> None:

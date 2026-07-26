@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { AssetProfile } from "@/types/asset";
 import type {
   AssetHealthResponse,
@@ -70,11 +71,12 @@ function Card({ title, tooltip, tooltipDocsHref, children }: { title: string; to
 // ---------------------------------------------------------------------------
 
 function HealthEmptyState() {
+  const t = useTranslations("assets.health");
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-12 flex flex-col items-center text-center gap-3">
       <ActivityIcon size={32} className="text-gray-300 dark:text-gray-600" />
       <p className="text-sm text-gray-400 max-w-sm">
-        Health insights become available after at least two calibrations.
+        {t("emptyState")}
       </p>
     </div>
   );
@@ -90,9 +92,10 @@ function HealthError({ message }: { message: string }) {
 }
 
 function HealthLoading() {
+  const t = useTranslations("assets.health");
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-12 flex items-center justify-center">
-      <p className="text-sm text-gray-400">Loading health data…</p>
+      <p className="text-sm text-gray-400">{t("loadingHealthData")}</p>
     </div>
   );
 }
@@ -108,6 +111,7 @@ function DriftEvolutionCard({
   unit: string;
   averageDriftRate: number;
 }) {
+  const t = useTranslations("assets.health");
   const divRef = useRef<HTMLDivElement>(null);
 
   usePlotly(
@@ -135,14 +139,14 @@ function DriftEvolutionCard({
           marker: { color: COLORS.scatter, size: 8 },
           customdata: data.points.map((p) => [p.calibration_id, p.operator]),
           hovertemplate:
-            `<b>%{customdata[0]}</b><br>Max drift: %{y} ${unit}<br>Date: %{x}<br>Operator: %{customdata[1]}<extra></extra>`,
+            `<b>%{customdata[0]}</b><br>${t("hoverMaxDrift")}: %{y} ${unit}<br>${t("hoverDate")}: %{x}<br>${t("hoverOperator")}: %{customdata[1]}<extra></extra>`,
           showlegend: false,
         },
       ];
       const layout: Partial<Plotly.Layout> = {
         ...PLOTLY_DARK_LAYOUT_BASE,
-        xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle("Calibration date") },
-        yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`Maximum drift (${unit})`) },
+        xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(t("calibrationDate")) },
+        yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(t("maximumDriftUnit", { unit })) },
       };
       return { data: traces, layout };
     },
@@ -150,39 +154,39 @@ function DriftEvolutionCard({
   );
 
   return (
-    <Card title="Drift Evolution" tooltip="Maximum drift of each calibration vs. the baseline (first) calibration, with a linear trend line. The primary view of sensor ageing." tooltipDocsHref={HEALTH_DOCS_LINKS.drift_evolution}>
+    <Card title={t("driftEvolution")} tooltip={t("tips.driftEvolution")} tooltipDocsHref={HEALTH_DOCS_LINKS.drift_evolution}>
       {data.points.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-8">No comparable calibrations with a fitted curve yet.</p>
+        <p className="text-sm text-gray-400 text-center py-8">{t("noComparableCalibrations")}</p>
       ) : (
         <>
           <div ref={divRef} style={{ height: 300, width: "100%" }} />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
             <div className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1">
-                Average Drift
-                <Tooltip content="Long-term drift rate from a linear regression over the full calibration history." docsHref={HEALTH_DOCS_LINKS.average_drift}>
+                {t("averageDrift")}
+                <Tooltip content={t("tips.averageDrift")} docsHref={HEALTH_DOCS_LINKS.average_drift}>
                   <InfoIcon size={10} className="text-gray-400 cursor-help" />
                 </Tooltip>
               </p>
-              <p className="text-sm text-og-text tabular-nums">{fmtNum(averageDriftRate)} {unit}/yr</p>
+              <p className="text-sm text-og-text tabular-nums">{fmtNum(averageDriftRate)} {unit}/{t("perYear")}</p>
             </div>
             <div className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Current Drift Rate</p>
-              <p className="text-sm text-og-text tabular-nums">{fmtNum(data.current_drift_rate)} {unit}/yr</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("currentDriftRate")}</p>
+              <p className="text-sm text-og-text tabular-nums">{fmtNum(data.current_drift_rate)} {unit}/{t("perYear")}</p>
             </div>
             <div className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1">
-                Slope
-                <Tooltip content="Slope of the drift-evolution trend line — identical to drift rate, shown here for traceability with the chart." docsHref={HEALTH_DOCS_LINKS.average_drift}>
+                {t("slope")}
+                <Tooltip content={t("tips.slope")} docsHref={HEALTH_DOCS_LINKS.average_drift}>
                   <InfoIcon size={10} className="text-gray-400 cursor-help" />
                 </Tooltip>
               </p>
-              <p className="text-sm text-og-text tabular-nums">{fmtNum(data.regression_slope)} {unit}/yr</p>
+              <p className="text-sm text-og-text tabular-nums">{fmtNum(data.regression_slope)} {unit}/{t("perYear")}</p>
             </div>
             <div className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1">
-                Regression R²
-                <Tooltip content="Goodness of fit (0-1) of the drift trend line. Values near 1 indicate a consistent, predictable drift pattern." docsHref={HEALTH_DOCS_LINKS.prediction}>
+                {t("regressionRSquared")}
+                <Tooltip content={t("tips.regressionRSquared")} docsHref={HEALTH_DOCS_LINKS.prediction}>
                   <InfoIcon size={10} className="text-gray-400 cursor-help" />
                 </Tooltip>
               </p>
@@ -217,6 +221,7 @@ function sortSeriesChronologically(series: StabilityMetricSeries): StabilityMetr
 }
 
 function StabilityCard({ data }: { data: CalibrationStability }) {
+  const t = useTranslations("assets.health");
   const divRef = useRef<HTMLDivElement>(null);
 
   usePlotly(
@@ -245,8 +250,8 @@ function StabilityCard({ data }: { data: CalibrationStability }) {
       }
       const layout: Partial<Plotly.Layout> = {
         ...PLOTLY_DARK_LAYOUT_BASE,
-        xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle("Calibration date") },
-        yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle("Value") },
+        xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(t("calibrationDate")) },
+        yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(t("value")) },
         legend: { orientation: "h", y: -0.2, font: { size: 10, color: "#9ca3af" } },
       };
       return { data: traces, layout };
@@ -255,11 +260,11 @@ function StabilityCard({ data }: { data: CalibrationStability }) {
   );
 
   return (
-    <Card title="Calibration Stability" tooltip="Historical evolution of RMSE, maximum error, expanded uncertainty, hysteresis, and R². Click a legend entry to show or hide a metric; use the toolbar to zoom and pan." tooltipDocsHref={HEALTH_DOCS_LINKS.calibration_stability}>
+    <Card title={t("calibrationStability")} tooltip={t("tips.calibrationStability")} tooltipDocsHref={HEALTH_DOCS_LINKS.calibration_stability}>
       <div ref={divRef} style={{ height: 300, width: "100%" }} />
       {data.smoothing_applied && (
         <p className="text-[11px] text-gray-400 mt-2">
-          Solid lines show a 3-point moving average; individual points show the raw values.
+          {t("smoothingHint")}
         </p>
       )}
     </Card>
@@ -270,14 +275,18 @@ function StabilityCard({ data }: { data: CalibrationStability }) {
 // Section 4 — Calibration Curve Comparison
 // ---------------------------------------------------------------------------
 
-const CURVE_METRIC_TIPS: Record<string, string> = {
-  max_drift: "Largest absolute difference between the reference and current curves across the shared operating range.",
-  mean_drift: "Average absolute difference between the two curves across the shared operating range.",
-  rms_drift: "Root-mean-square difference between the two curves — penalizes larger deviations more than mean drift.",
-  offset: "Difference between the curves at the start of the shared range — a constant (zero-point) shift.",
-  gain: "Slope of the difference curve — a change in sensitivity (span) between the two calibrations.",
-  residual_drift: "Difference between the curves at the end of the range minus the difference at the start — drift not explained by a constant offset.",
-};
+function useCurveMetricTips() {
+  const t = useTranslations("assets.health.tips");
+  const tips: Record<string, string> = {
+    max_drift: t("maxDrift"),
+    mean_drift: t("meanDrift"),
+    rms_drift: t("rmsDrift"),
+    offset: t("offset"),
+    gain: t("gain"),
+    residual_drift: t("residualDrift"),
+  };
+  return tips;
+}
 
 function CurveComparisonCard({
   assetId, options, unit,
@@ -286,6 +295,8 @@ function CurveComparisonCard({
   options: { id: string; calibration_date: string; calibration_version: number; label: string }[];
   unit: string;
 }) {
+  const t = useTranslations("assets.health");
+  const curveMetricTips = useCurveMetricTips();
   const [referenceId, setReferenceId] = useState(options[0]?.id ?? "");
   const [currentId, setCurrentId] = useState(options[options.length - 1]?.id ?? "");
   const [result, setResult] = useState<CurveComparisonResponse | null>(null);
@@ -299,20 +310,20 @@ function CurveComparisonCard({
     setError(null);
     getCurveComparison(assetId, referenceId, currentId)
       .then(setResult)
-      .catch((e) => { setResult(null); setError(e instanceof Error ? e.message : "Failed to compare curves"); });
+      .catch((e) => { setResult(null); setError(e instanceof Error ? e.message : t("errorCompareCurves")); });
   }, [assetId, referenceId, currentId]);
 
   usePlotly(curveRef, () => {
     if (!result) return null;
     const traces: Plotly.Data[] = [
-      { x: result.x, y: result.y_reference, type: "scatter", mode: "lines", line: { color: "#9ca3af", width: 2 }, name: "Reference" },
-      { x: result.x, y: result.y_current, type: "scatter", mode: "lines", line: { color: COLORS.accent, width: 2 }, name: "Current" },
+      { x: result.x, y: result.y_reference, type: "scatter", mode: "lines", line: { color: "#9ca3af", width: 2 }, name: t("reference") },
+      { x: result.x, y: result.y_current, type: "scatter", mode: "lines", line: { color: COLORS.accent, width: 2 }, name: t("current") },
     ];
     const layout: Partial<Plotly.Layout> = {
       ...PLOTLY_DARK_LAYOUT_BASE,
       margin: { t: 28, r: 16, b: 40, l: 52 },
-      xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle("Input") },
-      yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`Output (${unit})`) },
+      xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(t("input")) },
+      yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`${t("output")} (${unit})`) },
       legend: { orientation: "h", x: 0, y: 1.2, font: { size: 10, color: "#9ca3af" } },
     };
     return { data: traces, layout };
@@ -325,7 +336,7 @@ function CurveComparisonCard({
     ];
     const layout: Partial<Plotly.Layout> = {
       ...PLOTLY_DARK_LAYOUT_BASE,
-      xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle("Input") },
+      xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(t("input")) },
       yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`ΔT (${unit})`) },
     };
     return { data: traces, layout };
@@ -338,17 +349,17 @@ function CurveComparisonCard({
     ];
     const layout: Partial<Plotly.Layout> = {
       ...PLOTLY_DARK_LAYOUT_BASE,
-      xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle("Input") },
-      yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`Absolute drift (${unit})`) },
+      xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(t("input")) },
+      yaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`${t("absoluteDrift")} (${unit})`) },
     };
     return { data: traces, layout };
   }, [result, unit]);
 
   return (
-    <Card title="Calibration Curve Comparison" tooltip="Evaluates the fitted polynomials of two calibrations over ~200 points across their shared operating range, to isolate how the curve itself has changed." tooltipDocsHref={HEALTH_DOCS_LINKS.curve_comparison}>
+    <Card title={t("curveComparison")} tooltip={t("tips.curveComparison")} tooltipDocsHref={HEALTH_DOCS_LINKS.curve_comparison}>
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-400">Reference calibration</span>
+          <span className="text-xs text-gray-400">{t("referenceCalibration")}</span>
           <select
             value={referenceId}
             onChange={(e) => setReferenceId(e.target.value)}
@@ -358,7 +369,7 @@ function CurveComparisonCard({
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-400">Current calibration</span>
+          <span className="text-xs text-gray-400">{t("currentCalibration")}</span>
           <select
             value={currentId}
             onChange={(e) => setCurrentId(e.target.value)}
@@ -375,31 +386,31 @@ function CurveComparisonCard({
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Calibration curves</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("calibrationCurves")}</p>
               <div ref={curveRef} style={{ height: 240, width: "100%" }} />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Difference (ΔT)</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("differenceDeltaT")}</p>
               <div ref={deltaRef} style={{ height: 240, width: "100%" }} />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Absolute drift</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("absoluteDrift")}</p>
               <div ref={driftRef} style={{ height: 240, width: "100%" }} />
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
             {([
-              ["max_drift", "Maximum Drift", result.summary.max_drift],
-              ["mean_drift", "Mean Drift", result.summary.mean_drift],
-              ["rms_drift", "RMS Drift", result.summary.rms_drift],
-              ["offset", "Offset Drift", result.summary.offset],
-              ["gain", "Gain Drift", result.summary.gain],
-              ["residual_drift", "Residual Drift", result.summary.residual_drift],
+              ["max_drift", t("maximumDrift"), result.summary.max_drift],
+              ["mean_drift", t("meanDrift"), result.summary.mean_drift],
+              ["rms_drift", t("rmsDrift"), result.summary.rms_drift],
+              ["offset", t("offsetDrift"), result.summary.offset],
+              ["gain", t("gainDrift"), result.summary.gain],
+              ["residual_drift", t("residualDriftLabel"), result.summary.residual_drift],
             ] as [string, string, number][]).map(([key, label, value]) => (
               <div key={key} className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1">
                   {label}
-                  <Tooltip content={CURVE_METRIC_TIPS[key]} docsHref={CURVE_METRIC_DOCS_LINKS[key]}>
+                  <Tooltip content={curveMetricTips[key]} docsHref={CURVE_METRIC_DOCS_LINKS[key]}>
                     <InfoIcon size={10} className="text-gray-400 cursor-help" />
                   </Tooltip>
                 </p>
@@ -424,21 +435,22 @@ function PredictionCard({
   unit: string;
   recommendedIntervalMonths: number;
 }) {
+  const t = useTranslations("assets.health");
   const rul = prediction.remaining_useful_life_months != null
     ? prediction.remaining_useful_life_months / 12
     : null;
 
   return (
-    <Card title="Prediction" tooltip="Linear regression on historical maximum drift values, projected forward from today." tooltipDocsHref={HEALTH_DOCS_LINKS.prediction}>
+    <Card title={t("prediction")} tooltip={t("tips.prediction")} tooltipDocsHref={HEALTH_DOCS_LINKS.prediction}>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {([
-          ["1 year", prediction.projected_drift_1y],
-          ["2 years", prediction.projected_drift_2y],
-          ["3 years", prediction.projected_drift_3y],
-          ["5 years", prediction.projected_drift_5y],
+          [t("year1"), prediction.projected_drift_1y],
+          [t("years2"), prediction.projected_drift_2y],
+          [t("years3"), prediction.projected_drift_3y],
+          [t("years5"), prediction.projected_drift_5y],
         ] as [string, number | null][]).map(([label, value]) => (
           <div key={label} className="bg-og-surface-alt border border-og-border rounded-lg px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Expected drift, {label}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("expectedDrift", { period: label })}</p>
             <p className="text-sm text-og-text tabular-nums">{fmtUnit(value, unit)}</p>
           </div>
         ))}
@@ -446,35 +458,35 @@ function PredictionCard({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Predicted Remaining Useful Calibration Life</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("predictedRul")}</p>
           <p className="text-xl font-bold text-og-text tabular-nums">
-            {rul != null ? `${fmtNum(rul, 1)} years` : "—"}
+            {rul != null ? t("yearsValue", { years: fmtNum(rul, 1) }) : "—"}
           </p>
           {prediction.projected_tolerance_exceeded_date && (
             <p className="text-xs text-gray-400 mt-1">
-              Projected to exceed tolerance around {fmtDate(prediction.projected_tolerance_exceeded_date)}
+              {t("projectedToExceed", { date: fmtDate(prediction.projected_tolerance_exceeded_date) })}
             </p>
           )}
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Confidence</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("confidence")}</p>
           <p className="text-xl font-bold text-og-text tabular-nums">
             {prediction.confidence_pct != null ? `${Math.round(prediction.confidence_pct)}%` : "—"}
           </p>
           {!prediction.confidence_reliable && (
-            <p className="text-xs text-gray-400 mt-1">Based on fewer than 5 calibrations — treat as indicative only.</p>
+            <p className="text-xs text-gray-400 mt-1">{t("lowConfidenceHint")}</p>
           )}
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1">
-            Recommended Interval
-            <Tooltip content="Heuristic suggestion based on the current stability classification, starting from the sensor's configured calibration interval." docsHref={HEALTH_DOCS_LINKS.recommended_interval}>
+            {t("recommendedInterval")}
+            <Tooltip content={t("tips.recommendedInterval")} docsHref={HEALTH_DOCS_LINKS.recommended_interval}>
               <InfoIcon size={10} className="text-gray-400 cursor-help" />
             </Tooltip>
           </p>
           <p className="text-xl font-bold text-og-text tabular-nums">
             {recommendedIntervalMonths}
-            <span className="text-xs text-gray-400 font-normal ml-1">months</span>
+            <span className="text-xs text-gray-400 font-normal ml-1">{t("monthsUnit")}</span>
           </p>
         </div>
       </div>
@@ -550,17 +562,18 @@ function MetricGroup({ title, items }: { title: string; items: MetricGroupItem[]
 }
 
 function DetailedMetricsCard({ metrics, radar }: { metrics: DetailedMetrics; radar: RadarAxis[] | null }) {
+  const t = useTranslations("assets.health");
   return (
-    <Card title="Detailed Metrics">
+    <Card title={t("detailedMetrics")}>
       {radar && radar.length > 0 && (
         <div className="mb-6">
           <RadarChart axes={radar} />
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <MetricGroup title="Drift" items={metrics.drift_group} />
-        <MetricGroup title="Calibration Statistics" items={metrics.statistics_group} />
-        <MetricGroup title="Historical Trends" items={metrics.trends_group} />
+        <MetricGroup title={t("drift")} items={metrics.drift_group} />
+        <MetricGroup title={t("calibrationStatistics")} items={metrics.statistics_group} />
+        <MetricGroup title={t("historicalTrends")} items={metrics.trends_group} />
       </div>
     </Card>
   );
@@ -571,6 +584,7 @@ function DetailedMetricsCard({ metrics, radar }: { metrics: DetailedMetrics; rad
 // ---------------------------------------------------------------------------
 
 export function HealthTab({ assetId, profile }: { assetId: string; profile: AssetProfile }) {
+  const t = useTranslations("assets.health");
   const channels = profile.asset_type === "sensor" ? profile.sensor_channels : [];
   const hasChannelTabs = channels.length > 1;
 
@@ -584,7 +598,7 @@ export function HealthTab({ assetId, profile }: { assetId: string; profile: Asse
     setError(null);
     getAssetHealth(assetId, activeChannelId)
       .then(setHealth)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load health data"))
+      .catch((e) => setError(e instanceof Error ? e.message : t("errorLoadHealthData")))
       .finally(() => setLoading(false));
   }, [assetId, activeChannelId]);
 

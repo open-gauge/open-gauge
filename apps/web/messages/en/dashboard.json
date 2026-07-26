@@ -1,0 +1,70 @@
+{
+  "page": {
+    "title": "Operations dashboard",
+    "subtitle": "Real-time status across all sites, labs and instrumentation."
+  },
+  "cards": {
+    "registeredAssets": "Registered assets",
+    "assetsCenter": "Assets",
+    "sensors": "Sensors",
+    "sensorsCenter": "Sensors",
+    "daqUnits": "DAQ units",
+    "daqCenter": "DAQ",
+    "procedures": "Procedures",
+    "proceduresCenter": "Procedures",
+    "filterTitle": "View in asset registry"
+  },
+  "calStatus": {
+    "valid": "Calibrated",
+    "due_soon": "Due soon",
+    "expired": "Overdue",
+    "not_calibrated": "Uncalibrated"
+  },
+  "activity": {
+    "title": "Activity",
+    "subtitle": "Recent audit events",
+    "viewAll": "View all",
+    "minAgo": "{count} min ago",
+    "hoursAgo": "{count} h ago",
+    "yesterday": "yesterday",
+    "daysAgo": "{count} days ago"
+  },
+  "calendar": {
+    "title": "Calibration activity",
+    "subtitle": "Performed calibrations and due dates across all assets",
+    "prevYear": "Previous year",
+    "nextYear": "Next year",
+    "monthShort": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    "dayLabels": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+    "legendNone": "No events",
+    "legendPerformed": "Calibrated",
+    "legendUpcoming": "Upcoming due",
+    "legendExpired": "Overdue",
+    "tooltipCalibrated": "Calibrated",
+    "tooltipOverdue": "Overdue",
+    "tooltipDue": "Due"
+  },
+  "categoryDistribution": {
+    "title": "Asset distribution",
+    "subtitle": "Sensors by type · DAQs by interface",
+    "sensorLabel": "Sensor",
+    "daqLabel": "DAQ",
+    "noSensors": "No sensors",
+    "noDaqs": "No DAQs"
+  },
+  "recentAssets": {
+    "title": "Recently updated assets",
+    "subtitle": "Most recent edits across all locations",
+    "sensor": "Sensor",
+    "daq": "DAQ"
+  },
+  "upcoming": {
+    "title": "Upcoming calibrations",
+    "subtitle": "Closest due dates first — click to open asset",
+    "viewAll": "View all",
+    "empty": "No calibrations scheduled",
+    "overdue": "{days}d overdue",
+    "dueToday": "Due today",
+    "inDays": "In {days} days"
+  }
+}

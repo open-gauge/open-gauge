@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   deleteAssetFile,
   downloadCalibrationCertificateBlob,
@@ -33,15 +34,12 @@ import type { CalibrationPoint, CalibrationRecord } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 import {
-  CALIBRATION_STATUS_LABEL,
   CALIBRATION_STATUS_STYLE,
   COLORS,
-  DECISION_RULE_LABEL,
   HEALTH_LABEL_STYLE,
   STABILITY_STYLE,
-  SUBTYPE_LABEL,
-  UNCERTAINTY_SOURCE_LABEL,
 } from "@/lib/tokens";
+import { translateDynamic } from "@/lib/translate-dynamic";
 import { getAssetHealth } from "@/services/health.service";
 import type { HealthOverview } from "@/types/health";
 import {
@@ -137,8 +135,9 @@ function actionLabel(action: string): string {
 // ---------------------------------------------------------------------------
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("tokens.calibrationStatus");
   const cls = CALIBRATION_STATUS_STYLE[status] ?? CALIBRATION_STATUS_STYLE.not_calibrated;
-  const label = CALIBRATION_STATUS_LABEL[status] ?? status;
+  const label = translateDynamic(t, status);
   return (
     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cls}`}>
       ● {label}
@@ -381,13 +380,13 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function validateForm(form: EditFormState): Record<string, string> {
+function validateForm(form: EditFormState, t: ReturnType<typeof useTranslations>): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!form.asset_id.trim()) errors.asset_id = "Asset ID is required";
-  if (!form.name.trim()) errors.name = "Name is required";
-  if (!form.manufacturer.trim()) errors.manufacturer = "Manufacturer is required";
-  if (!form.model.trim()) errors.model = "Model is required";
+  if (!form.asset_id.trim()) errors.asset_id = t("validation.assetIdRequired");
+  if (!form.name.trim()) errors.name = t("validation.nameRequired");
+  if (!form.manufacturer.trim()) errors.manufacturer = t("validation.manufacturerRequired");
+  if (!form.model.trim()) errors.model = t("validation.modelRequired");
 
   const numFields: (keyof EditFormState)[] = [
     "weight_kg", "power_consumption_w",
@@ -397,23 +396,23 @@ function validateForm(form: EditFormState): Record<string, string> {
   ];
   for (const f of numFields) {
     const v = form[f] as string;
-    if (v && isNaN(parseFloat(v))) errors[f] = "Must be a number";
+    if (v && isNaN(parseFloat(v))) errors[f] = t("validation.mustBeNumber");
   }
 
   if (form.purchase_date && !DATE_RE.test(form.purchase_date))
-    errors.purchase_date = "Format: YYYY-MM-DD";
+    errors.purchase_date = t("validation.dateFormat");
   if (form.warranty_expiry_date && !DATE_RE.test(form.warranty_expiry_date))
-    errors.warranty_expiry_date = "Format: YYYY-MM-DD";
+    errors.warranty_expiry_date = t("validation.dateFormat");
 
   const channelIds = new Set<string>();
   form.sensor_channels.forEach((ch, i) => {
     const p = `ch_${i}_`;
-    if (!ch.channel_id.trim()) errors[`${p}channel_id`] = "Required";
-    else if (channelIds.has(ch.channel_id.trim().toLowerCase())) errors[`${p}channel_id`] = "Duplicate channel ID";
+    if (!ch.channel_id.trim()) errors[`${p}channel_id`] = t("validation.required");
+    else if (channelIds.has(ch.channel_id.trim().toLowerCase())) errors[`${p}channel_id`] = t("validation.duplicateChannelId");
     else channelIds.add(ch.channel_id.trim().toLowerCase());
 
-    if (!ch.physical_quantity) errors[`${p}physical_quantity`] = "Required";
-    if (!ch.unit.trim()) errors[`${p}unit`] = "Required";
+    if (!ch.physical_quantity) errors[`${p}physical_quantity`] = t("validation.required");
+    if (!ch.unit.trim()) errors[`${p}unit`] = t("validation.required");
 
     const chNums = [
       "measurement_min", "measurement_max", "accuracy_value", "resolution",
@@ -423,7 +422,7 @@ function validateForm(form: EditFormState): Record<string, string> {
     ];
     for (const f of chNums) {
       const v = ch[f as keyof EditChannelForm] as string;
-      if (v && isNaN(parseFloat(v))) errors[`${p}${f}`] = "Must be a number";
+      if (v && isNaN(parseFloat(v))) errors[`${p}${f}`] = t("validation.mustBeNumber");
     }
   });
 
@@ -508,6 +507,7 @@ function EditSelect({
   options: { value: string; label: string }[];
   error?: string; required?: boolean; placeholder?: string; tooltip?: string; tooltipDocsHref?: string;
 }) {
+  const t = useTranslations("assets.fields");
   return (
     <div className="flex flex-col gap-1">
       <ELabel label={label} required={required} tooltip={tooltip} tooltipDocsHref={tooltipDocsHref} />
@@ -516,7 +516,7 @@ function EditSelect({
         onChange={(e) => onChange(e.target.value)}
         className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK}`}
       >
-        <option value="">{placeholder ?? "Select…"}</option>
+        <option value="">{placeholder ?? t("select")}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -534,6 +534,7 @@ function EditSelectWithOther({
   options: { value: string; label: string }[];
   error?: string; required?: boolean; placeholder?: string; tooltip?: string;
 }) {
+  const t = useTranslations("assets.fields");
   const [otherMode, setOtherMode] = useState(
     () => value !== "" && !options.some((o) => o.value === value)
   );
@@ -561,18 +562,18 @@ function EditSelectWithOther({
         }}
         className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK}`}
       >
-        <option value="">{placeholder ?? "Select…"}</option>
+        <option value="">{placeholder ?? t("select")}</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
-        <option value="__other__">Other…</option>
+        <option value="__other__">{t("other")}</option>
       </select>
       {otherMode && (
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Specify…"
+          placeholder={t("specify")}
           className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK} mt-1`}
         />
       )}
@@ -600,6 +601,8 @@ function PhysicalQuantityCascade({
   errors: Record<string, string>;
   prefix: string;
 }) {
+  const t = useTranslations("assets.fields");
+  const chanTips = useChanTips();
   const quantityDef = PHYSICAL_QUANTITIES.find((q) => q.value === physicalQuantity);
   const techs = quantityDef?.technologies ?? [];
   const selectedFamily = techs.find((t) => t.value === techFamily);
@@ -625,21 +628,21 @@ function PhysicalQuantityCascade({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <EditSelect
-          label="Physical quantity"
+          label={t("physicalQuantity")}
           value={physicalQuantity}
           onChange={onQuantityChange}
           options={PHYSICAL_QUANTITIES.map((q) => ({ value: q.value, label: q.label }))}
           error={errors[`${prefix}physical_quantity`]}
           required
-          tooltip={CHAN_TIPS.physical_quantity}
+          tooltip={chanTips.physical_quantity}
           tooltipDocsHref={CHAN_DOCS_LINKS.physical_quantity}
         />
         {quantityDef && (
           <EditSelectWithOther
-            label="Technology"
+            label={t("technology")}
             value={techFamily}
             onChange={handleFamilyChange}
-            options={techs.map((t) => ({ value: t.value, label: t.label }))}
+            options={techs.map((tech) => ({ value: tech.value, label: tech.label }))}
           />
         )}
       </div>
@@ -647,17 +650,17 @@ function PhysicalQuantityCascade({
         <div className="grid grid-cols-2 gap-3">
           {typeOptions.length > 0 ? (
             <EditSelect
-              label="Measurement type"
+              label={t("measurementType")}
               value={measurementType}
               onChange={onMeasurementTypeChange}
               options={typeOptions}
-              tooltip={CHAN_TIPS.measurement_type}
+              tooltip={chanTips.measurement_type}
               tooltipDocsHref={CHAN_DOCS_LINKS.measurement_type}
             />
           ) : <div />}
           {selectedFamily?.subtypes && techFamily !== "__other__" && (
             <EditSelect
-              label="Type / variant"
+              label={t("typeVariant")}
               value={techSubtypeVal}
               onChange={(v) => onTechChange(techFamily, v)}
               options={selectedFamily.subtypes.map((s) => ({ value: s.value, label: s.label }))}
@@ -665,10 +668,10 @@ function PhysicalQuantityCascade({
           )}
           {techFamily === "__other__" && (
             <EditInput
-              label="Technology (custom)"
+              label={t("technologyCustom")}
               value={technology}
               onChange={(v) => onTechChange("__other__", v)}
-              placeholder="e.g. optical fiber"
+              placeholder={t("technologyCustomPlaceholder")}
             />
           )}
         </div>
@@ -681,17 +684,20 @@ function PhysicalQuantityCascade({
 // Channel field tooltips
 // ---------------------------------------------------------------------------
 
-const CHAN_TIPS: Record<string, string> = {
-  physical_quantity: "The physical quantity defines the type of measurement (e.g., temperature, pressure) and determines the applicable units and calibration procedures. Choose the one that best matches the sensor's primary measurement.",
-  measurement_type: "Measurement mode for physical quantities that need one — e.g. a pressure sensor reading absolute pressure vs. gauge (relative to atmosphere).",
-  accuracy_value: "Maximum deviation between the sensor output and the true value. Smaller means more accurate. Choose \"% FS\" as the unit to express this as a percentage of the measurable range instead of an absolute value.",
-  resolution: "Smallest change in input the sensor can detect and represent in its output.",
-  measurement_uncertainty: "Quantifies doubt about the measurement result. Expressed as ±value; folded into a calibration's uncertainty budget as an optional Type B contribution.",
-  drift_rate: "Rate at which the sensor output shifts over time without any change in the measured quantity.",
-  response_time_ms: "Time for the sensor output to reach a defined percentage of its final value after a step input change.",
-  bandwidth_hz: "Maximum frequency of input changes the sensor can accurately follow.",
-  calibration_role: "Marks this channel as a reference standard, so it can be selected as the traceability reference when calibrating other assets.",
-};
+function useChanTips() {
+  const t = useTranslations("assets.tips");
+  return {
+    physical_quantity: t("physicalQuantity"),
+    measurement_type: t("measurementType"),
+    accuracy_value: t("accuracyValue"),
+    resolution: t("resolution"),
+    measurement_uncertainty: t("measurementUncertainty"),
+    drift_rate: t("driftRate"),
+    response_time_ms: t("responseTimeMs"),
+    bandwidth_hz: t("bandwidthHz"),
+    calibration_role: t("calibrationRole"),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Output unit selector — shows appropriate units based on output type
@@ -705,14 +711,15 @@ function OutputUnitSelector({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const t = useTranslations("assets.fields");
   const units = getOutputUnits(outputType, physicalQuantity);
   if (!units) {
-    return <EditInput label="Output unit" value={value} onChange={onChange} placeholder="e.g. mA" />;
+    return <EditInput label={t("outputUnit")} value={value} onChange={onChange} placeholder={t("outputUnitPlaceholder")} />;
   }
   if (outputType === "digital") {
-    return <EditSelectWithOther label="Output unit" value={value} onChange={onChange} options={units} />;
+    return <EditSelectWithOther label={t("outputUnit")} value={value} onChange={onChange} options={units} />;
   }
-  return <EditSelect label="Output unit" value={value} onChange={onChange} options={units} />;
+  return <EditSelect label={t("outputUnit")} value={value} onChange={onChange} options={units} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -728,6 +735,8 @@ function ChannelEditor({
   onRemove: () => void;
   errors: Record<string, string>;
 }) {
+  const t = useTranslations("assets.fields");
+  const chanTips = useChanTips();
   const p = `ch_${index}_`;
   const set = (field: keyof EditChannelForm) => (v: string) =>
     onChange({ ...ch, [field]: v });
@@ -745,13 +754,13 @@ function ChannelEditor({
     <div className="border border-og-border-md rounded-xl p-4 space-y-4 bg-og-surface-alt">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-og-accent uppercase tracking-wide">
-          Channel {index + 1}
+          {t("channelN", { index: index + 1 })}
         </span>
         <button
           type="button"
           onClick={onRemove}
           className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-          title="Remove channel"
+          title={t("removeChannel")}
         >
           <TrashIcon size={14} />
         </button>
@@ -759,11 +768,11 @@ function ChannelEditor({
 
       {/* Channel ID + cascade */}
       <EditInput
-        label="Channel ID"
+        label={t("channelId")}
         value={ch.channel_id}
         onChange={set("channel_id")}
         error={errors[`${p}channel_id`]}
-        placeholder="e.g. CH1, Temperature, Humidity"
+        placeholder={t("channelIdPlaceholder")}
         required
       />
 
@@ -784,57 +793,57 @@ function ChannelEditor({
 
       {/* Range + unit */}
       <div className="grid grid-cols-3 gap-3">
-        <EditInput label="Range min" value={ch.measurement_min} onChange={set("measurement_min")} error={errors[`${p}measurement_min`]} placeholder="e.g. -200" />
-        <EditInput label="Range max" value={ch.measurement_max} onChange={set("measurement_max")} error={errors[`${p}measurement_max`]} placeholder="e.g. 850" />
-        <EditSelect label="Unit" value={ch.unit} onChange={set("unit")} options={getSpecUnitOptions(ch.physical_quantity, null, null)} error={errors[`${p}unit`]} required />
+        <EditInput label={t("rangeMin")} value={ch.measurement_min} onChange={set("measurement_min")} error={errors[`${p}measurement_min`]} placeholder={t("rangeMinPlaceholder")} />
+        <EditInput label={t("rangeMax")} value={ch.measurement_max} onChange={set("measurement_max")} error={errors[`${p}measurement_max`]} placeholder={t("rangeMaxPlaceholder")} />
+        <EditSelect label={t("unit")} value={ch.unit} onChange={set("unit")} options={getSpecUnitOptions(ch.physical_quantity, null, null)} error={errors[`${p}unit`]} required />
       </div>
 
       {/* Output — type first, then range under it in the same column format */}
-      <EditSelectWithOther label="Output type" value={ch.output_type} onChange={(v) => {
+      <EditSelectWithOther label={t("outputType")} value={ch.output_type} onChange={(v) => {
         const units = getOutputUnits(v, ch.physical_quantity);
         onChange({ ...ch, output_type: v, output_signal_unit: units?.[0]?.value ?? "" });
       }} options={OUTPUT_TYPE_OPTIONS} />
       <div className="grid grid-cols-3 gap-3">
-        <EditInput label="Output min" value={ch.output_signal_min} onChange={set("output_signal_min")} error={errors[`${p}output_signal_min`]} placeholder="e.g. 4" />
-        <EditInput label="Output max" value={ch.output_signal_max} onChange={set("output_signal_max")} error={errors[`${p}output_signal_max`]} placeholder="e.g. 20" />
+        <EditInput label={t("outputMin")} value={ch.output_signal_min} onChange={set("output_signal_min")} error={errors[`${p}output_signal_min`]} placeholder={t("outputMinPlaceholder")} />
+        <EditInput label={t("outputMax")} value={ch.output_signal_max} onChange={set("output_signal_max")} error={errors[`${p}output_signal_max`]} placeholder={t("outputMaxPlaceholder")} />
         <OutputUnitSelector outputType={ch.output_type} physicalQuantity={ch.physical_quantity} value={ch.output_signal_unit} onChange={set("output_signal_unit")} />
       </div>
 
       {/* Accuracy */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Accuracy value" value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder="e.g. 0.5" tooltip={CHAN_TIPS.accuracy_value} tooltipDocsHref={CHAN_DOCS_LINKS.accuracy_value} />
-        <EditSelect label="Accuracy unit" value={ch.accuracy_unit} onChange={setAccuracyUnit} options={specUnitOptions} />
+        <EditInput label={t("accuracyValue")} value={ch.accuracy_value} onChange={set("accuracy_value")} error={errors[`${p}accuracy_value`]} placeholder={t("accuracyValuePlaceholder")} tooltip={chanTips.accuracy_value} tooltipDocsHref={CHAN_DOCS_LINKS.accuracy_value} />
+        <EditSelect label={t("accuracyUnit")} value={ch.accuracy_unit} onChange={setAccuracyUnit} options={specUnitOptions} />
       </div>
 
       {/* Resolution */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Resolution" value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder="e.g. 0.01" tooltip={CHAN_TIPS.resolution} tooltipDocsHref={CHAN_DOCS_LINKS.resolution} />
-        <EditSelect label="Resolution unit" value={ch.resolution_unit} onChange={set("resolution_unit")} options={specUnitOptions} />
+        <EditInput label={t("resolution")} value={ch.resolution} onChange={set("resolution")} error={errors[`${p}resolution`]} placeholder={t("resolutionPlaceholder")} tooltip={chanTips.resolution} tooltipDocsHref={CHAN_DOCS_LINKS.resolution} />
+        <EditSelect label={t("resolutionUnit")} value={ch.resolution_unit} onChange={set("resolution_unit")} options={specUnitOptions} />
       </div>
 
       {/* Uncertainty */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Uncertainty (±)" value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder="e.g. 0.3" tooltip={CHAN_TIPS.measurement_uncertainty} tooltipDocsHref={CHAN_DOCS_LINKS.measurement_uncertainty} />
-        <EditSelect label="Uncertainty unit" value={ch.uncertainty_unit} onChange={set("uncertainty_unit")} options={specUnitOptions} />
+        <EditInput label={t("uncertainty")} value={ch.measurement_uncertainty} onChange={set("measurement_uncertainty")} error={errors[`${p}measurement_uncertainty`]} placeholder={t("uncertaintyPlaceholder")} tooltip={chanTips.measurement_uncertainty} tooltipDocsHref={CHAN_DOCS_LINKS.measurement_uncertainty} />
+        <EditSelect label={t("uncertaintyUnit")} value={ch.uncertainty_unit} onChange={set("uncertainty_unit")} options={specUnitOptions} />
       </div>
 
       {/* Drift */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Drift rate" value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder="e.g. 0.1" tooltip={CHAN_TIPS.drift_rate} tooltipDocsHref={CHAN_DOCS_LINKS.drift_rate} />
-        <EditInput label="Drift unit" value={ch.drift_unit} onChange={set("drift_unit")} placeholder="e.g. °C/year" />
+        <EditInput label={t("driftRate")} value={ch.drift_rate} onChange={set("drift_rate")} error={errors[`${p}drift_rate`]} placeholder={t("driftRatePlaceholder")} tooltip={chanTips.drift_rate} tooltipDocsHref={CHAN_DOCS_LINKS.drift_rate} />
+        <EditInput label={t("driftUnit")} value={ch.drift_unit} onChange={set("drift_unit")} placeholder={t("driftUnitPlaceholder")} />
       </div>
 
       {/* Dynamic */}
       <div className="grid grid-cols-2 gap-3">
-        <EditInput label="Response time (ms)" value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder="e.g. 300" tooltip={CHAN_TIPS.response_time_ms} tooltipDocsHref={CHAN_DOCS_LINKS.response_time_ms} />
-        <EditInput label="Bandwidth (Hz)" value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder="e.g. 1000" tooltip={CHAN_TIPS.bandwidth_hz} tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />
+        <EditInput label={t("responseTimeMs")} value={ch.response_time_ms} onChange={set("response_time_ms")} error={errors[`${p}response_time_ms`]} placeholder={t("responseTimeMsPlaceholder")} tooltip={chanTips.response_time_ms} tooltipDocsHref={CHAN_DOCS_LINKS.response_time_ms} />
+        <EditInput label={t("bandwidthHz")} value={ch.bandwidth_hz} onChange={set("bandwidth_hz")} error={errors[`${p}bandwidth_hz`]} placeholder={t("bandwidthHzPlaceholder")} tooltip={chanTips.bandwidth_hz} tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />
       </div>
 
       {/* Calibration role */}
       <label className="flex items-center gap-2 text-sm text-og-text cursor-pointer">
         <ToggleSwitch checked={ch.calibration_role} onChange={(v) => onChange({ ...ch, calibration_role: v })} />
-        Reference standard
-        <Tooltip content={CHAN_TIPS.calibration_role} docsHref={CHAN_DOCS_LINKS.calibration_role}>
+        {t("referenceStandard")}
+        <Tooltip content={chanTips.calibration_role} docsHref={CHAN_DOCS_LINKS.calibration_role}>
           <InfoIcon size={11} className="text-gray-400 cursor-help shrink-0" />
         </Tooltip>
       </label>
@@ -896,6 +905,7 @@ function RetireModal({ assetName, onRetire, onClose }: {
   onRetire: (reason?: string) => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("assets.retire");
   const [reason, setReason] = useState("");
   const [retiring, setRetiring] = useState(false);
 
@@ -904,26 +914,25 @@ function RetireModal({ assetName, onRetire, onClose }: {
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-md p-6">
         <div className="flex items-center gap-3 mb-4">
           <WarningIcon size={20} className="text-red-500 shrink-0" />
-          <h2 className="text-base font-semibold text-og-text">Retire asset?</h2>
+          <h2 className="text-base font-semibold text-og-text">{t("title")}</h2>
         </div>
         <p className="text-sm text-gray-500 mb-4">
-          This will mark <span className="font-semibold text-og-text">{assetName}</span> as retired.
-          Retired assets remain visible but are not editable. An admin can reactivate them later.
+          {t("body", { name: assetName })}
         </p>
         <div className="flex flex-col gap-1 mb-5">
-          <span className="text-xs text-gray-400">Reason (optional)</span>
+          <span className="text-xs text-gray-400">{t("reasonOptional")}</span>
           <input
             type="text"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Equipment failure, end of life…"
+            placeholder={t("reasonPlaceholder")}
             className="w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20 placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
         </div>
         <div className="flex items-center justify-end gap-2">
           <button type="button" onClick={onClose} disabled={retiring}
             className="px-3 py-1.5 text-sm border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors text-og-text disabled:opacity-50">
-            Cancel
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -934,7 +943,7 @@ function RetireModal({ assetName, onRetire, onClose }: {
             {retiring
               ? <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               : <WarningIcon size={14} />}
-            {retiring ? "Retiring…" : "Retire asset"}
+            {retiring ? t("retiring") : t("retireAsset")}
           </button>
         </div>
       </div>
@@ -957,6 +966,8 @@ function OverviewTab({
   locations: LocationOption[];
   myOrgs: OrganizationListItem[];
 }) {
+  const tSubtype = useTranslations("tokens.subtype");
+  const t = useTranslations("assets.detail");
   const daq = profile.daq_details;
 
   const operatingTemp =
@@ -1014,78 +1025,78 @@ function OverviewTab({
 
           {/* General */}
           <div className="bg-og-surface border border-og-border rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-og-text mb-4">General</h3>
+            <h3 className="text-sm font-semibold text-og-text mb-4">{t("general")}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <EditInput label="Asset ID" value={form.asset_id} onChange={set("asset_id")} error={errors.asset_id} required placeholder="e.g. OG-00001" />
-              <EditInput label="Name" value={form.name} onChange={set("name")} error={errors.name} required placeholder="e.g. PT100 Temperature Sensor" />
-              <EditInput label="Manufacturer" value={form.manufacturer} onChange={set("manufacturer")} error={errors.manufacturer} required placeholder="e.g. WIKA" />
-              <EditInput label="Model" value={form.model} onChange={set("model")} error={errors.model} required placeholder="e.g. TF53" />
-              <EditInput label="Serial number" value={form.serial_number} onChange={set("serial_number")} placeholder="e.g. SN-20240001" />
-              <EditInput label="Part number" value={form.manufacturer_part_number} onChange={set("manufacturer_part_number")} placeholder="e.g. 4250041" />
+              <EditInput label={t("assetId")} value={form.asset_id} onChange={set("asset_id")} error={errors.asset_id} required placeholder={t("assetIdPlaceholder")} />
+              <EditInput label={t("name")} value={form.name} onChange={set("name")} error={errors.name} required placeholder={t("namePlaceholder")} />
+              <EditInput label={t("manufacturer")} value={form.manufacturer} onChange={set("manufacturer")} error={errors.manufacturer} required placeholder={t("manufacturerPlaceholder")} />
+              <EditInput label={t("model")} value={form.model} onChange={set("model")} error={errors.model} required placeholder={t("modelPlaceholder")} />
+              <EditInput label={t("serialNumber")} value={form.serial_number} onChange={set("serial_number")} placeholder={t("serialNumberPlaceholder")} />
+              <EditInput label={t("partNumber")} value={form.manufacturer_part_number} onChange={set("manufacturer_part_number")} placeholder={t("partNumberPlaceholder")} />
               <div className="sm:col-span-2">
-                <EditTextArea label="Description" value={form.description} onChange={set("description")} placeholder="Short description of the asset's purpose and context" />
+                <EditTextArea label={t("description")} value={form.description} onChange={set("description")} placeholder={t("descriptionPlaceholder")} />
               </div>
             </div>
           </div>
 
           {/* Location */}
-          <CollapsibleSection title="Location" forceOpen={isEditing}>
+          <CollapsibleSection title={t("location")} forceOpen={isEditing}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <EditSelect
-                label="Organization"
+                label={t("organization")}
                 value={form.organization_id}
                 onChange={set("organization_id")}
                 options={myOrgs.map((o) => ({ value: o.id, label: o.name }))}
-                placeholder="Select organization…"
+                placeholder={t("selectOrganization")}
               />
               <EditSelect
-                label="Location"
+                label={t("location")}
                 value={form.location_id}
                 onChange={set("location_id")}
                 options={locations.map((l) => ({ value: l.id, label: l.path }))}
-                placeholder="Select location…"
+                placeholder={t("selectLocation")}
               />
             </div>
           </CollapsibleSection>
 
           {/* Mechanical */}
-          <CollapsibleSection title="Mechanical" forceOpen={isEditing}>
+          <CollapsibleSection title={t("mechanical")} forceOpen={isEditing}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <EditInput label="Dimensions" value={form.dimensions} onChange={set("dimensions")} placeholder='e.g. 150×30×30 mm' />
-              <EditInput label="Weight (kg)" value={form.weight_kg} onChange={set("weight_kg")} error={errors.weight_kg} placeholder="e.g. 0.45" />
-              <EditSelectWithOther label="Mounting type" value={form.mounting_type} onChange={set("mounting_type")} options={MOUNTING_TYPE_OPTIONS} />
-              <EditInput label="Connection type" value={form.connection_type} onChange={set("connection_type")} placeholder="e.g. M12 4-pin" />
-              <EditSelectWithOther label="IP rating" value={form.ip_rating} onChange={set("ip_rating")} options={IP_RATING_OPTIONS} />
-              <EditSelectWithOther label="Hazardous area rating" value={form.hazardous_area_rating} onChange={set("hazardous_area_rating")} options={HAZARDOUS_AREA_OPTIONS} />
-              <EditInput label="Operating temp min (°C)" value={form.operating_temperature_min} onChange={set("operating_temperature_min")} error={errors.operating_temperature_min} placeholder="e.g. -40" />
-              <EditInput label="Operating temp max (°C)" value={form.operating_temperature_max} onChange={set("operating_temperature_max")} error={errors.operating_temperature_max} placeholder="e.g. 125" />
-              <EditInput label="Operating humidity min (%RH)" value={form.operating_humidity_min} onChange={set("operating_humidity_min")} error={errors.operating_humidity_min} placeholder="e.g. 0" />
-              <EditInput label="Operating humidity max (%RH)" value={form.operating_humidity_max} onChange={set("operating_humidity_max")} error={errors.operating_humidity_max} placeholder="e.g. 95" />
+              <EditInput label={t("dimensions")} value={form.dimensions} onChange={set("dimensions")} placeholder={t("dimensionsPlaceholder")} />
+              <EditInput label={t("weightKg")} value={form.weight_kg} onChange={set("weight_kg")} error={errors.weight_kg} placeholder={t("weightKgPlaceholder")} />
+              <EditSelectWithOther label={t("mountingType")} value={form.mounting_type} onChange={set("mounting_type")} options={MOUNTING_TYPE_OPTIONS} />
+              <EditInput label={t("connectionType")} value={form.connection_type} onChange={set("connection_type")} placeholder={t("connectionTypePlaceholder")} />
+              <EditSelectWithOther label={t("ipRating")} value={form.ip_rating} onChange={set("ip_rating")} options={IP_RATING_OPTIONS} />
+              <EditSelectWithOther label={t("hazardousAreaRating")} value={form.hazardous_area_rating} onChange={set("hazardous_area_rating")} options={HAZARDOUS_AREA_OPTIONS} />
+              <EditInput label={t("operatingTempMin")} value={form.operating_temperature_min} onChange={set("operating_temperature_min")} error={errors.operating_temperature_min} placeholder={t("operatingTempMinPlaceholder")} />
+              <EditInput label={t("operatingTempMax")} value={form.operating_temperature_max} onChange={set("operating_temperature_max")} error={errors.operating_temperature_max} placeholder={t("operatingTempMaxPlaceholder")} />
+              <EditInput label={t("operatingHumidityMin")} value={form.operating_humidity_min} onChange={set("operating_humidity_min")} error={errors.operating_humidity_min} placeholder={t("operatingHumidityMinPlaceholder")} />
+              <EditInput label={t("operatingHumidityMax")} value={form.operating_humidity_max} onChange={set("operating_humidity_max")} error={errors.operating_humidity_max} placeholder={t("operatingHumidityMaxPlaceholder")} />
             </div>
           </CollapsibleSection>
 
           {/* Electrical */}
-          <CollapsibleSection title="Electrical" forceOpen={isEditing}>
+          <CollapsibleSection title={t("electrical")} forceOpen={isEditing}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <EditInput label="Power supply" value={form.power_supply} onChange={set("power_supply")} placeholder="e.g. 24 VDC" />
-              <EditInput label="Power consumption (W)" value={form.power_consumption_w} onChange={set("power_consumption_w")} error={errors.power_consumption_w} placeholder="e.g. 2.5" />
-              <EditInput label="Firmware version" value={form.firmware_version} onChange={set("firmware_version")} placeholder="e.g. 1.4.2" />
+              <EditInput label={t("powerSupply")} value={form.power_supply} onChange={set("power_supply")} placeholder={t("powerSupplyPlaceholder")} />
+              <EditInput label={t("powerConsumption")} value={form.power_consumption_w} onChange={set("power_consumption_w")} error={errors.power_consumption_w} placeholder={t("powerConsumptionPlaceholder")} />
+              <EditInput label={t("firmwareVersion")} value={form.firmware_version} onChange={set("firmware_version")} placeholder={t("firmwareVersionPlaceholder")} />
             </div>
           </CollapsibleSection>
 
           {/* Commercial */}
-          <CollapsibleSection title="Commercial" forceOpen={isEditing}>
+          <CollapsibleSection title={t("commercial")} forceOpen={isEditing}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <EditInput label="Purchase date" value={form.purchase_date} onChange={set("purchase_date")} error={errors.purchase_date} placeholder="YYYY-MM-DD" type="date" />
-              <EditInput label="Purchase price (€)" value={form.price_eur} onChange={set("price_eur")} error={errors.price_eur} placeholder="e.g. 350.00" />
-              <EditInput label="Warranty expiry" value={form.warranty_expiry_date} onChange={set("warranty_expiry_date")} error={errors.warranty_expiry_date} placeholder="YYYY-MM-DD" type="date" />
+              <EditInput label={t("purchaseDate")} value={form.purchase_date} onChange={set("purchase_date")} error={errors.purchase_date} placeholder="YYYY-MM-DD" type="date" />
+              <EditInput label={t("purchasePrice")} value={form.price_eur} onChange={set("price_eur")} error={errors.price_eur} placeholder={t("purchasePricePlaceholder")} />
+              <EditInput label={t("warrantyExpiry")} value={form.warranty_expiry_date} onChange={set("warranty_expiry_date")} error={errors.warranty_expiry_date} placeholder="YYYY-MM-DD" type="date" />
             </div>
           </CollapsibleSection>
 
           {/* Notes */}
-          <CollapsibleSection title="Notes" forceOpen={isEditing}>
+          <CollapsibleSection title={t("notes")} forceOpen={isEditing}>
             <div className="mt-4">
-              <EditTextArea label="Notes" value={form.notes} onChange={set("notes")} placeholder="Free-form notes, maintenance history, etc." rows={4} />
+              <EditTextArea label={t("notes")} value={form.notes} onChange={set("notes")} placeholder={t("notesPlaceholder")} rows={4} />
             </div>
           </CollapsibleSection>
         </div>
@@ -1095,8 +1106,8 @@ function OverviewTab({
           {profile.asset_type === "sensor" && (
             <>
               <div className="bg-og-surface border border-og-border rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-og-text mb-1">Sensor channels</h3>
-                <p className="text-xs text-gray-400">Define measurement channels for this sensor.</p>
+                <h3 className="text-sm font-semibold text-og-text mb-1">{t("sensorChannels")}</h3>
+                <p className="text-xs text-gray-400">{t("sensorChannelsHint")}</p>
               </div>
               <div className="space-y-3">
                 {form.sensor_channels.map((ch, i) => (
@@ -1114,7 +1125,7 @@ function OverviewTab({
                   />
                 ))}
                 {form.sensor_channels.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">No channels yet.</p>
+                  <p className="text-sm text-gray-400 text-center py-4">{t("noChannelsYet")}</p>
                 )}
                 <button
                   type="button"
@@ -1122,7 +1133,7 @@ function OverviewTab({
                   className="w-full flex items-center justify-center gap-1.5 text-xs text-og-accent border border-dashed border-og-border rounded-xl px-3 py-3 hover:bg-og-surface-alt transition-colors"
                 >
                   <PlusIcon size={12} />
-                  Add channel
+                  {t("addChannel")}
                 </button>
               </div>
             </>
@@ -1130,8 +1141,8 @@ function OverviewTab({
 
           {profile.asset_type === "daq" && daq && (
             <div className="bg-og-surface border border-og-border rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-og-text mb-1">DAQ specifications</h3>
-              <p className="text-xs text-gray-400">DAQ specifications are managed separately.</p>
+              <h3 className="text-sm font-semibold text-og-text mb-1">{t("daqSpecifications")}</h3>
+              <p className="text-xs text-gray-400">{t("daqSpecificationsHint")}</p>
             </div>
           )}
         </div>
@@ -1144,72 +1155,72 @@ function OverviewTab({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       <div className="lg:col-span-2 space-y-3">
         <div className="bg-og-surface border border-og-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-og-text mb-3">General</h3>
+          <h3 className="text-sm font-semibold text-og-text mb-3">{t("general")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
-            <SpecRow label="Asset ID" value={profile.asset_id} accent tooltip="Auto-generated, unique human-readable identifier, separate from the asset's internal database id." tooltipDocsHref={ASSET_DOCS_LINKS.asset_id} />
+            <SpecRow label={t("assetId")} value={profile.asset_id} accent tooltip={t("tips.assetId")} tooltipDocsHref={ASSET_DOCS_LINKS.asset_id} />
             <SpecRow
-              label="Organization"
+              label={t("organization")}
               value={profile.organization_id && profile.organization_name ? (
                 <Link href={`/organizations/${profile.organization_id}`} className="text-og-accent hover:underline">
                   {profile.organization_name}
                 </Link>
               ) : profile.organization_name}
-              tooltip="The organization that owns this asset."
+              tooltip={t("tips.organization")}
               tooltipDocsHref={ASSET_DOCS_LINKS.organization}
             />
-            <SpecRow label="Name" value={profile.name} tooltip="What this asset shows as in lists and headers." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
-            <SpecRow label="Manufacturer" value={profile.manufacturer} tooltip="The company that made the physical unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
-            <SpecRow label="Model" value={profile.model} tooltip="The manufacturer's model designation for the physical unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
-            <SpecRow label="Serial number" value={profile.serial_number} tooltip="The manufacturer's serial number for this specific unit." tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
-            <SpecRow label="Part number" value={profile.manufacturer_part_number} tooltip="The manufacturer's part/catalog number, distinct from the serial number — useful for ordering spares." tooltipDocsHref={ASSET_DOCS_LINKS.part_number} />
-            <SpecRow label="Description" value={profile.description} tooltip="Free-text notes on the asset's purpose or context." tooltipDocsHref={ASSET_DOCS_LINKS.description} />
+            <SpecRow label={t("name")} value={profile.name} tooltip={t("tips.name")} tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label={t("manufacturer")} value={profile.manufacturer} tooltip={t("tips.manufacturer")} tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label={t("model")} value={profile.model} tooltip={t("tips.model")} tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label={t("serialNumber")} value={profile.serial_number} tooltip={t("tips.serialNumber")} tooltipDocsHref={ASSET_DOCS_LINKS.identity} />
+            <SpecRow label={t("partNumber")} value={profile.manufacturer_part_number} tooltip={t("tips.partNumber")} tooltipDocsHref={ASSET_DOCS_LINKS.part_number} />
+            <SpecRow label={t("description")} value={profile.description} tooltip={t("tips.description")} tooltipDocsHref={ASSET_DOCS_LINKS.description} />
           </div>
         </div>
 
-        <CollapsibleSection title="Location">
+        <CollapsibleSection title={t("location")}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-            <SpecRow label="Site" value={profile.site_name} tooltip="The top-level site this asset's location belongs to." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
-            <SpecRow label="Location" value={profile.location_name} tooltip="Where the asset currently is, picked from the organization's location tree." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
-            <SpecRow label="Location code" value={profile.location_code} tooltip="The location's short internal code." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
-            <SpecRow label="Description" value={profile.location_description} tooltip="Free-text notes on the location itself." tooltipDocsHref={ASSET_DOCS_LINKS.location} />
-            {locationCoords && <SpecRow label="Coordinates" value={locationCoords} tooltip="Latitude and longitude recorded for the location." tooltipDocsHref={ASSET_DOCS_LINKS.location} />}
+            <SpecRow label={t("site")} value={profile.site_name} tooltip={t("tips.site")} tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            <SpecRow label={t("location")} value={profile.location_name} tooltip={t("tips.location")} tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            <SpecRow label={t("locationCode")} value={profile.location_code} tooltip={t("tips.locationCode")} tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            <SpecRow label={t("description")} value={profile.location_description} tooltip={t("tips.locationDescription")} tooltipDocsHref={ASSET_DOCS_LINKS.location} />
+            {locationCoords && <SpecRow label={t("coordinates")} value={locationCoords} tooltip={t("tips.coordinates")} tooltipDocsHref={ASSET_DOCS_LINKS.location} />}
           </div>
         </CollapsibleSection>
 
         {hasAny(profile.dimensions, profile.weight_kg, profile.mounting_type, profile.connection_type, profile.ip_rating, profile.hazardous_area_rating, operatingTemp, operatingHumidity) && (
-          <CollapsibleSection title="Mechanical">
+          <CollapsibleSection title={t("mechanical")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-              <SpecRow label="Dimensions" value={profile.dimensions} tooltip="Physical size of the asset — purely informational." tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />
-              {profile.weight_kg != null && <SpecRow label="Weight" value={`${profile.weight_kg} kg`} tooltip="Physical weight of the asset — purely informational." tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />}
-              <SpecRow label="Mounting type" value={profile.mounting_type} tooltip="How the asset is physically installed." tooltipDocsHref={ASSET_DOCS_LINKS.mounting_type} />
-              <SpecRow label="Connection type" value={profile.connection_type} tooltip="The physical connector or wiring interface." tooltipDocsHref={ASSET_DOCS_LINKS.connection_type} />
-              <SpecRow label="IP rating" value={profile.ip_rating} tooltip="Ingress Protection rating describing dust/water resistance." tooltipDocsHref={ASSET_DOCS_LINKS.ip_rating} />
-              <SpecRow label="Hazardous area" value={profile.hazardous_area_rating} tooltip="The ATEX/hazardous-location zone the asset is rated for." tooltipDocsHref={ASSET_DOCS_LINKS.hazardous_area_rating} />
-              {operatingTemp && <SpecRow label="Operating temperature" value={operatingTemp} tooltip="The environmental range the asset itself is rated to operate within — distinct from a channel's measurement range." tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
-              {operatingHumidity && <SpecRow label="Operating humidity" value={operatingHumidity} tooltip="The environmental humidity range the asset itself is rated to operate within." tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
+              <SpecRow label={t("dimensions")} value={profile.dimensions} tooltip={t("tips.dimensions")} tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />
+              {profile.weight_kg != null && <SpecRow label={t("weight")} value={`${profile.weight_kg} kg`} tooltip={t("tips.weight")} tooltipDocsHref={ASSET_DOCS_LINKS.dimensions_weight} />}
+              <SpecRow label={t("mountingType")} value={profile.mounting_type} tooltip={t("tips.mountingType")} tooltipDocsHref={ASSET_DOCS_LINKS.mounting_type} />
+              <SpecRow label={t("connectionType")} value={profile.connection_type} tooltip={t("tips.connectionType")} tooltipDocsHref={ASSET_DOCS_LINKS.connection_type} />
+              <SpecRow label={t("ipRating")} value={profile.ip_rating} tooltip={t("tips.ipRating")} tooltipDocsHref={ASSET_DOCS_LINKS.ip_rating} />
+              <SpecRow label={t("hazardousArea")} value={profile.hazardous_area_rating} tooltip={t("tips.hazardousArea")} tooltipDocsHref={ASSET_DOCS_LINKS.hazardous_area_rating} />
+              {operatingTemp && <SpecRow label={t("operatingTemperature")} value={operatingTemp} tooltip={t("tips.operatingTemperature")} tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
+              {operatingHumidity && <SpecRow label={t("operatingHumidity")} value={operatingHumidity} tooltip={t("tips.operatingHumidity")} tooltipDocsHref={ASSET_DOCS_LINKS.operating_range} />}
             </div>
           </CollapsibleSection>
         )}
 
         {hasAny(profile.power_supply, profile.power_consumption_w, profile.firmware_version, profile.pinout_table?.length) && (
-          <CollapsibleSection title="Electrical">
+          <CollapsibleSection title={t("electrical")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-              <SpecRow label="Power supply" value={profile.power_supply} tooltip="Supply voltage/type, e.g. 24 VDC." tooltipDocsHref={ASSET_DOCS_LINKS.power} />
+              <SpecRow label={t("powerSupply")} value={profile.power_supply} tooltip={t("tips.powerSupply")} tooltipDocsHref={ASSET_DOCS_LINKS.power} />
               {profile.power_consumption_w != null && (
-                <SpecRow label="Power consumption" value={`${profile.power_consumption_w} W`} tooltip="Power draw in watts." tooltipDocsHref={ASSET_DOCS_LINKS.power} />
+                <SpecRow label={t("powerConsumptionDisplay")} value={`${profile.power_consumption_w} W`} tooltip={t("tips.powerConsumption")} tooltipDocsHref={ASSET_DOCS_LINKS.power} />
               )}
-              <SpecRow label="Firmware" value={profile.firmware_version} tooltip="Version string of the asset's onboard firmware." tooltipDocsHref={ASSET_DOCS_LINKS.firmware_version} />
+              <SpecRow label={t("firmware")} value={profile.firmware_version} tooltip={t("tips.firmware")} tooltipDocsHref={ASSET_DOCS_LINKS.firmware_version} />
             </div>
             {profile.pinout_table && profile.pinout_table.length > 0 && (
               <div className="mt-4">
-                <p className="text-xs text-gray-400 mb-2">Pinout</p>
+                <p className="text-xs text-gray-400 mb-2">{t("pinout")}</p>
                 <div className="overflow-x-auto rounded-lg border border-og-border">
                   <table className="w-full text-xs text-left">
                     <thead>
                       <tr className="border-b border-og-border bg-og-surface-alt">
-                        <th className="px-3 py-2 font-semibold text-gray-400 w-16">Pin</th>
-                        <th className="px-3 py-2 font-semibold text-gray-400 w-32">Name</th>
-                        <th className="px-3 py-2 font-semibold text-gray-400">Description</th>
+                        <th className="px-3 py-2 font-semibold text-gray-400 w-16">{t("pin")}</th>
+                        <th className="px-3 py-2 font-semibold text-gray-400 w-32">{t("name")}</th>
+                        <th className="px-3 py-2 font-semibold text-gray-400">{t("description")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-og-border">
@@ -1229,17 +1240,17 @@ function OverviewTab({
         )}
 
         {hasAny(profile.purchase_date, profile.price_eur, profile.warranty_expiry_date) && (
-          <CollapsibleSection title="Commercial">
+          <CollapsibleSection title={t("commercial")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
-              {profile.purchase_date && <SpecRow label="Purchase date" value={fmtDate(profile.purchase_date)} tooltip="When the asset was bought." tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
-              {profile.price_eur != null && <SpecRow label="Purchase price" value={`€${profile.price_eur.toLocaleString()}`} tooltip="What the asset cost." tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
-              {profile.warranty_expiry_date && <SpecRow label="Warranty expires" value={fmtDate(profile.warranty_expiry_date)} tooltip="When the asset's warranty expires." tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
+              {profile.purchase_date && <SpecRow label={t("purchaseDate")} value={fmtDate(profile.purchase_date)} tooltip={t("tips.purchaseDate")} tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
+              {profile.price_eur != null && <SpecRow label={t("purchasePriceDisplay")} value={`€${profile.price_eur.toLocaleString()}`} tooltip={t("tips.purchasePrice")} tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
+              {profile.warranty_expiry_date && <SpecRow label={t("warrantyExpires")} value={fmtDate(profile.warranty_expiry_date)} tooltip={t("tips.warrantyExpires")} tooltipDocsHref={ASSET_DOCS_LINKS.commercial} />}
             </div>
           </CollapsibleSection>
         )}
 
         {profile.notes && (
-          <CollapsibleSection title="Notes">
+          <CollapsibleSection title={t("notes")}>
             <p className="text-sm text-og-text mt-3 leading-relaxed whitespace-pre-wrap">{profile.notes}</p>
           </CollapsibleSection>
         )}
@@ -1248,9 +1259,9 @@ function OverviewTab({
       <div className="bg-og-surface border border-og-border rounded-xl p-6 h-fit">
         {profile.asset_type === "sensor" && (
           <>
-            <h3 className="text-sm font-semibold text-og-text mb-4">Specifications</h3>
+            <h3 className="text-sm font-semibold text-og-text mb-4">{t("specifications")}</h3>
             {profile.sensor_channels.length === 0 ? (
-              <p className="text-sm text-gray-400">No channel data recorded.</p>
+              <p className="text-sm text-gray-400">{t("noChannelData")}</p>
             ) : (
               <div className="space-y-0">
                 {profile.sensor_channels.map((ch, i) => (
@@ -1258,37 +1269,37 @@ function OverviewTab({
                     <p className="text-[11px] font-semibold text-og-accent uppercase tracking-wide mb-1">
                       {ch.channel_id}
                     </p>
-                    <SpecRow label="Physical quantity" value={SUBTYPE_LABEL[ch.physical_quantity] ?? ch.physical_quantity} tooltip="The type of measurement this channel takes — determines its applicable units and calibration procedures." tooltipDocsHref={CHAN_DOCS_LINKS.physical_quantity} />
+                    <SpecRow label={t("physicalQuantity")} value={translateDynamic(tSubtype, ch.physical_quantity)} tooltip={t("tips.channelPhysicalQuantity")} tooltipDocsHref={CHAN_DOCS_LINKS.physical_quantity} />
                     <SpecRow
-                      label="Measurement type"
-                      value={getTypesForQuantity(ch.physical_quantity).find((t) => t.value === ch.measurement_type)?.label ?? ch.measurement_type}
-                      tooltip="The measurement mode, for physical quantities that have more than one — e.g. absolute vs. gauge pressure."
+                      label={t("measurementType")}
+                      value={getTypesForQuantity(ch.physical_quantity).find((mt) => mt.value === ch.measurement_type)?.label ?? ch.measurement_type}
+                      tooltip={t("tips.channelMeasurementType")}
                       tooltipDocsHref={CHAN_DOCS_LINKS.measurement_type}
                     />
-                    <SpecRow label="Technology" value={ch.technology} tooltip="The sensing technology, e.g. RTD, thermocouple, strain gauge — purely descriptive." tooltipDocsHref={CHAN_DOCS_LINKS.technology} />
+                    <SpecRow label={t("technology")} value={ch.technology} tooltip={t("tips.channelTechnology")} tooltipDocsHref={CHAN_DOCS_LINKS.technology} />
                     {(ch.measurement_min != null || ch.measurement_max != null) && (
-                      <SpecRow label="Range" value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} tooltip="The channel's measurement range — enables % of full scale (% FS) options wherever a value/unit is set." tooltipDocsHref={CHAN_DOCS_LINKS.measurement_range} />
+                      <SpecRow label={t("range")} value={`${ch.measurement_min ?? "—"} – ${ch.measurement_max ?? "—"} ${ch.unit}`} tooltip={t("tips.channelRange")} tooltipDocsHref={CHAN_DOCS_LINKS.measurement_range} />
                     )}
                     {ch.accuracy_value != null && (
-                      <SpecRow label="Accuracy" value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}`} tooltip="Maximum deviation between the sensor output and the true value — the manufacturer/nominal accuracy spec." tooltipDocsHref={CHAN_DOCS_LINKS.accuracy_value} />
+                      <SpecRow label={t("accuracy")} value={`±${ch.accuracy_value}${ch.accuracy_unit ? " " + ch.accuracy_unit : ""}`} tooltip={t("tips.channelAccuracy")} tooltipDocsHref={CHAN_DOCS_LINKS.accuracy_value} />
                     )}
                     {ch.resolution != null && (
-                      <SpecRow label="Resolution" value={`${ch.resolution}${ch.resolution_unit ? " " + ch.resolution_unit : ""}`} tooltip="Smallest change in input the sensor can detect and represent in its output." tooltipDocsHref={CHAN_DOCS_LINKS.resolution} />
+                      <SpecRow label={t("resolution")} value={`${ch.resolution}${ch.resolution_unit ? " " + ch.resolution_unit : ""}`} tooltip={t("tips.channelResolution")} tooltipDocsHref={CHAN_DOCS_LINKS.resolution} />
                     )}
                     {ch.measurement_uncertainty != null && (
-                      <SpecRow label="Uncertainty" value={`±${ch.measurement_uncertainty}${ch.uncertainty_unit ? " " + ch.uncertainty_unit : ""}`} tooltip="Quantifies doubt about the measurement result — the manufacturer's nominal/expanded uncertainty spec." tooltipDocsHref={CHAN_DOCS_LINKS.measurement_uncertainty} />
+                      <SpecRow label={t("uncertainty")} value={`±${ch.measurement_uncertainty}${ch.uncertainty_unit ? " " + ch.uncertainty_unit : ""}`} tooltip={t("tips.channelUncertainty")} tooltipDocsHref={CHAN_DOCS_LINKS.measurement_uncertainty} />
                     )}
                     {ch.drift_rate != null && (
-                      <SpecRow label="Drift rate" value={`${ch.drift_rate}${ch.drift_unit ? " " + ch.drift_unit : ""}`} tooltip="Rate at which the sensor output shifts over time without any change in the measured quantity — purely informational." tooltipDocsHref={CHAN_DOCS_LINKS.drift_rate} />
+                      <SpecRow label={t("driftRate")} value={`${ch.drift_rate}${ch.drift_unit ? " " + ch.drift_unit : ""}`} tooltip={t("tips.channelDriftRate")} tooltipDocsHref={CHAN_DOCS_LINKS.drift_rate} />
                     )}
-                    {ch.response_time_ms != null && <SpecRow label="Response time" value={`${ch.response_time_ms} ms`} tooltip="Time for the sensor output to reach a defined percentage of its final value after a step input change." tooltipDocsHref={CHAN_DOCS_LINKS.response_time_ms} />}
-                    {ch.bandwidth_hz != null && <SpecRow label="Bandwidth" value={`${ch.bandwidth_hz.toLocaleString()} Hz`} tooltip="Maximum frequency of input changes the sensor can accurately follow." tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />}
-                    <SpecRow label="Output type" value={ch.output_type} tooltip="The sensor's raw electrical output type — may differ from the physical unit it measures." tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
+                    {ch.response_time_ms != null && <SpecRow label={t("responseTime")} value={`${ch.response_time_ms} ms`} tooltip={t("tips.channelResponseTime")} tooltipDocsHref={CHAN_DOCS_LINKS.response_time_ms} />}
+                    {ch.bandwidth_hz != null && <SpecRow label={t("bandwidth")} value={`${ch.bandwidth_hz.toLocaleString()} Hz`} tooltip={t("tips.channelBandwidth")} tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />}
+                    <SpecRow label={t("outputType")} value={ch.output_type} tooltip={t("tips.channelOutputType")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
                     {(ch.output_signal_min != null || ch.output_signal_max != null) && (
-                      <SpecRow label="Output range" value={`${ch.output_signal_min ?? "—"} – ${ch.output_signal_max ?? "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`} tooltip="The sensor's raw output value range, e.g. a 4–20 mA current loop." tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
+                      <SpecRow label={t("outputRange")} value={`${ch.output_signal_min ?? "—"} – ${ch.output_signal_max ?? "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`} tooltip={t("tips.channelOutputRange")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
                     )}
-                    <SpecRow label="Cal. method" value={ch.calibration_method_name} tooltip="The procedure used to calibrate this channel." tooltipDocsHref={CHAN_DOCS_LINKS.calibration_method} />
-                    <SpecRow label="Cal. role" value={ch.calibration_role === "reference" ? "Reference standard" : null} tooltip="Marks this channel as a reference standard, selectable as the traceability reference when calibrating other assets." tooltipDocsHref={CHAN_DOCS_LINKS.calibration_role} />
+                    <SpecRow label={t("calMethod")} value={ch.calibration_method_name} tooltip={t("tips.channelCalMethod")} tooltipDocsHref={CHAN_DOCS_LINKS.calibration_method} />
+                    <SpecRow label={t("calRole")} value={ch.calibration_role === "reference" ? t("referenceStandard") : null} tooltip={t("tips.channelCalRole")} tooltipDocsHref={CHAN_DOCS_LINKS.calibration_role} />
                   </div>
                 ))}
               </div>
@@ -1298,33 +1309,33 @@ function OverviewTab({
 
         {profile.asset_type === "daq" && daq && (
           <>
-            <h3 className="text-sm font-semibold text-og-text mb-4">Specifications</h3>
-            <SpecRow label="DAQ type" value={daq.daq_type} />
-            <SpecRow label="Input channels" value={String(daq.input_channels)} />
-            <SpecRow label="Output channels" value={String(daq.output_channels)} />
-            <SpecRow label="Input signal types" value={daq.input_signal_types} />
-            <SpecRow label="Output signal types" value={daq.output_signal_types} />
-            {daq.sampling_rate_hz != null && <SpecRow label="Sampling rate" value={`${daq.sampling_rate_hz.toLocaleString()} Hz`} />}
-            {daq.per_channel_sampling_rate_hz != null && <SpecRow label="Per-channel rate" value={`${daq.per_channel_sampling_rate_hz.toLocaleString()} Hz`} />}
-            {daq.adc_resolution_bits != null && <SpecRow label="ADC resolution" value={`${daq.adc_resolution_bits}-bit`} />}
-            <SpecRow label="ADC type" value={daq.adc_type} />
+            <h3 className="text-sm font-semibold text-og-text mb-4">{t("specifications")}</h3>
+            <SpecRow label={t("daqType")} value={daq.daq_type} />
+            <SpecRow label={t("inputChannels")} value={String(daq.input_channels)} />
+            <SpecRow label={t("outputChannels")} value={String(daq.output_channels)} />
+            <SpecRow label={t("inputSignalTypes")} value={daq.input_signal_types} />
+            <SpecRow label={t("outputSignalTypes")} value={daq.output_signal_types} />
+            {daq.sampling_rate_hz != null && <SpecRow label={t("samplingRate")} value={`${daq.sampling_rate_hz.toLocaleString()} Hz`} />}
+            {daq.per_channel_sampling_rate_hz != null && <SpecRow label={t("perChannelRate")} value={`${daq.per_channel_sampling_rate_hz.toLocaleString()} Hz`} />}
+            {daq.adc_resolution_bits != null && <SpecRow label={t("adcResolution")} value={t("bitSuffix", { bits: daq.adc_resolution_bits })} />}
+            <SpecRow label={t("adcType")} value={daq.adc_type} />
             {daq.input_voltage_range_min != null && daq.input_voltage_range_max != null && (
-              <SpecRow label="Input voltage range" value={`${daq.input_voltage_range_min} – ${daq.input_voltage_range_max} V`} />
+              <SpecRow label={t("inputVoltageRange")} value={`${daq.input_voltage_range_min} – ${daq.input_voltage_range_max} V`} />
             )}
-            {daq.noise_floor_uv_rms != null && <SpecRow label="Noise floor" value={`${daq.noise_floor_uv_rms} µV RMS`} />}
-            {daq.dynamic_range_db != null && <SpecRow label="Dynamic range" value={`${daq.dynamic_range_db} dB`} />}
-            {daq.input_impedance_ohm != null && <SpecRow label="Input impedance" value={`${daq.input_impedance_ohm.toLocaleString()} Ω`} />}
-            <SpecRow label="Communication" value={daq.communication_protocol} />
-            <SpecRow label="Interface" value={daq.interface_type} accent />
-            <SpecRow label="Synchronization" value={daq.synchronization_supported ? "Supported" : null} />
-            <SpecRow label="Clock source" value={daq.clock_source} />
+            {daq.noise_floor_uv_rms != null && <SpecRow label={t("noiseFloor")} value={`${daq.noise_floor_uv_rms} µV RMS`} />}
+            {daq.dynamic_range_db != null && <SpecRow label={t("dynamicRange")} value={`${daq.dynamic_range_db} dB`} />}
+            {daq.input_impedance_ohm != null && <SpecRow label={t("inputImpedance")} value={`${daq.input_impedance_ohm.toLocaleString()} Ω`} />}
+            <SpecRow label={t("communication")} value={daq.communication_protocol} />
+            <SpecRow label={t("interface")} value={daq.interface_type} accent />
+            <SpecRow label={t("synchronization")} value={daq.synchronization_supported ? t("supported") : null} />
+            <SpecRow label={t("clockSource")} value={daq.clock_source} />
           </>
         )}
 
         {profile.asset_type === "daq" && !daq && (
           <>
-            <h3 className="text-sm font-semibold text-og-text mb-4">Specifications</h3>
-            <p className="text-sm text-gray-400">No DAQ data recorded.</p>
+            <h3 className="text-sm font-semibold text-og-text mb-4">{t("specifications")}</h3>
+            <p className="text-sm text-gray-400">{t("noDaqData")}</p>
           </>
         )}
       </div>
@@ -1510,18 +1521,26 @@ function CalibrationChart({
 }
 
 // Coefficient exponent descriptions (ascending: exp 0 = constant, exp 1 = linear, …)
-const COEFF_DESC: Record<number, string> = {
-  0: "Offset (constant)",
-  1: "Gain (slope)",
-  2: "Quadratic correction",
-  3: "Cubic correction",
-  4: "Quartic correction",
-  5: "Quintic correction",
-};
+function useCoeffDesc() {
+  const t = useTranslations("assets.calibration");
+  const desc: Record<number, string> = {
+    0: t("coeffOffset"),
+    1: t("coeffGain"),
+    2: t("coeffQuadratic"),
+    3: t("coeffCubic"),
+    4: t("coeffQuartic"),
+    5: t("coeffQuintic"),
+  };
+  return desc;
+}
 
 type ResultView = "equation" | "coefficients";
 
 function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrationDeleted, isAdmin }: CalibrationTabProps) {
+  const tUncertaintySource = useTranslations("tokens.uncertaintySource");
+  const tDecisionRule = useTranslations("tokens.decisionRule");
+  const t = useTranslations("assets.calibration");
+  const coeffDesc = useCoeffDesc();
   // --- channel logic ---
   const channelIdsWithCals = profile.sensor_channels
     .map((ch) => ch.id)
@@ -1638,26 +1657,24 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 <TrashIcon size={16} className="text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-og-text">Void calibration</h3>
+                <h3 className="text-sm font-semibold text-og-text">{t("voidCalibration")}</h3>
                 {calToDelete && (
                   <p className="text-xs text-gray-400">
-                    Version {calToDelete.calibration_version} · {fmtDate(calToDelete.calibration_date)}
+                    {t("version")} {calToDelete.calibration_version} · {fmtDate(calToDelete.calibration_date)}
                   </p>
                 )}
               </div>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              This marks the calibration as invalid. It&apos;s hidden from the calibration history and
-              excluded from due-date and drift calculations, but the record and its certificate are
-              preserved and can be restored later.
+              {t("voidHint")}
             </p>
             <div className="space-y-1">
-              <label className="text-xs text-gray-400">Reason (optional)</label>
+              <label className="text-xs text-gray-400">{t("reasonOptional")}</label>
               <textarea
                 value={voidReason}
                 onChange={(e) => setVoidReason(e.target.value)}
                 rows={2}
-                placeholder="e.g. entered against the wrong sensor"
+                placeholder={t("voidReasonPlaceholder")}
                 className="w-full px-3 py-2 text-sm border border-og-border-md bg-og-surface rounded-lg outline-hidden focus:border-og-accent focus:ring-2 focus:ring-og-accent/20 transition-all placeholder:text-gray-400 text-og-text"
               />
             </div>
@@ -1668,7 +1685,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 disabled={isDeleting}
                 className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -1679,9 +1696,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 {isDeleting ? (
                   <>
                     <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Voiding…
+                    {t("voiding")}
                   </>
-                ) : "Void calibration"}
+                ) : t("voidCalibration")}
               </button>
             </div>
           </div>
@@ -1722,7 +1739,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
         >
           <PlusIcon size={12} />
-          Add Calibration
+          {t("addCalibration")}
         </button>
       </div>
 
@@ -1734,7 +1751,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-mono font-bold text-og-accent">v{selectedCal.calibration_version}</span>
                 <span className="text-sm font-semibold text-og-text">{fmtDate(selectedCal.calibration_date)}</span>
-                <span className="text-xs text-gray-400">by {selectedCal.performed_by_name}{selectedCal.external_lab_name ? ` · ${selectedCal.external_lab_name}` : ""}</span>
+                <span className="text-xs text-gray-400">{t("by", { name: selectedCal.performed_by_name })}{selectedCal.external_lab_name ? ` · ${selectedCal.external_lab_name}` : ""}</span>
               </div>
               {selectedCal.external_lab_certificate_number && (
                 <p className="text-xs text-gray-400 mt-0.5">
@@ -1766,7 +1783,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         : "text-gray-400 hover:text-og-text"
                       }`}
                   >
-                    {v === "equation" ? "Equation" : "Coefficients"}
+                    {v === "equation" ? t("equation") : t("coefficients")}
                   </button>
                 ))}
               </div>
@@ -1792,7 +1809,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                           setTimeout(() => setCopiedKey(null), 1500);
                         });
                       }}
-                      title="Copy"
+                      title={t("copy")}
                       className="shrink-0 p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors"
                     >
                       {copiedKey === "equation" ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
@@ -1810,7 +1827,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                           <div key={exp} className="flex items-start justify-between gap-2">
                             <div>
                               <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
-                                {COEFF_DESC[exp] ?? `Order-${exp} term`}
+                                {coeffDesc[exp] ?? t("orderNTerm", { exp })}
                               </p>
                               <p className="font-mono text-xs text-og-text">{fmtNum(val, 6)}</p>
                             </div>
@@ -1822,7 +1839,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                                   setTimeout(() => setCopiedKey(null), 1500);
                                 });
                               }}
-                              title="Copy"
+                              title={t("copy")}
                               className="shrink-0 mt-3 p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors"
                             >
                               {copiedKey === ck ? <CheckIcon size={11} /> : <CopyIcon size={11} />}
@@ -1841,66 +1858,66 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             <div className="flex gap-4 min-h-0">
               {/* Left: stats panel (40%) */}
               <div className="w-[38%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Calibration</p>
-                <StatRow label="Poly degree" value={String(selectedCal.poly_order ?? "—")} />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{t("calibration")}</p>
+                <StatRow label={t("polyDegree")} value={String(selectedCal.poly_order ?? "—")} />
                 {(selectedCal.valid_range_min != null || selectedCal.range_min != null) && (
                   <StatRow
-                    label="Valid range"
+                    label={t("validRange")}
                     value={`${fmtNum(selectedCal.valid_range_min ?? selectedCal.range_min)} – ${fmtNum(selectedCal.valid_range_max ?? selectedCal.range_max)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
                   />
                 )}
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">Statistics</p>
-                <StatRow label="R²" value={fmtNum(selectedCal.r_squared, 6)} tip="Coefficient of determination — 1.0 is perfect." docsHref={STAT_DOCS_LINKS.r_squared} />
-                <StatRow label="RMSE" value={selectedCal.rmse != null ? `${fmtNum(selectedCal.rmse)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root mean square error." docsHref={STAT_DOCS_LINKS.rmse} />
-                <StatRow label="Max error" value={selectedCal.max_error != null ? `${fmtNum(selectedCal.max_error)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Largest absolute residual." docsHref={STAT_DOCS_LINKS.max_error} />
-                <StatRow label="%FS error" value={selectedCal.full_scale_error != null ? `${fmtNum(selectedCal.full_scale_error, 3)}%` : null} tip="Max error as % of full measurement span." docsHref={STAT_DOCS_LINKS.full_scale_error} />
-                <StatRow label="Non-linearity" value={selectedCal.non_linearity != null ? `${fmtNum(selectedCal.non_linearity, 3)}%` : null} tip="Max deviation from ideal line, as %FS." docsHref={STAT_DOCS_LINKS.non_linearity} />
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">{t("statistics")}</p>
+                <StatRow label={t("rSquared")} value={fmtNum(selectedCal.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
+                <StatRow label={t("rmse")} value={selectedCal.rmse != null ? `${fmtNum(selectedCal.rmse)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
+                <StatRow label={t("maxError")} value={selectedCal.max_error != null ? `${fmtNum(selectedCal.max_error)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
+                <StatRow label={t("fsError")} value={selectedCal.full_scale_error != null ? `${fmtNum(selectedCal.full_scale_error, 3)}%` : null} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
+                <StatRow label={t("nonLinearity")} value={selectedCal.non_linearity != null ? `${fmtNum(selectedCal.non_linearity, 3)}%` : null} tip={t("tips.nonLinearity")} docsHref={STAT_DOCS_LINKS.non_linearity} />
                 {selectedCal.repeatability != null && (
-                  <StatRow label="Repeatability†" value={`${fmtNum(selectedCal.repeatability)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Std deviation at repeated reference values." docsHref={STAT_DOCS_LINKS.repeatability} />
+                  <StatRow label={t("repeatability")} value={`${fmtNum(selectedCal.repeatability)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
                 )}
                 {selectedCal.hysteresis != null && (
-                  <StatRow label="Hysteresis†" value={`${fmtNum(selectedCal.hysteresis)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip="Max difference ascending vs. descending." docsHref={STAT_DOCS_LINKS.hysteresis} />
+                  <StatRow label={t("hysteresis")} value={`${fmtNum(selectedCal.hysteresis)}${referenceUnit ? ` ${referenceUnit}` : ""}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
                 )}
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">Uncertainty budget</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">{t("uncertaintyBudget")}</p>
                 {selectedCal.uncertainty_budget?.map((c) => (
                   <StatRow
                     key={c.source}
-                    label={UNCERTAINTY_SOURCE_LABEL[c.source] ?? c.source}
+                    label={translateDynamic(tUncertaintySource, c.source)}
                     value={`${fmtNum(c.standard_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
-                    tip={`${c.description} (${c.distribution} distribution, divisor=${fmtNum(c.divisor, 3)}).`}
+                    tip={t("tips.uncertaintyBudgetRow", { description: c.description, distribution: c.distribution, divisor: fmtNum(c.divisor, 3) })}
                     docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
                   />
                 ))}
-                <StatRow label="Combined (RSS)" value={selectedCal.combined_uncertainty != null ? `${fmtNum(selectedCal.combined_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip="Root-sum-square of the budget rows above (GUM Eq. 10)." docsHref={STAT_DOCS_LINKS.combined_uncertainty} />
+                <StatRow label={t("combinedRss")} value={selectedCal.combined_uncertainty != null ? `${fmtNum(selectedCal.combined_uncertainty)}${referenceUnit ? ` ${referenceUnit}` : ""}` : null} tip={t("tips.combinedRss")} docsHref={STAT_DOCS_LINKS.combined_uncertainty} />
                 <StatRow
-                  label="Expanded (±)"
+                  label={t("expanded")}
                   value={selectedCal.expanded_uncertainty != null ? `${fmtNum(roundToSigFigs(selectedCal.expanded_uncertainty, 2))}${referenceUnit ? ` ${referenceUnit}` : ""}` : null}
                   tip={
                     (selectedCal.effective_degrees_of_freedom != null
-                      ? `k=${selectedCal.coverage_factor ?? "?"} at ${selectedCal.confidence_level ?? "?"}% confidence, ν_eff=${fmtNum(selectedCal.effective_degrees_of_freedom, 1)} (Welch-Satterthwaite).`
-                      : `k=${selectedCal.coverage_factor ?? "?"} at ${selectedCal.confidence_level ?? "?"}% confidence.`)
-                    + " Rounded to 2 significant figures (GUM §7.2.6)."
+                      ? t("tips.expandedWithDof", { k: selectedCal.coverage_factor ?? "?", confidence: selectedCal.confidence_level ?? "?", dof: fmtNum(selectedCal.effective_degrees_of_freedom, 1) })
+                      : t("tips.expandedNoDof", { k: selectedCal.coverage_factor ?? "?", confidence: selectedCal.confidence_level ?? "?" }))
+                    + " " + t("tips.expandedRounded")
                   }
                   docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
                 />
                 {selectedCal.conformity_statement?.specification && (
                   <>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">Conformity</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">{t("conformity")}</p>
                     <div className="flex items-center justify-between gap-2 py-1">
-                      <span className="text-xs text-gray-400">Statement</span>
+                      <span className="text-xs text-gray-400">{t("statement")}</span>
                       <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
                         selectedCal.conformity_statement.passed
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
                           : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
                       }`}>
-                        {selectedCal.conformity_statement.passed ? "CONFORMS" : "DOES NOT CONFORM"}
+                        {selectedCal.conformity_statement.passed ? t("conforms") : t("doesNotConform")}
                       </span>
                     </div>
-                    <StatRow label="Specification" value={selectedCal.conformity_statement.specification} />
+                    <StatRow label={t("specification")} value={selectedCal.conformity_statement.specification} />
                     <StatRow
-                      label="Decision rule"
-                      value={DECISION_RULE_LABEL[selectedCal.conformity_statement.decision_rule] ?? selectedCal.conformity_statement.decision_rule}
-                      tip="How measurement uncertainty is factored into this conformity statement, per ISO/IEC 17025 §7.1.3 and §7.8.6."
+                      label={t("decisionRule")}
+                      value={translateDynamic(tDecisionRule, selectedCal.conformity_statement.decision_rule)}
+                      tip={t("tips.decisionRule")}
                       docsHref={STAT_DOCS_LINKS.decision_rule}
                     />
                   </>
@@ -1919,7 +1936,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         rightView === v ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
                       }`}
                     >
-                      {v === "chart" ? "Chart" : "Data Table"}
+                      {v === "chart" ? t("chart") : t("dataTable")}
                     </button>
                   ))}
                 </div>
@@ -1927,11 +1944,11 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 {loadingPoints ? (
                   <div className="flex items-center justify-center flex-1 text-gray-400 gap-2 text-xs py-10">
                     <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-                    Loading data…
+                    {t("loadingData")}
                   </div>
                 ) : points.length === 0 ? (
                   <div className="flex items-center justify-center flex-1 text-gray-400 text-sm py-10">
-                    No calibration point data stored.
+                    {t("noPointData")}
                   </div>
                 ) : rightView === "chart" ? (
                   <CalibrationChart
@@ -1947,11 +1964,11 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         <tr className="border-b border-og-border bg-og-surface-alt">
                           {[
                             "#",
-                            `Measured${measuredUnit ? ` (${measuredUnit})` : ""}`,
-                            `Reference${referenceUnit ? ` (${referenceUnit})` : ""}`,
-                            `Fitted${referenceUnit ? ` (${referenceUnit})` : ""}`,
-                            `Residual${referenceUnit ? ` (${referenceUnit})` : ""}`,
-                            "Residual (%)",
+                            `${t("measured")}${measuredUnit ? ` (${measuredUnit})` : ""}`,
+                            `${t("reference")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
+                            `${t("fitted")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
+                            `${t("residual")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
+                            t("residualPercent"),
                           ].map((h) => (
                             <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
                           ))}
@@ -1977,16 +1994,16 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No polynomial model recorded for this calibration.</p>
+            <p className="text-sm text-gray-400">{t("noPolyModel")}</p>
           )}
 
           {/* Conditions & Notes */}
           {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null || selectedCal.notes || calLocation) && (
             <div className="rounded-xl border border-og-border bg-og-surface-alt p-4 space-y-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Conditions &amp; Notes</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("conditionsAndNotes")}</p>
               {calLocation && (
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Calibration Lab</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("calibrationLab")}</p>
                   <Link
                     href={`/sites?id=${calLocation.id}`}
                     className="text-xs text-og-accent hover:underline inline-flex items-center gap-1"
@@ -2000,7 +2017,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 <div className="grid grid-cols-3 gap-4">
                   {selectedCal.temperature != null && (
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Temperature</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("temperature")}</p>
                       <p className="font-mono text-xs text-og-text">
                         {fmtNum(selectedCal.temperature, 2)} <span className="text-gray-400">°C</span>
                       </p>
@@ -2008,7 +2025,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   )}
                   {selectedCal.humidity != null && (
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Humidity</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("humidity")}</p>
                       <p className="font-mono text-xs text-og-text">
                         {fmtNum(selectedCal.humidity, 2)} <span className="text-gray-400">%RH</span>
                       </p>
@@ -2016,7 +2033,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   )}
                   {selectedCal.pressure != null && (
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Pressure</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("pressure")}</p>
                       <p className="font-mono text-xs text-og-text">
                         {fmtNum(selectedCal.pressure, 2)} <span className="text-gray-400">Pa</span>
                       </p>
@@ -2026,7 +2043,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               )}
               {selectedCal.notes && (
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Notes</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("notes")}</p>
                   <p className="text-xs text-og-text leading-relaxed">{selectedCal.notes}</p>
                 </div>
               )}
@@ -2035,7 +2052,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
         </div>
       ) : (
         <div className="bg-og-surface border border-og-border rounded-xl p-6">
-          <p className="text-sm text-gray-400">No calibrations recorded{hasChannelTabs ? " for this channel" : ""}.</p>
+          <p className="text-sm text-gray-400">{hasChannelTabs ? t("noCalibrationsChannel") : t("noCalibrations")}</p>
         </div>
       )}
 
@@ -2043,13 +2060,13 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       {(filteredCals.length > 0 || showVoided) && (
         <div className="bg-og-surface border border-og-border rounded-xl">
           <div className="flex items-center justify-between px-5 py-3 border-b border-og-border">
-            <p className="text-xs font-semibold text-og-text">Calibration history</p>
+            <p className="text-xs font-semibold text-og-text">{t("calibrationHistory")}</p>
             <div className="flex items-center gap-3">
-              <p className="text-xs text-gray-400">{filteredCals.length} record{filteredCals.length !== 1 ? "s" : ""}</p>
+              <p className="text-xs text-gray-400">{t("recordCount", { count: filteredCals.length })}</p>
               {isAdmin && (
                 <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
                   <ToggleSwitch checked={showVoided} onChange={setShowVoided} size="sm" />
-                  Show voided
+                  {t("showVoided")}
                 </label>
               )}
             </div>
@@ -2083,7 +2100,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                             className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                             title={cal.void_reason ?? undefined}
                           >
-                            Voided
+                            {t("voided")}
                           </span>
                         )}
                         {cal.r_squared != null && (
@@ -2097,18 +2114,18 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         )}
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {cal.calibration_type === "external" ? "External" : "Internal"}
-                        {" · "}by {cal.performed_by_name}
+                        {cal.calibration_type === "external" ? t("external") : t("internal")}
+                        {" · "}{t("by", { name: cal.performed_by_name })}
                         {cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
                       </p>
                       {cal.notes && <p className="text-xs text-gray-500 mt-1 italic truncate">{cal.notes}</p>}
                       {isVoided && cal.void_reason && (
-                        <p className="text-xs text-red-500 mt-1 italic truncate">Reason: {cal.void_reason}</p>
+                        <p className="text-xs text-red-500 mt-1 italic truncate">{t("reason", { reason: cal.void_reason })}</p>
                       )}
                     </div>
                     {cal.due_date && (
                       <div className="shrink-0 text-right hidden sm:block">
-                        <p className="text-[10px] text-gray-400">Due</p>
+                        <p className="text-[10px] text-gray-400">{t("due")}</p>
                         <p className="text-xs text-og-text font-mono">{fmtDate(cal.due_date)}</p>
                       </div>
                     )}
@@ -2121,7 +2138,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleRestoreCal(cal.id); }}
                         disabled={restoringCalId === cal.id}
-                        title="Restore calibration"
+                        title={t("restoreCalibration")}
                         className="shrink-0 self-center p-1 text-gray-300 hover:text-emerald-500 transition-colors rounded-sm disabled:opacity-50"
                       >
                         <RestoreIcon size={13} />
@@ -2130,7 +2147,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(cal.id); }}
-                        title="Void calibration"
+                        title={t("voidCalibration")}
                         className="shrink-0 self-center p-1 text-gray-300 hover:text-red-500 transition-colors rounded-sm"
                       >
                         <TrashIcon size={13} />
@@ -2162,6 +2179,7 @@ function CertificateDownloadButton({
   calibrationVersion: number;
   disabled: boolean;
 }) {
+  const t = useTranslations("assets.calibration");
   const [templates, setTemplates] = useState<CertificateTemplateOption[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -2201,7 +2219,7 @@ function CertificateDownloadButton({
         a.click();
       }
     } catch {
-      alert("Certificate not available yet. Please try again shortly.");
+      alert(t("certNotAvailable"));
     } finally {
       setDownloading(false);
     }
@@ -2213,7 +2231,7 @@ function CertificateDownloadButton({
         type="button"
         disabled={disabled || downloading}
         onClick={handleDownload}
-        title={selectedTemplateId ? `Download using ${templates.find((t) => t.id === selectedTemplateId)?.name ?? "selected template"}` : "Download using the default template"}
+        title={selectedTemplateId ? t("downloadUsing", { template: templates.find((tpl) => tpl.id === selectedTemplateId)?.name ?? t("selectedTemplate") }) : t("downloadUsingDefault")}
         className="flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-l-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {downloading ? (
@@ -2221,13 +2239,13 @@ function CertificateDownloadButton({
         ) : (
           <DownloadIcon size={12} />
         )}
-        {downloading ? "Generating…" : "Download Certificate"}
+        {downloading ? t("generating") : t("downloadCertificate")}
       </button>
       <button
         type="button"
         disabled={disabled || downloading}
         onClick={() => setMenuOpen((v) => !v)}
-        title="Choose certificate template"
+        title={t("chooseTemplate")}
         className="flex items-center px-1.5 py-1.5 text-gray-600 dark:text-gray-300 border border-l-0 border-og-border-md rounded-r-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <ChevronDownIcon size={12} />
@@ -2239,23 +2257,23 @@ function CertificateDownloadButton({
             onClick={() => { setSelectedTemplateId(null); setMenuOpen(false); }}
             className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
           >
-            Default template
+            {t("defaultTemplate")}
             {selectedTemplateId === null && <CheckIcon size={12} className="text-og-accent shrink-0" />}
           </button>
           {templates.length > 0 && <div className="my-1 border-t border-og-border" />}
-          {templates.map((t) => (
+          {templates.map((tpl) => (
             <button
-              key={t.id}
+              key={tpl.id}
               type="button"
-              onClick={() => { setSelectedTemplateId(t.id); setMenuOpen(false); }}
+              onClick={() => { setSelectedTemplateId(tpl.id); setMenuOpen(false); }}
               className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
             >
-              <span className="truncate">{t.name}</span>
-              {selectedTemplateId === t.id && <CheckIcon size={12} className="text-og-accent shrink-0" />}
+              <span className="truncate">{tpl.name}</span>
+              {selectedTemplateId === tpl.id && <CheckIcon size={12} className="text-og-accent shrink-0" />}
             </button>
           ))}
           {templates.length === 0 && (
-            <p className="px-3 py-1.5 text-xs text-gray-400">No custom templates available</p>
+            <p className="px-3 py-1.5 text-xs text-gray-400">{t("noCustomTemplates")}</p>
           )}
         </div>
       )}
@@ -2278,6 +2296,7 @@ function FilesTab({
   assetId: string;
   onFilesChange: (files: StoredFile[]) => void;
 }) {
+  const t = useTranslations("assets.files");
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -2290,7 +2309,7 @@ function FilesTab({
       const uploaded = await uploadAssetFile(assetId, file);
       onFilesChange([...files, uploaded]);
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : "Upload failed");
+      setUploadError(e instanceof Error ? e.message : t("errorUpload"));
     } finally {
       setUploading(false);
     }
@@ -2328,11 +2347,11 @@ function FilesTab({
     }
   }
 
-  const typeLabel: Record<string, string> = { pdf: "PDF", csv: "CSV", zip: "Archive", doc: "File" };
+  const typeLabel: Record<string, string> = { pdf: t("typePdf"), csv: t("typeCsv"), zip: t("typeArchive"), doc: t("typeFile") };
 
   return (
     <div className="bg-og-surface border border-og-border rounded-xl p-6">
-      <h3 className="text-sm font-semibold text-og-text mb-4">Files &amp; attachments</h3>
+      <h3 className="text-sm font-semibold text-og-text mb-4">{t("title")}</h3>
 
       {/* Drop zone — only shown in edit mode */}
       {isEditing && (
@@ -2348,9 +2367,9 @@ function FilesTab({
         >
           <UploadCloudIcon size={24} className={isDragging ? "text-og-accent" : "text-gray-400"} />
           <p className="text-sm text-gray-500">
-            {uploading ? "Uploading…" : "Drop a file here or click to browse"}
+            {uploading ? t("uploading") : t("dropHint")}
           </p>
-          <p className="text-xs text-gray-400">PDF, images supported</p>
+          <p className="text-xs text-gray-400">{t("supportedTypes")}</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -2369,7 +2388,7 @@ function FilesTab({
 
       {files.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-          <p className="text-sm">{isEditing ? "No files yet. Upload one above." : "No files attached to this asset."}</p>
+          <p className="text-sm">{isEditing ? t("noFilesEdit") : t("noFilesView")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2411,7 +2430,7 @@ function FilesTab({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-1.5 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors shrink-0"
-                    title="Download"
+                    title={t("download")}
                   >
                     <DownloadIcon size={14} />
                   </a>
@@ -2422,7 +2441,7 @@ function FilesTab({
                     type="button"
                     onClick={() => handleDelete(f.id)}
                     className="p-1.5 rounded-sm hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-colors shrink-0"
-                    title="Remove file"
+                    title={t("removeFile")}
                   >
                     <TrashIcon size={14} />
                   </button>
@@ -2441,11 +2460,12 @@ function FilesTab({
 // ---------------------------------------------------------------------------
 
 function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
+  const t = useTranslations("assets.activity");
   return (
     <div className="bg-og-surface border border-og-border rounded-xl p-6">
-      <h3 className="text-sm font-semibold text-og-text mb-4">Audit log</h3>
+      <h3 className="text-sm font-semibold text-og-text mb-4">{t("title")}</h3>
       {logs.length === 0 ? (
-        <p className="text-sm text-gray-400 py-4">No activity recorded for this asset.</p>
+        <p className="text-sm text-gray-400 py-4">{t("empty")}</p>
       ) : (
         <div className="divide-y divide-og-border">
           {logs.map((log) => {
@@ -2479,13 +2499,7 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
 
 type Tab = "overview" | "health" | "calibration" | "files" | "activity";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "overview", label: "Overview" },
-  { key: "health", label: "Health" },
-  { key: "calibration", label: "Calibration" },
-  { key: "files", label: "Files" },
-  { key: "activity", label: "Activity" },
-];
+const TABS: Tab[] = ["overview", "health", "calibration", "files", "activity"];
 
 // ---------------------------------------------------------------------------
 // Calibration ring card — 2/3 dates + 1/3 270° arc ring, color per remaining days
@@ -2498,6 +2512,7 @@ function CalibrationRingCard({
   dueAt: string | null;
   status: string;
 }) {
+  const t = useTranslations("assets.detail");
   const { days, gaugeValue, ringColor } = useMemo(() => {
     if (!dueAt) return { days: null, gaugeValue: 0, ringColor: "#9ca3af" };
 
@@ -2554,11 +2569,11 @@ function CalibrationRingCard({
         {/* Dates — left column */}
         <div className="w-2/3 space-y-1.5 flex flex-col items-center text-center">
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Last</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">{t("last")}</p>
             <p className="text-sm font-semibold font-mono text-og-text tabular-nums">{fmtDate(lastCal)}</p>
           </div>
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">Due</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">{t("due")}</p>
             <p className="text-sm font-semibold font-mono text-og-text tabular-nums">{fmtDate(dueAt)}</p>
           </div>
         </div>
@@ -2575,7 +2590,7 @@ function CalibrationRingCard({
               <span className="text-xs font-bold tabular-nums leading-none" style={{ color: ringColor }}>
                 {days !== null ? String(days) : "—"}
               </span>
-              <span className="text-[9px] text-gray-400 mt-0.5 leading-none">days</span>
+              <span className="text-[9px] text-gray-400 mt-0.5 leading-none">{t("days")}</span>
             </div>
           </div>
         </div>
@@ -2590,6 +2605,7 @@ function CalibrationRingCard({
 type StickerSize = "1x0.5" | "2x2" | "4x2";
 
 function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTag: string; onClose: () => void }) {
+  const t = useTranslations("assets.sticker");
   const [preview1, setPreview1] = useState<string | null>(null);
   const [preview2, setPreview2] = useState<string | null>(null);
   const [preview4, setPreview4] = useState<string | null>(null);
@@ -2637,17 +2653,17 @@ function StickerModal({ assetId, assetTag, onClose }: { assetId: string; assetTa
     >
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-xl mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
-          <h2 className="text-sm font-semibold text-og-text">Asset Sticker — {assetTag}</h2>
+          <h2 className="text-sm font-semibold text-og-text">{t("title", { assetTag })}</h2>
           <button type="button" onClick={onClose} className="p-1.5 rounded-sm hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
             <XIcon size={15} />
           </button>
         </div>
         <div className="p-5 space-y-5">
-          <StickerRow size="1x0.5" label="1×0.5 inches" preview={preview1} aspect="w-28 h-14" loading={loading} downloading={downloading} onDownload={download} />
+          <StickerRow size="1x0.5" label={t("size1")} preview={preview1} aspect="w-28 h-14" loading={loading} downloading={downloading} onDownload={download} />
           <div className="border-t border-og-border" />
-          <StickerRow size="2x2" label="2×2 inches" preview={preview2} aspect="w-28 h-28" loading={loading} downloading={downloading} onDownload={download} />
+          <StickerRow size="2x2" label={t("size2")} preview={preview2} aspect="w-28 h-28" loading={loading} downloading={downloading} onDownload={download} />
           <div className="border-t border-og-border" />
-          <StickerRow size="4x2" label="4×2 inches" preview={preview4} aspect="w-56 h-28" loading={loading} downloading={downloading} onDownload={download} />
+          <StickerRow size="4x2" label={t("size4")} preview={preview4} aspect="w-56 h-28" loading={loading} downloading={downloading} onDownload={download} />
         </div>
       </div>
     </div>
@@ -2660,12 +2676,13 @@ function StickerRow({
   size: StickerSize; label: string; preview: string | null; aspect: string;
   loading: boolean; downloading: string | null; onDownload: (size: StickerSize, fmt: "png" | "jpg" | "pdf") => void;
 }) {
+  const t = useTranslations("assets.sticker");
   return (
     <div className="flex items-center gap-4">
       <div className={`shrink-0 bg-og-surface-alt rounded-lg border border-og-border overflow-hidden flex items-center justify-center ${aspect}`}>
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt={`${label} sticker`} className="w-full h-full object-contain" />
+          <img src={preview} alt={t("stickerAlt", { label })} className="w-full h-full object-contain" />
         ) : loading ? (
           <span className="w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
         ) : (
@@ -2700,6 +2717,10 @@ export default function AssetDetailClient() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const t = useTranslations("assets.detail");
+  const tHealthLabel = useTranslations("tokens.healthLabel");
+  const tStability = useTranslations("tokens.stability");
+  const coeffDesc = useCoeffDesc();
   const { user } = useAuth();
   const isAdmin = user.role === "superadmin" || user.role === "admin";
   const canEdit = user.role !== "viewer";
@@ -2769,7 +2790,7 @@ export default function AssetDetailClient() {
       setIsEditing(false);
       setEditForm(null);
     } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : "Failed to retire asset.");
+      setSaveError(e instanceof Error ? e.message : t("errorRetireAsset"));
       setRetireModalOpen(false);
     }
   }
@@ -2785,13 +2806,13 @@ export default function AssetDetailClient() {
     setEditForm(form);
     // Re-validate only if there were previous errors (real-time feedback)
     if (Object.keys(editErrors).length > 0) {
-      setEditErrors(validateForm(form));
+      setEditErrors(validateForm(form, t));
     }
   }
 
   async function handleSave() {
     if (!profile || !editForm) return;
-    const errors = validateForm(editForm);
+    const errors = validateForm(editForm, t);
     if (Object.keys(errors).length > 0) {
       setEditErrors(errors);
       return;
@@ -2811,7 +2832,7 @@ export default function AssetDetailClient() {
       setEditForm(null);
       setEditErrors({});
     } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : "Failed to save changes.");
+      setSaveError(e instanceof Error ? e.message : t("errorSaveChanges"));
     } finally {
       setIsSaving(false);
     }
@@ -2829,7 +2850,7 @@ export default function AssetDetailClient() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : "Failed to export asset.");
+      setSaveError(err instanceof Error ? err.message : t("errorExportAsset"));
     } finally {
       setExporting(false);
     }
@@ -2843,7 +2864,7 @@ export default function AssetDetailClient() {
       const updated = await uploadAssetPicture(profile.id, file);
       setProfile(updated);
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : "Failed to upload picture.");
+      setSaveError(err instanceof Error ? err.message : t("errorUploadPicture"));
     } finally {
       setPictureUploading(false);
     }
@@ -2857,7 +2878,7 @@ export default function AssetDetailClient() {
       const updated = await deleteAssetPicture(profile.id);
       setProfile(updated);
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err.message : "Failed to remove picture.");
+      setSaveError(err instanceof Error ? err.message : t("errorRemovePicture"));
     } finally {
       setPictureUploading(false);
     }
@@ -2887,7 +2908,7 @@ export default function AssetDetailClient() {
     return (
       <div className="flex items-center justify-center h-64 text-gray-400">
         <span className="inline-block w-5 h-5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin mr-3" />
-        Loading asset…
+        {t("loadingAsset")}
       </div>
     );
   }
@@ -2896,7 +2917,7 @@ export default function AssetDetailClient() {
     return (
       <div className="p-6">
         <div className="rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-5 py-4 text-sm text-red-600 dark:text-red-400">
-          {error ?? "Asset not found."}
+          {error ?? t("assetNotFound")}
         </div>
       </div>
     );
@@ -2927,7 +2948,7 @@ export default function AssetDetailClient() {
         <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 px-5 py-3 flex items-center gap-3">
           <WarningIcon size={16} className="text-red-500 shrink-0" />
           <p className="text-sm text-red-700 dark:text-red-400 font-medium">
-            This asset has been retired{profile.retired_reason ? `: ${profile.retired_reason}` : ""} and is read-only.
+            {profile.retired_reason ? t("retiredWithReason", { reason: profile.retired_reason }) : t("retiredNoReason")}
           </p>
         </div>
       )}
@@ -2939,7 +2960,7 @@ export default function AssetDetailClient() {
         className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-og-text transition-colors"
       >
         <ChevronLeftIcon size={13} />
-        Back
+        {t("back")}
       </button>
 
       {/* Header card */}
@@ -2971,7 +2992,7 @@ export default function AssetDetailClient() {
                 {isEditing && editForm ? (editForm.name || profile.name) : profile.name}
               </h1>
               {profile.sensor_channels.some((ch) => ch.calibration_role === "reference") && (
-                <Tooltip content="Reference standard">
+                <Tooltip content={t("referenceStandard")}>
                   <ShieldCheckIcon size={16} className="text-og-accent shrink-0" />
                 </Tooltip>
               )}
@@ -2991,7 +3012,7 @@ export default function AssetDetailClient() {
               <span>{profile.manufacturer} · {profile.model}</span>
             </div>
             {isEditing && (
-              <p className="text-xs text-amber-500 mt-2 font-medium">● Editing — unsaved changes</p>
+              <p className="text-xs text-amber-500 mt-2 font-medium">● {t("editingUnsaved")}</p>
             )}
           </div>
 
@@ -3005,14 +3026,14 @@ export default function AssetDetailClient() {
                     disabled={exporting}
                     className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors disabled:opacity-50">
                     <ExportIcon size={15} />
-                    {exporting ? "Exporting…" : "Export"}
+                    {exporting ? t("exporting") : t("export")}
                   </button>
                 )}
                 <button type="button"
                   onClick={() => setStickerOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-2 border border-og-border rounded-lg hover:bg-og-surface-alt text-gray-500 hover:text-og-text text-sm font-medium transition-colors">
                   <QrCodeIcon size={15} />
-                  Sticker
+                  {t("sticker")}
                 </button>
                 {profile.is_active && canEdit && (
                   <button
@@ -3021,7 +3042,7 @@ export default function AssetDetailClient() {
                     className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     <EditIcon size={14} />
-                    Edit
+                    {t("edit")}
                   </button>
                 )}
               </>
@@ -3035,7 +3056,7 @@ export default function AssetDetailClient() {
                     className="flex items-center gap-1.5 px-3 py-2 border border-og-border-md text-sm font-medium rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50"
                   >
                     <XIcon size={14} />
-                    Cancel
+                    {t("cancel")}
                   </button>
                   <button
                     type="button"
@@ -3048,7 +3069,7 @@ export default function AssetDetailClient() {
                     ) : (
                       <CheckIcon size={14} />
                     )}
-                    {isSaving ? "Saving…" : "Save changes"}
+                    {isSaving ? t("saving") : t("saveChanges")}
                   </button>
                 </div>
                 <button
@@ -3058,7 +3079,7 @@ export default function AssetDetailClient() {
                   className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-600 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                 >
                   <WarningIcon size={13} />
-                  Retire asset
+                  {t("retireAsset")}
                 </button>
               </div>
             )}
@@ -3072,7 +3093,7 @@ export default function AssetDetailClient() {
         )}
         {hasErrors && isEditing && (
           <div className="mt-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 px-4 py-2.5 text-sm text-amber-600 dark:text-amber-400">
-            Please fix the validation errors before saving.
+            {t("fixValidationErrors")}
           </div>
         )}
       </div>
@@ -3081,7 +3102,7 @@ export default function AssetDetailClient() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Health panel */}
         <div className="bg-og-surface border border-og-border rounded-xl p-5">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">Health Score</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">{t("healthScore")}</p>
           {healthOverview ? (
             <div className="space-y-3">
               <div>
@@ -3091,7 +3112,7 @@ export default function AssetDetailClient() {
                     <span className="text-sm text-gray-400 font-normal"> / 100</span>
                   </span>
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${HEALTH_LABEL_STYLE[healthOverview.health_label] ?? ""}`}>
-                    {healthOverview.health_label}
+                    {translateDynamic(tHealthLabel, healthOverview.health_label)}
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 rounded-full bg-og-border overflow-hidden">
@@ -3103,9 +3124,9 @@ export default function AssetDetailClient() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-400 uppercase tracking-wide w-16 shrink-0">Stability</span>
+                <span className="text-[10px] text-gray-400 uppercase tracking-wide w-16 shrink-0">{t("stability")}</span>
                 <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${STABILITY_STYLE[healthOverview.stability] ?? ""}`}>
-                  {healthOverview.stability}
+                  {translateDynamic(tStability, healthOverview.stability)}
                 </span>
               </div>
             </div>
@@ -3126,15 +3147,15 @@ export default function AssetDetailClient() {
         />
         {/* Calibrations panel */}
         <div className="bg-og-surface border border-og-border rounded-xl p-5">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">Calibrations</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-3">{t("calibrations")}</p>
           <div className="flex gap-4">
             <div className="flex flex-col">
               <p className="text-2xl font-bold text-og-text tabular-nums">{profile.calibration_count}</p>
-              <p className="text-xs text-gray-400 mt-1">all-time</p>
+              <p className="text-xs text-gray-400 mt-1">{t("allTime")}</p>
             </div>
             {calibrations[0]?.poly_coefficients && calibrations[0].poly_coefficients.length > 0 && (
               <div className="flex-1 min-w-0 border-l border-og-border pl-4">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Latest coefficients</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">{t("latestCoefficients")}</p>
                 <table className="w-full text-xs">
                   <tbody>
                     {calibrations[0].poly_coefficients
@@ -3143,7 +3164,7 @@ export default function AssetDetailClient() {
                       .map(({ exp, val }) => (
                         <tr key={exp} className="border-b border-og-border last:border-b-0">
                           <td className="py-0.5 pr-2 text-gray-400 whitespace-nowrap">
-                            {COEFF_DESC[exp] ?? `Order-${exp} term`}
+                            {coeffDesc[exp] ?? t("orderNTerm", { exp })}
                           </td>
                           <td className="py-0.5 text-og-text font-mono tabular-nums text-right whitespace-nowrap">
                             {fmtNum(val)}
@@ -3163,16 +3184,16 @@ export default function AssetDetailClient() {
         <div className="flex border-b border-og-border px-1">
           {TABS.map((tab) => (
             <button
-              key={tab.key}
+              key={tab}
               type="button"
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => setActiveTab(tab)}
               className={`px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === tab.key
+                activeTab === tab
                   ? "border-og-accent text-og-accent"
                   : "border-transparent text-gray-400 hover:text-og-text"
               }`}
             >
-              {tab.label}
+              {t(`tabs.${tab}`)}
             </button>
           ))}
         </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { docsUrl } from "@/lib/docs-links";
 
 export function Tooltip({
@@ -11,8 +12,9 @@ export function Tooltip({
   docsHref?: string;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("common.tooltip");
   const trigger = docsHref ? (
-    <Link href={docsUrl(docsHref)} aria-label="Open documentation">
+    <Link href={docsUrl(docsHref)} aria-label={t("openDocumentation")}>
       {children}
     </Link>
   ) : (
@@ -24,7 +26,7 @@ export function Tooltip({
       {trigger}
       <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/tip:block w-64 bg-gray-900 dark:bg-gray-700 text-white text-[11px] normal-case rounded-lg px-3 py-2 z-50 shadow-lg leading-relaxed whitespace-normal text-left">
         {content}
-        {docsHref && <span className="block mt-1.5 text-og-accent font-medium">View documentation →</span>}
+        {docsHref && <span className="block mt-1.5 text-og-accent font-medium">{t("viewDocumentation")}</span>}
       </span>
     </span>
   );
