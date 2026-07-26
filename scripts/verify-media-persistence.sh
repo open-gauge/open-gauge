@@ -29,6 +29,27 @@ TMPDIR=""
 log() { printf '[verify-media-persistence] %s\n' "$1"; }
 fail() { printf '[verify-media-persistence] FAIL: %s\n' "$1" >&2; exit 1; }
 
+# On a brand-new (or freshly-recreated) data dir, Postgres's own entrypoint
+# runs initdb, starts a temporary server to create the app database, stops it,
+# then starts the real server — a restart the container's healthcheck can
+# briefly report "healthy" in the middle of (pg_isready succeeds against the
+# temporary server moments before it shuts down). A psql attempt landing in
+# that window fails with "the database system is shutting/starting up" even
+# though nothing is actually wrong, so give it a few retries rather than
+# treating the first failure as the persistence check failing.
+psql_retry() {
+  local attempt out
+  for attempt in $(seq 1 10); do
+    if out="$(compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" "$@" 2>&1)"; then
+      printf '%s\n' "$out"
+      return 0
+    fi
+    sleep 1
+  done
+  printf '%s\n' "$out" >&2
+  return 1
+}
+
 compose() {
   docker compose -f "$COMPOSE_FILE" -f "$TMPDIR/docker-compose.override.yml" \
     --env-file "$ENV_FILE" -p "$PROJECT" --project-directory "$TMPDIR" "$@"
@@ -76,7 +97,7 @@ done
 
 MARKER="persist-check-$(date +%s)"
 log "writing marker row to Postgres and marker object to MinIO's bind-mounted data dir..."
-compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
+psql_retry -c \
   "CREATE TABLE IF NOT EXISTS _persistence_check(note text); INSERT INTO _persistence_check VALUES ('$MARKER');" \
   >/dev/null
 compose exec -T minio sh -c "mkdir -p /data/_persistence_check && echo '$MARKER' > /data/_persistence_check/marker.txt" \
@@ -96,7 +117,7 @@ for _ in $(seq 1 30); do
 done
 [ "$status" = "healthy" ] || fail "db never became healthy after rebuild"
 
-db_value="$(compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -c \
+db_value="$(psql_retry -tA -c \
   "SELECT note FROM _persistence_check WHERE note = '$MARKER';")"
 [ "$(printf '%s' "$db_value" | tr -d '[:space:]')" = "$MARKER" ] \
   || fail "Postgres marker row did not survive down + up --build — bind mount is not persisting data"

@@ -4,13 +4,45 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.5.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.5.2 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.5.2
+
+### Fixed
+
+- **Activity register panel's description sat flush against the user column instead of
+  reading toward the right edge of the panel**, and never showed a user's profile picture
+  even when one was set. `dash_repo.get_activity` (`apps/api/app/repositories/dashboard.py`)
+  never resolved `profile_picture_id` into a presigned URL the way the full `/activity` page's
+  `audit_log_enrich.enrich()` already does — so `ActivityFeed` always fell back to initials.
+  `ActivityItem` (schema + frontend type) now carries `actor_profile_picture_url`, resolved via
+  the shared `user_profile_svc.resolve_picture_url`, and `ActivityFeed`'s description column is
+  right-aligned to match the "Upcoming calibrations" panel's right-aligned date column.
+
+## 3.5.1
+
+### Fixed
+
+- **Upcoming calibrations panel showed overdue calibrations, and some due dates were wrong.**
+  `dash_repo.get_calibration_events` picked each asset's *most recently created* calibration
+  record to determine its due date; on an asset with multiple independently-scheduled
+  channels (e.g. two sensor channels calibrated at different times), the newest record isn't
+  necessarily the one that governs the asset's current status, so an asset could be flagged
+  overdue even though its actual next due date (the furthest-out among its active
+  calibrations) was still in the future. The query now aggregates `max(due_date)` per asset —
+  the same logic already used by `repositories/asset.py::list_assets` and the dashboard
+  summary's status counts — and only returns assets whose due date is today or later, so the
+  panel no longer double-duties as an overdue list.
+- **Activity register rows dumped all content in one left-aligned column.** The dashboard's
+  `ActivityFeed` rows now lay out as user (with timestamp underneath) in a fixed-width left
+  column and the action/diff description in the remaining space, instead of a single stacked
+  block; removed the decorative blue dot bullet.
 
 ## 3.5.0
 

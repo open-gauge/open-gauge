@@ -42,6 +42,7 @@ export interface ActivityItem {
   actor_email: string;
   actor_name: string | null;
   actor_role: string | null;
+  actor_profile_picture_url: string | null;
   action: string;
   entity_type: string;
   entity_asset_id: string | null;

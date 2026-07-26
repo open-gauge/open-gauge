@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import and_, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models.asset import Asset, AssetType
@@ -112,10 +112,11 @@ def get_asset_type_distribution(db: Session) -> dict:
 
 def get_activity(db: Session, days: int = 30, limit: int = 500) -> list[dict]:
     from ..models.user import User
+    from ..services import user_profile as user_profile_svc
 
     since = datetime.now(timezone.utc) - timedelta(days=days)
     rows = (
-        db.query(AuditLog, User.name, User.role, User.id)
+        db.query(AuditLog, User.name, User.role, User.id, User.profile_picture_id)
         .outerjoin(User, AuditLog.actor_id == User.id)
         .filter(AuditLog.created_at >= since)
         .order_by(AuditLog.created_at.desc())
@@ -128,6 +129,7 @@ def get_activity(db: Session, days: int = 30, limit: int = 500) -> list[dict]:
             "actor_email": log.actor_email,
             "actor_name": name,
             "actor_role": role.value if role else None,
+            "actor_profile_picture_url": user_profile_svc.resolve_picture_url(db, picture_id),
             "action": log.action,
             "entity_type": log.entity_type,
             "entity_asset_id": log.entity_asset_id,
@@ -135,7 +137,7 @@ def get_activity(db: Session, days: int = 30, limit: int = 500) -> list[dict]:
             "after_state": log.after_state,
             "created_at": log.created_at,
         }
-        for log, name, role, user_id in rows
+        for log, name, role, user_id, picture_id in rows
     ]
 
 
@@ -149,49 +151,44 @@ def get_recent_assets(db: Session, limit: int = 10) -> list[Asset]:
     )
 
 
-def get_calibration_events(db: Session, months_past: int = 3, months_ahead: int = 13) -> list[dict]:
+def get_calibration_events(db: Session, months_ahead: int = 13) -> list[dict]:
     now = datetime.now(timezone.utc).date()
-    start = now - timedelta(days=months_past * 31)
     end = now + timedelta(days=months_ahead * 31)
 
-    # Subquery: most-recently-created calibration timestamp per asset
-    latest_subq = (
+    # An asset's current calibration cycle is the one with the furthest-out due_date among
+    # its active calibrations (a later-created record can carry an earlier due_date, e.g. a
+    # different sensor channel calibrated on its own schedule) — mirrors the status logic in
+    # repositories/asset.py::list_assets, which this panel must stay consistent with.
+    latest_due_subq = (
         db.query(
             Calibration.asset_id,
-            func.max(Calibration.created_at).label("max_ts"),
+            func.max(Calibration.due_date).label("due_date"),
         )
         .filter(Calibration.is_active.is_(True))
         .group_by(Calibration.asset_id)
         .subquery()
     )
 
-    # Only the latest calibration record per asset; filter by its due_date
+    # Upcoming only — overdue calibrations belong to a different panel, not this one.
     rows = (
-        db.query(Calibration, Asset)
-        .join(Asset, Calibration.asset_id == Asset.id)
-        .join(
-            latest_subq,
-            and_(
-                Calibration.asset_id == latest_subq.c.asset_id,
-                Calibration.created_at == latest_subq.c.max_ts,
-            ),
-        )
+        db.query(Asset.id, Asset.asset_id, Asset.name, latest_due_subq.c.due_date)
+        .join(latest_due_subq, Asset.id == latest_due_subq.c.asset_id)
         .filter(
             Asset.is_active.is_(True),
-            Calibration.due_date >= start,
-            Calibration.due_date <= end,
+            latest_due_subq.c.due_date >= now,
+            latest_due_subq.c.due_date <= end,
         )
-        .order_by(Calibration.due_date.asc())
+        .order_by(latest_due_subq.c.due_date.asc())
         .all()
     )
     return [
         {
-            "id": str(asset.id),
-            "asset_id": asset.asset_id,
-            "name": asset.name,
-            "due_date": cal.due_date.isoformat(),
+            "id": str(asset_id),
+            "asset_id": asset_code,
+            "name": name,
+            "due_date": due_date.isoformat(),
         }
-        for cal, asset in rows
+        for asset_id, asset_code, name, due_date in rows
     ]
 
 

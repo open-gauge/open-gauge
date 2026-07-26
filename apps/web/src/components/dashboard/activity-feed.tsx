@@ -57,17 +57,21 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
       </div>
 
       {/* Scrollable list */}
-      <ul className="space-y-3 overflow-y-auto flex-1 pr-0.5">
+      <ul className="divide-y divide-og-border overflow-y-auto flex-1 pr-0.5">
         {data.map((item, i) => (
-          <li key={i} className="flex gap-3 text-xs">
-            <span className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-og-accent" />
-            <div className="leading-relaxed min-w-0">
+          <li key={i} className="flex items-start gap-4 text-xs py-3 first:pt-0">
+            <div className="w-36 shrink-0 min-w-0">
               <UserMention
                 actorId={item.actor_id}
                 actorEmail={item.actor_email}
                 actorName={item.actor_name}
                 actorRole={item.actor_role}
-              />{" "}
+                actorProfilePictureUrl={item.actor_profile_picture_url}
+                className="text-xs"
+              />
+              <p className="text-gray-400 mt-1">{timeAgo(item.created_at, t)}</p>
+            </div>
+            <div className="leading-relaxed min-w-0 flex-1 text-right">
               <span className="text-gray-500">{actionLabel(item.action)}</span>
               {item.entity_asset_id && (
                 <span className="ml-1 font-mono text-[10px] text-gray-400 bg-og-surface-alt px-1 rounded-sm">
@@ -82,7 +86,6 @@ export default function ActivityFeed({ data }: { data: ActivityItem[] }) {
                 maxCompact={1}
                 className="mt-0.5"
               />
-              <p className="text-gray-400 mt-0.5">{timeAgo(item.created_at, t)}</p>
             </div>
           </li>
         ))}

@@ -5,8 +5,10 @@ from collections.abc import Iterator
 from datetime import timedelta
 
 from minio import Minio
+from minio.commonconfig import ENABLED
 from minio.deleteobjects import DeleteObject
 from minio.error import S3Error
+from minio.versioningconfig import VersioningConfig
 
 from ..core.config import settings
 
@@ -46,6 +48,13 @@ def _ensure_bucket(client: Minio, bucket: str) -> None:
     try:
         if not client.bucket_exists(bucket):
             client.make_bucket(bucket)
+            # Versioned buckets keep a prior copy of an object around when it's
+            # overwritten or deleted (including by a bug like an unconditional
+            # `delete_all_objects()` call) instead of discarding it immediately —
+            # the last line of defense against permanently losing calibration
+            # certificates, datasheets, and other media a lab may not have a
+            # separate copy of.
+            client.set_bucket_versioning(bucket, VersioningConfig(ENABLED))
     except S3Error:
         pass
 

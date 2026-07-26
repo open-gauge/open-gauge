@@ -25,7 +25,7 @@ function toTodayStr(): string {
 export default function UpcomingTable({ data }: { data: CalibrationEvent[] }) {
   const t = useTranslations("dashboard.upcoming");
   const todayStr = toTodayStr();
-  // Most overdue / closest due first
+  // Closest due date first
   const sorted = [...data].sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   return (
