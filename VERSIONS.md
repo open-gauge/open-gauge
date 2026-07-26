@@ -34,6 +34,23 @@ fixes and incremental additions that landed between each minor version.
   once the env var is set, unchanged from before — a gap to revisit if the demo needs the same
   consent flow later.
 
+### Fixed
+
+- **Demo static export 404'd on the bare root URL.** `localePrefix: "as-needed"`
+  (`apps/web/src/i18n/routing.ts`) relies on the `next-intl` middleware (`apps/web/src/proxy.ts`)
+  to rewrite `/` to the default locale on the fly — but that middleware only runs on the normal
+  server build. The demo's static export (`output: "export"`) has no server to run it, so the
+  bare root produced no file at all and hosts fell through to their 404 page. A new
+  `apps/web/src/app/page.tsx` (outside the `[locale]` segment) now covers that gap with a
+  `redirect()` to the default locale, which works on any static host and is a no-op for the
+  normal build (the middleware already intercepts `/` before this route would ever be reached
+  there).
+- **`apps/web/package-lock.json` was out of sync with `package.json`**, causing `npm ci` to fail
+  on any clean-install build (Cloudflare Pages included) with `EUSAGE` / missing-package errors.
+  Regenerated against a Linux Node 22 environment specifically (matching Cloudflare's build
+  image) rather than Windows, since the drift included Linux-only optional native dependencies
+  (`@emnapi/core`, `@emnapi/runtime`) that a Windows `npm install` does not resolve.
+
 ## 3.4.0
 
 ### Added
