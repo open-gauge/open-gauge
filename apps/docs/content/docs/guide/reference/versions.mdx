@@ -39,6 +39,20 @@ fixes and incremental additions that landed between each minor version.
 
 ### Fixed
 
+- **Demo static export 404'd on `/dashboard` (and would have on most other in-app navigation
+  for English specifically).** The same root cause as the bare-root 404 above, one layer deeper:
+  `localePrefix: "as-needed"` means every locale-aware `Link`/`redirect`/`useRouter` call
+  (`@/i18n/navigation`) generates an *unprefixed* URL for the default locale (e.g. `/dashboard`,
+  not `/en/dashboard`), trusting the middleware to rewrite it — which, again, doesn't run in the
+  static export. `apps/web/src/i18n/routing.ts` now forces `localePrefix: "always"` specifically
+  when `NEXT_PUBLIC_DEMO_MODE=true`, so every generated href is explicitly prefixed and matches
+  what `generateStaticParams` actually emits; the normal server build is unaffected. Two call
+  sites were also bypassing locale-aware routing entirely — `components/notification-bell.tsx`
+  and `app/[locale]/(app)/assets/page.tsx` imported `useRouter` straight from `next/navigation`
+  instead of `@/i18n/navigation` — switched to match every other page/component in the app.
+  `components/user-summary.tsx` (renders anywhere a user is shown in a list: activity entries,
+  member lists, the admin users list) had the same bug with a raw `next/link` to
+  `/users/{id}`, switched likewise.
 - **Demo static export 404'd on the bare root URL.** `localePrefix: "as-needed"`
   (`apps/web/src/i18n/routing.ts`) relies on the `next-intl` middleware (`apps/web/src/proxy.ts`)
   to rewrite `/` to the default locale on the fly — but that middleware only runs on the normal

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Avatar } from "@/components/avatar";
+import { Link } from "@/i18n/navigation";
 
 interface UserSummaryProps {
   userId: string | null;

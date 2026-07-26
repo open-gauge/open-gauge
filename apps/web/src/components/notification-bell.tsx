@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { BellIcon, CheckIcon, TrashIcon, XIcon } from "@/components/icons";
 import {
   deleteAllNotifications,
