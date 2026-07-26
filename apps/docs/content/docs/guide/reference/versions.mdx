@@ -38,6 +38,15 @@ fixes and incremental additions that landed between each minor version.
   so restoring a backup on a different instance brings its media along instead of leaving file
   references pointing at nothing. Import still accepts a bare `pg_dump` archive from older
   backups (database only, in that case).
+- Calibration certificate PDFs are now digitally signed with a real, PDF-native signature (PAdES)
+  — any PDF viewer with signature support (Adobe Acrobat, Chrome, Preview) can verify a
+  certificate was issued by its organization and hasn't been altered since, independent of which
+  LaTeX template rendered it. Each organization gets a lazily-generated, self-signed RSA-2048
+  certificate on its first issued certificate, visible and downloadable from **Organizations →
+  (organization) → Certificate signing**. See
+  [Certificate digital signatures](/docs/guide/calibration/certificate-signing) for how to verify one.
+- Certificate templates documentation gained an extensive "Recipes" section with copy-pasteable
+  patterns for every placeholder shape, plus a minimal working template skeleton.
 
 ### Fixed
 

@@ -1,0 +1,125 @@
+---
+title: Certificate digital signatures
+description: How calibration certificate PDFs are cryptographically signed, and how to verify one.
+---
+
+Every calibration certificate PDF Open Gauge generates is digitally signed — a standard PDF
+signature (PAdES, [ISO 32000](https://www.iso.org/standard/75839.html)) embedded directly in the
+document, not a picture of a signature. Any PDF viewer with signature support (Adobe Acrobat,
+Chrome, Preview, ...) can verify it natively: that the certificate was issued by the organization
+it claims, and that the file hasn't been altered since. No Open Gauge account or API access is
+needed to check it — the proof travels with the PDF itself.
+
+This is a different, complementary mechanism from the performer's **signature image** described
+in [Certificate generation](./certificates.mdx) — that's a picture of a person's signature,
+cryptographically bound to their user account (see
+[Signatures](../self-hosting/authentication.mdx#signatures)) but not to the specific PDF bytes.
+The mechanism on this page signs the whole rendered document, independent of the performer and
+independent of which LaTeX template produced it.
+
+## How it works
+
+Signing happens as a post-processing step on the compiled PDF, after
+[Tectonic](https://tectonic-typesetting.github.io/) has already produced the final bytes — it
+runs identically whether the certificate came from the built-in template or a fully custom
+upload, since it never looks at the `.tex` source at all.
+
+1. Open Gauge resolves the calibrated asset's organization the same way it resolves which
+   certificate template to use (see
+   [Which template is used](./certificate-templates.mdx#uploading-a-template)) — asset's
+   organization, then location's organization, then performer's organization.
+2. That organization has (or lazily generates, on the very first certificate it ever issues) a
+   self-signed RSA-2048 X.509 certificate — its **signing certificate**.
+3. The compiled PDF is signed with that certificate: a **certification signature**
+   (`DocMDP=NO_CHANGES`), the strictest PDF signature level — any modification whatsoever after
+   signing, however small, invalidates it. That's the right guarantee for an issued calibration
+   certificate, which has no legitimate reason to change once issued.
+4. If the asset has no resolvable organization at all, an instance-wide fallback certificate is
+   used instead (generated the same way, lazily, the first time it's needed).
+
+Each organization's signing certificate is generated once and reused for every certificate it
+issues afterward — see [Organization signing certificate](#organization-signing-certificate) for
+where to find it.
+
+## Verifying a signed certificate
+
+Open any generated certificate PDF in a viewer with signature support:
+
+- **Adobe Acrobat / Acrobat Reader** — a banner reads "Signed and all signatures are valid" (or,
+  the first time, "Signature is valid, but the signer's identity has not been verified" — see
+  [Trusting the certificate](#trusting-the-certificate) below to remove that caveat). Click the
+  signature panel to see the signer name, the certificate's fingerprint, and the signing time.
+- **Chrome's built-in PDF viewer / macOS Preview** — look for the signature panel indicator in the
+  toolbar; both parse and validate PAdES signatures without a plugin.
+- **Command line** (any OS, no Adobe product required) — `pdfsig` from
+  [poppler-utils](https://poppler.freedesktop.org/) reports the same result:
+
+  ```console
+  $ pdfsig certificate_OG-90421_v3.pdf
+  Digital Signature Info of: certificate_OG-90421_v3.pdf
+  Signature #1:
+    - Signer Certificate Common Name: Acme Metrology Lab
+    - Signature Type: ETSI.CAdES.detached
+    - Signed Ranges: [0 - 12345], [23456 - EOF]
+    - Total document signed
+    - Signature is Valid.
+  ```
+
+Whatever tool you use, two things need to both be true for the certificate to be trustworthy:
+the signature is **intact** (the bytes haven't changed since signing) and the certificate chain
+is **valid** (the cryptographic math checks out). A viewer reporting "document has been altered"
+or "signature invalid" for a certificate downloaded from Open Gauge means the file was modified
+in transit or after download — treat it as untrusted and re-download from the source.
+
+## Trusting the certificate
+
+Because the certificate is **self-signed** (there's no external Certificate Authority involved —
+appropriate for a self-hosted product with no built-in dependency on any particular CA), a viewer
+that hasn't been told to trust it explicitly will validate the signature successfully but still
+show a caveat like "signer's identity has not been verified." This is expected, and is the same
+trust-on-first-use model as a self-signed TLS certificate — it doesn't mean the signature is
+weaker, only that the viewer doesn't yet know to trust *this specific* certificate.
+
+To remove the caveat permanently in Adobe Acrobat:
+
+1. Download the organization's public certificate — **Organizations → (organization) →
+   Certificate signing → Download certificate** in the Open Gauge UI, or
+   `GET /api/v1/organizations/{id}/signing-certificate` (see
+   [Organization signing certificate](#organization-signing-certificate)).
+2. In Acrobat: **Edit → Preferences → Signatures → Identities & Trusted Certificates → More...**,
+   then **Trusted Certificates → Import**, select the downloaded `.pem` file.
+3. Select it in the list → **Edit Trust** → check **Use this certificate as a trusted root**.
+
+Once imported, every certificate signed by that organization validates cleanly with no caveat —
+this is a one-time step per organization per person doing the verifying (an auditor, a customer,
+a regulator), not something Open Gauge or the signed PDF can do on their behalf.
+
+## Organization signing certificate
+
+Each organization's signing certificate (RSA-2048, self-signed, 10-year validity) is visible on
+its organization page — **Organizations → (organization)** — showing the algorithm, SHA-256
+fingerprint, and validity period, with a button to download the certificate (not the private
+key, which never leaves the server and is encrypted at rest the same way the per-user Ed25519
+signing keys used for signature images are — see
+[Signatures](../self-hosting/authentication.mdx#signatures)).
+
+It reads "No certificate yet" until the organization's first certificate is issued — the keypair
+is generated lazily on first use, not when the organization itself is created, so an organization
+that has never had a calibration certificate generated doesn't have an unused signing key sitting
+around.
+
+`GET /api/v1/organizations/{id}/signing-certificate` returns the same information as JSON (or
+`null` before the first certificate is issued); `GET /api/v1/admin/signing-certificate` returns
+the instance-wide fallback used for assets with no resolvable organization. Both are readable by
+any authenticated user — the certificate is the public half of the keypair, not a secret.
+
+## Why not the performer's personal key?
+
+The signature image already ties a specific technician to the certificate (see
+[Certificate generation](./certificates.mdx)) — the document-level signature described on this
+page uses the *organization's* certificate instead, deliberately: a calibration certificate is
+issued under the laboratory's authority, not the individual technician's, so it should remain
+verifiable even if the performing technician later leaves the organization or never set up a
+personal signature at all. The two mechanisms are complementary, not redundant — one identifies
+who performed the calibration, the other proves what lab issued the document and that it hasn't
+been tampered with since.

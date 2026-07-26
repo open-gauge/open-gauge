@@ -629,3 +629,35 @@ class TestProfilePictureInListings:
         requests = client.get(f"/api/v1/organizations/{org['id']}/join-requests", headers=auth_headers).json()
         assert len(requests) == 1
         assert requests[0]["user_profile_picture_url"]
+
+
+class TestSigningCertificate:
+    def test_null_before_any_certificate_has_been_issued(self, client: TestClient, auth_headers: dict) -> None:
+        org = _create_org(client, auth_headers)
+        resp = client.get(f"/api/v1/organizations/{org['id']}/signing-certificate", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json() is None
+
+    def test_returns_certificate_info_once_generated(
+        self, client: TestClient, auth_headers: dict, test_user, db: Session
+    ) -> None:
+        from app.services import org_signing_key_service
+
+        org = _create_org(client, auth_headers)
+        org_signing_key_service.get_or_create_signing_key(
+            db, organization_id=uuid.UUID(org["id"]), subject_common_name=org["name"], created_by=test_user.id,
+        )
+        db.commit()
+
+        resp = client.get(f"/api/v1/organizations/{org['id']}/signing-certificate", headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["algorithm"] == "RSA-2048"
+        assert body["subject_common_name"] == org["name"]
+        assert len(body["fingerprint_sha256"]) == 64
+        assert "BEGIN CERTIFICATE" in body["certificate_pem"]
+
+    def test_requires_authentication_like_other_org_endpoints(self, client: TestClient, auth_headers: dict) -> None:
+        org = _create_org(client, auth_headers)
+        resp = client.get(f"/api/v1/organizations/{org['id']}/signing-certificate")
+        assert resp.status_code == 403

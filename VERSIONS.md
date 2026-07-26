@@ -43,6 +43,27 @@ fixes and incremental additions that landed between each minor version.
   left every file reference pointing at media that only existed in the original instance's MinIO.
   Import still accepts a bare `pg_dump` archive from before this change for backward compatibility
   (database only, existing media untouched in that case).
+- Calibration certificate PDFs are now digitally signed with a real, PDF-native signature (PAdES,
+  embedded via the new `pyhanko` dependency) — any PDF viewer with signature support (Adobe
+  Acrobat, Chrome, Preview) can verify a certificate was issued by its organization and hasn't
+  been altered since, independent of which LaTeX template rendered it (signing runs as a
+  post-processing step on the compiled PDF bytes, after `latex_service.compile_tex`). Previously,
+  the performer's signature was only a picture on the page with no document-level verification.
+  Each organization gets a lazily-generated, self-signed RSA-2048 certificate on its first issued
+  certificate (new `organization_signing_keys` table / `org_signing_key_service.py`; an
+  instance-wide fallback covers assets with no resolvable organization), visible and downloadable
+  from **Organizations → (organization) → Certificate signing**, and via
+  `GET /organizations/{id}/signing-certificate` / `GET /admin/signing-certificate`. The private-key
+  envelope-encryption helper in `signing_key_service.py` (used for per-user Ed25519 signature-image
+  keys) was factored out into a shared `key_wrap.py`, reused by the new org keys. See
+  [Certificate digital signatures](apps/docs/content/docs/guide/calibration/certificate-signing.mdx)
+  for how to verify one and why it's a separate mechanism from the performer's signature image.
+  `cryptography` bumped from 42.0.8 to 48.0.1 (pyhanko's floor).
+- Certificate templates documentation gained an extensive "Recipes" section — copy-pasteable
+  patterns for every placeholder shape (optional text/image/nested-object fields, looping a list
+  of rows, the two raw-LaTeX-math exceptions to the `|latex` escaping rule) plus a minimal working
+  template skeleton, so authoring a custom `.tex` template no longer requires reverse-engineering
+  the two shipped examples line by line.
 
 ### Fixed
 

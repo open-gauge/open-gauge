@@ -27,6 +27,8 @@ from ..repositories import organization as org_repo
 from ..repositories import stored_file as file_repo
 from ..repositories import user_signature as signature_repo
 from ..services import latex_service
+from ..services import org_signing_key_service
+from ..services import pdf_signing_service
 from ..services import storage as storage_svc
 from ..utils.uncertainty_format import format_expanded_uncertainty_statement, round_to_sig_figs
 
@@ -766,4 +768,19 @@ def generate_certificate(
 
     template_source = resolve_template_source(db, organization, template_id=template_id)
     rendered = latex_service.render_template(template_source, context)
-    return latex_service.compile_tex(rendered, images)
+    pdf_bytes = latex_service.compile_tex(rendered, images)
+
+    # Embed a PAdES digital signature — a post-processing step on the
+    # compiled bytes, so it applies identically regardless of which
+    # template produced them. organization=None falls back to a single
+    # instance-wide signing certificate (see org_signing_key_service).
+    signer_name = organization.name if organization else "Open Gauge (self-hosted instance)"
+    org_key = org_signing_key_service.get_or_create_signing_key(
+        db,
+        organization_id=organization.id if organization else None,
+        subject_common_name=signer_name,
+        created_by=calibration.created_by,
+    )
+    return pdf_signing_service.sign_certificate_pdf(
+        pdf_bytes, org_key, reason=f"Calibration certificate issued by {signer_name}"
+    )

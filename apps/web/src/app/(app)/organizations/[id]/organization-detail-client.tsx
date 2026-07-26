@@ -8,12 +8,14 @@ import {
   BuildingIcon,
   CheckIcon,
   ChevronLeftIcon,
+  DownloadIcon,
   EditIcon,
   GlobeIcon,
   LockIcon,
   MailIcon,
   PhoneIcon,
   PlusIcon,
+  ShieldCheckIcon,
   TrashIcon,
   XIcon,
 } from "@/components/icons";
@@ -22,6 +24,8 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { Avatar } from "@/components/avatar";
 import { UserSummary } from "@/components/user-summary";
 import { ToggleSwitch } from "@/components/toggle-switch";
+import { Tooltip } from "@/components/tooltip";
+import { CERTIFICATE_DOCS_LINKS } from "@/lib/docs-links";
 import {
   addMembers,
   approveJoinRequest,
@@ -29,6 +33,7 @@ import {
   restoreOrganization,
   deleteOrgLogo,
   getOrganization,
+  getSigningCertificate,
   leaveOrganization,
   listEligibleMembers,
   listJoinRequests,
@@ -41,7 +46,14 @@ import {
   uploadOrgLogo,
 } from "@/services/organization.service";
 import { listLocations } from "@/services/asset.service";
-import type { EligibleUser, Organization, OrganizationJoinRequest, OrganizationMember, OrgRole } from "@/types/organization";
+import type {
+  EligibleUser,
+  Organization,
+  OrganizationJoinRequest,
+  OrganizationMember,
+  OrgRole,
+  SigningCertificate,
+} from "@/types/organization";
 import type { LocationOption } from "@/types/asset";
 
 const IB = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
@@ -223,6 +235,7 @@ export default function OrganizationDetailClient() {
   const [members, setMembers] = useState<OrganizationMember[] | null>(null);
   const [requests, setRequests] = useState<OrganizationJoinRequest[] | null>(null);
   const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [signingCert, setSigningCert] = useState<SigningCertificate | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<EditForm | null>(null);
@@ -247,6 +260,9 @@ export default function OrganizationDetailClient() {
         if (o.can_manage) {
           listJoinRequests(id).then(setRequests).catch(() => setRequests([]));
           listLocations().then(setLocations).catch(() => {});
+        }
+        if (!o.private || o.is_member) {
+          getSigningCertificate(id).then(setSigningCert).catch(() => setSigningCert(null));
         }
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load organization"))
@@ -322,6 +338,17 @@ export default function OrganizationDetailClient() {
     } finally {
       setLogoUploading(false);
     }
+  }
+
+  function handleDownloadCertificate() {
+    if (!signingCert || !org) return;
+    const blob = new Blob([signingCert.certificate_pem], { type: "application/x-pem-file" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${org.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-signing-certificate.pem`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function handleRoleChange(userId: string, role: OrgRole) {
@@ -608,6 +635,47 @@ export default function OrganizationDetailClient() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Digital signature */}
+              {(!org.private || org.is_member) && (
+                <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheckIcon size={13} className="text-og-accent" />
+                      <p className="text-xs font-semibold text-og-text">Certificate signing</p>
+                      <Tooltip
+                        content="Every calibration certificate PDF issued for this organization is digitally signed (PAdES) with this certificate — any PDF viewer with signature support (Adobe Acrobat, Chrome, Preview) can verify it was issued by this organization and has not been altered since."
+                        docsHref={CERTIFICATE_DOCS_LINKS.signing_certificate}
+                      >
+                        <span className="text-gray-300 cursor-help text-[11px]">ⓘ</span>
+                      </Tooltip>
+                    </div>
+                    {signingCert && (
+                      <button
+                        type="button"
+                        onClick={handleDownloadCertificate}
+                        className="flex items-center gap-1.5 text-[11px] font-medium text-og-accent hover:underline"
+                      >
+                        <DownloadIcon size={11} /> Download certificate
+                      </button>
+                    )}
+                  </div>
+                  <div className="px-5 py-2">
+                    {signingCert ? (
+                      <>
+                        <InfoRow label="Algorithm" value={signingCert.algorithm} />
+                        <InfoRow label="Fingerprint" value={<span className="font-mono text-xs break-all">{signingCert.fingerprint_sha256}</span>} />
+                        <InfoRow label="Valid" value={`${fmtDate(signingCert.not_valid_before)} – ${fmtDate(signingCert.not_valid_after)}`} />
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400 py-3">
+                        No certificate yet — generated automatically the first time a calibration
+                        certificate is issued for this organization.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

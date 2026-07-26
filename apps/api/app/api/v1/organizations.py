@@ -13,6 +13,7 @@ from ...repositories import audit_log as audit_log_repo
 from ...repositories import location as location_repo
 from ...repositories import organization as org_repo
 from ...repositories import organization_join_request as join_repo
+from ...repositories import organization_signing_key as org_signing_key_repo
 from ...repositories import stored_file as file_repo
 from ...schemas.organization import (
     AddMembersRequest,
@@ -25,6 +26,7 @@ from ...schemas.organization import (
     OrganizationResponse,
     OrganizationUpdate,
 )
+from ...schemas.organization_signing_key import SigningCertificateResponse
 from ...services import organization_notify as org_notify
 from ...services import organization_permissions as org_perm
 from ...services import storage as storage_svc
@@ -189,6 +191,29 @@ def get_organization(
 ) -> OrganizationResponse:
     org = _get_org_or_404(db, org_id, current_user)
     return _build_org_response(db, org, current_user)
+
+
+@router.get("/{org_id}/signing-certificate", response_model=SigningCertificateResponse | None)
+def get_organization_signing_certificate(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SigningCertificateResponse | None:
+    """The X.509 certificate used to digitally sign this organization's
+    calibration certificate PDFs (see pdf_signing_service). Not secret — it's
+    the public half of the keypair, published so a recipient of a signed PDF
+    can import it as an explicitly trusted root in their PDF viewer instead
+    of seeing an "untrusted signer" warning for the self-signed cert.
+
+    Returns null until the organization's first certificate has been
+    generated — the keypair is created lazily on first use, not on
+    organization creation (mirrors GET /users/{id}/signature's null-until-uploaded shape).
+    """
+    _ = _get_org_or_404(db, org_id, current_user)
+    key = org_signing_key_repo.get_by_organization_id(db, org_id)
+    if not key:
+        return None
+    return SigningCertificateResponse.model_validate(key, from_attributes=True)
 
 
 @router.put("/{org_id}", response_model=OrganizationResponse)

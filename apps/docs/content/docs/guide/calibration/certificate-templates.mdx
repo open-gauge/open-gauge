@@ -122,6 +122,205 @@ rendered sample PDF.
 | `chart_path` | image path, optional — scatter + fit-curve chart |
 | `lab_footer` | text, optional — printed in the page footer |
 
+## Recipes: common patterns
+
+Every pattern below is copy-pasteable — each is lifted directly from `default.tex.jinja` or
+`example_tables.tex` (see [Example templates in the repo](#example-templates-in-the-repo)), so
+it's guaranteed to compile.
+
+### Plain text field, escaped
+
+The overwhelming majority of placeholders are plain text and must go through the `latex` filter:
+
+```latex
+\textbf{Asset ID:} \VAR{asset_id|latex}
+\textbf{Manufacturer:} \VAR{asset_manufacturer|latex}
+```
+
+Forgetting `|latex` on free text is the most common template bug — it compiles fine until a real
+asset name contains `&`, `%`, `_`, or `#`, at which point LaTeX either errors or silently mangles
+the output. Numeric/pre-formatted fields (`version`, `calibration_id`, table values already
+formatted by the backend) don't need it, but adding it anyway is harmless — the filter only
+touches the handful of characters LaTeX treats specially.
+
+### Optional field — text
+
+Most fields can be `None`/empty (e.g. an asset with no notes, a calibration with no external lab).
+Guard them with `\BLOCK{if ...}` so the line disappears instead of printing "None" or a stray
+label with nothing after it:
+
+```latex
+\BLOCK{if asset_notes}
+\small\textbf{\color{oggray}Notes:} \VAR{asset_notes|latex}\normalsize
+\BLOCK{endif}
+```
+
+```latex
+\BLOCK{if temperature or humidity or pressure}
+Environmental Conditions:\ %
+\BLOCK{if temperature}Temperature: \VAR{temperature|latex}~\textdegree C\BLOCK{endif}
+\BLOCK{if humidity}\ \textbullet\ Humidity: \VAR{humidity|latex}~\%RH\BLOCK{endif}
+\BLOCK{if pressure}\ \textbullet\ Pressure: \VAR{pressure|latex}~Pa\BLOCK{endif}
+\BLOCK{endif}
+```
+
+### Optional field — image
+
+Image placeholders (`org_logo_path`, `performer_signature_path`, `qr_path`, `chart_path`) are
+`None` whenever that asset doesn't exist (no logo uploaded, no signature on file, chart couldn't
+be rendered) — always guard `\includegraphics` the same way, and never pass an image path through
+`|latex` (it's a plain filename, not text):
+
+```latex
+\BLOCK{if performer_signature_path}
+\includegraphics[width=40mm]{\VAR{performer_signature_path}}\\[-1mm]
+\rule{40mm}{0.4pt}\\
+\footnotesize\VAR{performer_name|latex}
+\BLOCK{endif}
+```
+
+### Optional field — nested object
+
+`channel`, `procedure`, `reference_asset`, `conformity` are `None` as a whole object when that
+data doesn't apply to the calibration — guard the *object*, then access its attributes freely
+inside the block without re-checking each one:
+
+```latex
+\BLOCK{if channel}
+\textbf{Channel} & \textbf{Quantity} & \textbf{Unit} & \textbf{Min} & \textbf{Max} & \textbf{Accuracy}\\
+\VAR{channel.id|latex} & \VAR{channel.quantity|latex} & \VAR{channel.unit|latex} & \VAR{channel.min|latex} & \VAR{channel.max|latex} & \VAR{channel.accuracy|latex}\\
+\BLOCK{endif}
+```
+
+```latex
+\BLOCK{if procedure}
+\textbf{Procedure ID} & \VAR{procedure.id|latex} & \textbf{Procedure Name} & \VAR{procedure.name|latex}\\
+\textbf{Procedure Version} & \VAR{procedure.version|latex} & \textbf{Standard Ref.} & \VAR{procedure.standard_ref|latex}\\
+\BLOCK{endif}
+```
+
+### Looping a list of rows
+
+`coefficient_rows`, `stat_rows`, `results_summary`, `uncertainty_budget_rows`, and `dataset_rows`
+are all lists of small objects — loop with `\BLOCK{for ... in ...}\BLOCK{endfor}`, one table row
+per iteration:
+
+```latex
+\begin{tabular}{@{}p{24mm}@{}p{20mm}@{}p{56mm}@{}}
+\toprule
+\textbf{Coefficient} & \textbf{Term} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.term|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+```
+
+The same loop works for `stat_rows` (a flatter `{label, value}` shape) and `dataset_rows` (more
+columns) — only the column list inside the loop body changes:
+
+```latex
+\BLOCK{for row in stat_rows}
+\VAR{row.label|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+```
+
+```latex
+\BLOCK{for row in dataset_rows}
+\VAR{row.index|latex} & \VAR{row.measured|latex} & \VAR{row.reference|latex} & \VAR{row.fit|latex} & \VAR{row.residual_abs|latex} & \VAR{row.residual_pct|latex}\\
+\BLOCK{endfor}
+```
+
+Combine a list-guard with the loop when the whole table should disappear if there's no data at
+all (rather than rendering an empty `tabular` with just a header row):
+
+```latex
+\BLOCK{if uncertainty_budget_rows}
+\begin{tabular}{@{}p{48mm}@{}p{28mm}@{}p{45mm}@{}p{20mm}@{}}
+\toprule
+\textbf{Source} & \textbf{Distribution} & \textbf{Std. Uncertainty (u)} & \textbf{dof}\\
+\midrule
+\BLOCK{for row in uncertainty_budget_rows}
+\VAR{row.source|latex} & \VAR{row.distribution|latex} & \VAR{row.standard_uncertainty|latex} & \VAR{row.dof|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+```
+
+### Raw LaTeX math — do NOT filter
+
+`coefficient_rows[].name` and `function_formula` are the two exceptions to "always use `|latex`"
+— they contain literal LaTeX math syntax (`$a_{0}$`, `f(x) = a_0 + a_1 x`) generated by the
+backend specifically to be dropped into math mode as-is. Filtering them would escape the `$`,
+`_`, and `{}` characters that make them render as math in the first place:
+
+```latex
+% Wrong — the escape filter mangles the math syntax:
+\VAR{function_formula|latex}
+
+% Right:
+\[ \VAR{function_formula} \]
+```
+
+```latex
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.name} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+```
+
+Note `row.name` (unfiltered, raw math) sitting next to `row.coefficient|latex` and
+`row.value|latex` (filtered, plain text) in the same row — only the field documented as "raw
+LaTeX math" in the [placeholder reference](#placeholder-reference) skips the filter.
+
+### A minimal working template
+
+Everything above assembled into the smallest template that still produces a usable certificate —
+strip this down further or use it as a starting skeleton:
+
+```latex
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=20mm]{geometry}
+\usepackage{fontspec}
+\setmainfont{DejaVu Sans}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\begin{document}
+
+{\Large\bfseries \VAR{org_name|latex}} \hfill \VAR{certificate_number|latex}
+
+\vspace{4mm}
+\textbf{Asset:} \VAR{asset_id|latex} --- \VAR{asset_name|latex}\\
+\textbf{Calibrated:} \VAR{calibration_date|latex} \quad \textbf{Due:} \VAR{due_date|latex}\\
+\textbf{Performed by:} \VAR{performer_name|latex}
+
+\BLOCK{if coefficient_rows}
+\vspace{4mm}
+\begin{tabular}{ll}
+\toprule
+\textbf{Coefficient} & \textbf{Value}\\
+\midrule
+\BLOCK{for row in coefficient_rows}
+\VAR{row.coefficient|latex} & \VAR{row.value|latex}\\
+\BLOCK{endfor}
+\bottomrule
+\end{tabular}
+\BLOCK{endif}
+
+\BLOCK{if performer_signature_path}
+\vspace{8mm}
+\includegraphics[width=35mm]{\VAR{performer_signature_path}}
+\BLOCK{endif}
+
+\end{document}
+```
+
+Every generated certificate PDF — regardless of which template produced it, including this
+minimal one — is digitally signed after compilation; see
+[Certificate digital signatures](certificate-signing.mdx) for how that works and how to verify it.
+
 ## Example templates in the repo
 
 Two complete, working templates ship in `apps/api/app/templates/certificates/` as reference

@@ -1,35 +1,17 @@
-import base64
 import hashlib
 import json
-import os
 import uuid
 from datetime import datetime, timezone
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from sqlalchemy.orm import Session
 
-from ..core.config import settings
 from ..models.user import User
 from ..models.user_signing_key import UserSigningKey
 from ..repositories import user_signing_key as signing_key_repo
-
-_HKDF_INFO = b"opengauge-signing-key-wrap-v1"
-
-
-def _derive_wrap_key() -> bytes:
-    """Derive the AES-256-GCM key that wraps private keys at rest from the app's SECRET_KEY.
-
-    This protects against a database-only compromise (dump/backup theft); it does not
-    protect against compromise of the running app process, which holds SECRET_KEY in
-    memory and can unwrap on demand. There is no external KMS in a self-hosted deployment,
-    so this is the practical ceiling for this threat model.
-    """
-    hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=_HKDF_INFO)
-    return hkdf.derive(settings.secret_key.encode("utf-8"))
+from . import key_wrap
 
 
 def _wrap_private_key(private_key: Ed25519PrivateKey) -> str:
@@ -38,17 +20,11 @@ def _wrap_private_key(private_key: Ed25519PrivateKey) -> str:
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     )
-    aesgcm = AESGCM(_derive_wrap_key())
-    nonce = os.urandom(12)
-    ciphertext = aesgcm.encrypt(nonce, pem, None)
-    return base64.b64encode(nonce + ciphertext).decode("ascii")
+    return key_wrap.wrap_private_key_pem(pem)
 
 
 def _unwrap_private_key(encrypted: str) -> Ed25519PrivateKey:
-    raw = base64.b64decode(encrypted)
-    nonce, ciphertext = raw[:12], raw[12:]
-    aesgcm = AESGCM(_derive_wrap_key())
-    pem = aesgcm.decrypt(nonce, ciphertext, None)
+    pem = key_wrap.unwrap_private_key_pem(encrypted)
     private_key = serialization.load_pem_private_key(pem, password=None)
     if not isinstance(private_key, Ed25519PrivateKey):
         raise ValueError("Stored key is not an Ed25519 private key")

@@ -8,8 +8,11 @@ psycopg2-binary==2.9.9
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
-cryptography==42.0.8
+cryptography==48.0.1
 python-multipart==0.0.9
+# PDF digital signatures (PAdES) on generated certificates — see
+# app/services/pdf_signing_service.py. Requires cryptography>=48 (bumped above).
+pyhanko==0.36.2
 email-validator==2.1.0
 minio==7.2.7
 numpy==1.26.4

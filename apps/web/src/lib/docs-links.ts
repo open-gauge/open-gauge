@@ -105,3 +105,8 @@ export const DETAILED_METRIC_DOCS_LINKS: Record<string, string> = {
   delta_hysteresis: STAT_DOCS_LINKS.hysteresis,
   trend_classification: HEALTH_DOCS_LINKS.prediction,
 };
+
+// Organization signing certificate — apps/docs/content/docs/guide/calibration/certificate-signing.mdx
+export const CERTIFICATE_DOCS_LINKS: Record<string, string> = {
+  signing_certificate: "/docs/guide/calibration/certificate-signing#organization-signing-certificate",
+};

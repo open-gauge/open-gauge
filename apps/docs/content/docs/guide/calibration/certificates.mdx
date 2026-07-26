@@ -37,6 +37,11 @@ change the layout, wording, or branding without any code changes — see
   typed "Performed by" name exactly matches an active user's display name, that user's signature
   is still used.
 
+This signature image is a picture on the page, not a verifiable signature of the *document* —
+every generated certificate PDF is separately and additionally digitally signed (PAdES, embedded
+in the PDF itself by any PDF viewer with signature support) after compilation, regardless of
+which template produced it. See [Certificate digital signatures](./certificate-signing.mdx).
+
 The uncertainty section prints a full-sentence GUM §7.2.4-style statement — value, coverage
 factor, basis (normal vs. t-distribution), confidence level, and the valid range the
 uncertainty applies over — adapted for a calibration *function* rather than a single

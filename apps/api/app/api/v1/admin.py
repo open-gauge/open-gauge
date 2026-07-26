@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ...core.config import settings
 from ...core.database import SessionLocal, get_db
-from ...dependencies.deps import require_admin, require_superadmin
+from ...dependencies.deps import get_current_user, require_admin, require_superadmin
 from ...models.asset import Asset
 from ...models.calibration import Calibration
 from ...models.calibration_method import Procedure
@@ -17,7 +17,9 @@ from ...models.organization import Organization
 from ...models.user import User
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import email_settings as email_settings_repo
+from ...repositories import organization_signing_key as org_signing_key_repo
 from ...schemas.email_settings import EmailSettingsResponse, EmailSettingsUpdate, TestEmailRequest
+from ...schemas.organization_signing_key import SigningCertificateResponse
 from ...services import database_admin_service as db_admin_svc
 from ...services import mail as mail_svc
 
@@ -76,6 +78,27 @@ def get_admin_system(
         db_status="ok" if db_ok else "error",
         api_version=settings.app_version,
     )
+
+
+@router.get("/signing-certificate", response_model=SigningCertificateResponse | None)
+def get_instance_signing_certificate(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SigningCertificateResponse | None:
+    """The instance-wide fallback signing certificate, used to sign
+    calibration certificates whose asset has no resolvable organization
+    (see certificate_service.resolve_organization). Not secret — see
+    GET /organizations/{id}/signing-certificate for the per-organization
+    equivalent, which is used instead whenever an organization can be
+    resolved.
+
+    Returns null until the first such certificate has been generated.
+    """
+    _ = current_user
+    key = org_signing_key_repo.get_by_organization_id(db, None)
+    if not key:
+        return None
+    return SigningCertificateResponse.model_validate(key, from_attributes=True)
 
 
 # ---------------------------------------------------------------------------

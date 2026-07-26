@@ -78,3 +78,12 @@ export interface OrganizationCreateBody {
 }
 
 export type OrganizationUpdateBody = Partial<OrganizationCreateBody> & { is_active?: boolean };
+
+export interface SigningCertificate {
+  algorithm: string;
+  subject_common_name: string;
+  certificate_pem: string;
+  fingerprint_sha256: string;
+  not_valid_before: string;
+  not_valid_after: string;
+}

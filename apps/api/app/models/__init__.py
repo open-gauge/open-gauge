@@ -14,6 +14,7 @@ from . import (  # noqa: F401
     organization,
     organization_join_request,
     organization_member,
+    organization_signing_key,
     sensor,
     stored_file,
     user,

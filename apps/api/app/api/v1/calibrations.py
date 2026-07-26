@@ -26,6 +26,7 @@ from ...schemas.calibration import (
 from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
 from ...services.latex_service import LatexCompileError
+from ...services.pdf_signing_service import CertificateSigningError
 from ...services.storage import delete_file, get_presigned_url, sha256_hex, upload_file
 
 logger = logging.getLogger(__name__)
@@ -380,6 +381,8 @@ def download_certificate(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except LatexCompileError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except CertificateSigningError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     filename = f"certificate_{asset.asset_id}_v{cal.calibration_version}.pdf"

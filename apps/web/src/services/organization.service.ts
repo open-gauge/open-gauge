@@ -9,6 +9,7 @@ import type {
   OrganizationMember,
   OrganizationUpdateBody,
   OrgRole,
+  SigningCertificate,
 } from "@/types/organization";
 
 function tokenHeader(): Record<string, string> {
@@ -122,6 +123,12 @@ export async function approveJoinRequest(id: string, requestId: string): Promise
 export async function rejectJoinRequest(id: string, requestId: string): Promise<void> {
   return apiFetch<void>(`/api/v1/organizations/${id}/join-requests/${requestId}/reject`, {
     method: "POST",
+    headers: tokenHeader(),
+  });
+}
+
+export async function getSigningCertificate(id: string): Promise<SigningCertificate | null> {
+  return apiFetch<SigningCertificate | null>(`/api/v1/organizations/${id}/signing-certificate`, {
     headers: tokenHeader(),
   });
 }
