@@ -4,10 +4,6 @@ interface ToggleSwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
-  /** Suppress the "On"/"Off" text label — for dense per-row selection lists
-   * (e.g. picking users in a modal) where a label on every row is noise.
-   * Defaults to shown, per UI.md's toggle-switch convention. */
-  showLabel?: boolean;
   /** "sm" for compact inline filters (matches the old 14px checkbox size);
    * "md" (default) for standalone settings toggles. */
   size?: "sm" | "md";
@@ -36,7 +32,6 @@ export function ToggleSwitch({
   checked,
   onChange,
   disabled = false,
-  showLabel = true,
   size = "md",
   className = "",
   ...rest
@@ -60,9 +55,6 @@ export function ToggleSwitch({
           }`}
         />
       </button>
-      {showLabel && (
-        <span className="text-xs font-medium text-gray-400 select-none w-6">{checked ? "On" : "Off"}</span>
-      )}
     </span>
   );
 }

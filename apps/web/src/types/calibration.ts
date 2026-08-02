@@ -55,8 +55,11 @@ export interface CalibrationRecord {
 
   // Environmental conditions (canonical units: °C, %RH, Pa)
   temperature: number | null;
+  temperature_uncertainty: number | null;
   humidity: number | null;
+  humidity_uncertainty: number | null;
   pressure: number | null;
+  pressure_uncertainty: number | null;
 
   // Polynomial model
   poly_order: number | null;
@@ -144,6 +147,16 @@ export interface CalibrationPoint {
   reference_unit: string;
   measured_unit: string;
   created_at: string;
+}
+
+/** Minimal shape the shared ResidualsChart component needs — both CalibrationPoint
+ * (saved calibrations) and AnalyzePointOut (live wizard analysis) are structural
+ * supersets, mapped explicitly at each call site. */
+export interface ResidualPoint {
+  point_index: number;
+  reference_value: number;
+  residual_abs: number | null;
+  residual_pct: number | null;
 }
 
 export interface FrequencyResponsePoint {
@@ -324,8 +337,11 @@ export interface CalibrationCreateBody {
 
   // Environmental conditions (canonical units: °C, %RH, Pa)
   temperature?: number | null;
+  temperature_uncertainty?: number | null;
   humidity?: number | null;
+  humidity_uncertainty?: number | null;
   pressure?: number | null;
+  pressure_uncertainty?: number | null;
 
   // Polynomial model
   poly_order?: number | null;

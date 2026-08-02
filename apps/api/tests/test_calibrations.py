@@ -275,8 +275,11 @@ def _atomic_payload(asset_id: str, sensor_id: str | None = None) -> dict:
         "calibration_version": 1,
         **({"sensor_id": sensor_id} if sensor_id else {}),
         "temperature": 23.0,
+        "temperature_uncertainty": 0.5,
         "humidity": 48.0,
+        "humidity_uncertainty": 2.0,
         "pressure": 101325.0,
+        "pressure_uncertainty": 50.0,
         "poly_order": 1,
         "poly_coefficients": [1.0015, 0.023],
         "range_min": 0.0,
@@ -354,6 +357,9 @@ class TestAtomicCalibrationCreate:
         assert abs(body["temperature"] - 23.0) < 0.01
         assert abs(body["pressure"] - 101325.0) < 1.0
         assert abs(body["humidity"] - 48.0) < 0.01
+        assert abs(body["temperature_uncertainty"] - 0.5) < 0.01
+        assert abs(body["pressure_uncertainty"] - 50.0) < 1.0
+        assert abs(body["humidity_uncertainty"] - 2.0) < 0.01
 
     def test_polynomial_and_regression_fields_retrievable(
         self, client: TestClient, auth_headers: dict, asset: dict

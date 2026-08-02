@@ -557,7 +557,6 @@ function NotificationsSection() {
                       checked={pref?.email_enabled ?? true}
                       disabled={savingCategory === category}
                       onChange={(v) => handleToggle(category, "email_enabled", v)}
-                      showLabel={false}
                     />
                   </div>
                   <div className="flex justify-center">
@@ -565,7 +564,6 @@ function NotificationsSection() {
                       checked={pref?.in_app_enabled ?? true}
                       disabled={savingCategory === category}
                       onChange={(v) => handleToggle(category, "in_app_enabled", v)}
-                      showLabel={false}
                     />
                   </div>
                 </div>

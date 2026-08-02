@@ -57,10 +57,16 @@ class Calibration(Base):
     calibration_data_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("calibration_data.id"), nullable=True)
     calibration_location_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True)
 
-    # Environmental conditions (canonical units: °C, %RH, Pa)
+    # Environmental conditions (canonical units: °C, %RH, Pa). Each has an optional
+    # uncertainty (± magnitude), stored in the same canonical unit as its value —
+    # the wizard converts an entered uncertainty through the same unit conversion
+    # as the value (minus any additive offset, since a delta has none).
     temperature: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+    temperature_uncertainty: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     humidity: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    humidity_uncertainty: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     pressure: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    pressure_uncertainty: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     # Optional frequency-response sweep (see CalibrationFrequencyPoint for the swept
     # points). Values are stored exactly as entered, not canonicalized — the sweep's

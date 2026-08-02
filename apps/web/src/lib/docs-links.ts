@@ -110,3 +110,24 @@ export const DETAILED_METRIC_DOCS_LINKS: Record<string, string> = {
 export const CERTIFICATE_DOCS_LINKS: Record<string, string> = {
   signing_certificate: "/docs/guide/calibration/certificate-signing#organization-signing-certificate",
 };
+
+// Calibration wizard Step 1 fields — apps/docs/content/docs/guide/calibration/wizard-fields.mdx
+export const WIZARD_DOCS_LINKS: Record<string, string> = {
+  channel: "/docs/guide/calibration/wizard-fields#channel",
+  calibration_date: "/docs/guide/calibration/wizard-fields#calibration-date",
+  registered_by: "/docs/guide/calibration/wizard-fields#registered-by",
+  checked_by: "/docs/guide/calibration/wizard-fields#checked-by",
+  calibration_interval: "/docs/guide/calibration/wizard-fields#calibration-interval",
+  calibration_type: "/docs/guide/calibration/wizard-fields#calibration-type",
+  calibration_purpose: "/docs/guide/calibration/wizard-fields#calibration-purpose",
+  calibration_lab: "/docs/guide/calibration/wizard-fields#calibration-lab",
+  calibration_certificate: "/docs/guide/calibration/wizard-fields#calibration-certificate",
+  coefficients_only: "/docs/guide/calibration/wizard-fields#coefficients-only",
+  reference_asset: "/docs/guide/calibration/wizard-fields#reference-asset",
+  calibration_method: "/docs/guide/calibration/wizard-fields#calibration-method",
+  repair_date: "/docs/guide/calibration/wizard-fields#repair-date",
+  repair_description: "/docs/guide/calibration/wizard-fields#repair-description",
+  add_frequency_response: "/docs/guide/calibration/wizard-fields#add-frequency-response",
+  environmental_conditions: "/docs/guide/calibration/wizard-fields#environmental-conditions",
+  notes: "/docs/guide/calibration/wizard-fields#notes",
+};

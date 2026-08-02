@@ -1,0 +1,138 @@
+---
+title: Référence des champs de l'assistant de calibration
+description: Ce que signifie chaque champ de la première étape de l'assistant de calibration, et un exemple de la façon de le remplir.
+---
+
+Une référence champ par champ pour l'étape 1 (« Informations générales ») de l'assistant de
+calibration — à quoi sert chaque champ, et un exemple concret. Pour le flux global de l'assistant,
+voir [Aperçu de la calibration](./overview.mdx) ; pour la classification type/objectif à laquelle
+contribuent ces champs, voir [Type de calibration](./overview.mdx#calibration-type) et
+[Objectif de la calibration](./overview.mdx#calibration-purpose).
+
+## Voie
+
+La voie du capteur à laquelle s'applique cet enregistrement de calibration. Chaque voie conserve
+un historique de calibration et une date d'échéance indépendants — un actif multi-voies (par ex.
+un transmetteur avec des sorties séparées de pression et de température) affiche ce champ ; un
+actif à voie unique n'en a pas besoin, puisqu'il n'y a qu'une seule voie à choisir. Exemple : un
+enregistreur de données à 3 voies affiche ici « CH2 — Humidité » lorsque vous calibrez
+spécifiquement son entrée d'humidité.
+
+## Date de calibration
+
+La date à laquelle la comparaison référence/mesuré a réellement été effectuée — pas la date à
+laquelle vous saisissez l'enregistrement. Elle sert à calculer la date d'échéance à partir de
+l'intervalle de calibration ci-dessous. Exemple : une calibration effectuée au laboratoire le
+`2026-03-14` est enregistrée avec cette date même si vous la saisissez dans Open Gauge une semaine
+plus tard.
+
+## Enregistré par
+
+Qui a effectué et enregistre cette calibration — par défaut vous-même, modifiable pour créditer un
+autre membre de l'équipe qui a réellement effectué le travail. Exemple : vous saisissez des
+données historiques pour le compte d'un collègue qui a effectué la calibration le mois dernier —
+choisissez son nom ici plutôt que le vôtre.
+
+## Vérifié par
+
+Un second réviseur optionnel. En assigner un place l'enregistrement en attente d'approbation
+plutôt qu'à l'état valide, jusqu'à ce qu'il l'approuve ou le rejette — voir
+[Flux d'approbation](./overview.mdx#approval-workflow). Laissez ce champ vide pour les
+calibrations qui n'ont pas besoin d'une seconde validation ; l'enregistrement est valide
+immédiatement.
+
+## Intervalle de calibration
+
+Nombre de mois avant la prochaine calibration de cette voie, par ex. `12` pour une cadence
+annuelle ou `6` pour semestrielle. Pré-rempli à partir de l'intervalle par défaut configuré de la
+voie, mais modifiable par calibration — une voie qui dérive plus vite que prévu peut se voir
+attribuer un intervalle plus court cette fois.
+
+## Type de calibration
+
+Qui a effectué la calibration — **OEM**, un **Laboratoire Externe Accrédité**, votre
+**Laboratoire interne (maison)**, ou un **Actif du client** que vous avez calibré pour son
+compte. Ceci détermine ce vers quoi se résout le champ Laboratoire de calibration ci-dessous. Voir
+[Type de calibration](./overview.mdx#calibration-type) pour le détail complet de chaque option.
+
+## Objectif de la calibration
+
+Pourquoi cette calibration a été effectuée : **Initiale** (la toute première de la voie),
+**Routine** (une recalibration périodique), **Après réparation** (suite à une réparation — révèle
+les champs de date/description de réparation ci-dessous), ou **Vérification** (un contrôle
+ponctuel). Voir [Objectif de la calibration](./overview.mdx#calibration-purpose) pour plus de
+détails, y compris la façon dont un enregistrement Après réparation alimente la comparaison
+avant/après de l'onglet Santé.
+
+## Laboratoire de calibration
+
+Où — ou par qui — la calibration a été réalisée. La forme de ce champ change selon le Type de
+calibration : un instantané en lecture seule du fabricant de l'actif pour **OEM**, un sélecteur
+parmi vos organisations externes pour **Laboratoire Externe Accrédité**/**Actif du client**, ou un
+sélecteur parmi vos sites configurés pour **Laboratoire interne**. Exemple : choisir Laboratoire
+interne affiche une liste déroulante des sites de votre organisation marqués comme laboratoires de
+calibration, par ex. « Bâtiment 3 — Laboratoire de métrologie ».
+
+## Certificat de calibration
+
+Téléversez le certificat PDF émis par le laboratoire — disponible uniquement pour les types
+**OEM** et **Laboratoire Externe Accrédité**. Open Gauge vérifie que le fichier est bien un PDF (à
+la fois par le type déclaré et par la signature du fichier) avant de l'accepter. S'il est fourni,
+il est servi à la place du certificat généré par le système partout où le certificat de cette
+calibration est téléchargé.
+
+## Coefficients uniquement (sans données brutes)
+
+Cochez cette case lorsque le certificat indique déjà directement les coefficients du polynôme de
+calibration, sans qu'aucun point de données brutes référence/mesuré ne soit inclus — cela saute
+entièrement l'ajustement de courbe et fait passer l'étape 2 à la saisie manuelle des coefficients.
+Voir [Calibrations à coefficients uniquement](./coefficients-only.mdx) pour le déroulé complet de
+la saisie manuelle.
+
+## Actif de référence
+
+L'étalon de référence traçable utilisé pour cette calibration de **Laboratoire interne** — l'un de
+vos propres actifs marqué comme étalon de référence, par ex. un manomètre étalon avec sa propre
+calibration valide et à jour. Une fois sélectionné, Open Gauge récupère automatiquement
+l'incertitude élargie propre de cet actif de référence et l'intègre au budget d'incertitude de
+cette calibration.
+
+## Méthode de calibration
+
+La procédure interne suivie pour cette calibration de **Laboratoire interne**, par ex. « Méthode
+de comparaison de pression — 0 à 100 bar ». Les procédures sont configurées par grandeur physique ;
+seules celles correspondant à la grandeur de la voie sélectionnée sont proposées.
+
+## Date de réparation
+
+Date à laquelle la réparation ayant déclenché cette calibration **Après réparation** a été
+achevée. Cette date devient une borne dans la liste déroulante de comparaison avant/après
+réparation de l'onglet Santé.
+
+## Description de la réparation
+
+Une brève note (jusqu'à 500 caractères) sur ce qui a été réparé ou remplacé avant cette
+calibration. Exemple : « Diaphragme remplacé et raccord de pression rescellé après la découverte
+d'une fuite lors d'une inspection de routine ».
+
+## Ajouter une réponse en fréquence
+
+Enregistrez une réponse en fréquence balayée — amplitude et/ou phase mesurées sur une plage de
+fréquences — en plus des points de données référence/mesuré standard, pour les voies où la réponse
+dynamique (pas seulement statique) compte, par ex. les accéléromètres ou les capteurs acoustiques.
+Voir [Réponse en fréquence](./frequency-response.mdx) pour le déroulé complet de saisie du balayage
+que cela déverrouille.
+
+## Conditions environnementales
+
+Température, pression et humidité au moment de la calibration, chacune avec sa propre incertitude
+optionnelle (±) — enregistrées pour la traçabilité sur le certificat, non intégrées à l'ajustement
+ni au budget d'incertitude. Exemple : « 23.1 ± 0.2 °C » enregistre à la fois la mesure et le
+niveau de confiance que vous avez en cette mesure, par ex. d'après le propre certificat de
+calibration du thermomètre du laboratoire.
+
+## Notes
+
+Notes en texte libre associées à cet enregistrement de calibration — tout ce qui mérite d'être
+retenu et qui ne trouve pas sa place ailleurs, par ex. une observation sur l'état de l'actif ou une
+anomalie constatée pendant la comparaison.

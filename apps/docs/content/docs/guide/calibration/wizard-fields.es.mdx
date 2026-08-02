@@ -1,0 +1,136 @@
+---
+title: Referencia de campos del asistente de calibración
+description: Qué significa cada campo del primer paso del asistente de calibración, y un ejemplo de cómo completarlo.
+---
+
+Una referencia campo por campo del Paso 1 ("Información general") del asistente de calibración —
+para qué sirve cada campo, y un ejemplo concreto. Para el flujo general del asistente, consulta
+[Resumen de calibración](./overview.mdx); para la clasificación de tipo/propósito que alimentan
+estos campos, consulta [Tipo de calibración](./overview.mdx#calibration-type) y
+[Propósito de la calibración](./overview.mdx#calibration-purpose).
+
+## Canal
+
+El canal del sensor al que se aplica este registro de calibración. Cada canal mantiene un
+historial de calibración y una fecha de vencimiento independientes — un activo multicanal (p. ej.
+un transmisor con salidas separadas de presión y temperatura) muestra este campo; un activo de un
+solo canal no lo necesita, ya que solo hay un canal para elegir. Ejemplo: un registrador de datos
+de 3 canales muestra aquí "CH2 — Humedad" cuando estás calibrando específicamente su entrada de
+humedad.
+
+## Fecha de calibración
+
+La fecha en la que realmente se realizó la comparación referencia/medido — no la fecha en la que
+estás ingresando el registro. Se usa para calcular la fecha de vencimiento a partir del intervalo
+de calibración de más abajo. Ejemplo: una calibración realizada en el laboratorio el `2026-03-14`
+se registra con esa fecha aunque la ingreses en Open Gauge una semana después.
+
+## Registrado por
+
+Quién realizó y está registrando esta calibración — por defecto eres tú, editable para acreditar a
+otro miembro del equipo que realmente hizo el trabajo. Ejemplo: estás ingresando datos históricos
+en nombre de un colega que realizó la calibración el mes pasado — elige su nombre aquí en lugar
+del tuyo.
+
+## Revisado por
+
+Un segundo revisor opcional. Asignar uno pone el registro en estado pendiente de aprobación en
+lugar de válido, hasta que apruebe o rechace la calibración — consulta
+[Flujo de aprobación](./overview.mdx#approval-workflow). Déjalo sin definir para calibraciones que
+no necesiten una segunda firma de conformidad; el registro queda válido de inmediato.
+
+## Intervalo de calibración
+
+Meses hasta que vence la próxima calibración de este canal, p. ej. `12` para una cadencia anual o
+`6` para semestral. Se prellena a partir del intervalo por defecto configurado en el canal, pero es
+editable por calibración — un canal que deriva más rápido de lo esperado podría recibir esta vez un
+intervalo más corto.
+
+## Tipo de calibración
+
+Quién realizó la calibración — **OEM**, un **Laboratorio Externo Acreditado**, tu **Laboratorio
+Interno (propio)**, o un **Activo del Cliente** que calibraste en su nombre. Esto determina a qué
+se resuelve el campo Laboratorio de calibración de más abajo. Consulta
+[Tipo de calibración](./overview.mdx#calibration-type) para el desglose completo de cada opción.
+
+## Propósito de la calibración
+
+Por qué se realizó esta calibración: **Inicial** (la primera de este canal), **Rutina** (una
+recalibración periódica), **Después de reparación** (tras una reparación — revela los campos de
+fecha/descripción de reparación de más abajo), o **Verificación** (una comprobación puntual).
+Consulta [Propósito de la calibración](./overview.mdx#calibration-purpose) para más detalles,
+incluyendo cómo un registro Después de reparación alimenta la comparación antes/después de la
+pestaña Estado.
+
+## Laboratorio de calibración
+
+Dónde — o por quién — se llevó a cabo la calibración. La forma de este campo cambia según
+Tipo de calibración: una instantánea de solo lectura del fabricante del activo para **OEM**, un
+selector sobre tus organizaciones externas para **Laboratorio Externo Acreditado**/**Activo del
+Cliente**, o un selector sobre tus ubicaciones configuradas para **Laboratorio Interno**. Ejemplo:
+elegir Laboratorio Interno muestra una lista desplegable con las ubicaciones de tu organización
+marcadas como laboratorios de calibración, p. ej. "Edificio 3 — Laboratorio de Metrología".
+
+## Certificado de calibración
+
+Sube el certificado en PDF emitido por el laboratorio — disponible solo para los tipos **OEM** y
+**Laboratorio Externo Acreditado**. Open Gauge valida que el archivo sea realmente un PDF (tanto
+por el tipo declarado como por la firma del archivo) antes de aceptarlo. Si se proporciona, se
+sirve en lugar del certificado generado por el sistema en todos los lugares donde se descargue el
+certificado de esta calibración.
+
+## Solo coeficientes (sin datos en bruto)
+
+Marca esto cuando el certificado ya indica directamente los coeficientes del polinomio de
+calibración, sin ningún punto de dato de referencia/medido en bruto incluido — se salta por
+completo el ajuste de curvas y cambia el Paso 2 a la entrada manual de coeficientes. Consulta
+[Calibraciones de solo coeficientes](./coefficients-only.mdx) para el flujo completo de entrada
+manual.
+
+## Activo de referencia
+
+El patrón de referencia trazable usado para esta calibración de **Laboratorio Interno** — uno de
+tus propios activos marcado como patrón de referencia, p. ej. un manómetro patrón con su propia
+calibración válida y vigente. Una vez seleccionado, Open Gauge incorpora automáticamente la
+incertidumbre expandida de ese activo de referencia al presupuesto de incertidumbre de esta
+calibración.
+
+## Método de calibración
+
+El procedimiento interno seguido para esta calibración de **Laboratorio Interno**, p. ej. "Método
+de comparación de presión — 0 a 100 bar". Los procedimientos se configuran por magnitud física;
+solo se ofrecen los que coinciden con la magnitud del canal seleccionado.
+
+## Fecha de reparación
+
+Cuándo se completó la reparación que dio origen a esta calibración **Después de reparación**. Esta
+fecha se convierte en un límite en la lista desplegable de comparación antes/después de reparación
+de la pestaña Estado.
+
+## Descripción de la reparación
+
+Una nota breve (hasta 500 caracteres) sobre qué se reparó o reemplazó antes de esta calibración.
+Ejemplo: "Se reemplazó el diafragma y se reasentó el racor de presión tras detectarse una fuga
+durante una inspección rutinaria".
+
+## Agregar respuesta en frecuencia
+
+Registra un barrido de respuesta en frecuencia — amplitud y/o fase medidas a lo largo de un rango
+de frecuencias — junto a los puntos de datos estándar de referencia/medido, para canales donde
+importa la respuesta dinámica (no solo estática), p. ej. acelerómetros o sensores acústicos.
+Consulta [Respuesta en frecuencia](./frequency-response.mdx) para el flujo completo de entrada del
+barrido que esto habilita.
+
+## Condiciones ambientales
+
+Temperatura, presión y humedad en el momento de la calibración, cada una con su propia
+incertidumbre opcional (±) — se registran para trazabilidad en el certificado, no se incorporan al
+ajuste ni al presupuesto de incertidumbre. Ejemplo: "23.1 ± 0.2 °C" registra tanto la lectura como
+la confianza que tienes en esa lectura, p. ej. a partir del propio certificado de calibración del
+termómetro del laboratorio.
+
+## Notas
+
+Notas de texto libre adjuntas a este registro de calibración — cualquier cosa que valga la pena
+recordar y que no encaje en otro lugar, p. ej. una observación sobre el estado del activo o una
+anomalía observada durante la comparación.

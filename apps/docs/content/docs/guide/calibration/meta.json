@@ -2,6 +2,7 @@
   "title": "Calibration",
   "pages": [
     "overview",
+    "wizard-fields",
     "curve-fitting",
     "frequency-response",
     "uncertainty-budget",

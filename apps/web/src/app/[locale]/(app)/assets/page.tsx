@@ -261,7 +261,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
   return (
     <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer hover:text-og-text">
-      <ToggleSwitch checked={checked} onChange={onChange} showLabel={false} />
+      <ToggleSwitch checked={checked} onChange={onChange} />
       {label}
     </label>
   );
@@ -654,7 +654,7 @@ function BulkExportModal({ assets, onClose }: BulkExportModalProps) {
         <div className="overflow-y-auto max-h-96 divide-y divide-og-border">
           {assets.map((a) => (
             <label key={a.id} className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-og-surface-alt transition-colors">
-              <ToggleSwitch checked={selected.has(a.id)} onChange={() => toggleOne(a.id)} showLabel={false} />
+              <ToggleSwitch checked={selected.has(a.id)} onChange={() => toggleOne(a.id)} />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-og-text truncate">{a.name}</p>
                 <p className="text-xs font-mono text-gray-400">{a.asset_id}</p>

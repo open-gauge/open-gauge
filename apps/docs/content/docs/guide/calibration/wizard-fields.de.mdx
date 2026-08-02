@@ -1,0 +1,136 @@
+---
+title: Feldreferenz des Kalibrier-Assistenten
+description: Was jedes Feld im ersten Schritt des Kalibrier-Assistenten bedeutet, und ein Beispiel, wie man es ausfüllt.
+---
+
+Eine feldweise Referenz für Schritt 1 ("Allgemeine Informationen") des Kalibrier-Assistenten —
+wofür jedes Feld da ist, und ein konkretes Beispiel. Für den Gesamtablauf des Assistenten siehe
+[Kalibrierübersicht](./overview.mdx); für die Typ-/Zweck-Klassifizierung, in die diese Felder
+einfließen, siehe [Kalibrierart](./overview.mdx#calibration-type) und
+[Zweck der Kalibrierung](./overview.mdx#calibration-purpose).
+
+## Kanal
+
+Der Sensorkanal, für den dieser Kalibrierdatensatz gilt. Jeder Kanal führt eine eigene
+Kalibrierhistorie und ein eigenes Fälligkeitsdatum — eine Mehrkanal-Anlage (z. B. ein
+Messumformer mit getrennten Druck- und Temperaturausgängen) zeigt dieses Feld an; eine
+Einkanal-Anlage benötigt es nicht, da nur ein Kanal zur Auswahl steht. Beispiel: Ein
+3-Kanal-Datenlogger zeigt hier "CH2 — Feuchte" an, wenn Sie speziell dessen Feuchteeingang
+kalibrieren.
+
+## Kalibrierdatum
+
+Das Datum, an dem der Referenz-/Messvergleich tatsächlich durchgeführt wurde — nicht das Datum, an
+dem Sie den Datensatz erfassen. Daraus wird zusammen mit dem Kalibrierintervall unten das
+Fälligkeitsdatum berechnet. Beispiel: Eine im Labor am `2026-03-14` durchgeführte Kalibrierung
+wird mit diesem Datum erfasst, auch wenn Sie sie eine Woche später in Open Gauge eingeben.
+
+## Erfasst von
+
+Wer diese Kalibrierung durchgeführt hat und sie erfasst — standardmäßig Sie selbst, editierbar, um
+einem anderen Teammitglied die tatsächlich geleistete Arbeit zuzuschreiben. Beispiel: Sie erfassen
+historische Daten im Namen eines Kollegen, der die Kalibrierung letzten Monat durchgeführt hat —
+wählen Sie hier dessen Namen statt Ihres eigenen.
+
+## Geprüft von
+
+Ein optionaler zweiter Prüfer. Wird einer zugewiesen, wechselt der Datensatz in den Status
+ausstehende Genehmigung statt gültig, bis er ihn genehmigt oder ablehnt — siehe
+[Genehmigungsablauf](./overview.mdx#approval-workflow). Lassen Sie das Feld leer für
+Kalibrierungen, die keine zweite Freigabe benötigen; der Datensatz ist sofort gültig.
+
+## Kalibrierintervall
+
+Monate bis zur nächsten fälligen Kalibrierung dieses Kanals, z. B. `12` für einen jährlichen
+Turnus oder `6` für halbjährlich. Wird aus dem konfigurierten Standardintervall des Kanals
+vorausgefüllt, ist aber pro Kalibrierung editierbar — ein Kanal, der schneller als erwartet
+driftet, kann dieses Mal ein kürzeres Intervall erhalten.
+
+## Kalibrierart
+
+Wer die Kalibrierung durchgeführt hat — **OEM**, ein **Externes akkreditiertes Labor**, Ihr
+eigenes **Internes Labor (im eigenen Haus)**, oder eine **Anlage des Kunden**, die Sie in dessen
+Auftrag kalibriert haben. Dies bestimmt, worauf sich das Feld Kalibrierlabor unten auflöst. Siehe
+[Kalibrierart](./overview.mdx#calibration-type) für die vollständige Aufschlüsselung jeder Option.
+
+## Zweck der Kalibrierung
+
+Warum diese Kalibrierung durchgeführt wurde: **Initial** (die allererste des Kanals), **Routine**
+(eine periodische Nachkalibrierung), **Nach Reparatur** (im Anschluss an eine Reparatur — blendet
+die Felder Reparaturdatum/-beschreibung unten ein), oder **Verifizierung** (eine einmalige
+Prüfung). Siehe [Zweck der Kalibrierung](./overview.mdx#calibration-purpose) für Details,
+einschließlich wie ein Datensatz vom Typ Nach Reparatur in den Vorher-/Nachher-Vergleich des
+Reiters Zustand einfließt.
+
+## Kalibrierlabor
+
+Wo — oder von wem — die Kalibrierung durchgeführt wurde. Die Form dieses Felds ändert sich je nach
+Kalibrierart: eine schreibgeschützte Momentaufnahme des Herstellers der Anlage für **OEM**, eine
+Auswahl aus Ihren externen Organisationen für **Externes akkreditiertes Labor**/**Anlage des
+Kunden**, oder eine Auswahl aus Ihren konfigurierten Standorten für **Internes Labor**. Beispiel:
+Die Wahl von Internes Labor zeigt ein Dropdown mit den als Kalibrierlabore markierten Standorten
+Ihrer Organisation, z. B. "Gebäude 3 — Metrologielabor".
+
+## Kalibrierzertifikat
+
+Laden Sie das vom Labor ausgestellte PDF-Zertifikat hoch — nur verfügbar für die Typen **OEM** und
+**Externes akkreditiertes Labor**. Open Gauge prüft, dass die Datei tatsächlich ein PDF ist
+(sowohl anhand des angegebenen Typs als auch der Dateisignatur), bevor sie akzeptiert wird. Falls
+vorhanden, wird es überall dort, wo das Zertifikat dieser Kalibrierung heruntergeladen wird,
+anstelle des systemgenerierten Zertifikats ausgeliefert.
+
+## Nur Koeffizienten (keine Rohdaten)
+
+Aktivieren Sie dies, wenn das Zertifikat die Koeffizienten des Kalibrierpolynoms bereits direkt
+angibt, ohne dass rohe Referenz-/Messdatenpunkte enthalten sind — dies überspringt die
+Kurvenanpassung vollständig und wechselt Schritt 2 zur manuellen Koeffizienteneingabe. Siehe
+[Kalibrierungen nur mit Koeffizienten](./coefficients-only.mdx) für den vollständigen Ablauf der
+manuellen Eingabe.
+
+## Referenz-Anlage
+
+Das rückführbare Referenznormal, das für diese Kalibrierung im **Internen Labor** verwendet wird —
+eine Ihrer eigenen Anlagen, die als Referenznormal markiert ist, z. B. ein Referenzmessgerät mit
+eigener gültiger, aktueller Kalibrierung. Sobald ausgewählt, übernimmt Open Gauge automatisch die
+eigene erweiterte Unsicherheit dieser Referenz-Anlage in das Unsicherheitsbudget dieser
+Kalibrierung.
+
+## Kalibriermethode
+
+Das interne Verfahren, das für diese Kalibrierung im **Internen Labor** befolgt wurde, z. B.
+"Druckvergleichsmethode — 0 bis 100 bar". Verfahren werden pro physikalischer Größe konfiguriert;
+angeboten werden nur solche, die zur Größe des ausgewählten Kanals passen.
+
+## Reparaturdatum
+
+Wann die Reparatur abgeschlossen wurde, die diese **Nach Reparatur**-Kalibrierung ausgelöst hat.
+Dieses Datum wird zu einer Grenze im Vorher-/Nachher-Reparatur-Vergleichs-Dropdown des Reiters
+Zustand.
+
+## Reparaturbeschreibung
+
+Eine kurze Notiz (bis zu 500 Zeichen) dazu, was vor dieser Kalibrierung repariert oder ersetzt
+wurde. Beispiel: "Membran ersetzt und Druckanschluss neu gesetzt, nachdem bei einer
+Routineinspektion ein Leck festgestellt wurde."
+
+## Frequenzgang hinzufügen
+
+Erfassen Sie einen gewobbelten Frequenzgang — Amplitude und/oder Phase, gemessen über einen
+Frequenzbereich — zusätzlich zu den üblichen Referenz-/Messdatenpunkten, für Kanäle, bei denen
+dynamisches (nicht nur statisches) Verhalten wichtig ist, z. B. Beschleunigungssensoren oder
+akustische Sensoren. Siehe [Frequenzgang](./frequency-response.mdx) für den vollständigen
+Sweep-Eingabeablauf, den dies freischaltet.
+
+## Umgebungsbedingungen
+
+Temperatur, Druck und Feuchte zum Zeitpunkt der Kalibrierung, jeweils mit eigener optionaler
+Unsicherheit (±) — zur Rückverfolgbarkeit auf dem Zertifikat erfasst, nicht in die Anpassung oder
+das Unsicherheitsbudget eingerechnet. Beispiel: "23.1 ± 0.2 °C" erfasst sowohl den Messwert als
+auch, wie sicher Sie sich bei diesem Messwert sind, z. B. aus dem eigenen Kalibrierzertifikat des
+Laborthermometers.
+
+## Notizen
+
+Freitextnotizen, die diesem Kalibrierdatensatz beigefügt sind — alles Erwähnenswerte, das sonst
+nirgendwo hinpasst, z. B. eine Beobachtung zum Zustand der Anlage oder eine während des Vergleichs
+festgestellte Auffälligkeit.

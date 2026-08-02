@@ -250,9 +250,8 @@ instead of a raw `<input type="checkbox">`:
 - A pill-shaped track that smoothly transitions color (`bg-og-accent` when on, `bg-gray-300`/
   `dark:bg-gray-600` when off) and slides a white thumb across, both via
   `transition-colors`/`transition-transform duration-200`.
-- Pass `showLabel={false}` in dense per-row contexts (a multi-select list, a settings grid with its
-  own column headers) where an "On"/"Off" label on every row would be noise — the switch itself
-  still replaces the checkbox either way.
+- The switch never renders its own "On"/"Off" text — any adjacent label (e.g. "Private",
+  "Reference standard") is the caller's own text, describing what the toggle does, not its state.
 - Pass `size="sm"` for compact inline filters (matches the footprint of the old 14px checkbox);
   default `size="md"` for standalone settings toggles.
 - Keep the surrounding `<label>` wrapper when the adjacent text should also toggle the control —

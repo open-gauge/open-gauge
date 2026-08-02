@@ -4,13 +4,41 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.11.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.12.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.12.0
+
+### Added
+
+- **Residuals chart.** A new chart appears under the calibration model's fitted-curve chart on
+  both the wizard's analysis step and a saved calibration's detail view — reference standard
+  measurement on the x-axis, residuals (absolute or relative %, via a toggle) on the y-axis, with
+  a zero reference line and full hover detail. Built as a shared component so both screens stay
+  in sync, and sized so the two stacked charts together match the height of the adjacent
+  statistics panel.
+- **Environmental condition uncertainty.** Temperature, pressure, and humidity readings on a
+  calibration can now each carry their own ± uncertainty, entered on the wizard's Step 1 and
+  shown alongside the reading wherever environmental conditions are displayed. Pressure now
+  defaults to hPa instead of Pa.
+- **Doc-linked tooltips on every wizard Step 1 field**, each pointing at a new field-by-field
+  reference page (Reference → Calibration → "Calibration wizard field reference") with an example
+  for how to fill it.
+
+### Changed
+
+- **Wizard Step 1 layout.** Calibration date and interval now share a row; the "Add frequency
+  response" and "Coefficients only" switches moved to a single row directly above Environmental
+  Conditions; the calibration certificate upload is now a drag-and-drop dropzone, matching the
+  pattern used elsewhere in the wizard.
+- **Toggle switches no longer show "On"/"Off" text next to the control anywhere in the app** — a
+  toggle's own meaningful adjacent label (e.g. "Private", "Include in budget") already says what
+  it does; the redundant state word is gone.
 
 ## 3.11.0
 

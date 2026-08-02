@@ -30,6 +30,7 @@ import {
   type CertificateTemplateOption,
 } from "@/services/asset.service";
 import { FrequencyResponseChart } from "@/components/frequency-response-chart";
+import { ResidualsChart } from "@/components/residuals-chart";
 import { useAuth } from "@/lib/auth-context";
 import { listMyOrganizations } from "@/services/organization.service";
 import type { OrganizationListItem } from "@/types/organization";
@@ -1422,12 +1423,13 @@ function calResidualColor(residual: number, maxAbsResidual: number): string {
 
 // Chart panel — renders Plotly scatter + fit curve from saved CalibrationPoint data
 function CalibrationChart({
-  cal, points, measuredUnit, referenceUnit,
+  cal, points, measuredUnit, referenceUnit, className,
 }: {
   cal: CalibrationRecord;
   points: CalibrationPoint[];
   measuredUnit: string;
   referenceUnit: string;
+  className?: string;
 }) {
   const plotDivRef = useRef<HTMLDivElement>(null);
   const plotlyRef = useRef<typeof import("plotly.js-dist-min").default | null>(null);
@@ -1538,7 +1540,7 @@ function CalibrationChart({
   }, []);
 
   return (
-    <div className="rounded-xl border border-og-border bg-og-surface relative overflow-hidden" style={{ minHeight: 320 }}>
+    <div className={`rounded-xl border border-og-border bg-og-surface relative overflow-hidden ${className ?? ""}`}>
       <div className="absolute bottom-16 right-3 z-20 pointer-events-none">
         <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
           <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
@@ -1551,7 +1553,7 @@ function CalibrationChart({
           </div>
         </div>
       </div>
-      <div ref={plotDivRef} style={{ height: 320, width: "100%" }} />
+      <div ref={plotDivRef} style={{ height: "100%", width: "100%" }} />
     </div>
   );
 }
@@ -2094,12 +2096,28 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     {t("noPointData")}
                   </div>
                 ) : rightView === "chart" ? (
-                  <CalibrationChart
-                    cal={selectedCal}
-                    points={points}
-                    measuredUnit={measuredUnit}
-                    referenceUnit={referenceUnit}
-                  />
+                  <div className="flex-1 min-h-0 flex flex-col gap-3">
+                    <CalibrationChart
+                      className="flex-1 min-h-0"
+                      cal={selectedCal}
+                      points={points}
+                      measuredUnit={measuredUnit}
+                      referenceUnit={referenceUnit}
+                    />
+                    <ResidualsChart
+                      className="flex-1 min-h-0"
+                      points={points.map((p) => ({
+                        point_index: p.point_index,
+                        reference_value: p.reference_value,
+                        residual_abs: p.residual_abs,
+                        residual_pct: p.residual_pct,
+                      }))}
+                      referenceUnit={referenceUnit}
+                      referenceLabel={t("reference")}
+                      residualLabel={t("residual")}
+                      residualPercentLabel={t("residualPercent")}
+                    />
+                  </div>
                 ) : (
                   <div className="rounded-xl border border-og-border overflow-hidden" style={{ maxHeight: 340, overflowY: "auto" }}>
                     <table className="w-full text-xs">
@@ -2162,7 +2180,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("temperature")}</p>
                       <p className="font-mono text-xs text-og-text">
-                        {fmtNum(selectedCal.temperature, 2)} <span className="text-gray-400">°C</span>
+                        {fmtNum(selectedCal.temperature, 2)}
+                        {selectedCal.temperature_uncertainty != null && ` ± ${fmtNum(selectedCal.temperature_uncertainty, 2)}`}
+                        {" "}<span className="text-gray-400">°C</span>
                       </p>
                     </div>
                   )}
@@ -2170,7 +2190,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("humidity")}</p>
                       <p className="font-mono text-xs text-og-text">
-                        {fmtNum(selectedCal.humidity, 2)} <span className="text-gray-400">%RH</span>
+                        {fmtNum(selectedCal.humidity, 2)}
+                        {selectedCal.humidity_uncertainty != null && ` ± ${fmtNum(selectedCal.humidity_uncertainty, 2)}`}
+                        {" "}<span className="text-gray-400">%RH</span>
                       </p>
                     </div>
                   )}
@@ -2178,7 +2200,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("pressure")}</p>
                       <p className="font-mono text-xs text-og-text">
-                        {fmtNum(selectedCal.pressure, 2)} <span className="text-gray-400">Pa</span>
+                        {fmtNum(selectedCal.pressure, 2)}
+                        {selectedCal.pressure_uncertainty != null && ` ± ${fmtNum(selectedCal.pressure_uncertainty, 2)}`}
+                        {" "}<span className="text-gray-400">Pa</span>
                       </p>
                     </div>
                   )}

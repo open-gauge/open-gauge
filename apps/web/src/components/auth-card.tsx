@@ -215,7 +215,7 @@ export default function AuthCard() {
           )}
           {tab === "signin" && (
             <label className="flex items-center gap-2 mt-3 text-xs text-gray-400">
-              <ToggleSwitch checked={stayLoggedIn} onChange={setStayLoggedIn} showLabel={false} />
+              <ToggleSwitch checked={stayLoggedIn} onChange={setStayLoggedIn} />
               {t("stayLoggedIn")}
             </label>
           )}

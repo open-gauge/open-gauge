@@ -1,0 +1,125 @@
+---
+title: Calibration wizard field reference
+description: What each field on the calibration wizard's first step means, and an example of how to fill it.
+---
+
+A field-by-field reference for Step 1 ("General info") of the calibration wizard — what each
+field is for, and a concrete example. For the wizard's overall flow, see
+[Calibration overview](./overview.mdx); for the type/purpose classification these fields feed
+into, see [Calibration type](./overview.mdx#calibration-type) and
+[Calibration purpose](./overview.mdx#calibration-purpose).
+
+## Channel
+
+The sensor channel this calibration record applies to. Each channel keeps an independent
+calibration history and due date — a multi-channel asset (e.g. a transmitter with separate
+pressure and temperature outputs) shows this field; a single-channel asset doesn't need it, since
+there's only one channel to choose. Example: a 3-channel data logger shows "CH2 — Humidity" here
+when you're calibrating its humidity input specifically.
+
+## Calibration date
+
+The date the reference/measured comparison was actually performed — not the date you're entering
+the record. This is used to compute the due date from the calibration interval below. Example: a
+calibration performed in the lab on `2026-03-14` still gets recorded with that date even if you
+enter it into Open Gauge a week later.
+
+## Registered by
+
+Who performed and is recording this calibration — defaults to you, editable to credit another
+team member who actually did the work. Example: you're entering historical data on behalf of a
+colleague who performed the calibration last month — pick their name here instead of your own.
+
+## Checked by
+
+An optional second reviewer. Assigning one puts the record into **pending approval** instead of
+valid until they approve or reject it — see
+[Approval workflow](./overview.mdx#approval-workflow). Leave it unset for calibrations that don't
+need a second sign-off; the record is valid immediately.
+
+## Calibration interval
+
+Months until this channel's next calibration is due, e.g. `12` for an annual cadence or `6` for
+semi-annual. Pre-filled from the channel's configured default interval, but editable per
+calibration — a channel drifting faster than expected might get a shorter interval this time.
+
+## Calibration type
+
+Who performed the calibration — **OEM**, an **External Accredited Lab**, your own **Internal Lab
+(In-house)**, or a **Customer's Asset** you calibrated on their behalf. This determines what the
+Calibration lab field below resolves to. See
+[Calibration type](./overview.mdx#calibration-type) for the full breakdown of each option.
+
+## Calibration purpose
+
+Why this calibration was performed: **Initial** (the channel's first ever), **Routine** (a
+periodic recalibration), **After Repair** (following a fix — reveals repair date/description
+fields below), or **Verification** (a one-off check). See
+[Calibration purpose](./overview.mdx#calibration-purpose) for details, including how an After
+Repair record feeds the Health tab's before/after comparison.
+
+## Calibration lab
+
+Where — or by whom — the calibration was carried out. This field's shape changes with Calibration
+type: a read-only snapshot of the asset's manufacturer for **OEM**, a picker over your external
+organizations for **External Accredited Lab**/**Customer's Asset**, or a picker over your
+configured locations for **Internal Lab**. Example: choosing Internal Lab shows a dropdown of
+your organization's locations marked as calibration labs, e.g. "Building 3 — Metrology Lab".
+
+## Calibration certificate
+
+Upload the lab-issued PDF certificate — available for **OEM** and **External Accredited Lab**
+types only. Open Gauge validates that the file is actually a PDF (both by declared type and file
+signature) before accepting it. If provided, it's served instead of the system-generated
+certificate everywhere this calibration's certificate is downloaded.
+
+## Coefficients only (no raw data)
+
+Check this when the certificate already states the calibration polynomial's coefficients
+directly, with no raw reference/measured data points included — skips curve fitting entirely and
+switches Step 2 to manual coefficient entry. See
+[Coefficients-only calibrations](./coefficients-only.mdx) for the full manual-entry flow.
+
+## Reference asset
+
+The traceable reference standard used for this **Internal Lab** calibration — one of your own
+assets flagged as a reference standard, e.g. a master gauge with its own valid, in-date
+calibration. Open Gauge automatically pulls that reference asset's own expanded uncertainty into
+this calibration's uncertainty budget once selected.
+
+## Calibration method
+
+The internal procedure followed for this **Internal Lab** calibration, e.g. "Pressure Comparison
+Method — 0 to 100 bar". Procedures are configured per physical quantity; only ones matching the
+selected channel's quantity are offered.
+
+## Repair date
+
+When the repair that triggered this **After Repair** calibration was completed. This date becomes
+a boundary on the Health tab's before/after-repair comparison dropdown.
+
+## Repair description
+
+A short note (up to 500 characters) on what was repaired or replaced before this calibration.
+Example: "Replaced the diaphragm and re-seated the pressure fitting after a leak was found during
+routine inspection."
+
+## Add frequency response
+
+Record a swept frequency response — amplitude and/or phase measured across a range of
+frequencies — alongside the standard reference/measured data points, for channels where dynamic
+(not just static) response matters, e.g. accelerometers or acoustic sensors. See
+[Frequency response](./frequency-response.mdx) for the full sweep-entry flow this unlocks.
+
+## Environmental conditions
+
+Temperature, pressure, and humidity at the time of calibration, each with its own optional
+uncertainty (±) — recorded for traceability on the certificate, not folded into the fit or
+uncertainty budget. Example: "23.1 ± 0.2 °C" records both the reading and how confident you are
+in that reading, e.g. from the lab thermometer's own calibration certificate.
+
+## Notes
+
+Free-text notes attached to this calibration record — anything worth remembering that doesn't fit
+elsewhere, e.g. an observation about the asset's condition or an anomaly seen during the
+comparison.

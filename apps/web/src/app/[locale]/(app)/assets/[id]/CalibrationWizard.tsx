@@ -5,7 +5,7 @@ import type { AssetProfile } from "@/types/asset";
 import type {
   AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationLabCandidate,
   CalibrationPointInline, CalibrationPurpose, CalibrationRecord, CalibrationType, CalibrationUser, DecisionRule,
-  DistributionType, FrequencyResponsePointInline, WizardRawPoint,
+  DistributionType, FrequencyResponsePointInline, ResidualPoint, WizardRawPoint,
 } from "@/types/calibration";
 import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listCalibrationUsers, listProcedures, uploadCalibrationCertificate } from "@/services/asset.service";
 import { listCalibrationLabs } from "@/services/location.service";
@@ -16,13 +16,15 @@ import { translateDynamic } from "@/lib/translate-dynamic";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
 import { getUnitsForQuantity, getOutputUnits, resolveSpecValue, FREQUENCY_OUTPUT_UNITS } from "@/lib/sensor-options";
 import { useAuth } from "@/lib/auth-context";
-import { STAT_DOCS_LINKS } from "@/lib/docs-links";
+import { STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { StatRow } from "@/components/stat-row";
 import { ToggleSwitch } from "@/components/toggle-switch";
+import { Tooltip } from "@/components/tooltip";
 import { FrequencyResponseChart } from "@/components/frequency-response-chart";
+import { ResidualsChart } from "@/components/residuals-chart";
 import { hasPlottableFrequencyPoints } from "@/lib/frequency-response-chart";
 import {
-  CheckIcon, ChevronDownIcon, PlusIcon, TrashIcon, WarningIcon, XIcon,
+  CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, WarningIcon, XIcon,
 } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
@@ -33,23 +35,36 @@ const IB = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surfac
 const IB_OK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
 const IB_ERR = "border-red-400 focus:border-red-400 focus:ring-red-400/20";
 
-function WLabel({ text, required }: { text: string; required?: boolean }) {
+function FieldTooltip({ tooltip, docsHref }: { tooltip?: string; docsHref?: string }) {
+  if (!tooltip) return null;
   return (
-    <span className="text-xs text-gray-400">
+    <Tooltip content={tooltip} docsHref={docsHref}>
+      <InfoIcon size={11} className="text-gray-400 cursor-help" />
+    </Tooltip>
+  );
+}
+
+function WLabel({
+  text, required, tooltip, docsHref,
+}: { text: string; required?: boolean; tooltip?: string; docsHref?: string }) {
+  return (
+    <span className="text-xs text-gray-400 inline-flex items-center gap-1">
       {text}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <FieldTooltip tooltip={tooltip} docsHref={docsHref} />
     </span>
   );
 }
 
 function WInput({
-  label, value, onChange, type = "text", placeholder, required, readOnly, error,
+  label, value, onChange, type = "text", placeholder, required, readOnly, error, tooltip, docsHref,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   type?: string; placeholder?: string; required?: boolean; readOnly?: boolean; error?: string;
+  tooltip?: string; docsHref?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <WLabel text={label} required={required} />
+      <WLabel text={label} required={required} tooltip={tooltip} docsHref={docsHref} />
       <input
         type={type}
         value={value}
@@ -64,16 +79,16 @@ function WInput({
 }
 
 function WSelect({
-  label, value, onChange, options, required, placeholder,
+  label, value, onChange, options, required, placeholder, tooltip, docsHref,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  required?: boolean; placeholder?: string;
+  required?: boolean; placeholder?: string; tooltip?: string; docsHref?: string;
 }) {
   const t = useTranslations("assets.fields");
   return (
     <div className="flex flex-col gap-1">
-      <WLabel text={label} required={required} />
+      <WLabel text={label} required={required} tooltip={tooltip} docsHref={docsHref} />
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -88,12 +103,17 @@ function WSelect({
   );
 }
 
-function WCheckbox({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function WCheckbox({
+  label, checked, onChange, tooltip, docsHref,
+}: { label: string; checked: boolean; onChange: (v: boolean) => void; tooltip?: string; docsHref?: string }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <ToggleSwitch checked={checked} onChange={onChange} />
-      <span className="text-sm text-og-text">{label}</span>
-    </label>
+    <span className="inline-flex items-center gap-1">
+      <label className="flex items-center gap-2 cursor-pointer">
+        <ToggleSwitch checked={checked} onChange={onChange} />
+        <span className="text-sm text-og-text">{label}</span>
+      </label>
+      <FieldTooltip tooltip={tooltip} docsHref={docsHref} />
+    </span>
   );
 }
 
@@ -196,10 +216,13 @@ interface Step1State {
   repair_date: string;
   repair_description: string;
   temperature_value: string;
+  temperature_uncertainty: string;
   temperature_unit: string;
   pressure_value: string;
+  pressure_uncertainty: string;
   pressure_unit: string;
   humidity_value: string;
+  humidity_uncertainty: string;
   humidity_unit: string;
   notes: string;
   env_expanded: boolean;
@@ -295,10 +318,13 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     repair_date: "",
     repair_description: "",
     temperature_value: "",
+    temperature_uncertainty: "",
     temperature_unit: "°C",
     pressure_value: "",
-    pressure_unit: "Pa",
+    pressure_uncertainty: "",
+    pressure_unit: "hPa",
     humidity_value: "",
+    humidity_uncertainty: "",
     humidity_unit: "%RH",
     notes: "",
     env_expanded: false,
@@ -737,6 +763,9 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
       const tempVal = n(step1.temperature_value);
       const pressVal = n(step1.pressure_value);
       const humVal = n(step1.humidity_value);
+      const tempUncertaintyVal = n(step1.temperature_uncertainty);
+      const pressUncertaintyVal = n(step1.pressure_uncertainty);
+      const humUncertaintyVal = n(step1.humidity_uncertainty);
 
       // Convert to canonical units: °C, %RH, Pa
       const temperatureCelsius: number | null = (() => {
@@ -746,15 +775,25 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         if (unit === "K") return Math.round((tempVal - 273.15) * 100) / 100;
         return tempVal;
       })();
-      const pressurePa: number | null = (() => {
-        if (pressVal == null) return null;
-        const unit = step1.pressure_unit;
-        if (unit === "hPa" || unit === "mbar") return Math.round(pressVal * 100 * 100) / 100;
-        if (unit === "kPa") return Math.round(pressVal * 1000 * 100) / 100;
-        if (unit === "bar") return Math.round(pressVal * 100000 * 100) / 100;
-        if (unit === "psi") return Math.round(pressVal * 6894.757 * 100) / 100;
-        return pressVal;
+      // An uncertainty is a Δ magnitude, not an absolute reading — apply the same
+      // scale as the value's conversion but never the additive offset (°F/K), or a
+      // ±2°F uncertainty would silently become "−16.67°C" instead of "±1.11°C".
+      const temperatureUncertaintyCelsius: number | null = (() => {
+        if (tempUncertaintyVal == null) return null;
+        const unit = step1.temperature_unit;
+        if (unit === "°F") return Math.round((tempUncertaintyVal * 5 / 9) * 100) / 100;
+        return Math.round(tempUncertaintyVal * 100) / 100; // K and °C share the same magnitude
       })();
+      const convertPressureToPa = (v: number, unit: string): number => {
+        if (unit === "hPa" || unit === "mbar") return Math.round(v * 100 * 100) / 100;
+        if (unit === "kPa") return Math.round(v * 1000 * 100) / 100;
+        if (unit === "bar") return Math.round(v * 100000 * 100) / 100;
+        if (unit === "psi") return Math.round(v * 6894.757 * 100) / 100;
+        return v;
+      };
+      const pressurePa: number | null = pressVal == null ? null : convertPressureToPa(pressVal, step1.pressure_unit);
+      const pressureUncertaintyPa: number | null =
+        pressUncertaintyVal == null ? null : convertPressureToPa(pressUncertaintyVal, step1.pressure_unit);
 
       let points: CalibrationPointInline[] = [];
       let polyStats: Partial<CalibrationCreateBody> = {};
@@ -874,8 +913,11 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         repair_description: step1.calibration_purpose === "after_repair" ? (step1.repair_description || null) : null,
         calibration_interval: parseInt(step1.calibration_interval) || null,
         temperature: temperatureCelsius,
+        temperature_uncertainty: temperatureUncertaintyCelsius,
         humidity: humVal,
+        humidity_uncertainty: humUncertaintyVal,
         pressure: pressurePa,
+        pressure_uncertainty: pressureUncertaintyPa,
         notes: step1.notes || null,
         has_frequency_response: step1.add_frequency_response,
         frequency_response_frequency_unit: step1.add_frequency_response ? freqSettings.frequency_unit : null,
@@ -1156,6 +1198,8 @@ function Step1({
   const set = (key: keyof Step1State) => (value: string | boolean) =>
     onChange({ ...state, [key]: value });
   const [certificateError, setCertificateError] = useState<string | null>(null);
+  const [certificateDragging, setCertificateDragging] = useState(false);
+  const certFileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedChannel = profile.sensor_channels.find((c) => c.id === state.sensor_id);
 
@@ -1190,9 +1234,9 @@ function Step1({
 
   return (
     <div className="p-6 space-y-5">
-      {/* Channel + date row */}
-      <div className={`grid gap-4 ${profile.sensor_channels.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-        {profile.sensor_channels.length > 1 && (
+      {/* Channel row (only when the asset has more than one channel) */}
+      {profile.sensor_channels.length > 1 && (
+        <div className="grid grid-cols-1 gap-4">
           <WSelect
             label={t("channel")}
             value={state.sensor_id}
@@ -1211,14 +1255,32 @@ function Step1({
               label: `${c.channel_id} — ${translateDynamic(tQuantity, c.physical_quantity)}`,
             }))}
             required
+            tooltip={t("tips.channel")}
+            docsHref={WIZARD_DOCS_LINKS.channel}
           />
-        )}
+        </div>
+      )}
+
+      {/* Calibration date + interval, same row */}
+      <div className="grid grid-cols-2 gap-4">
         <WInput
           label={t("calibrationDate")}
           type="date"
           value={state.calibration_date}
           onChange={set("calibration_date")}
           required
+          tooltip={t("tips.calibrationDate")}
+          docsHref={WIZARD_DOCS_LINKS.calibration_date}
+        />
+        <WInput
+          label={t("calibrationIntervalMonths")}
+          type="number"
+          value={state.calibration_interval}
+          onChange={set("calibration_interval") as (v: string) => void}
+          placeholder={String(selectedChannel?.calibration_interval ?? 12)}
+          required
+          tooltip={t("tips.calibrationInterval")}
+          docsHref={WIZARD_DOCS_LINKS.calibration_interval}
         />
       </div>
 
@@ -1240,6 +1302,8 @@ function Step1({
           }}
           options={calibrationUsers.map((u) => ({ value: u.id, label: u.id === currentUserId ? currentUserName : u.name }))}
           required
+          tooltip={t("tips.registeredBy")}
+          docsHref={WIZARD_DOCS_LINKS.registered_by}
         />
         {/* Checked by: optional — same candidate list, minus whoever is Registered By */}
         <WSelect
@@ -1253,17 +1317,8 @@ function Step1({
             .filter((u) => u.id !== state.performed_by_user_id)
             .map((u) => ({ value: u.id, label: u.id === currentUserId ? currentUserName : u.name }))}
           placeholder={t("checkedByNone")}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <WInput
-          label={t("calibrationIntervalMonths")}
-          type="number"
-          value={state.calibration_interval}
-          onChange={set("calibration_interval") as (v: string) => void}
-          placeholder={String(selectedChannel?.calibration_interval ?? 12)}
-          required
+          tooltip={t("tips.checkedBy")}
+          docsHref={WIZARD_DOCS_LINKS.checked_by}
         />
       </div>
 
@@ -1275,6 +1330,8 @@ function Step1({
           onChange={(v) => onChange({ ...state, calibration_type: v as CalibrationType })}
           options={CALIBRATION_TYPE_OPTIONS}
           required
+          tooltip={t("tips.calibrationType")}
+          docsHref={WIZARD_DOCS_LINKS.calibration_type}
         />
         <WSelect
           label={t("calibrationPurpose")}
@@ -1282,13 +1339,16 @@ function Step1({
           onChange={(v) => onChange({ ...state, calibration_purpose: v as CalibrationPurpose })}
           options={CALIBRATION_PURPOSE_OPTIONS}
           required
+          tooltip={t("tips.calibrationPurpose")}
+          docsHref={WIZARD_DOCS_LINKS.calibration_purpose}
         />
       </div>
 
       {/* Calibration lab — field behavior switches on calibration_type */}
       <div className="grid grid-cols-2 gap-4">
         {state.calibration_type === "oem" && (
-          <WInput label={t("calibrationLab")} value={state.external_lab_name} onChange={() => {}} readOnly />
+          <WInput label={t("calibrationLab")} value={state.external_lab_name} onChange={() => {}} readOnly
+            tooltip={t("tips.calibrationLab")} docsHref={WIZARD_DOCS_LINKS.calibration_lab} />
         )}
         {(state.calibration_type === "external_accredited_lab" || state.calibration_type === "customer_asset") && (
           <WSelect
@@ -1301,6 +1361,8 @@ function Step1({
                 ? (state.calibration_type === "customer_asset" ? t("noCustomersConfigured") : t("noProvidersConfigured"))
                 : t("selectLab")
             }
+            tooltip={t("tips.calibrationLab")}
+            docsHref={WIZARD_DOCS_LINKS.calibration_lab}
           />
         )}
         {state.calibration_type === "internal_lab" && (
@@ -1310,50 +1372,51 @@ function Step1({
             onChange={set("calibration_location_id") as (v: string) => void}
             options={calibrationLabs.map((l) => ({ value: l.id, label: l.name }))}
             placeholder={calibrationLabs.length === 0 ? t("noLabsConfigured") : t("selectLab")}
+            tooltip={t("tips.calibrationLab")}
+            docsHref={WIZARD_DOCS_LINKS.calibration_lab}
           />
         )}
       </div>
 
-      {/* Frequency response (orthogonal to calibration type / coefficients-only) */}
-      <div className="flex items-center pt-1">
-        <WCheckbox
-          label={t("addFrequencyResponseLabel")}
-          checked={state.add_frequency_response}
-          onChange={set("add_frequency_response") as (v: boolean) => void}
-        />
-      </div>
-
-      {/* OEM / External Accredited Lab / Customer's Asset fields */}
-      {showsCoefficientsOnly && (
-        <div className="space-y-4 pl-4 border-l-2 border-og-border">
-          {showsCertificateUpload && (
-            <div className="flex flex-col gap-1">
-              <WLabel text={t("calibrationCertificate")} />
-              {state.certificate_file ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-og-text truncate">{state.certificate_file.name}</span>
-                  <button type="button" onClick={() => handleCertificateFile(null)} className="text-gray-400 hover:text-og-text">
-                    <XIcon size={13} />
-                  </button>
-                </div>
-              ) : (
+      {/* OEM / External Accredited Lab / Customer's Asset: certificate upload */}
+      {showsCertificateUpload && (
+        <div className="pl-4 border-l-2 border-og-border">
+          <div className="flex flex-col gap-1">
+            <WLabel text={t("calibrationCertificate")} tooltip={t("tips.calibrationCertificate")} docsHref={WIZARD_DOCS_LINKS.calibration_certificate} />
+            {state.certificate_file ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-og-text truncate">{state.certificate_file.name}</span>
+                <button type="button" onClick={() => handleCertificateFile(null)} className="text-gray-400 hover:text-og-text">
+                  <XIcon size={13} />
+                </button>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setCertificateDragging(true); }}
+                onDragLeave={() => setCertificateDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setCertificateDragging(false);
+                  const f = e.dataTransfer.files[0];
+                  if (f) handleCertificateFile(f);
+                }}
+                onClick={() => certFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
+                  certificateDragging ? "border-og-accent bg-og-accent/5" : "border-og-border-md hover:border-og-accent hover:bg-og-surface-alt"
+                }`}
+              >
                 <input
+                  ref={certFileInputRef}
                   type="file"
                   accept="application/pdf"
+                  className="hidden"
                   onChange={(e) => handleCertificateFile(e.target.files?.[0] ?? null)}
-                  className="text-sm text-og-text file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-og-surface-alt file:text-og-text hover:file:bg-og-border-md cursor-pointer"
                 />
-              )}
-              {certificateError && <p className="text-xs text-red-500 mt-0.5">{certificateError}</p>}
-              <p className="text-xs text-gray-400">{t("uploadCertificateHint")}</p>
-            </div>
-          )}
-          <div className="flex items-center pt-1">
-            <WCheckbox
-              label={t("coefficientsOnlyLabel")}
-              checked={state.coefficients_only}
-              onChange={set("coefficients_only") as (v: boolean) => void}
-            />
+                <p className="text-xs font-medium text-og-text">{t("dropCertificateHint")}</p>
+              </div>
+            )}
+            {certificateError && <p className="text-xs text-red-500 mt-0.5">{certificateError}</p>}
+            <p className="text-xs text-gray-400">{t("uploadCertificateHint")}</p>
           </div>
         </div>
       )}
@@ -1368,6 +1431,8 @@ function Step1({
               onChange={set("internal_reference_asset_id") as (v: string) => void}
               options={referenceAssets.map((a) => ({ value: a.id, label: `${a.name} (${a.asset_id})` }))}
               placeholder={t("selectReference")}
+              tooltip={t("tips.referenceAsset")}
+              docsHref={WIZARD_DOCS_LINKS.reference_asset}
             />
             <WSelect
               label={t("calibrationMethod")}
@@ -1375,6 +1440,8 @@ function Step1({
               onChange={set("internal_procedure_id") as (v: string) => void}
               options={calibrationMethods.map((m) => ({ value: m.id, label: m.name }))}
               placeholder={t("selectMethod")}
+              tooltip={t("tips.calibrationMethod")}
+              docsHref={WIZARD_DOCS_LINKS.calibration_method}
             />
           </div>
         </div>
@@ -1390,10 +1457,12 @@ function Step1({
               value={state.repair_date}
               onChange={set("repair_date") as (v: string) => void}
               required
+              tooltip={t("tips.repairDate")}
+              docsHref={WIZARD_DOCS_LINKS.repair_date}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <WLabel text={t("repairDescription")} />
+            <WLabel text={t("repairDescription")} tooltip={t("tips.repairDescription")} docsHref={WIZARD_DOCS_LINKS.repair_description} />
             <textarea
               value={state.repair_description}
               onChange={(e) => set("repair_description")(e.target.value.slice(0, 500))}
@@ -1407,6 +1476,26 @@ function Step1({
         </div>
       )}
 
+      {/* Mode switches, right above Environmental Conditions / Notes */}
+      <div className="flex items-center gap-6 pt-1">
+        <WCheckbox
+          label={t("addFrequencyResponseLabel")}
+          checked={state.add_frequency_response}
+          onChange={set("add_frequency_response") as (v: boolean) => void}
+          tooltip={t("tips.addFrequencyResponse")}
+          docsHref={WIZARD_DOCS_LINKS.add_frequency_response}
+        />
+        {showsCoefficientsOnly && (
+          <WCheckbox
+            label={t("coefficientsOnlyLabel")}
+            checked={state.coefficients_only}
+            onChange={set("coefficients_only") as (v: boolean) => void}
+            tooltip={t("tips.coefficientsOnly")}
+            docsHref={WIZARD_DOCS_LINKS.coefficients_only}
+          />
+        )}
+      </div>
+
       {/* Environmental conditions */}
       <div className="border border-og-border rounded-lg overflow-hidden">
         <button
@@ -1414,7 +1503,10 @@ function Step1({
           onClick={() => onChange({ ...state, env_expanded: !state.env_expanded })}
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-og-text hover:bg-og-surface-alt transition-colors"
         >
-          <span>{t("environmentalConditions")} <span className="text-xs text-gray-400 font-normal ml-1">{t("optional")}</span></span>
+          <span className="inline-flex items-center gap-1">
+            {t("environmentalConditions")} <span className="text-xs text-gray-400 font-normal ml-1">{t("optional")}</span>
+            <FieldTooltip tooltip={t("tips.environmentalConditions")} docsHref={WIZARD_DOCS_LINKS.environmental_conditions} />
+          </span>
           <ChevronDownIcon size={14} className={`text-gray-400 transition-transform ${state.env_expanded ? "rotate-180" : ""}`} />
         </button>
         {state.env_expanded && (
@@ -1428,6 +1520,16 @@ function Step1({
                     <WInput label={t("temperature")} value={state.temperature_value}
                       onChange={set("temperature_value") as (v: string) => void}
                       placeholder="e.g. 23" error={numErr(state.temperature_value)} />
+                    <div className="flex flex-col gap-1">
+                      <WLabel text={t("uncertainty")} />
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-400">±</span>
+                        <input type="text" value={state.temperature_uncertainty}
+                          onChange={(e) => set("temperature_uncertainty")(e.target.value)}
+                          placeholder="e.g. 0.1"
+                          className={`${IB} ${numErr(state.temperature_uncertainty) ? IB_ERR : IB_OK}`} />
+                      </div>
+                    </div>
                     <WSelect label={t("unit")} value={state.temperature_unit}
                       onChange={set("temperature_unit") as (v: string) => void}
                       options={[{ value: "°C", label: "°C" }, { value: "K", label: "K" }, { value: "°F", label: "°F" }]} />
@@ -1436,6 +1538,16 @@ function Step1({
                     <WInput label={t("pressure")} value={state.pressure_value}
                       onChange={set("pressure_value") as (v: string) => void}
                       placeholder="e.g. 1013.25" error={numErr(state.pressure_value)} />
+                    <div className="flex flex-col gap-1">
+                      <WLabel text={t("uncertainty")} />
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-400">±</span>
+                        <input type="text" value={state.pressure_uncertainty}
+                          onChange={(e) => set("pressure_uncertainty")(e.target.value)}
+                          placeholder="e.g. 0.5"
+                          className={`${IB} ${numErr(state.pressure_uncertainty) ? IB_ERR : IB_OK}`} />
+                      </div>
+                    </div>
                     <WSelect label={t("unit")} value={state.pressure_unit}
                       onChange={set("pressure_unit") as (v: string) => void}
                       options={[{ value: "hPa", label: "hPa" }, { value: "Pa", label: "Pa" }, { value: "bar", label: "bar" }, { value: "psi", label: "psi" }]} />
@@ -1444,6 +1556,16 @@ function Step1({
                     <WInput label={t("humidity")} value={state.humidity_value}
                       onChange={set("humidity_value") as (v: string) => void}
                       placeholder="e.g. 45" error={numErr(state.humidity_value)} />
+                    <div className="flex flex-col gap-1">
+                      <WLabel text={t("uncertainty")} />
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-400">±</span>
+                        <input type="text" value={state.humidity_uncertainty}
+                          onChange={(e) => set("humidity_uncertainty")(e.target.value)}
+                          placeholder="e.g. 2"
+                          className={`${IB} ${numErr(state.humidity_uncertainty) ? IB_ERR : IB_OK}`} />
+                      </div>
+                    </div>
                     <WSelect label={t("unit")} value={state.humidity_unit}
                       onChange={set("humidity_unit") as (v: string) => void}
                       options={[{ value: "%RH", label: "%RH" }]} />
@@ -1457,7 +1579,7 @@ function Step1({
 
       {/* Notes */}
       <div className="flex flex-col gap-1">
-        <WLabel text={t("notes")} />
+        <WLabel text={t("notes")} tooltip={t("tips.notes")} docsHref={WIZARD_DOCS_LINKS.notes} />
         <textarea
           value={state.notes}
           onChange={(e) => set("notes")(e.target.value)}
@@ -2347,7 +2469,7 @@ function Step3({
         {sensorNominalUncertaintyManual.trim() !== "" && !isNaN(parseFloat(sensorNominalUncertaintyManual)) && (
           <div className="flex flex-col gap-1 justify-end pb-1.5">
             <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
-              <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" showLabel={false} />
+              <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" />
               {t("includeInBudget")}
             </label>
           </div>
@@ -2516,21 +2638,36 @@ function Step3({
             </div>
 
             {rightView === "chart" && (
-              <div className="rounded-xl border border-og-border bg-og-surface flex-1 relative overflow-hidden" style={{ minHeight: 340 }}>
-                {/* Gradient legend overlay */}
-                <div className="absolute bottom-20 right-3 z-20 pointer-events-none">
-                  <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
-                    <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">{t("residual")}</p>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 rounded-xs" style={{ height: 48, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
-                      <div className="flex flex-col justify-between h-12 text-[10px] text-gray-400">
-                        <span>{t("high")}</span>
-                        <span>{t("low")}</span>
+              <div className="flex-1 min-h-0 flex flex-col gap-3">
+                <div className="rounded-xl border border-og-border bg-og-surface flex-1 min-h-0 relative overflow-hidden">
+                  {/* Gradient legend overlay */}
+                  <div className="absolute bottom-20 right-3 z-20 pointer-events-none">
+                    <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
+                      <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">{t("residual")}</p>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 rounded-xs" style={{ height: 48, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
+                        <div className="flex flex-col justify-between h-12 text-[10px] text-gray-400">
+                          <span>{t("high")}</span>
+                          <span>{t("low")}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                  <div ref={plotDivRef} style={{ height: "100%", width: "100%" }} />
                 </div>
-                <div ref={plotDivRef} style={{ height: 340, width: "100%" }} />
+                <ResidualsChart
+                  className="flex-1 min-h-0"
+                  points={result.points.map((p) => ({
+                    point_index: p.point_index,
+                    reference_value: p.reference_value,
+                    residual_abs: p.residual_abs,
+                    residual_pct: p.residual_pct,
+                  }))}
+                  referenceUnit={referenceUnit}
+                  referenceLabel={t("reference")}
+                  residualLabel={t("residual")}
+                  residualPercentLabel={t("residualPercent")}
+                />
               </div>
             )}
 

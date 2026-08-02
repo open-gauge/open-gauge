@@ -202,8 +202,11 @@ class CalibrationCreate(BaseModel):
 
     # Environmental conditions (canonical units: °C, %RH, Pa)
     temperature: float | None = None
+    temperature_uncertainty: float | None = None
     humidity: float | None = None
+    humidity_uncertainty: float | None = None
     pressure: float | None = None
+    pressure_uncertainty: float | None = None
 
     # Polynomial model
     poly_order: int | None = None
@@ -313,8 +316,11 @@ class CalibrationResponse(BaseModel):
 
     # Environmental conditions
     temperature: float | None
+    temperature_uncertainty: float | None
     humidity: float | None
+    humidity_uncertainty: float | None
     pressure: float | None
+    pressure_uncertainty: float | None
 
     # Polynomial model
     poly_order: int | None

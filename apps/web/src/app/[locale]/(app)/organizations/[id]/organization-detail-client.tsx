@@ -236,7 +236,7 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
                 onKeyDown={(e) => { if (e.key === "Enter") toggle(u.id); }}
                 className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-og-surface-alt cursor-pointer"
               >
-                <ToggleSwitch checked={selected.has(u.id)} onChange={() => toggle(u.id)} showLabel={false} />
+                <ToggleSwitch checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
                 <Avatar name={u.name} pictureUrl={u.profile_picture_url} size={28} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-og-text truncate">{u.name}</p>
