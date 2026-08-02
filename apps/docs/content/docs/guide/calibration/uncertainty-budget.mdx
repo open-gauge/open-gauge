@@ -22,9 +22,9 @@ whether it's "random" or "systematic" (GUM explicitly deprecates that older dist
 | Source | Type | How it's derived |
 |---|---|---|
 | `fit_residuals` | A | Always present. Standard deviation of the calibration curve's fit residuals. Degrees of freedom = points − parameters, or unknown if that's ≤ 0. |
-| `reference_standard` | B | Optional. The reference standard's own stated expanded uncertainty, converted to a standard uncertainty via $u = U/k$ (GUM §4.3.3). For internal calibrations, auto-fetched from the selected reference asset's most recent calibration; otherwise entered manually. |
+| `reference_standard` | B | **Opt-in** — a switch, off by default, excludes it from the budget entirely. Once switched on: auto-fetched from the selected reference asset's most recent calibration when one is linked (shown read-only), or entered manually otherwise, in the calibration's own reference unit — converted to a standard uncertainty via $u = U/k$ (GUM §4.3.3). See [Filling in an uncertainty box](#uncertainty-box-units) below. |
 | `resolution` | B | Included automatically whenever the channel has a resolution value. Rectangular distribution per GUM §4.3.7 — see below. |
-| `sensor_nominal_accuracy` | B | The channel's manufacturer-stated uncertainty, converted via $u = U/k$. Pre-fills from the channel's [Uncertainty (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) field but is freely editable per calibration. **Opt-in only** — folding it in by default risks double-counting against `fit_residuals`, since both can reflect the same underlying instrument imprecision. |
+| `sensor_nominal_accuracy` | B | **Opt-in** — a switch, off by default, excludes it from the budget entirely (avoiding double-counting against `fit_residuals`, since both can reflect the same underlying instrument imprecision). Once switched on: pre-fills from the channel's [Uncertainty (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) field, converted via $u = U/k$, but is freely editable per calibration — see [Filling in an uncertainty box](#uncertainty-box-units) below. |
 | `external_certificate_stated` | B | Only appears on [coefficients-only](./coefficients-only.mdx) calibrations that have a lab-stated uncertainty. Recorded as a single row holding the certificate's expanded uncertainty and coverage factor as-is, not decomposed further. |
 
 ### Resolution as a rectangular distribution
@@ -87,6 +87,50 @@ meaningful:
   out of this sum entirely. If *no* row has finite degrees of freedom, $\nu_{\text{eff}}$ is
   undefined and Open Gauge falls back to the normal-distribution quantile above (the correct limit as
   $\nu \to \infty$).
+
+  The wizard shows the resulting $k$ (2 decimal places) directly under the Confidence % input, so
+  its effect on the interval is visible immediately, without waiting for the full analysis to
+  re-render below.
+
+## Filling in an uncertainty box [#uncertainty-box-units]
+
+The Sensor nominal accuracy box shows its value next to a fixed unit label — the channel's own
+configured unit, from its [Uncertainty (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty)
+field (or the channel's base unit, if that field was expressed as %FS). That isn't necessarily the
+same unit this calibration's own reference values are entered in (Step 2's reference unit) — Open
+Gauge converts it to that scale internally before combining it into the budget, so the two never
+need to match. A refresh icon next to the label resets the value back to the channel's own
+datasheet default, discarding any manual edit.
+
+The Reference standard uncertainty box, by contrast, is always expressed directly in the
+calibration's own reference unit — a reference standard's certificate value is entered on the same
+scale the calibration itself is recorded in, so no conversion is needed there.
+
+Switching Sensor nominal accuracy on does more than add its contribution to the budget: it also
+locks the Conformity assessment panel's Tolerance box (see
+[Filling in the conformity boxes](./decision-rules.mdx#conformity-boxes)) to mirror the same value,
+converted into the reference unit, since in that configuration the sensor's own accuracy spec *is*
+the pass/fail threshold. Switching it back off leaves Tolerance at whatever it last mirrored, now
+freely editable again.
+
+The Sensor nominal accuracy conversion is for *magnitudes* (accuracy/uncertainty deltas), not
+readings — a 1 °C uncertainty converts to 1.8 °F, **not** 33.8 °F. Converting a delta never applies
+the offset an absolute-reading conversion would (20 °C ≠ 1.8 × 20 °F; but *an uncertainty of* 20 °C
+really is *an uncertainty of* 36 °F).
+
+Not every unit pairing converts cleanly. A handful of quantities in Open Gauge's unit list mix
+genuinely different physical concepts under one label — e.g. humidity's %RH (a vapor-pressure
+ratio) and dew point °C (a temperature) aren't related by a constant factor, and radiation's Gy
+(absorbed dose) and Sv (equivalent dose) differ by a radiation-type-dependent weighting factor. If
+the channel's own unit and the calibration's reference unit fall into different groups like these,
+Open Gauge can't convert between them and excludes the contribution from the budget rather than
+risk a silently wrong number.
+
+**Worked example.** A flow sensor's channel is configured in m³/h. Its datasheet states an
+accuracy of ±0.5% of full scale over a 0–200 m³/h range, i.e. ±1 m³/h — Sensor nominal accuracy
+shows `1` next to `m³/h` once switched on. If this calibration's own data happens to be entered in
+gal/min instead (Step 2's reference unit), Open Gauge converts that `1 m³/h` into ≈4.40 gal/min
+automatically before combining it into the budget.
 
 ## Reporting rounding
 

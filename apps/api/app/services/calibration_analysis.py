@@ -76,6 +76,11 @@ class AnalysisResult:
     effective_degrees_of_freedom: float | None = None
     poly_coefficients_covariance: list[list[float]] | None = None
     points: list[AnalysisPoint] = field(default_factory=list)
+    # Only set when calibration_method="custom_formula" — the fitted formula
+    # with parameter values substituted in, and those values on their own
+    # for display (e.g. "a = 2.5, b = 1.2"). See _fit_custom_formula.
+    resolved_custom_formula: str | None = None
+    custom_formula_parameter_values: dict[str, float] | None = None
 
 
 def _fit_with_covariance(
@@ -122,6 +127,53 @@ def predict_with_uncertainty(
     g = np.array([x ** (degree - i) for i in range(len(coeffs))])
     variance = float(g @ cov @ g)
     return y, math.sqrt(variance) if variance > 0 else 0.0
+
+
+def _fit_custom_formula(
+    measured: np.ndarray, reference: np.ndarray, formula: str
+) -> tuple[np.ndarray, dict[str, float], str]:
+    """
+    Fit a user-declared formula *shape*'s free parameters (e.g. "a*x*sin(x) +
+    b" -> a, b) to (measured, reference) via nonlinear least squares
+    (scipy.optimize.curve_fit) — calibration_method="custom_formula". Every
+    parameter's initial guess is 1.0 (GUM doesn't prescribe a better one,
+    and this keeps the UI to just a formula field — see Step 3's Calibration
+    method selector).
+
+    Returns (fitted_reference_values, {param_name: fitted_value},
+    resolved_formula). Raises ValueError if the fit fails to converge, or if
+    the formula has no free parameters to fit (use polynomial_fit for a
+    data-derived model, or model_direct to declare every value directly).
+    """
+    from scipy.optimize import curve_fit
+
+    from .formula_eval import evaluate_formula
+    from .formula_params import extract_formula_parameters, substitute_formula_parameters
+
+    param_names = extract_formula_parameters(formula)
+    if not param_names:
+        raise ValueError(
+            "Custom formula has no free parameters to fit — use Polynomial Fit for a "
+            "data-derived model, or enter every value directly."
+        )
+
+    def model_func(x_arr: np.ndarray, *params: float) -> np.ndarray:
+        extra = dict(zip(param_names, params))
+        return np.array([evaluate_formula(formula, float(xi), extra_names=extra) for xi in x_arr])
+
+    p0 = [1.0] * len(param_names)
+    try:
+        popt, _ = curve_fit(model_func, measured, reference, p0=p0, maxfev=10000)
+    except (RuntimeError, TypeError, ValueError) as e:
+        raise ValueError(
+            f"Custom formula fit did not converge — try simplifying the formula or "
+            f"check the data ({e})"
+        ) from e
+
+    param_values = {name: float(v) for name, v in zip(param_names, popt)}
+    fitted = model_func(measured, *popt)
+    resolved = substitute_formula_parameters(formula, param_values)
+    return fitted, param_values, resolved
 
 
 def _aic(n: int, rss: float, k: int) -> float:
@@ -358,6 +410,7 @@ def _apply_decision_rule(
     channel_accuracy_type: str | None,
     decision_rule: DecisionRule,
     expanded_uncertainty: float,
+    tolerance_override: float | None = None,
 ) -> tuple[bool, dict]:
     """
     Apply an ISO/IEC 17025 §7.1.3 / §7.8.6-compliant decision rule and return
@@ -374,12 +427,36 @@ def _apply_decision_rule(
     - shared_risk: expand the acceptance zone outward by U (accept iff
       error - U <= tolerance), reducing the risk of a false reject at the
       cost of some false-accept risk near the boundary.
+
+    `tolerance_override`, when given, is a single flat tolerance (already in
+    reference units) the wizard's editable Tolerance box supplied directly —
+    it replaces the whole channel_accuracy_value/type-derived computation
+    below, including "percent_of_reading"'s per-point tolerances, since an
+    explicit number from the user is unambiguous regardless of how the
+    channel's own spec is expressed.
     """
+    if tolerance_override is not None and tolerance_override > 0:
+        guard = 0.0
+        if decision_rule == "guard_band_w_uncertainty":
+            guard = expanded_uncertainty
+        elif decision_rule == "shared_risk":
+            guard = -expanded_uncertainty
+        passed = bool(max_error + guard <= tolerance_override)
+        return passed, {
+            "decision_rule": decision_rule,
+            "specification": f"±{tolerance_override} (manual)",
+            "expanded_uncertainty_applied": expanded_uncertainty if decision_rule != "simple_acceptance" else None,
+            "tolerance_value": tolerance_override,
+            "passed": passed,
+            "reason": None,
+        }
+
     if channel_accuracy_value is None or channel_accuracy_value <= 0:
         return True, {
             "decision_rule": decision_rule,
             "specification": None,
             "expanded_uncertainty_applied": None,
+            "tolerance_value": None,
             "passed": True,
             "reason": "No accuracy specification provided; conformity not evaluated.",
         }
@@ -390,22 +467,30 @@ def _apply_decision_rule(
     elif decision_rule == "shared_risk":
         guard = -expanded_uncertainty
 
+    # tolerance_value is only meaningful as a single number for the two "flat"
+    # accuracy types below — percent_of_reading's tolerance varies per point
+    # (tolerance_i = value% * |ref_i|) and the pass/fail check compares each
+    # residual against its own point's tolerance, not max_error against one
+    # number, so there's no single value that accurately represents it.
+    tolerance_value: float | None = None
     if channel_accuracy_type == "percent_of_reading":
         tolerances = channel_accuracy_value / 100.0 * np.abs(ref)
         passed = bool(np.all(np.abs(residuals) + guard <= tolerances))
         spec_desc = f"±{channel_accuracy_value}% of reading"
     elif channel_accuracy_type == "percent_of_full_scale":
-        tolerance = channel_accuracy_value / 100.0 * span
-        passed = bool(max_error + guard <= tolerance)
+        tolerance_value = channel_accuracy_value / 100.0 * span
+        passed = bool(max_error + guard <= tolerance_value)
         spec_desc = f"±{channel_accuracy_value}% of full scale"
     else:  # absolute
-        passed = bool(max_error + guard <= channel_accuracy_value)
+        tolerance_value = channel_accuracy_value
+        passed = bool(max_error + guard <= tolerance_value)
         spec_desc = f"±{channel_accuracy_value} (absolute)"
 
     return passed, {
         "decision_rule": decision_rule,
         "specification": spec_desc,
         "expanded_uncertainty_applied": expanded_uncertainty if decision_rule != "simple_acceptance" else None,
+        "tolerance_value": tolerance_value,
         "passed": passed,
         "reason": None,
     }
@@ -418,6 +503,8 @@ def run_analysis(
     measured_unit: str,
     poly_degree: int | None = None,
     skip_fit: bool = False,
+    calibration_method: Literal["polynomial_fit", "lookup_table", "custom_formula"] = "polynomial_fit",
+    custom_formula: str | None = None,
     distribution_type: Literal["normal", "t", "chi_squared"] = "normal",
     confidence_level: float = 95.0,
     channel_accuracy_value: float | None = None,
@@ -429,6 +516,7 @@ def run_analysis(
     sensor_nominal_coverage_factor: float = 2.0,
     include_sensor_nominal_uncertainty: bool = False,
     decision_rule: DecisionRule = "simple_acceptance",
+    tolerance_override: float | None = None,
 ) -> AnalysisResult:
     """
     Fit a polynomial model to calibration data and compute full statistics.
@@ -454,6 +542,22 @@ def run_analysis(
     collapses to 0 (the model is trusted as declared), the Type B terms
     combine normally from the caller-supplied budget inputs, and conformity
     is assessed with max_error=0 against both range endpoints.
+
+    calibration_method selects *how* the model is derived from real data
+    when skip_fit=False (data_entry_mode=raw_data's Step 3 "Calibration
+    method"):
+      - "polynomial_fit" (default): today's np.polyfit behavior, unchanged.
+      - "lookup_table": no fit at all — the entered points *are* the model,
+        linearly interpolated (np.interp). This is an exact interpolant
+        through its own training data by construction, so residuals are
+        always ~0 (k=0, all uncertainty comes from the Type B budget, same
+        "trusted as declared" convention as model_direct — see above).
+      - "custom_formula": fits a user-declared formula *shape*'s free
+        parameters (e.g. "a*x + b") to the data via nonlinear least squares
+        — see _fit_custom_formula. Populates
+        resolved_custom_formula/custom_formula_parameter_values on the
+        result; poly_degree/coefficients stay None/empty (nothing was fitted
+        as a polynomial).
 
     There is no separate "coverage factor" input: the coverage factor k is
     always derived from confidence_level (and, for "t"/"chi_squared", the
@@ -483,6 +587,9 @@ def run_analysis(
     ref = np.array(reference_values, dtype=float)
     meas = np.array(measured_values, dtype=float)
 
+    resolved_custom_formula: str | None = None
+    custom_formula_parameter_values: dict[str, float] | None = None
+
     if skip_fit:
         # No transference function: "measured" is already directly comparable
         # to "reference" (both in the same physical quantity) — the residual
@@ -491,6 +598,25 @@ def run_analysis(
         coeffs, coeffs_cov = None, None
         fitted = meas
         k = 0  # zero fitted parameters consumed -> dof_a = n - k = n in the budget below
+    elif calibration_method == "lookup_table":
+        # No fit: the entered points *are* the model, linearly interpolated.
+        # Evaluating at the training points themselves reproduces them
+        # exactly (an interpolant, not an approximation), so residuals here
+        # are always ~0 by construction — see the module docstring above.
+        degree = None
+        coeffs, coeffs_cov = None, None
+        order = np.argsort(meas)
+        fitted = np.interp(meas, meas[order], ref[order])
+        k = 0
+    elif calibration_method == "custom_formula":
+        if not custom_formula:
+            raise ValueError("custom_formula is required when calibration_method='custom_formula'")
+        degree = None
+        coeffs, coeffs_cov = None, None
+        fitted, custom_formula_parameter_values, resolved_custom_formula = _fit_custom_formula(
+            meas, ref, custom_formula
+        )
+        k = len(custom_formula_parameter_values)
     else:
         # Select or use provided degree
         if poly_degree is None:
@@ -517,7 +643,11 @@ def run_analysis(
     span = float(np.max(ref) - np.min(ref))
     full_scale_error_pct = (max_error / span * 100.0) if span > 0 else 0.0
 
-    if skip_fit:
+    if skip_fit or calibration_method == "lookup_table":
+        # Undefined without an actual fitted curve — a lookup table's
+        # "fitted" array is a piecewise-linear interpolant through its own
+        # training data, not a curve with a meaningful shape to compare
+        # against a best-fit line (see the module docstring above).
         non_linearity_pct: float | None = None
     else:
         # Non-linearity: deviation of fitted curve from best-fit line
@@ -547,6 +677,7 @@ def run_analysis(
         residuals, ref, max_error, span,
         channel_accuracy_value, channel_accuracy_type,
         decision_rule, expanded_u,
+        tolerance_override=tolerance_override,
     )
 
     # Build point list
@@ -586,4 +717,6 @@ def run_analysis(
         effective_degrees_of_freedom=dof_eff,
         poly_coefficients_covariance=coeffs_cov.tolist() if coeffs_cov is not None else None,
         points=points,
+        resolved_custom_formula=resolved_custom_formula,
+        custom_formula_parameter_values=custom_formula_parameter_values,
     )

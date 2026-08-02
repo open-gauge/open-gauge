@@ -83,6 +83,16 @@ export const STAT_DOCS_LINKS: Record<string, string> = {
   expanded_uncertainty: "/docs/guide/calibration/uncertainty-budget#expanded-uncertainty",
   coverage_factor: "/docs/guide/calibration/uncertainty-budget#coverage-factor",
   decision_rule: "/docs/guide/calibration/decision-rules#decision-rule",
+  // data_entry_mode=raw_data's Step 3 "Calibration method" selector
+  // (Polynomial Fit / Lookup Table / Custom Formula) — distinct from the
+  // sensor channel's own "calibration method" spec field (CHAN_DOCS_LINKS)
+  // and the internal-lab procedure selector (WIZARD_DOCS_LINKS), which
+  // happen to share the same English name for an unrelated concept.
+  calibration_method: "/docs/guide/calibration/curve-fitting#calibration-method",
+  custom_formula_syntax: "/docs/guide/calibration/custom-formulas",
+  regression_degree: "/docs/guide/calibration/curve-fitting#regression-degree",
+  conformity_boxes: "/docs/guide/calibration/decision-rules#conformity-boxes",
+  uncertainty_box_units: "/docs/guide/calibration/uncertainty-budget#uncertainty-box-units",
 };
 
 // Health tab's "Detailed Metrics" panel — apps/api/app/health/service.py's MetricGroupItem.key

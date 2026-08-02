@@ -12,8 +12,10 @@ chaque calibration.
 ## Les trois règles [#decision-rule]
 
 Soit $\text{error}$ l'[erreur maximale](./curve-fitting.mdx#max-error) de la calibration et
-$\text{tolerance}$ la spécification d'exactitude de la voie (par ex. ±0,5 °C, ou ±1 % FS
-converti en valeur absolue), et $U$ l'
+$\text{tolerance}$ la valeur du champ **Tolérance** de l'assistant (préremplie à partir de la
+spécification d'exactitude de la voie lorsqu'elle est disponible — par ex. ±0,5 °C, ou ±1 % FS
+converti en valeur absolue — mais librement modifiable ; voir
+[Remplir les champs de conformité](#conformity-boxes) ci-dessous), et $U$ l'
 [incertitude élargie](./uncertainty-budget.mdx#expanded-uncertainty).
 
 | Règle | Réussit quand | Effet | Quand l'utiliser |
@@ -31,9 +33,53 @@ d'entrée.
 
 Chaque calibration stocke une `conformity_statement` portant l'enregistrement complet : la règle
 de décision utilisée, un rendu lisible par un humain de la spécification (par ex.
-`"±0.5% of full scale"`), l'incertitude élargie appliquée (le cas échéant), si elle a réussi, et
-une raison (renseignée uniquement lorsqu'aucune spécification d'exactitude n'était configurée du
-tout, ce qui signifie que la conformité n'a pas été évaluée).
+`"±0.5% of full scale"`, ou `"±1.0 (manual)"` lorsque le champ Tolérance a été modifié
+manuellement — voir ci-dessous), l'incertitude élargie appliquée (le cas échéant), la valeur
+numérique de tolérance comparée, si elle a réussi, et une raison (renseignée uniquement lorsqu'aucune
+spécification d'exactitude n'était configurée et qu'aucune tolérance manuelle n'a été saisie non
+plus, ce qui signifie que la conformité n'a pas été évaluée du tout).
+
+## Remplir les champs de conformité [#conformity-boxes]
+
+Le panneau d'évaluation de la conformité visualise la règle du tableau ci-dessus sous forme de
+champs : **Erreur** et **Incertitude** sont en lecture seule, tirés directement des propres
+résultats de cette calibration ; entre eux se trouve un **+** (bande de garde), un **−** (risque
+partagé), ou rien du tout (acceptation simple, qui ignore l'incertitude). **Tolérance** est le
+seul champ modifiable.
+
+- **Erreur** — la propre [erreur maximale](./curve-fitting.mdx#max-error) de cette calibration.
+  Non modifiable ; c'est un résultat, pas une saisie.
+- **Incertitude** — la propre
+  [incertitude élargie](./uncertainty-budget.mdx#expanded-uncertainty) de cette calibration, $U$.
+  Non modifiable, et affichée uniquement pour les règles de bande de garde/risque partagé
+  (l'acceptation simple ne l'utilise pas du tout).
+- **Tolérance** — l'erreur maximale acceptable. Modifiable, et indépendante de la propre
+  spécification d'exactitude de la voie — saisir une valeur ici (ou cliquer sur l'icône
+  d'actualisation à côté, qui copie la propre exactitude nominale de la voie, lorsque la voie en a
+  une) remplace ce qu'indique la spécification de la voie, pour cette calibration uniquement. Cela
+  contourne également entièrement la tolérance par point du **pourcentage de lecture** : quel que
+  soit le type d'exactitude avec lequel la voie est configurée, un champ Tolérance saisi
+  manuellement est toujours évalué comme un nombre fixe unique par rapport à l'erreur maximale,
+  exactement comme le sont déjà les types **absolu** et **pourcentage de pleine échelle**. Comme
+  Erreur et Incertitude à côté d'elle, Tolérance est toujours exprimée dans l'unité de référence
+  propre à la calibration (affichée en texte simple à côté du champ, pas dans un menu déroulant) —
+  l'icône d'actualisation remplit la valeur par défaut de la voie, déjà sur cette échelle. Lorsque
+  l'interrupteur [Exactitude nominale du capteur](./uncertainty-budget.mdx#uncertainty-box-units)
+  du panneau de calcul d'incertitude est activé, Tolérance reflète la valeur de ce champ, convertie
+  dans l'unité de référence, et devient en lecture seule — la propre spécification d'exactitude du
+  capteur *est* le seuil dans ce cas. Désactivez-le à nouveau pour modifier Tolérance
+  indépendamment.
+
+**Exemple détaillé.** La spécification de voie d'un transmetteur de pression est de ±0,5 % de la
+pleine échelle sur une plage de 0–10 bar (soit ±0,05 bar). Une calibration donne une erreur
+maximale = 0,03 bar et une incertitude élargie = 0,01 bar, règle de décision = bande de garde. Le
+champ Tolérance se préremplit à `0.05` (la propre spécification de la voie, convertie depuis
+%FS). Les champs indiquent `Erreur : 0.03 + Incertitude : 0.01 ≤ Tolérance : 0.05` —
+`0.04 ≤ 0.05`, donc c'est conforme. Si le contrat propre du client spécifie plutôt une tolérance
+plus stricte de ±0,03 bar, indépendamment de la spécification de plaque signalétique du capteur,
+saisir `0.03` dans le champ Tolérance réévalue par rapport à ce nombre à la place :
+`0.04 ≤ 0.03` est faux, donc il affiche désormais NON CONFORME — sans toucher du tout à la
+spécification d'exactitude configurée de la voie.
 
 ## Enregistrer une calibration non conforme
 
@@ -44,11 +90,3 @@ immuable et ne supprime jamais un résultat réel simplement parce qu'il est gê
 résultat n'est pas conforme, la boîte de dialogue de confirmation d'enregistrement nomme
 explicitement la spécification et la règle de décision, et le bouton d'enregistrement se
 relibelle en **« Enregistrer quand même »**.
-
-## Pas d'aperçu de tolérance autonome
-
-Il n'y a pas de champ de tolérance « et si » séparé côté client — une version antérieure de
-l'assistant en avait un, déconnecté de la spécification réelle de la voie et jamais persisté, ce
-qui pouvait contredire le résultat de conformité réellement enregistré. La déclaration de
-conformité affichée dans le panneau d'incertitude de l'assistant *est* celle qui est enregistrée
-et imprimée sur le certificat.

@@ -33,13 +33,17 @@ Inicia una calibración desde el canal de un activo. El asistente tiene tres pas
    **Registrado por** (una lista desplegable con los miembros de la organización del activo, con tu
    nombre por defecto), un revisor opcional **Verificado por**, intervalo de calibración,
    condiciones ambientales, y notas. Según el tipo/propósito elegido, aparecen campos adicionales —
-   ver abajo. Este paso también tiene un selector de **Modo de entrada de datos** para
-   calibraciones que no encajan en la forma habitual de datos en bruto — consulta
-   [Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx).
-2. **Datos en bruto** — ingresa pares de puntos (referencia, medido) (o, según el modo de entrada
-   de datos elegido arriba, un modelo ingresado directamente, o una comparación
-   referencia-frente-a-valor-ya-convertido). Consulta [Ajuste de curvas](./curve-fitting.mdx) para
-   saber qué hace Open Gauge con ellos.
+   ver abajo.
+2. **Datos de entrada** — comienza con un selector de método: **Referencia frente a Medido** (por
+   defecto — pares de puntos (referencia, medido) frente a la señal de salida bruta del canal,
+   ajustados a una curva), **Referencia frente a Indicado** (referencia frente a una lectura de
+   magnitud física ya convertida, sin ajuste de curva), o **Modelo (función de transferencia)** (un
+   modelo indicado por el laboratorio, sin ningún punto de dato en bruto — no se ofrece cuando el
+   Propósito de la calibración es Después de reparación). Consulta
+   [Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx) para el
+   desglose completo, incluyendo cómo Después de reparación divide automáticamente Referencia
+   frente a Medido/Indicado en datos tal como se encontró/tal como se dejó. Consulta
+   [Ajuste de curvas](./curve-fitting.mdx) para saber qué hace Open Gauge con los datos en bruto.
 3. **Análisis / revisión** — el ajuste calculado en vivo, el presupuesto de incertidumbre, y el
    dictamen de conformidad. Consulta [El presupuesto de incertidumbre](./uncertainty-budget.mdx) y
    [Reglas de decisión](./decision-rules.mdx).
@@ -75,8 +79,8 @@ campo **Laboratorio de calibración**:
   carga de certificado.
 
 Para OEM, Laboratorio externo acreditado, y Activo de cliente, la entrada de datos en bruto puede
-omitirse por completo ajustando el **Modo de entrada de datos** a **Modelo proporcionado
-directamente** cuando el certificado indica el modelo de calibración directamente — consulta
+omitirse por completo eligiendo el método de entrada **Modelo (función de transferencia)** en el
+Paso 2 cuando el certificado indica el modelo de calibración directamente — consulta
 [Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx).
 
 ### Certificados subidos
@@ -100,8 +104,11 @@ El **Propósito de la calibración** registra *por qué* se realizó la calibrac
 - **Rutinaria** — una recalibración periódica. El valor por defecto una vez que existe al menos una
   calibración previa.
 - **Después de reparación** — tras una reparación. Revela una **Fecha de reparación** (selector de
-  fecha) y una **Descripción de la reparación** (hasta 500 caracteres). Ver abajo cómo esto afecta la
-  pestaña Estado.
+  fecha) y una **Descripción de la reparación** (hasta 500 caracteres). También divide
+  automáticamente la entrada Referencia frente a Medido/Indicado del Paso 2 en datos separados tal
+  como se encontró/tal como se dejó — consulta
+  [Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx#after-repair-as-foundas-left-data).
+  Ver abajo cómo esto afecta la pestaña Estado.
 - **Verificación** — una calibración realizada para verificar la conformidad continua, sin
   necesariamente reiniciar el contador del intervalo como lo haría una recalibración rutinaria.
 

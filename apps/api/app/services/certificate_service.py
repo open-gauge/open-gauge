@@ -141,16 +141,22 @@ def _build_coefficient_rows(coeffs: list[float] | None) -> tuple[list[dict], str
 
 def _build_stat_rows(cal: "Calibration") -> list[dict]:
     rows: list[dict] = []
-    if cal.r_squared is not None:
+    # A Lookup Table's "residuals" are an exact interpolant through its own
+    # training data (R²=1, RMSE=0, ... by construction, not real statistics)
+    # — same reasoning the wizard/detail view apply, skip the whole fit-
+    # statistics block, keep only the uncertainty budget rows below (Type B
+    # only, still meaningful).
+    is_lookup_table = cal.model_type == "lookup_table"
+    if cal.r_squared is not None and not is_lookup_table:
         rows.append({"label": "R²", "value": _fmt(cal.r_squared, 6)})
         rows.append({"label": "RMSE", "value": _fmt(cal.rmse, 6)})
-    if cal.max_error is not None:
+    if cal.max_error is not None and not is_lookup_table:
         rows.append({"label": "Max Error", "value": _fmt(cal.max_error, 6)})
         rows.append({"label": "Std Error", "value": _fmt(cal.standard_error, 6)})
-    if cal.full_scale_error is not None:
+    if cal.full_scale_error is not None and not is_lookup_table:
         rows.append({"label": "Full-Scale Error", "value": f"{_fmt(cal.full_scale_error, 4)} %"})
         rows.append({"label": "Non-Linearity", "value": f"{_fmt(cal.non_linearity, 4)} %"})
-    if cal.repeatability is not None:
+    if cal.repeatability is not None and not is_lookup_table:
         rows.append({"label": "Repeatability", "value": _fmt(cal.repeatability, 6)})
         rows.append({"label": "Hysteresis", "value": _fmt(cal.hysteresis, 6)})
     if cal.expanded_uncertainty is not None:

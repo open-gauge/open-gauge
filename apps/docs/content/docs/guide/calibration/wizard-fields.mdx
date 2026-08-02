@@ -73,18 +73,6 @@ types only. Open Gauge validates that the file is actually a PDF (both by declar
 signature) before accepting it. If provided, it's served instead of the system-generated
 certificate everywhere this calibration's certificate is downloaded.
 
-## Data entry mode
-
-How this calibration's data was delivered — **Raw data** (reference vs. output signal, the
-default) is fitted to a curve as usual. **Model provided directly** is for a certificate that
-states the calibration model itself (a polynomial or a custom formula), with no raw data points —
-only offered for OEM/External Accredited Lab/Customer's Asset calibrations. **Reference vs.
-indicated value** and **Reference vs. as-found/as-left value** are for labs that deliver an
-already-converted physical-quantity comparison with no known transfer function — offered only when
-Calibration purpose is Verification or After Repair, respectively. See
-[Alternative calibration data-entry modes](./coefficients-only.mdx) for the full breakdown of all
-four modes.
-
 ## Reference asset
 
 The traceable reference standard used for this **Internal Lab** calibration — one of your own

@@ -12,8 +12,10 @@ resultierende Konformitätsaussage bei jeder Kalibrierung.
 ## Die drei Regeln [#decision-rule]
 
 Sei $\text{error}$ der [Maximalfehler](./curve-fitting.mdx#max-error) der Kalibrierung und
-$\text{tolerance}$ die Genauigkeitsspezifikation des Kanals (z. B. ±0,5 °C oder ±1 % FS,
-umgerechnet in einen Absolutwert), und $U$ die
+$\text{tolerance}$ der Wert im Feld **Toleranz** des Assistenten (vorausgefüllt aus der
+Genauigkeitsspezifikation des Kanals, sofern verfügbar — z. B. ±0,5 °C oder ±1 % FS, umgerechnet
+in einen Absolutwert — aber frei bearbeitbar; siehe
+[Die Konformitätsfelder ausfüllen](#conformity-boxes) unten), und $U$ die
 [erweiterte Unsicherheit](./uncertainty-budget.mdx#expanded-uncertainty).
 
 | Regel | Besteht, wenn | Wirkung | Wann zu verwenden |
@@ -31,9 +33,53 @@ alle drei Regeln aus identischen Eingabedaten ein unterschiedliches Urteil ergeb
 
 Jede Kalibrierung speichert eine `conformity_statement`, die den vollständigen Datensatz trägt:
 die verwendete Entscheidungsregel, eine menschenlesbare Darstellung der Spezifikation (z. B.
-`"±0.5% of full scale"`), die angewendete erweiterte Unsicherheit (falls vorhanden), ob sie
-bestanden wurde, und einen Grund (nur ausgefüllt, wenn überhaupt keine Genauigkeitsspezifikation
-konfiguriert war, was bedeutet, dass die Konformität nicht bewertet wurde).
+`"±0.5% of full scale"`, oder `"±1.0 (manual)"`, wenn das Feld Toleranz von Hand bearbeitet wurde
+— siehe unten), die angewendete erweiterte Unsicherheit (falls vorhanden), den numerischen
+Toleranzwert, mit dem verglichen wurde, ob sie bestanden wurde, und einen Grund (nur ausgefüllt,
+wenn weder eine Genauigkeitsspezifikation konfiguriert noch eine manuelle Toleranz eingegeben
+wurde, was bedeutet, dass die Konformität überhaupt nicht bewertet wurde).
+
+## Die Konformitätsfelder ausfüllen [#conformity-boxes]
+
+Das Panel zur Konformitätsbewertung stellt die Regel aus der obigen Tabelle als Felder dar:
+**Fehler** und **Unsicherheit** sind schreibgeschützt und stammen direkt aus den eigenen
+Ergebnissen dieser Kalibrierung; dazwischen steht ein **+** (Guard Band), ein **−** (geteiltes
+Risiko) oder gar nichts (einfache Annahme, die die Unsicherheit ignoriert). **Toleranz** ist das
+einzige bearbeitbare Feld.
+
+- **Fehler** — der eigene [Maximalfehler](./curve-fitting.mdx#max-error) dieser Kalibrierung.
+  Nicht bearbeitbar; es ist ein Ergebnis, keine Eingabe.
+- **Unsicherheit** — die eigene
+  [erweiterte Unsicherheit](./uncertainty-budget.mdx#expanded-uncertainty) dieser Kalibrierung,
+  $U$. Nicht bearbeitbar, und wird nur bei den Guard-Band-/Geteiltes-Risiko-Regeln angezeigt (die
+  einfache Annahme verwendet sie überhaupt nicht).
+- **Toleranz** — der maximal zulässige Fehler. Bearbeitbar und unabhängig von der eigenen
+  Genauigkeitsspezifikation des Kanals — die Eingabe eines Werts hier (oder ein Klick auf das
+  Aktualisieren-Symbol daneben, das die eigene Nominalgenauigkeit des Kanals übernimmt, sofern der
+  Kanal eine hat) überschreibt, was die Spezifikation des Kanals vorgibt, nur für diese
+  Kalibrierung. Dies umgeht auch die punktweise Toleranz von **Prozent vom Messwert** vollständig:
+  Unabhängig davon, mit welchem Genauigkeitstyp der Kanal konfiguriert ist, wird ein manuell
+  eingegebenes Feld Toleranz immer als eine einzelne feste Zahl gegen den Maximalfehler
+  ausgewertet, genau wie es bei den Typen **absolut** und **Prozent vom Endwert** bereits der Fall
+  ist. Wie Fehler und Unsicherheit daneben wird Toleranz immer in der eigenen Referenzeinheit der
+  Kalibrierung ausgedrückt (angezeigt als einfacher Text neben dem Feld, nicht als Dropdown) — das
+  Aktualisieren-Symbol füllt den Standardwert des Kanals ein, bereits auf dieser Skala. Wenn der
+  Schalter [Nominale Sensorgenauigkeit](./uncertainty-budget.mdx#uncertainty-box-units) im Panel
+  zur Unsicherheitsberechnung eingeschaltet ist, spiegelt Toleranz den Wert dieses Felds wider,
+  umgerechnet in die Referenzeinheit, und wird schreibgeschützt — die eigene
+  Genauigkeitsspezifikation des Sensors *ist* in diesem Fall der Schwellenwert. Schalten Sie ihn
+  wieder aus, um Toleranz unabhängig zu bearbeiten.
+
+**Durchgerechnetes Beispiel.** Die Kanalspezifikation eines Druckmessumformers beträgt ±0,5 % vom
+Endwert über einen Bereich von 0–10 bar (d. h. ±0,05 bar). Eine Kalibrierung ergibt einen
+Maximalfehler = 0,03 bar und eine erweiterte Unsicherheit = 0,01 bar, Entscheidungsregel = Guard
+Band. Das Feld Toleranz wird mit `0.05` vorausgefüllt (die eigene Spezifikation des Kanals,
+umgerechnet aus %FS). Die Felder zeigen `Fehler: 0.03 + Unsicherheit: 0.01 ≤ Toleranz: 0.05` —
+`0.04 ≤ 0.05`, also ist sie konform. Legt der eigene Vertrag des Kunden stattdessen eine engere
+Toleranz von ±0,03 bar fest, unabhängig von der Typenschildspezifikation des Sensors, führt die
+Eingabe von `0.03` in das Feld Toleranz zu einer erneuten Bewertung gegen diese Zahl:
+`0.04 ≤ 0.03` ist falsch, sodass nun NICHT KONFORM angezeigt wird — ohne die konfigurierte
+Genauigkeitsspezifikation des Kanals überhaupt zu berühren.
 
 ## Speichern einer nicht konformen Kalibrierung
 
@@ -44,10 +90,3 @@ und unterdrückt nie ein echtes Ergebnis nur, weil es ungelegen ist. Entspricht 
 der Konformität, benennt der Speicherbestätigungsdialog die Spezifikation und Entscheidungsregel
 ausdrücklich, und die Speichern-Schaltfläche wird zu **"Trotzdem speichern"** umbenannt.
 
-## Keine eigenständige Toleranzvorschau
-
-Es gibt kein separates clientseitiges "Was-wäre-wenn"-Toleranzfeld — eine frühere Version des
-Assistenten hatte eines, losgelöst von der tatsächlichen Spezifikation des Kanals und nie
-gespeichert, was dem tatsächlich gespeicherten Konformitätsergebnis widersprechen konnte. Die im
-Unsicherheitspanel des Assistenten angezeigte Konformitätsaussage *ist* diejenige, die gespeichert
-und auf dem Zertifikat gedruckt wird.

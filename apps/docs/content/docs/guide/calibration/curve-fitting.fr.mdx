@@ -1,15 +1,43 @@
 ---
 title: Ajustement de courbe et statistiques de régression
-description: Comment Open Gauge ajuste une courbe de calibration et calcule le R², la RMSE, l'erreur maximale, la non-linéarité, la répétabilité et l'hystérésis.
+description: Comment Open Gauge transforme les données brutes de calibration en un modèle, et calcule le R², la RMSE, l'erreur maximale, la non-linéarité, la répétabilité et l'hystérésis.
 ---
 
-Open Gauge ajuste une courbe de calibration polynomiale à vos points de données (référence,
-mesuré), puis rapporte un ensemble de statistiques de régression standard décrivant la qualité de
-cet ajustement.
+L'étape 3 (Analyse) d'une calibration à données brutes transforme vos points de données
+(référence, mesuré) en un modèle via l'une des trois **Méthodes de calibration**, puis rapporte un
+ensemble de statistiques de régression standard décrivant la qualité de ce modèle.
 
-## L'ajustement
+## Méthode de calibration [#calibration-method]
 
-Open Gauge ajuste :
+- **Ajustement polynomial** (par défaut) — ajuste une courbe polynomiale par moindres carrés,
+  décrit ci-dessous.
+- **Table de correspondance** — aucun ajustement de courbe. Les points saisis *sont* le modèle :
+  l'évaluer à n'importe quelle valeur mesurée interpole linéairement entre les deux points saisis
+  les plus proches. Comme le modèle reproduit exactement chaque point saisi par construction, le
+  R², la RMSE, l'erreur maximale, la non-linéarité, le
+  [budget d'incertitude](./uncertainty-budget.mdx) et la
+  [vérification de conformité](./decision-rules.mdx) sont tous ignorés — aucun d'eux n'est
+  pertinent face à des résidus qui sont trivialement nuls à chaque point saisi. Open Gauge rapporte
+  à la place l'[écart de linéarité](#linearity-deviation) — voir ci-dessous.
+- **Formule personnalisée** — écrivez une forme de formule avec des paramètres libres, par ex.
+  `a*x*sin(x) + b` (tout ce qui n'est ni `x` ni un nom de fonction autorisé est traité comme un
+  paramètre à ajuster — voir [Syntaxe des formules personnalisées](./custom-formulas.mdx)), et
+  Open Gauge ajuste ces paramètres à vos données par moindres carrés non linéaires
+  (`scipy.optimize.curve_fit`), la valeur initiale de chaque paramètre partant de 1.0. Le R², la
+  RMSE, l'erreur maximale et la non-linéarité sont tous calculés normalement, comme pour un
+  ajustement polynomial — c'est un véritable ajustement, simplement contre une forme de formule que
+  vous avez choisie plutôt qu'une base polynomiale fixe. Si l'ajustement ne converge pas (fréquent
+  pour les exponentielles/fonctions trigonométriques face à des données mal mises à l'échelle),
+  Open Gauge affiche une erreur plutôt qu'un résultat incorrect ou trompeur.
+
+`model_direct` (un modèle fourni par le laboratoire sans aucune donnée brute — voir
+[Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx)) utilise le même
+mécanisme de Formule personnalisée pour sa propre saisie de formule, simplement avec des valeurs de
+paramètres déclarées plutôt qu'un ajustement.
+
+## L'ajustement [#regression-degree]
+
+Cette section couvre spécifiquement l'**Ajustement polynomial**. Open Gauge ajuste :
 
 $$
 \text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
@@ -79,6 +107,29 @@ Pour un ajustement de degré ≥ 2 : de combien la courbe ajustée s'écarte de 
 droite d'ajustement, en pourcentage de pleine échelle. Une non-linéarité importante est un signal
 qu'un ajustement de degré supérieur était le bon choix — pas seulement du bruit que la sélection
 automatique de degré a saisi.
+
+## Écart de linéarité [#linearity-deviation]
+
+**Table de correspondance uniquement.** Puisqu'une table de correspondance n'a pas de courbe
+ajustée, la non-linéarité (qui en nécessite une) ne s'applique pas — mais l'*interpolation
+linéaire par morceaux elle-même* introduit sa propre erreur entre les points saisis, qui mérite
+d'être quantifiée. Open Gauge ajuste une droite (moindres carrés ordinaires) à travers les points
+de la calibration elle-même, puis échantillonne la courbe interpolée densément sur l'étendue
+mesurée et rapporte à quel point elle s'écarte de cette droite à chaque échantillon :
+
+$$
+\text{deviation}(x) = \text{LUT}(x) - (\text{slope} \cdot x + \text{intercept})
+$$
+
+Affiché sous forme de graphique sous la courbe d'interpolation — valeur mesurée sur l'axe des x,
+écart sur l'axe des y, basculable entre absolu (en unités de référence) et relatif (en pourcentage
+de l'étendue de référence, %FS) — plutôt qu'un seul chiffre résumé, car l'endroit de l'étendue où
+l'interpolation s'écarte compte autant que l'ampleur de l'écart. Des marqueurs ronds indiquent les
+points saisis de la calibration eux-mêmes, reliés par la courbe — le même langage visuel que le
+graphique principal de calibration. C'est purement diagnostique : Table de correspondance n'a pas
+de vérification de conformité (voir
+[Méthode de calibration](#calibration-method) ci-dessus), donc l'écart de linéarité n'est comparé
+à aucune tolérance et n'est pas intégré à une décision de réussite/échec.
 
 ## Répétabilité [#repeatability]
 

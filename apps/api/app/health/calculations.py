@@ -70,7 +70,13 @@ def has_model(cal: CalibrationSummary) -> bool:
     """True when a calibration has *some* evaluable model — a polynomial fit,
     or a custom formula (which carries no poly_coefficients at all). A
     reference-vs-indicated/as-found-as-left calibration has neither (no
-    transference function exists), so this is False for those."""
+    transference function exists), so this is False for those. A Lookup
+    Table calibration (model_type="lookup_table") also falls through to
+    False here — it has no poly_coefficients either (its "model" is its own
+    points, not a formula) — so it's deliberately excluded from Health tab
+    curve comparison/drift series rather than threading points into
+    CalibrationSummary for interpolation there (see AGENTS.md's Feature
+    Implementation Process — "smallest useful version first")."""
     if cal.model_type == "custom_formula":
         return bool(cal.custom_formula)
     return bool(cal.poly_coefficients)

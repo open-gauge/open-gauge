@@ -1,0 +1,73 @@
+---
+title: Custom formula syntax
+description: How to write a custom calibration formula in Open Gauge — allowed syntax, free parameters, and worked examples.
+---
+
+Two places in Open Gauge let you enter a **custom formula** as a calibration model instead of a
+polynomial: `model_direct`'s "Custom formula" option (a lab-supplied model with no raw data — see
+[Alternative calibration data-entry modes](./coefficients-only.mdx)) and raw data's "Custom
+Formula" [Calibration method](./curve-fitting.mdx#calibration-method) (fits the formula to your
+entered data). Both use the exact same formula input and syntax — they only differ in *where the
+parameter values come from*.
+
+## Writing a formula
+
+A formula is a single-variable expression in `x` — `x` always means the measured/output value.
+Any other letter or word you use is treated as a **free parameter**, e.g.:
+
+```
+a*x + b
+```
+
+has two free parameters, `a` and `b`. Open Gauge detects them automatically as you type and shows
+one below the formula field:
+
+- **`model_direct`** — enter a value for each parameter directly (from the certificate/datasheet
+  that gave you the model).
+- **Raw data's Custom Formula method** — no parameter inputs; Open Gauge fits `a` and `b` to your
+  entered (reference, measured) points via nonlinear regression instead.
+
+Either way, what's actually stored is the fully-resolved formula (parameters replaced with their
+values, e.g. `2.5 * x + 1.2`) — that's what appears on the equation display, the fitted-curve
+chart, the Health tab's drift/curve comparison, and the certificate.
+
+## Allowed syntax
+
+| Category | Allowed |
+|---|---|
+| Operators | `+` `−` `*` `/` `^` (power) `(` `)` |
+| Functions | `sqrt` `exp` `log` `ln` `sin` `cos` `tan` `abs` `pow` |
+| Variable | `x` (always the measured/output value) |
+| Parameters | any other letter/word, e.g. `a`, `b`, `k1` |
+
+Nothing else is allowed — no assignment, no comparisons, no access to anything outside the
+expression itself. This is enforced independently on both the browser (`expr-eval`) and the
+server (`simpleeval`), each restricted to this exact same whitelist, since the formula you save is
+evaluated separately by each side.
+
+`^` means exponentiation (`x^2` is "x squared"), not bitwise XOR — matching spreadsheet/calculator
+convention.
+
+## Worked examples
+
+**Quadratic** — `a*x^2 + b*x + c` (3 parameters: `a`, `b`, `c`). A general-purpose curved
+correction when you don't want to commit to Open Gauge's own auto-degree-selected Polynomial Fit.
+
+**Exponential growth/decay** — `a*exp(b*x)` (2 parameters: `a`, `b`). Common for sensors with a
+genuinely exponential response (e.g. some gas sensors, thermistors over a narrow range).
+
+**Damped/offset sine** — `a*sin(b*x) + c` (3 parameters: `a`, `b`, `c`). For a periodic response
+— note that a nonlinear fit against a sine needs a reasonable initial guess to converge; Open
+Gauge always starts every parameter at `1.0` (see below), so a sine whose true period is very far
+from `2π` may need the formula rewritten (e.g. pre-scaling `x`) to fit reliably.
+
+## When a fit doesn't converge
+
+Raw data's Custom Formula method starts every free parameter's initial guess at `1.0` and runs a
+nonlinear least-squares solver (`scipy.optimize.curve_fit`). For most reasonably-scaled formulas
+against real calibration data this converges without any tuning — but a formula that's a poor
+match for the data's actual shape, or badly scaled (e.g. parameters that need to be in the
+thousands or the millionths to fit), can fail to converge. Open Gauge shows a clear error in that
+case rather than silently returning a wrong or misleading result — try simplifying the formula,
+double-checking the data, or switching to Polynomial Fit if the underlying shape doesn't need to
+be a specific known form.

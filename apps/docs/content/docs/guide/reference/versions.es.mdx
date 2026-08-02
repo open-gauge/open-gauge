@@ -4,7 +4,7 @@ description: Historial de versiones — qué cambió en cada versión de Open Ga
 ---
 
 Open Gauge lleva un único número de versión en todo el frontend y el backend. Se muestra en la
-parte inferior izquierda de la barra lateral (`v3.4.0 · self-hosted`) y en el esquema OpenAPI. Esta
+parte inferior izquierda de la barra lateral (`v3.14.0 · self-hosted`) y en el esquema OpenAPI. Esta
 página refleja [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) en
 la raíz del repositorio.
 
@@ -13,6 +13,81 @@ según el impacto de versionado semántico (`0.x` mientras el producto estaba en
 lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto documentado, con
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
+
+## 3.14.0
+
+### Agregado
+
+- **Método de calibración para datos en bruto.** El Paso 3 (Análisis) de una calibración con datos
+  en bruto ofrece un selector de **Método de calibración** junto al grado de regresión —
+  **Ajuste polinomial** (por defecto), **Tabla de consulta** (sin ajuste de curva; los puntos
+  ingresados *son* el modelo, interpolados linealmente — R²/RMSE/error máximo/no linealidad
+  ocultos porque serían trivialmente perfectos, pero el presupuesto de incertidumbre y la
+  comprobación de conformidad se siguen calculando con normalidad), y **Fórmula personalizada**
+  (escribe una forma de fórmula con parámetros libres, p. ej. `a*x*sin(x) + b`, ajustada mediante
+  regresión no lineal). Cualquier entrada de fórmula personalizada (este método, y la propia de
+  `model_direct`) detecta automáticamente los nombres de los parámetros libres mientras escribes —
+  consulta [Sintaxis de fórmula personalizada](./custom-formulas.mdx).
+- **Gráfico de desviación de linealidad de Tabla de consulta.** Como un interpolante exacto no
+  tiene curva ajustada, la no linealidad no aplica — Open Gauge en su lugar ajusta una línea recta
+  a través de los propios puntos de la calibración y grafica cuánto se aleja de ella la
+  interpolación lineal por tramos (absoluto/relativo %FS), con marcadores en los puntos
+  ingresados. Solo diagnóstico, no se compara con ninguna tolerancia.
+- **Componente `NumberInput`** (`@/components/number-input`) — botones tipo chevrón arriba/abajo
+  conscientes del tema, en reemplazo del selector numérico nativo del navegador (no personalizable)
+  en toda la aplicación; escribir, las flechas del teclado y la rueda del ratón siguen funcionando.
+  Los campos de fecha nativos también se tematizan según el esquema de color (el icono del
+  calendario cambia de color para claro/oscuro vía `color-scheme`, sin cambios por campo). UI.md
+  incorporó una sección "Compact Numeric Inputs" que documenta el patrón: dimensionar los campos a
+  su contenido, acortar/truncar etiquetas largas, usar `NumberInput`.
+
+### Cambiado
+
+- **El Paso 3 (Análisis) se reorganizó** en tres paneles: **Método** (solo datos en bruto — el
+  menú desplegable de Método de calibración con su campo dependiente, dispuesto horizontalmente),
+  **Cálculo de incertidumbre** (distribución, nivel de confianza con una lectura en vivo del
+  factor de cobertura, e interruptores opt-in de Exactitud nominal del sensor / Incertidumbre del
+  patrón de referencia, cada uno mostrado en una unidad fija como texto plano con un icono de
+  actualización que restaura el valor por defecto del canal), y **Evaluación de conformidad**
+  (menú desplegable de regla de decisión, cajas de Error/Incertidumbre/Tolerancia siempre
+  visibles que forman la expresión real `[error] ± [incertidumbre] ≤ [tolerancia]`, una caja de
+  Tolerancia editable que se bloquea a Exactitud nominal del sensor mientras ese interruptor está
+  activo, y una insignia CONFORMA/NO CONFORMA). Los tres se ocultan para Tabla de consulta, cuyos
+  puntos son exactos por construcción. El rango válido del panel de Estadísticas ahora se divide
+  en dos líneas (señal medida, magnitud física) y eliminó su fila redundante de grado polinomial
+  (ya visible en el panel Modelo). El antiguo panel "Ecuación" ahora es "Modelo" — dos filas LaTeX
+  conscientes del tema (forma general, coeficientes numéricos) que comparten una única región de
+  desplazamiento horizontal entre ambas en lugar de desplazarse cada una por separado.
+- **Asistente de calibración: la selección del método de entrada de datos ahora es el propio menú
+  desplegable del Paso 2** ("Datos de entrada") — **Referencia frente a Medido** (renombrado desde
+  "Datos brutos", mismo comportamiento), **Referencia frente a Indicado**, o **Modelo (función de
+  transferencia)** — mostrando el resto del paso de inmediato debajo según la selección actual.
+- **Referencia frente a Indicado** ahora usa la unidad de magnitud física del canal para su
+  segunda columna en lugar de la unidad de señal de salida en bruto, está disponible para
+  cualquier Propósito de la calibración (no solo Verificación), y el Paso 3 etiqueta esa columna
+  como "Indicado" sin una columna "Ajustado" separada (sin sentido cuando no hay ajuste).
+- **Tal como se encontró/tal como se dejó ahora es una consecuencia automática de Propósito de la
+  calibración = Después de reparación**, aplicada a Referencia frente a Medido o Referencia frente
+  a Indicado, en lugar de ser su propio método seleccionable por separado. Referencia frente a
+  Medido ahora puede ajustar una curva en ambos lados de forma independiente, incluso con distinto
+  grado polinomial, ya que el comportamiento del instrumento puede haber cambiado genuinamente
+  tras la reparación. Las tablas tal como se encontró/tal como se dejó del Paso 2 se muestran una
+  junto a la otra, compartiendo una única fila de unidades Referencia/Medido encima de ambas; el
+  Paso 3 comparte un único panel de Cálculo de incertidumbre y criterio de conformidad (regla de
+  decisión + tolerancia) entre ambos lados, con dos columnas debajo que muestran la lectura del
+  criterio de conformidad propio de cada lado (`[error] ± [incertidumbre] ≤ [tolerancia]` +
+  insignia CONFORMA/NO CONFORMA), su modelo (si se ajustó) y sus estadísticas.
+- El menú desplegable de comparación de curvas de la pestaña Estado excluye las calibraciones de
+  Tabla de consulta (no hay fórmula/coeficientes que comparar, solo sus propios puntos) — el mismo
+  tratamiento que reciben los modos referencia-frente-a-indicado/tal-como-se-encontró-tal-como-se-dejó.
+
+### Corregido
+
+- El texto explicativo "bloqueado a la exactitud del sensor" / "sin especificación de exactitud"
+  del panel de Evaluación de conformidad bajo la caja de Tolerancia, y la lectura de la ecuación
+  de Tabla de consulta de la vista de detalle de la calibración guardada para registros Tal como
+  se encontró/tal como se dejó con ajuste de curva — ambos habían sufrido una regresión breve
+  durante las reorganizaciones de paneles descritas arriba.
 
 ## 3.4.0
 

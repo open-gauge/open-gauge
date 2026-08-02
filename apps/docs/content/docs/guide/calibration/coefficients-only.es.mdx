@@ -3,24 +3,28 @@ title: Modos alternativos de entrada de datos de calibración
 description: Registrar una calibración cuando los datos no llegan en la forma habitual de puntos referencia-frente-a-señal-medida — un modelo proporcionado por el laboratorio, o una comparación referencia-frente-a-valor ya convertido.
 ---
 
-Por defecto, los datos en bruto de una calibración son un conjunto de pares de puntos (referencia,
-medido) — la lectura del patrón de referencia frente a la propia señal de salida del canal — que
-Open Gauge ajusta a una curva. Algunos laboratorios entregan los resultados de calibración en otras
-formas. El selector **Modo de entrada de datos** del Paso 1 cubre tres alternativas, además del
-**Datos en bruto** por defecto:
+El Paso 2 del asistente de calibración, **Datos de entrada**, comienza con un menú desplegable que
+ofrece tres formas de entregar los datos de una calibración; el resto del paso se muestra de
+inmediato debajo según la selección actual:
 
-- **Modelo proporcionado directamente** — el certificado del laboratorio/fabricante indica el
-  propio modelo de calibración, sin ningún punto de dato en bruto.
-- **Referencia frente a valor indicado** — el laboratorio proporciona la lectura del patrón de
-  referencia y la salida del canal ya convertida a una magnitud física, sin una función de
-  transferencia conocida entre ambas. Solo disponible cuando el Propósito de la calibración es
-  **Verificación**.
-- **Referencia frente a valor tal como se encontró/tal como se dejó** — el mismo tipo de
-  comparación referencia-frente-a-valor-convertido, registrada dos veces: una antes de una
-  reparación (tal como se encontró) y otra después (tal como se dejó). Solo disponible cuando el
-  Propósito de la calibración es **Después de reparación**.
+- **Referencia frente a Medido** — la opción por defecto: pares de puntos (referencia, medido), la
+  lectura del patrón de referencia frente a la propia señal de salida en bruto del canal, que Open
+  Gauge ajusta a una curva.
+- **Referencia frente a Indicado** — la lectura del patrón de referencia frente a lo que ya
+  muestra la propia pantalla del canal, convertida a la misma magnitud física — sin función de
+  transferencia conocida entre ambas.
+- **Modelo (función de transferencia)** — el certificado del laboratorio/fabricante indica el
+  propio modelo de calibración, sin ningún punto de dato en bruto. Solo se ofrece para
+  calibraciones OEM/Laboratorio externo acreditado/Activo del cliente, y no se ofrece en absoluto
+  cuando el Propósito de la calibración es Después de reparación.
 
-## Modelo proporcionado directamente
+Si el **Propósito de la calibración** del registro es **Después de reparación**, tanto Referencia
+frente a Medido como Referencia frente a Indicado se dividen automáticamente en dos comparaciones
+en lugar de una — consulta más abajo. Modelo no se ofrece en absoluto para Después de reparación,
+ya que un único modelo indicado por el laboratorio no puede representar una comparación
+antes/después.
+
+## Modelo (función de transferencia) [#model-transfer-function]
 
 Usa este modo cuando el certificado indica el modelo de calibración directamente en lugar de
 puntos de datos en bruto — habitual en calibraciones OEM/Laboratorio externo acreditado/Activo del
@@ -28,42 +32,67 @@ cliente. El Paso 2 se convierte en un formulario de ingreso de modelo:
 
 - **Tipo de modelo** — un **Polinomio** (orden 1–5, coeficientes ingresados con la misma
   convención de potencias descendentes que usa el propio motor de regresión de Open Gauge — grado
-  más alto primero, término constante al final), o una **Fórmula personalizada**: una expresión de
-  una sola variable en `x` (el valor medido/de salida), p. ej. `2.5 * x + 1.2`. Sintaxis permitida:
-  `+ − * / ^ ( )` y las funciones `sqrt`, `exp`, `log`, `ln`, `sin`, `cos`, `tan`, `abs`, `pow`. Una
-  fórmula personalizada es completamente evaluable — participa en el gráfico de curva ajustada de
-  la calibración guardada y en la comparación de deriva/curva de la
-  [pestaña Estado](../overview.mdx) exactamente igual que un polinomio, solo que evaluada a partir
-  de la fórmula en lugar de coeficientes polinomiales.
+  más alto primero, término constante al final), o una **Fórmula personalizada**: escribe una
+  plantilla de fórmula de una sola variable en `x` (el valor medido/de salida) con cualquier otra
+  letra como parámetro libre, p. ej. `a*x + b`. Open Gauge detecta esos parámetros automáticamente a
+  medida que escribes y te pide que ingreses un valor para cada uno (a partir del
+  certificado/hoja de datos que te dio el modelo) — consulta
+  [Sintaxis de fórmula personalizada](./custom-formulas.mdx) para la sintaxis completa permitida y
+  ejemplos resueltos. Lo que se almacena realmente es la fórmula totalmente resuelta (parámetros
+  reemplazados por sus valores). Una fórmula personalizada es completamente evaluable — participa
+  en el gráfico de curva ajustada de la calibración guardada y en la comparación de deriva/curva de
+  la [pestaña Estado](../overview.mdx) exactamente igual que un polinomio, solo que evaluada a
+  partir de la fórmula en lugar de coeficientes polinomiales.
 - El **rango válido** (mín/máx) sobre el que aplica el modelo.
 
 El Paso 3 recopila entonces las mismas entradas del
-[presupuesto de incertidumbre](./uncertainty-budget.mdx) que recopila una calibración con datos en
-bruto (incertidumbre del patrón de referencia, resolución, exactitud nominal del sensor,
+[presupuesto de incertidumbre](./uncertainty-budget.mdx) que recopila una calibración Referencia
+frente a Medido (incertidumbre del patrón de referencia, resolución, exactitud nominal del sensor,
 distribución/confianza, [regla de decisión](./decision-rules.mdx)) — porque no hay datos medidos,
 la conformidad se evalúa tratando el modelo como confiable-tal-como-se-declaró (un error evaluado
 de exactamente cero) y comparando solo el presupuesto de incertidumbre combinado con la
 especificación de tolerancia del canal, en ambos extremos del rango válido declarado.
 
-## Referencia frente a valor indicado
+## Referencia frente a Indicado
 
 Usa este modo cuando un laboratorio proporciona la medición del patrón de referencia junto con la
-propia salida del canal ya convertida a la misma magnitud física — pero la función de transferencia
-en sí (cómo una se convierte en la otra) no se conoce o no se proporcionó. Como no hay ninguna
-función que ajustar, Open Gauge no puede producir una curva ajustada ni una ecuación polinomial
-para esta calibración — pero cada estadística que solo necesita un residuo (la diferencia directa
-entre los dos valores) se sigue calculando exactamente como de costumbre: R², RMSE, error máximo,
-error %FS, repetibilidad, histéresis, el presupuesto de incertidumbre completo, y un dictamen de
-conformidad real según la regla de decisión. La vista de detalle de la calibración guardada muestra
-estas estadísticas y un gráfico de residuos en lugar del gráfico de curva ajustada habitual.
+lectura de la propia pantalla del canal, ya convertida a la misma magnitud física — pero la
+función de transferencia en sí (cómo una se convierte en la otra) no se conoce o no se
+proporcionó. Como no hay ninguna función que ajustar, Open Gauge no puede producir una curva
+ajustada ni una ecuación polinomial para esta calibración — pero cada estadística que solo
+necesita un residuo (la diferencia directa entre los dos valores) se sigue calculando exactamente
+como de costumbre: R², RMSE, error máximo, error %FS, repetibilidad, histéresis, el presupuesto de
+incertidumbre completo, y un dictamen de conformidad real según la regla de decisión. La vista de
+detalle de la calibración guardada muestra estas estadísticas y un gráfico de residuos en lugar
+del gráfico de curva ajustada habitual, y etiqueta la segunda columna como **Indicado** — una
+lectura de magnitud física, no una señal bruta del sensor — sin una columna "Ajustado" aparte, ya
+que en este modo simplemente duplicaría la columna Indicado.
 
-## Referencia frente a valor tal como se encontró/tal como se dejó
+## Después de reparación: datos tal como se encontró/tal como se dejó [#after-repair-as-foundas-left-data]
 
-Usa este modo para una calibración Después de reparación cuando el laboratorio proporciona dos
-comparaciones referencia-frente-a-valor del tipo descrito arriba — una tomada antes de la
-reparación (**tal como se encontró**) y otra después (**tal como se dejó**) — de nuevo sin una
-función de transferencia conocida. El Paso 2 se convierte en dos tablas de entrada de datos
-apiladas, y el Paso 3 muestra ambos resultados uno al lado del otro.
+Cuando el **Propósito de la calibración** es **Después de reparación**, elegir Referencia frente a
+Medido o Referencia frente a Indicado en el Paso 2 reemplaza la tabla única habitual de entrada de
+datos por dos tablas una junto a la otra — una para los datos tomados **antes** de la reparación
+(**tal como se encontró**, a la izquierda) y otra para los datos tomados **después** (**tal como se
+dejó**, a la derecha) — compartiendo una única fila de unidades Referencia/Medido encima de ambas,
+ya que es el mismo canal a ambos lados de la reparación.
+
+El Paso 3 muestra entonces las entradas del
+[presupuesto de incertidumbre](./uncertainty-budget.mdx) y la
+[regla de decisión](./decision-rules.mdx)/tolerancia **una sola vez, de forma compartida** entre
+ambos lados — de nuevo, el mismo canal y la misma especificación a ambos lados de una reparación.
+Debajo de eso, dos columnas (tal como se encontró a la izquierda, tal como se dejó a la derecha)
+muestran cada una su propio criterio de conformidad — la expresión real
+`[error] ± [incertidumbre] ≤ [tolerancia]` con los números reales, más una insignia de CONFORMA/NO
+CONFORMA — seguida del modelo propio de ese lado (si se ajustó) y sus estadísticas:
+
+- Partiendo de **Referencia frente a Medido**, cada lado se ajusta a una curva de forma
+  independiente — tal como se encontró y tal como se dejó pueden incluso terminar con distinto
+  orden polinomial o un método de ajuste distinto, ya que el comportamiento del instrumento puede
+  haber cambiado genuinamente tras la reparación.
+- Partiendo de **Referencia frente a Indicado**, cada lado es una comparación de solo residuo,
+  exactamente como se describe arriba, calculada de forma independiente para tal como se encontró
+  y tal como se dejó.
 
 El resultado **tal como se dejó** es el resultado oficial de este registro de calibración: es el
 que alimenta la próxima fecha de vencimiento, el flujo de aprobación, y el historial de la pestaña
@@ -76,10 +105,10 @@ mismo.
 
 Sea cual sea el modo que uses, el registro que obtienes es una calibración normal — aparece en el
 historial del canal, puede anularse o pasar por el flujo de aprobación, y descarga un certificado.
-El certificado de una calibración con modelo proporcionado directamente o referencia frente a valor
-indicado sigue mostrando cada estadística que Open Gauge pudo calcular para ella; solo se omiten
-las filas específicas que genuinamente no aplican (p. ej. una ecuación de curva ajustada cuando no
-hay una función de transferencia conocida), en lugar de fabricarlas.
+El certificado de una calibración Modelo o Referencia frente a Indicado sigue mostrando cada
+estadística que Open Gauge pudo calcular para ella; solo se omiten las filas específicas que
+genuinamente no aplican (p. ej. una ecuación de curva ajustada cuando no hay una función de
+transferencia conocida), en lugar de fabricarlas.
 
 Consulta el [Ejemplo 4](./examples/coefficients-only-certificate.mdx) para un caso resuelto de
-modelo proporcionado directamente, incluyendo qué se guarda y se muestra.
+Modelo, incluyendo qué se guarda y se muestra.

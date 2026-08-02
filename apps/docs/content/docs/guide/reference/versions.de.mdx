@@ -4,7 +4,7 @@ description: Release-Historie — was sich in jeder Version von Open Gauge geän
 ---
 
 Open Gauge verfolgt eine einzige Versionsnummer über Frontend und Backend hinweg. Sie wird unten
-links in der Seitenleiste angezeigt (`v3.4.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
+links in der Seitenleiste angezeigt (`v3.14.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
 spiegelt [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) im
 Repository-Root wider.
 
@@ -14,6 +14,82 @@ Veröffentlichung/instabil war, `1.0.0` ab dem Punkt, an dem es zu einem dokumen
 lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern die kleineren
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
+
+## 3.14.0
+
+### Hinzugefügt
+
+- **Kalibriermethode für Rohdaten.** Schritt 3 (Analyse) einer Kalibrierung mit Rohdaten bietet
+  neben dem Regressionsgrad einen **Kalibriermethode**-Selektor an — **Polynomanpassung**
+  (Standard), **Nachschlagetabelle** (keine Kurvenanpassung; die eingegebenen Punkte *sind* das
+  Modell, linear interpoliert — R², RMSE, Maximalfehler und Nichtlinearität ausgeblendet, da
+  trivial perfekt, aber das Unsicherheitsbudget und die Konformitätsprüfung werden weiterhin
+  normal berechnet), und **Benutzerdefinierte Formel** (schreiben Sie eine Formelform mit freien
+  Parametern, z. B. `a*x*sin(x) + b`, angepasst mittels nichtlinearer Regression). Jede Eingabe
+  einer benutzerdefinierten Formel (diese Methode sowie die eigene von `model_direct`) erkennt
+  automatisch die Namen freier Parameter während der Eingabe — siehe
+  [Syntax für benutzerdefinierte Formeln](./custom-formulas.mdx).
+- **Linearitätsabweichungs-Diagramm für Nachschlagetabellen.** Da ein exakter Interpolant keine
+  angepasste Kurve hat, gilt Nichtlinearität nicht — Open Gauge passt stattdessen eine Gerade
+  durch die eigenen Punkte der Kalibrierung an und zeichnet, wie stark die stückweise lineare
+  Interpolation davon abweicht (absolut/relativ %FS), mit Markierungen an den eingegebenen
+  Punkten. Nur diagnostisch, nicht mit einer Toleranz verglichen.
+- **`NumberInput`-Komponente** (`@/components/number-input`) — themasensitive Chevron-Auf/Ab-
+  Schaltflächen, die den nativen, nicht anpassbaren Zahleneingabe-Spinner des Browsers app-weit
+  ersetzen; Tippen, Pfeiltasten und Mausrad funktionieren weiterhin. Native Datumsfelder sind jetzt
+  ebenfalls pro Farbschema themasiert (das Kalendersymbol färbt sich für Hell/Dunkel über
+  `color-scheme` um, ohne Änderung pro Feld). UI.md erhielt einen Abschnitt „Compact Numeric
+  Inputs“, der das Muster dokumentiert: Eingabefelder auf ihren Inhalt statt auf ihr Label
+  dimensionieren, lange Labels kürzen/abschneiden, `NumberInput` verwenden.
+
+### Geändert
+
+- **Schritt 3 (Analyse) wurde neu gegliedert** in drei Panels: **Methode** (nur Rohdaten — das
+  Kalibriermethode-Dropdown mit seinem abhängigen Feld, horizontal angeordnet),
+  **Unsicherheitsberechnung** (Verteilung, Konfidenzniveau mit einer Live-Anzeige des
+  Erweiterungsfaktors, sowie Opt-in-Schalter für Sensor-Nominalgenauigkeit / Unsicherheit des
+  Referenznormals, jeweils in einer festen Einheit als reiner Text angezeigt mit einem
+  Aktualisierungssymbol, das den Standardwert des Kanals wiederherstellt), und
+  **Konformitätsbewertung** (Entscheidungsregel-Dropdown, immer sichtbare Felder für
+  Fehler/Unsicherheit/Toleranz, die den tatsächlichen Ausdruck `[Fehler] ± [Unsicherheit] ≤
+  [Toleranz]` bilden, ein bearbeitbares Toleranzfeld, das sich auf Sensor-Nominalgenauigkeit
+  sperrt, solange dieser Schalter aktiv ist, sowie ein KONFORM-/NICHT-KONFORM-Abzeichen). Alle
+  drei werden für Nachschlagetabellen ausgeblendet, deren Punkte konstruktionsbedingt exakt sind.
+  Der gültige Bereich im Statistik-Panel teilt sich jetzt in zwei Zeilen (Messsignal, physikalische
+  Größe) und verlor seine überflüssige Zeile für den Polynomgrad (bereits im Modell-Panel
+  sichtbar). Das ehemalige „Gleichung“-Panel heißt jetzt „Modell“ — zwei themasensitive
+  LaTeX-Zeilen (allgemeine Form, numerische Koeffizienten), die sich einen einzigen horizontalen
+  Scroll-Bereich teilen, statt dass jede Zeile unabhängig scrollt.
+- **Kalibrierassistent: Die Auswahl der Dateneingabemethode ist jetzt das eigene Dropdown von
+  Schritt 2** („Eingabedaten“) — **Referenz vs. Gemessen** (umbenannt von „Rohdaten“, unverändertes
+  Verhalten), **Referenz vs. Angezeigt**, oder **Modell (Übertragungsfunktion)** — wobei der Rest
+  des Schritts sofort darunter entsprechend der aktuellen Auswahl angezeigt wird.
+- **Referenz vs. Angezeigt** verwendet jetzt die physikalische Einheit des Kanals für seine zweite
+  Spalte statt der rohen Ausgangssignal-Einheit, ist für jeden Kalibrierzweck verfügbar (nicht nur
+  Verifizierung), und Schritt 3 beschriftet diese Spalte mit „Angezeigt“ ohne separate Spalte
+  „Angepasst“ (bedeutungslos ohne Anpassung).
+- **Wie-vorgefunden/Wie-belassen ist jetzt eine automatische Folge von Kalibrierzweck = Nach
+  Reparatur**, angewendet auf Referenz vs. Gemessen oder Referenz vs. Angezeigt, statt eine
+  eigene, separat wählbare Methode zu sein. Referenz vs. Gemessen kann jetzt beide Seiten
+  unabhängig voneinander an eine Kurve anpassen, sogar mit unterschiedlicher Polynomordnung, da
+  sich das Verhalten des Instruments durch die Reparatur tatsächlich geändert haben kann. Die
+  Wie-vorgefunden-/Wie-belassen-Tabellen in Schritt 2 stehen jetzt nebeneinander, mit einer
+  gemeinsamen Referenz-/Gemessen-Einheitenzeile über beiden; Schritt 3 teilt ein einziges Panel
+  für Unsicherheitsberechnung und Konformitätskriterium (Entscheidungsregel + Toleranz) zwischen
+  beiden Seiten, mit zwei Spalten darunter, die jeweils die Ablesung des eigenen
+  Konformitätskriteriums (`[Fehler] ± [Unsicherheit] ≤ [Toleranz]` + KONFORM-/NICHT-KONFORM-
+  Abzeichen), das eigene Modell (falls angepasst) und die eigene Statistik zeigen.
+- Das Dropdown zum Kurvenvergleich im Reiter Zustand schließt Nachschlagetabellen-Kalibrierungen
+  aus (keine Formel/Koeffizienten zum Vergleichen, nur ihre eigenen Punkte) — dieselbe Behandlung
+  wie bei den Modi Referenz-vs-angezeigter-Wert/wie-vorgefunden-wie-belassen.
+
+### Behoben
+
+- Der Erklärungstext „auf Sensorgenauigkeit gesperrt“ / „keine Genauigkeitsspezifikation“ des
+  Konformitätsbewertungs-Panels unter dem Toleranzfeld sowie die
+  Nachschlagetabellen-Gleichungsanzeige der Detailansicht einer gespeicherten Kalibrierung für
+  kurvenangepasste Wie-vorgefunden/Wie-belassen-Datensätze — beide waren während der oben
+  beschriebenen Panel-Umgestaltungen kurzzeitig regressiert.
 
 ## 3.4.0
 

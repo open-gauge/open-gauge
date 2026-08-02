@@ -1,0 +1,82 @@
+---
+title: Syntaxe des formules personnalisées
+description: Comment écrire une formule de calibration personnalisée dans Open Gauge — syntaxe autorisée, paramètres libres et exemples concrets.
+---
+
+Deux endroits d'Open Gauge vous permettent de saisir une **formule personnalisée** comme modèle de
+calibration au lieu d'un polynôme : l'option « Formule personnalisée » de `model_direct` (un
+modèle fourni par le laboratoire sans données brutes — voir
+[Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx)) et la
+[Méthode de calibration](./curve-fitting.mdx#calibration-method) « Formule personnalisée » des
+données brutes (ajuste la formule à vos données saisies). Les deux utilisent exactement la même
+saisie et syntaxe de formule — elles ne diffèrent que par *d'où proviennent les valeurs des
+paramètres*.
+
+## Écrire une formule
+
+Une formule est une expression à une seule variable en `x` — `x` désigne toujours la valeur
+mesurée/de sortie. Toute autre lettre ou mot que vous utilisez est traité comme un **paramètre
+libre**, par ex. :
+
+```
+a*x + b
+```
+
+comporte deux paramètres libres, `a` et `b`. Open Gauge les détecte automatiquement au fur et à
+mesure de la saisie et en affiche un sous le champ de formule :
+
+- **`model_direct`** — saisissez une valeur pour chaque paramètre directement (à partir du
+  certificat/de la fiche technique qui vous a donné le modèle).
+- **Méthode Formule personnalisée des données brutes** — aucune saisie de paramètres ; Open Gauge
+  ajuste `a` et `b` à vos points (référence, mesuré) saisis par régression non linéaire.
+
+Dans les deux cas, ce qui est réellement stocké est la formule entièrement résolue (paramètres
+remplacés par leurs valeurs, par ex. `2.5 * x + 1.2`) — c'est ce qui apparaît sur l'affichage de
+l'équation, le graphique de courbe ajustée, la comparaison de dérive/courbe de l'onglet Santé, et
+le certificat.
+
+## Syntaxe autorisée
+
+| Catégorie | Autorisé |
+|---|---|
+| Opérateurs | `+` `−` `*` `/` `^` (puissance) `(` `)` |
+| Fonctions | `sqrt` `exp` `log` `ln` `sin` `cos` `tan` `abs` `pow` |
+| Variable | `x` (toujours la valeur mesurée/de sortie) |
+| Paramètres | toute autre lettre/mot, par ex. `a`, `b`, `k1` |
+
+Rien d'autre n'est autorisé — pas d'affectation, pas de comparaisons, pas d'accès à quoi que ce
+soit en dehors de l'expression elle-même. Ceci est appliqué indépendamment à la fois dans le
+navigateur (`expr-eval`) et sur le serveur (`simpleeval`), chacun restreint à cette même liste
+blanche exacte, puisque la formule que vous enregistrez est évaluée séparément par chaque côté.
+
+`^` signifie l'exponentiation (`x^2` est « x au carré »), pas un XOR binaire — conformément à la
+convention des tableurs/calculatrices.
+
+## Exemples concrets
+
+**Quadratique** — `a*x^2 + b*x + c` (3 paramètres : `a`, `b`, `c`). Une correction courbe à usage
+général lorsque vous ne voulez pas vous engager sur l'Ajustement polynomial à degré
+auto-sélectionné propre à Open Gauge.
+
+**Croissance/décroissance exponentielle** — `a*exp(b*x)` (2 paramètres : `a`, `b`). Courant pour
+les capteurs à réponse véritablement exponentielle (par ex. certains capteurs de gaz,
+thermistances sur une plage étroite).
+
+**Sinusoïde amortie/décalée** — `a*sin(b*x) + c` (3 paramètres : `a`, `b`, `c`). Pour une réponse
+périodique — notez qu'un ajustement non linéaire contre une sinusoïde nécessite une estimation
+initiale raisonnable pour converger ; Open Gauge part toujours de `1.0` pour chaque paramètre (voir
+ci-dessous), donc une sinusoïde dont la période réelle est très éloignée de `2π` peut nécessiter
+de réécrire la formule (par ex. en remettant `x` à l'échelle) pour s'ajuster de manière fiable.
+
+## Lorsqu'un ajustement ne converge pas
+
+La méthode Formule personnalisée des données brutes part d'une valeur initiale de `1.0` pour
+chaque paramètre libre et exécute un solveur de moindres carrés non linéaires
+(`scipy.optimize.curve_fit`). Pour la plupart des formules raisonnablement mises à l'échelle face à
+des données de calibration réelles, cela converge sans aucun réglage — mais une formule qui
+correspond mal à la forme réelle des données, ou mal mise à l'échelle (par ex. des paramètres qui
+doivent être de l'ordre du millier ou du millionième pour s'ajuster), peut échouer à converger.
+Open Gauge affiche une erreur claire dans ce cas plutôt que de renvoyer silencieusement un résultat
+incorrect ou trompeur — essayez de simplifier la formule, de vérifier les données, ou de passer à
+l'Ajustement polynomial si la forme sous-jacente n'a pas besoin d'être une forme connue
+spécifique.

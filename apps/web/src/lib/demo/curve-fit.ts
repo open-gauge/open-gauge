@@ -444,6 +444,7 @@ function applyDecisionRule(
         decision_rule: decisionRule,
         specification: null,
         expanded_uncertainty_applied: null,
+        tolerance_value: null,
         passed: true,
         reason: "No accuracy specification provided; conformity not evaluated.",
       },
@@ -454,17 +455,22 @@ function applyDecisionRule(
   if (decisionRule === "guard_band_w_uncertainty") guard = expandedUncertainty;
   else if (decisionRule === "shared_risk") guard = -expandedUncertainty;
 
+  // tolerance_value only has a single meaningful value for the two "flat"
+  // accuracy types below — percent_of_reading varies per point (see the
+  // real backend's _apply_decision_rule for the same reasoning).
+  let toleranceValue: number | null = null;
   let passed: boolean;
   let specDesc: string;
   if (channelAccuracyType === "percent_of_reading") {
     passed = residuals.every((r, i) => Math.abs(r) + guard <= (channelAccuracyValue / 100) * Math.abs(ref[i]));
     specDesc = `±${channelAccuracyValue}% of reading`;
   } else if (channelAccuracyType === "percent_of_full_scale") {
-    const tolerance = (channelAccuracyValue / 100) * span;
-    passed = maxError + guard <= tolerance;
+    toleranceValue = (channelAccuracyValue / 100) * span;
+    passed = maxError + guard <= toleranceValue;
     specDesc = `±${channelAccuracyValue}% of full scale`;
   } else {
-    passed = maxError + guard <= channelAccuracyValue;
+    toleranceValue = channelAccuracyValue;
+    passed = maxError + guard <= toleranceValue;
     specDesc = `±${channelAccuracyValue} (absolute)`;
   }
 
@@ -474,6 +480,7 @@ function applyDecisionRule(
       decision_rule: decisionRule,
       specification: specDesc,
       expanded_uncertainty_applied: decisionRule !== "simple_acceptance" ? expandedUncertainty : null,
+      tolerance_value: toleranceValue,
       passed,
       reason: null,
     },

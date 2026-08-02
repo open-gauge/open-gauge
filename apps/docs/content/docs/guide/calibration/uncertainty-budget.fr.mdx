@@ -24,9 +24,9 @@ cette distinction plus ancienne) :
 | Source | Type | Comment elle est dérivée |
 |---|---|---|
 | `fit_residuals` | A | Toujours présente. Écart-type des résidus d'ajustement de la courbe de calibration. Degrés de liberté = points − paramètres, ou inconnu si cela est ≤ 0. |
-| `reference_standard` | B | Optionnelle. L'incertitude élargie propre déclarée de l'étalon de référence, convertie en incertitude-type via $u = U/k$ (GUM §4.3.3). Pour les calibrations internes, récupérée automatiquement depuis la calibration la plus récente de l'actif de référence sélectionné ; sinon saisie manuellement. |
+| `reference_standard` | B | **Opt-in** — un interrupteur, désactivé par défaut, qui l'exclut entièrement du budget. Une fois activé : récupérée automatiquement depuis la calibration la plus récente de l'actif de référence sélectionné lorsqu'il y en a un lié (affichée en lecture seule), ou saisie manuellement sinon, dans l'unité de référence propre à la calibration — convertie en incertitude-type via $u = U/k$ (GUM §4.3.3). Voir [Remplir un champ d'incertitude](#uncertainty-box-units) ci-dessous. |
 | `resolution` | B | Incluse automatiquement chaque fois que la voie a une valeur de résolution. Distribution rectangulaire selon le GUM §4.3.7 — voir ci-dessous. |
-| `sensor_nominal_accuracy` | B | L'incertitude déclarée par le fabricant de la voie, convertie via $u = U/k$. Préremplie depuis le champ [Incertitude (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) de la voie mais librement modifiable par calibration. **Optionnelle uniquement** — l'intégrer par défaut risquerait un double comptage avec `fit_residuals`, puisque les deux peuvent refléter la même imprécision instrumentale sous-jacente. |
+| `sensor_nominal_accuracy` | B | **Opt-in** — un interrupteur, désactivé par défaut, qui l'exclut entièrement du budget (évitant un double comptage avec `fit_residuals`, puisque les deux peuvent refléter la même imprécision instrumentale sous-jacente). Une fois activé : préremplie depuis le champ [Incertitude (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) de la voie, convertie via $u = U/k$, mais librement modifiable par calibration — voir [Remplir un champ d'incertitude](#uncertainty-box-units) ci-dessous. |
 | `external_certificate_stated` | B | N'apparaît que sur les calibrations [à coefficients uniquement](./coefficients-only.mdx) ayant une incertitude déclarée par un laboratoire. Enregistrée comme une seule ligne portant l'incertitude élargie et le facteur d'élargissement du certificat tels quels, sans décomposition supplémentaire. |
 
 ### La résolution comme distribution rectangulaire
@@ -89,6 +89,55 @@ la forme de la distribution n'a pas de sens statistique :
   exactitude — sortent entièrement de cette somme. Si *aucune* ligne n'a de degrés de liberté
   finis, $\nu_{\text{eff}}$ est indéfini et Open Gauge se rabat sur le quantile de la distribution
   normale ci-dessus (la limite correcte lorsque $\nu \to \infty$).
+
+  L'assistant affiche le $k$ résultant (2 décimales) directement sous le champ Confiance %, afin
+  que son effet sur l'intervalle soit visible immédiatement, sans attendre que l'analyse complète
+  se réaffiche plus bas.
+
+## Remplir un champ d'incertitude [#uncertainty-box-units]
+
+Le champ Exactitude nominale du capteur affiche sa valeur à côté d'une étiquette d'unité fixe — la
+propre unité configurée de la voie, tirée de son champ
+[Incertitude (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) (ou l'unité de base de
+la voie, si ce champ était exprimé en %FS). Ce n'est pas forcément la même unité dans laquelle sont
+saisies les propres valeurs de référence de cette calibration (l'unité de référence de l'étape 2)
+— Open Gauge la convertit en interne vers cette échelle avant de la combiner dans le budget, si
+bien que les deux n'ont jamais besoin de correspondre. Une icône d'actualisation à côté de
+l'étiquette réinitialise la valeur à celle par défaut de la fiche technique de la voie, annulant
+toute modification manuelle.
+
+Le champ U de l'étalon de réf., en revanche, est toujours exprimé directement dans l'unité de
+référence propre à la calibration — la valeur du certificat d'un étalon de référence doit déjà être
+interprétée sur la même échelle que celle où la calibration elle-même est enregistrée, donc aucune
+conversion n'est nécessaire ici.
+
+Activer Exactitude nominale du capteur fait plus qu'ajouter sa contribution au budget : cela
+verrouille aussi le champ Tolérance du panneau d'évaluation de la conformité (voir
+[Remplir les champs de conformité](./decision-rules.mdx#conformity-boxes)) pour qu'il reflète la
+même valeur, convertie dans l'unité de référence, car dans cette configuration la propre
+spécification d'exactitude du capteur *est* le seuil de réussite/échec. Le désactiver à nouveau
+laisse Tolérance à la dernière valeur reflétée, de nouveau librement modifiable.
+
+La conversion d'Exactitude nominale du capteur concerne les *grandeurs* (écarts d'exactitude/
+d'incertitude), pas les lectures — une incertitude de 1 °C se convertit en 1,8 °F, **pas** en
+33,8 °F. Convertir un écart n'applique jamais le décalage qu'appliquerait une conversion de lecture
+absolue (20 °C ≠ 1,8 × 20 °F ; mais *une incertitude de* 20 °C est bel et bien *une incertitude de*
+36 °F).
+
+Toutes les combinaisons d'unités ne se convertissent pas proprement. Une poignée de grandeurs dans
+la liste d'unités d'Open Gauge mélangent des concepts physiques réellement différents sous une même
+étiquette — par ex. le %HR de l'humidité (un rapport de pression de vapeur) et le point de rosée
+en °C (une température) ne sont pas liés par un facteur constant, et le Gy de la radiation (dose
+absorbée) et le Sv (dose équivalente) diffèrent par un facteur de pondération dépendant du type de
+rayonnement. Si l'unité propre de la voie et l'unité de référence de la calibration tombent dans
+des groupes distincts comme ceux-ci, Open Gauge ne peut pas convertir entre elles et exclut la
+contribution du budget plutôt que de risquer un nombre silencieusement erroné.
+
+**Exemple détaillé.** La voie d'un capteur de débit est configurée en m³/h. Sa fiche technique
+indique une exactitude de ±0,5 % de la pleine échelle sur une plage de 0–200 m³/h, soit ±1 m³/h —
+Exactitude nominale du capteur affiche `1` à côté de `m³/h` une fois activé. Si les propres données
+de cette calibration ont été saisies en gal/min (l'unité de référence de l'étape 2), Open Gauge
+convertit automatiquement ce `1 m³/h` en ≈4,40 gal/min avant de le combiner dans le budget.
 
 ## Arrondi des résultats déclarés
 

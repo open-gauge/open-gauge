@@ -3,24 +3,26 @@ title: Alternative Dateneingabemodi für Kalibrierungen
 description: Erfassen einer Kalibrierung, wenn die Daten nicht in der üblichen Form von Referenz-vs-Messsignal-Punkten vorliegen — ein vom Labor geliefertes Modell oder ein bereits umgerechneter Referenz-vs-Wert-Vergleich.
 ---
 
-Standardmäßig sind die Rohdaten einer Kalibrierung ein Satz von (Referenz-, Mess-)Punktpaaren — der
-Messwert des Referenznormals gegenüber dem eigenen Ausgangssignal des Kanals —, die Open Gauge an
-eine Kurve anpasst. Manche Labore liefern Kalibrierergebnisse stattdessen in anderer Form. Der
-**Dateneingabemodus**-Selektor in Schritt 1 deckt drei Alternativen ab, neben den standardmäßigen
-**Rohdaten**:
+Schritt 2 des Kalibrierassistenten, **Eingabedaten**, beginnt mit einem Dropdown, das drei
+Möglichkeiten bietet, die Daten einer Kalibrierung zu liefern; der Rest des Schritts wird sofort
+darunter entsprechend der aktuellen Auswahl angezeigt:
 
-- **Modell direkt angegeben** — das Labor-/Herstellerzertifikat gibt das Kalibriermodell selbst an,
-  ganz ohne Rohdatenpunkte.
-- **Referenz vs. angezeigter Wert** — das Labor liefert den Messwert des Referenznormals und den
-  bereits in eine physikalische Größe umgerechneten Ausgang des Kanals, ohne bekannte
-  Übertragungsfunktion zwischen beiden. Nur verfügbar, wenn der Kalibrierzweck **Verifizierung**
-  ist.
-- **Referenz vs. wie vorgefunden/wie belassen** — dieselbe Art von
-  Referenz-vs-umgerechneter-Wert-Vergleich, zweimal erfasst: einmal vor einer Reparatur (wie
-  vorgefunden) und einmal danach (wie belassen). Nur verfügbar, wenn der Kalibrierzweck **Nach
-  Reparatur** ist.
+- **Referenz vs. Gemessen** — die Standardoption: (Referenz-, Mess-)Punktpaare, der Messwert des
+  Referenznormals gegenüber dem eigenen rohen Ausgangssignal des Kanals, die Open Gauge an eine
+  Kurve anpasst.
+- **Referenz vs. Angezeigt** — der Messwert des Referenznormals gegenüber dem, was die eigene
+  Anzeige des Kanals bereits zeigt, umgerechnet in dieselbe physikalische Größe — ohne bekannte
+  Übertragungsfunktion zwischen beiden.
+- **Modell (Übertragungsfunktion)** — das Labor-/Herstellerzertifikat gibt das Kalibriermodell
+  selbst an, ganz ohne Rohdatenpunkte. Nur verfügbar für OEM-/Externes-akkreditiertes-Labor-/
+  Kundenanlagen-Kalibrierungen, und für Nach Reparatur überhaupt nicht verfügbar.
 
-## Modell direkt angegeben
+Wenn der **Kalibrierzweck** des Datensatzes **Nach Reparatur** ist, teilen sich sowohl Referenz
+vs. Gemessen als auch Referenz vs. Angezeigt automatisch in zwei Vergleiche statt einem auf —
+siehe unten. Modell wird für Nach Reparatur überhaupt nicht angeboten, da ein einzelnes,
+labor-angegebenes Modell keinen Vorher-Nachher-Vergleich abbilden kann.
+
+## Modell (Übertragungsfunktion) [#model-transfer-function]
 
 Verwenden Sie diesen Modus, wenn das Zertifikat das Kalibriermodell direkt angibt statt
 Rohdatenpunkte — üblich bei OEM-/Externes-akkreditiertes-Labor-/Kundenanlagen-Kalibrierungen.
@@ -28,27 +30,31 @@ Schritt 2 wird zu einem Modell-Eingabeformular:
 
 - **Modelltyp** — ein **Polynom** (Ordnung 1–5, Koeffizienten eingegeben in derselben Konvention
   absteigender Potenzen, die auch die eigene Regressions-Engine von Open Gauge verwendet — höchster
-  Grad zuerst, konstanter Term zuletzt), oder eine **Benutzerdefinierte Formel**: ein Ausdruck mit
-  einer einzigen Variablen `x` (dem gemessenen/ausgegebenen Wert), z. B. `2.5 * x + 1.2`. Erlaubte
-  Syntax: `+ − * / ^ ( )` sowie die Funktionen `sqrt`, `exp`, `log`, `ln`, `sin`, `cos`, `tan`,
-  `abs`, `pow`. Eine benutzerdefinierte Formel ist vollständig auswertbar — sie fließt in das
-  Diagramm der angepassten Kurve der gespeicherten Kalibrierung und den Drift-/Kurvenvergleich des
-  [Reiters Zustand](../overview.mdx) genau wie ein Polynom ein, wird nur eben aus der Formel statt
-  aus Polynomkoeffizienten ausgewertet.
+  Grad zuerst, konstanter Term zuletzt), oder eine **Benutzerdefinierte Formel**: Schreiben Sie
+  eine Formelvorlage mit einer einzigen Variablen `x` (dem gemessenen/ausgegebenen Wert), wobei
+  jeder andere Buchstabe ein freier Parameter ist, z. B. `a*x + b`. Open Gauge erkennt diese
+  Parameter automatisch während der Eingabe und fordert Sie auf, für jeden einen Wert einzugeben
+  (aus dem Zertifikat/Datenblatt, das Ihnen das Modell geliefert hat) — siehe
+  [Syntax für benutzerdefinierte Formeln](./custom-formulas.mdx) für die vollständige erlaubte
+  Syntax und durchgerechnete Beispiele. Gespeichert wird tatsächlich die vollständig aufgelöste
+  Formel (Parameter durch ihre Werte ersetzt). Eine benutzerdefinierte Formel ist vollständig
+  auswertbar — sie fließt in das Diagramm der angepassten Kurve der gespeicherten Kalibrierung und
+  den Drift-/Kurvenvergleich des [Reiters Zustand](../overview.mdx) genau wie ein Polynom ein, wird
+  nur eben aus der Formel statt aus Polynomkoeffizienten ausgewertet.
 - Der **gültige Bereich** (Min/Max), über den das Modell gilt.
 
 Schritt 3 sammelt dann dieselben [Unsicherheitsbudget](./uncertainty-budget.mdx)-Eingaben, die auch
-eine Kalibrierung mit Rohdaten sammelt (Unsicherheit des Referenznormals, Auflösung, nominale
-Sensorgenauigkeit, Verteilung/Konfidenz, [Entscheidungsregel](./decision-rules.mdx)) — da es keine
-Messdaten gibt, wird die Konformität bewertet, indem das Modell als wie-deklariert-vertrauenswürdig
-behandelt wird (ein ermittelter Fehler von genau null) und nur das kombinierte
-Unsicherheitsbudget an beiden Enden des deklarierten gültigen Bereichs mit der
+eine Referenz-vs.-Gemessen-Kalibrierung sammelt (Unsicherheit des Referenznormals, Auflösung,
+nominale Sensorgenauigkeit, Verteilung/Konfidenz, [Entscheidungsregel](./decision-rules.mdx)) — da
+es keine Messdaten gibt, wird die Konformität bewertet, indem das Modell als
+wie-deklariert-vertrauenswürdig behandelt wird (ein ermittelter Fehler von genau null) und nur das
+kombinierte Unsicherheitsbudget an beiden Enden des deklarierten gültigen Bereichs mit der
 Toleranzspezifikation des Kanals verglichen wird.
 
-## Referenz vs. angezeigter Wert
+## Referenz vs. Angezeigt
 
-Verwenden Sie diesen Modus, wenn ein Labor den Messwert des Referenznormals zusammen mit dem
-eigenen, bereits in dieselbe physikalische Größe umgerechneten Ausgang des Kanals liefert — die
+Verwenden Sie diesen Modus, wenn ein Labor den Messwert des Referenznormals zusammen mit der
+eigenen, bereits in dieselbe physikalische Größe umgerechneten Anzeige des Kanals liefert — die
 Übertragungsfunktion selbst (wie das eine zum anderen wird) ist jedoch nicht bekannt oder wurde
 nicht angegeben. Da es keine Funktion gibt, die angepasst werden könnte, kann Open Gauge für diese
 Kalibrierung weder eine angepasste Kurve noch eine Polynomgleichung erzeugen — aber jede Statistik,
@@ -56,15 +62,34 @@ die nur ein Residuum benötigt (die direkte Differenz zwischen den beiden Werten
 genau wie gewohnt berechnet: R², RMSE, Max. Fehler, %FS-Fehler, Wiederholbarkeit, Hysterese, das
 vollständige Unsicherheitsbudget und eine echte Konformitätsaussage nach der Entscheidungsregel.
 Die Detailansicht der gespeicherten Kalibrierung zeigt diese Statistiken und ein
-Residuen-Diagramm anstelle des üblichen Diagramms der angepassten Kurve.
+Residuen-Diagramm anstelle des üblichen Diagramms der angepassten Kurve und beschriftet die zweite
+Spalte mit **Angezeigt** — ein Messwert einer physikalischen Größe, kein rohes Sensorsignal — ohne
+eigene Spalte „Angepasst“, da diese in diesem Modus lediglich die Spalte Angezeigt duplizieren
+würde.
 
-## Referenz vs. wie vorgefunden/wie belassen
+## Nach Reparatur: Wie-vorgefunden-/Wie-belassen-Daten [#after-repair-as-foundas-left-data]
 
-Verwenden Sie diesen Modus für eine Nach-Reparatur-Kalibrierung, wenn das Labor zwei
-Referenz-vs-Wert-Vergleiche der oben beschriebenen Art liefert — einen vor der Reparatur
-aufgenommen (**wie vorgefunden**) und einen danach (**wie belassen**) — wiederum ohne bekannte
-Übertragungsfunktion. Schritt 2 wird zu zwei übereinander angeordneten Dateneingabetabellen, und
-Schritt 3 zeigt beide Ergebnisse nebeneinander.
+Wenn der **Kalibrierzweck** **Nach Reparatur** ist, ersetzt die Wahl von Referenz vs. Gemessen
+oder Referenz vs. Angezeigt in Schritt 2 die übliche einzelne Dateneingabetabelle durch zwei
+nebeneinander angeordnete Tabellen — eine für Daten, die **vor** der Reparatur aufgenommen wurden
+(**wie vorgefunden**, links), und eine für Daten, die **danach** aufgenommen wurden (**wie
+belassen**, rechts) — die sich eine einzelne Referenz-/Gemessen-Einheitenzeile über beiden teilen,
+da es sich um denselben Kanal auf beiden Seiten der Reparatur handelt.
+
+Schritt 3 zeigt dann die Eingaben des [Unsicherheitsbudgets](./uncertainty-budget.mdx) und die
+[Entscheidungsregel](./decision-rules.mdx)/Toleranz **einmal, gemeinsam genutzt**, für beide
+Seiten — auch hier derselbe Kanal und dieselbe Spezifikation auf beiden Seiten einer Reparatur.
+Darunter zeigen zwei Spalten (wie vorgefunden links, wie belassen rechts) jeweils ihr eigenes
+Konformitätskriterium — den tatsächlichen Ausdruck
+`[Fehler] ± [Unsicherheit] ≤ [Toleranz]` mit echten Zahlen, plus ein KONFORM-/NICHT-KONFORM-Abzeichen
+— gefolgt vom eigenen Modell dieser Seite (falls angepasst) und ihrer Statistik:
+
+- Ausgehend von **Referenz vs. Gemessen** wird jede Seite unabhängig an eine Kurve angepasst — wie
+  vorgefunden und wie belassen können sogar mit unterschiedlicher Polynomordnung oder
+  unterschiedlicher Anpassungsmethode enden, da sich das Verhalten des Instruments durch die
+  Reparatur tatsächlich geändert haben kann.
+- Ausgehend von **Referenz vs. Angezeigt** ist jede Seite ein reiner Residuen-Vergleich, genau wie
+  oben beschrieben, unabhängig für wie vorgefunden und wie belassen berechnet.
 
 Das Ergebnis **wie belassen** ist das offizielle Ergebnis dieses Kalibrierdatensatzes: Es fließt in
 das nächste Fälligkeitsdatum, den Genehmigungsworkflow und die Historie im Reiter Zustand ein. Das
@@ -76,11 +101,11 @@ Fälligkeitsdatum- oder Driftberechnungen verwendet und muss selbst keiner Spezi
 
 Unabhängig vom verwendeten Modus ist der resultierende Datensatz eine normale Kalibrierung — er
 erscheint in der Historie des Kanals, kann entwertet werden oder den Genehmigungsworkflow
-durchlaufen, und ermöglicht den Download eines Zertifikats. Das Zertifikat einer
-Modell-direkt-angegeben- oder Referenz-vs-angezeigter-Wert-Kalibrierung zeigt weiterhin jede
-Statistik, die Open Gauge dafür berechnen konnte; nur die spezifischen Zeilen, die wirklich nicht
-zutreffen (z. B. eine Gleichung der angepassten Kurve, wenn keine bekannte Übertragungsfunktion
-vorliegt), werden weggelassen statt erfunden.
+durchlaufen, und ermöglicht den Download eines Zertifikats. Das Zertifikat einer Modell- oder
+Referenz-vs.-Angezeigt-Kalibrierung zeigt weiterhin jede Statistik, die Open Gauge dafür berechnen
+konnte; nur die spezifischen Zeilen, die wirklich nicht zutreffen (z. B. eine Gleichung der
+angepassten Kurve, wenn keine bekannte Übertragungsfunktion vorliegt), werden weggelassen statt
+erfunden.
 
 Siehe [Beispiel 4](./examples/coefficients-only-certificate.mdx) für einen durchgerechneten
-Modell-direkt-angegeben-Fall, einschließlich dessen, was gespeichert und angezeigt wird.
+Modell-Fall, einschließlich dessen, was gespeichert und angezeigt wird.

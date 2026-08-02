@@ -11,8 +11,11 @@ almacena la regla de decisión y el dictamen de conformidad resultante en cada c
 ## Las tres reglas [#decision-rule]
 
 Sea $\text{error}$ el [error máximo](./curve-fitting.mdx#max-error) de la calibración
-y $\text{tolerance}$ la especificación de exactitud del canal (p. ej. ±0.5 °C, o ±1% FS convertido a un
-valor absoluto), y $U$ la [incertidumbre expandida](./uncertainty-budget.mdx#expanded-uncertainty).
+y $\text{tolerance}$ el valor del campo **Tolerancia** del asistente (prellenado a partir de la
+especificación de exactitud del canal cuando está disponible — p. ej. ±0.5 °C, o ±1% FS convertido
+a un valor absoluto — pero libremente editable; consulta
+[Rellenar los campos de conformidad](#conformity-boxes) más abajo), y $U$ la
+[incertidumbre expandida](./uncertainty-budget.mdx#expanded-uncertainty).
 
 | Regla | Aprueba cuando | Efecto | Cuándo usarla |
 |---|---|---|---|
@@ -27,9 +30,54 @@ resuelto donde las tres reglas producen un veredicto diferente a partir de los m
 ## Qué se almacena
 
 Cada calibración almacena un `conformity_statement` que lleva el registro completo: la regla de decisión
-usada, una representación legible por humanos de la especificación (p. ej. `"±0.5% of full scale"`), la
-incertidumbre expandida aplicada (si la hay), si aprobó o no, y una razón (poblada solo cuando no se
-configuró ninguna especificación de exactitud en absoluto, lo que significa que no se evaluó la conformidad).
+usada, una representación legible por humanos de la especificación (p. ej. `"±0.5% of full scale"`, o
+`"±1.0 (manual)"` cuando el campo Tolerancia se editó a mano — ver más abajo), la
+incertidumbre expandida aplicada (si la hay), el valor numérico de tolerancia con el que se comparó, si
+aprobó o no, y una razón (poblada solo cuando no se configuró ninguna especificación de exactitud y
+tampoco se ingresó una tolerancia manual, lo que significa que la conformidad no se evaluó en
+absoluto).
+
+## Rellenar los campos de conformidad [#conformity-boxes]
+
+El panel de evaluación de conformidad visualiza la regla de la tabla anterior como campos: **Error**
+y **Incertidumbre** son de solo lectura, tomados directamente de los propios resultados de esta
+calibración; entre ellos hay un **+** (banda de guarda), un **−** (riesgo compartido), o nada en
+absoluto (aceptación simple, que ignora la incertidumbre). **Tolerancia** es el único campo
+editable.
+
+- **Error** — el propio [error máximo](./curve-fitting.mdx#max-error) de esta calibración. No es
+  editable; es un resultado, no una entrada.
+- **Incertidumbre** — la propia
+  [incertidumbre expandida](./uncertainty-budget.mdx#expanded-uncertainty) de esta calibración,
+  $U$. No es editable, y solo se muestra para las reglas de banda de guarda/riesgo compartido (la
+  aceptación simple no la usa en absoluto).
+- **Tolerancia** — el error máximo aceptable. Editable, e independiente de la propia
+  especificación de exactitud del canal — escribir un valor aquí (o hacer clic en el icono de
+  actualizar junto a él, que copia la propia exactitud nominal del canal, cuando el canal tiene
+  una) anula lo que indique la especificación del canal, solo para esta calibración. Esto también
+  evita por completo la tolerancia por punto de **porcentaje de lectura**: sea cual sea el tipo de
+  exactitud con el que esté configurado el canal, un campo Tolerancia introducido manualmente
+  siempre se evalúa como un único número fijo frente al error máximo, exactamente igual que ya
+  ocurre con los tipos **absoluto** y **porcentaje de escala completa**. Igual que Error e
+  Incertidumbre junto a él, Tolerancia siempre se expresa en la unidad de referencia propia de la
+  calibración (mostrada como texto simple junto al campo, no como un desplegable) — el icono de
+  actualizar rellena el valor por defecto del canal, ya en esa escala. Cuando el interruptor
+  [Exactitud nominal del sensor](./uncertainty-budget.mdx#uncertainty-box-units) del panel de
+  cálculo de incertidumbre está activado, Tolerancia refleja el valor de ese campo, convertido a la
+  unidad de referencia, y pasa a ser de solo lectura — la propia especificación de exactitud del
+  sensor *es* el umbral en ese caso. Desactívalo de nuevo para editar Tolerancia de forma
+  independiente.
+
+**Ejemplo resuelto.** La especificación del canal de un transmisor de presión es ±0.5% de la
+escala completa en un rango de 0–10 bar (es decir, ±0.05 bar). Una calibración arroja un error
+máximo = 0.03 bar y una incertidumbre expandida = 0.01 bar, con regla de decisión = banda de
+guarda. El campo Tolerancia se prellena a `0.05` (la propia especificación del canal, convertida
+desde %FS). Los campos muestran `Error: 0.03 + Incertidumbre: 0.01 ≤ Tolerancia: 0.05` —
+`0.04 ≤ 0.05`, así que es conforme. Si el propio contrato del cliente especifica en cambio una
+tolerancia más estricta de ±0.03 bar, sin importar la especificación de placa del sensor, escribir
+`0.03` en el campo Tolerancia vuelve a evaluar frente a ese número: `0.04 ≤ 0.03` es falso, así
+que ahora muestra NO CONFORME — sin tocar en absoluto la especificación de exactitud configurada
+del canal.
 
 ## Guardar una calibración no conforme
 
@@ -38,10 +86,3 @@ registro importante — la [filosofía de calibración](../concepts/data-model.m
 el historial como inmutable y nunca suprime un resultado real solo porque sea inconveniente. Cuando un
 resultado no cumple, el diálogo de confirmación de guardado nombra la especificación y la regla de decisión
 explícitamente, y el botón de guardar cambia su etiqueta a **"Guardar de todos modos."**
-
-## Sin vista previa de tolerancia independiente
-
-No hay ningún campo separado de tolerancia "qué pasaría si" del lado del cliente — una versión anterior del
-asistente tenía uno, desconectado de la especificación real del canal y nunca persistido, lo que podía
-contradecir el resultado de conformidad realmente guardado. El dictamen de conformidad mostrado en el
-panel de incertidumbre del asistente *es* el que se guarda y se imprime en el certificado.

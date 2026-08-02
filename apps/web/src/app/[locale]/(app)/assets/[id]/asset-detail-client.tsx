@@ -1409,12 +1409,22 @@ function formatCalEquation(coefficients: number[], degree: number): string {
   return "f(x) = " + (parts.join("") || "0");
 }
 
-// Whether a saved calibration has an actual model (fitted or declared) to
-// display an equation/curve for — false for reference_vs_indicated/
-// reference_vs_as_found_as_left, which have no transference function at all.
+// Whether a saved calibration has an actual formula/coefficients to display
+// an equation for — false for reference_vs_indicated and skip-fit
+// reference_vs_as_found_as_left (no transfer function at all; the curve-fit
+// variant of reference_vs_as_found_as_left has real coefficients, same as
+// raw_data) *and* for a Lookup Table (its "model" is its own points, not a
+// formula — see hasEvaluableCurve below for the broader curve-rendering check).
 function hasModel(cal: CalibrationRecord): boolean {
   return (cal.poly_coefficients != null && cal.poly_coefficients.length > 0)
     || (cal.model_type === "custom_formula" && !!cal.custom_formula);
+}
+
+// Whether the fitted-curve chart has anything to draw at all — broader than
+// hasModel: a Lookup Table has no formula/coefficients but its own points
+// (linearly interpolated) still make a perfectly good curve.
+function hasEvaluableCurve(cal: CalibrationRecord): boolean {
+  return hasModel(cal) || cal.model_type === "lookup_table";
 }
 
 function formatCalEquationForModel(cal: CalibrationRecord): string {
@@ -1445,7 +1455,7 @@ function CalibrationChart({
 
   useEffect(() => {
     const div = plotDivRef.current;
-    if (!div || points.length === 0 || !hasModel(cal)) return;
+    if (!div || points.length === 0 || !hasEvaluableCurve(cal)) return;
     let mounted = true;
 
     const maxAbs = Math.max(...points.map((p) => Math.abs(p.residual_abs ?? 0)), 1e-10);
@@ -1460,9 +1470,10 @@ function CalibrationChart({
       idx: p.point_index,
     }));
 
+    const lookupPoints = points.map((p) => ({ x: p.measured_value, y: p.reference_value }));
     const curve = Array.from({ length: 81 }, (_, i) => {
       const x = mn + (i * (mx - mn)) / 80;
-      return { x, y: evaluateModel(cal.model_type ?? "polynomial", cal.poly_coefficients, cal.custom_formula, x) };
+      return { x, y: evaluateModel(cal.model_type ?? "polynomial", cal.poly_coefficients, cal.custom_formula, x, lookupPoints) };
     });
 
     import("plotly.js-dist-min").then((mod) => {
@@ -1922,14 +1933,16 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 calibrationId={selectedCal.id}
                 assetTag={profile.asset_id}
                 calibrationVersion={selectedCal.calibration_version}
-                disabled={selectedCal.data_entry_mode === "raw_data" && !hasModel(selectedCal)}
+                disabled={selectedCal.data_entry_mode === "raw_data" && !hasEvaluableCurve(selectedCal)}
               />
             </div>
           </div>
 
-          {/* Result view: Equation / Coefficients — reference_vs_indicated and
-              reference_vs_as_found_as_left have no model at all (no
-              transference function), so this panel is skipped for those. */}
+          {/* Result view: Equation / Coefficients — skipped when hasModel() is
+              false: reference_vs_indicated and skip-fit
+              reference_vs_as_found_as_left have no transfer function at all;
+              the curve-fit variant of reference_vs_as_found_as_left has a
+              real model, same as raw_data, and shows this panel. */}
           {hasModel(selectedCal) && (
             <div className="rounded-lg bg-og-surface-alt border border-og-border overflow-hidden">
               <div className="flex items-center px-3 pt-2 pb-0 border-b border-og-border gap-0.5">
@@ -2013,11 +2026,20 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               </div>
             </div>
           )}
+          {selectedCal.model_type === "lookup_table" && (
+            <div className="rounded-lg bg-og-surface-alt border border-og-border px-4 py-2">
+              <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
+              <span className="text-xs font-mono text-og-text">
+                {t("lookupTableEquationLabel", { count: points.length })}
+              </span>
+            </div>
+          )}
 
-          {/* Stats + chart/table — raw_data needs a real fitted model to have
-              anything to show; the other 3 modes always have *something*
-              (a declared model, or real fit-free residual statistics). */}
-          {(selectedCal.data_entry_mode !== "raw_data" || hasModel(selectedCal)) ? (
+          {/* Stats + chart/table — raw_data needs a real fitted model (or a
+              Lookup Table's own points) to have anything to show; the other
+              3 modes always have *something* (a declared model, or real
+              fit-free residual statistics). */}
+          {(selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
             <div className="flex gap-4 min-h-0">
               {/* Left: stats panel (40%) */}
               <div className="w-[38%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
@@ -2115,7 +2137,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   </div>
                 ) : rightView === "chart" ? (
                   <div className="flex-1 min-h-0 flex flex-col gap-3">
-                    {hasModel(selectedCal) && (
+                    {hasEvaluableCurve(selectedCal) && (
                       <CalibrationChart
                         className="flex-1 min-h-0"
                         cal={selectedCal}
@@ -2364,7 +2386,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             {canRegisterCalibration && (
               <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer shrink-0">
                 <ToggleSwitch checked={showVoided} onChange={setShowVoided} size="sm" />
-                {t("showValidOnly")}
+                {t("showAll")}
               </label>
             )}
           </div>

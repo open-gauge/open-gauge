@@ -3,24 +3,28 @@ title: Modes alternatifs de saisie des données de calibration
 description: Enregistrer une calibration lorsque les données n'arrivent pas sous la forme habituelle de points référence-par-rapport-au-signal-mesuré — un modèle fourni par le laboratoire, ou une comparaison référence-par-rapport-à-une-valeur-déjà-convertie.
 ---
 
-Par défaut, les données brutes d'une calibration sont un ensemble de paires de points
-(référence, mesuré) — la mesure de l'étalon de référence par rapport au propre signal de sortie de
-la voie — qu'Open Gauge ajuste à une courbe. Certains laboratoires livrent les résultats de
-calibration sous d'autres formes. Le sélecteur **Mode de saisie des données** de l'étape 1 couvre
-trois alternatives, en plus des **Données brutes** par défaut :
+L'étape 2 de l'assistant de calibration, **Données d'entrée**, s'ouvre sur un menu déroulant
+proposant trois façons de livrer les données d'une calibration ; le reste de l'étape s'affiche
+immédiatement en dessous selon la sélection actuelle :
 
-- **Modèle fourni directement** — le certificat du laboratoire/fabricant indique le modèle de
-  calibration lui-même, sans aucun point de données brutes.
-- **Référence par rapport à la valeur indiquée** — le laboratoire fournit la mesure de l'étalon de
-  référence et la sortie de la voie déjà convertie en une grandeur physique, sans fonction de
-  transfert connue entre les deux. Disponible uniquement lorsque l'Objectif de la calibration est
-  **Vérification**.
-- **Référence par rapport à la valeur telle que trouvée/telle que laissée** — le même type de
-  comparaison référence-par-rapport-à-valeur-convertie, enregistrée deux fois : une fois avant une
-  réparation (telle que trouvée) et une fois après (telle que laissée). Disponible uniquement
-  lorsque l'Objectif de la calibration est **Après réparation**.
+- **Référence par rapport à Mesuré** — l'option par défaut : des paires de points (référence,
+  mesuré), la mesure de l'étalon de référence par rapport au propre signal de sortie brut de la
+  voie, qu'Open Gauge ajuste à une courbe.
+- **Référence par rapport à Indiqué** — la mesure de l'étalon de référence par rapport à ce
+  qu'affiche déjà la propre pastille d'affichage de la voie, convertie dans la même grandeur
+  physique — sans fonction de transfert connue entre les deux.
+- **Modèle (fonction de transfert)** — le certificat du laboratoire/fabricant indique le modèle de
+  calibration lui-même, sans aucun point de données brutes. Proposé uniquement pour les
+  calibrations OEM/Laboratoire externe accrédité/Actif du client, et pas du tout proposé lorsque
+  l'Objectif de la calibration est Après réparation.
 
-## Modèle fourni directement
+Si l'**Objectif de la calibration** de l'enregistrement est **Après réparation**, Référence par
+rapport à Mesuré et Référence par rapport à Indiqué se scindent toutes deux automatiquement en
+deux comparaisons au lieu d'une seule — voir ci-dessous. Modèle n'est pas du tout proposé pour
+Après réparation, car un modèle unique indiqué par le laboratoire ne peut pas représenter une
+comparaison avant/après.
+
+## Modèle (fonction de transfert) [#model-transfer-function]
 
 Utilisez ce mode lorsque le certificat indique directement le modèle de calibration plutôt que des
 points de données brutes — courant pour les calibrations OEM/Laboratoire externe accrédité/Actif
@@ -28,43 +32,67 @@ du client. L'étape 2 devient un formulaire de saisie de modèle :
 
 - **Type de modèle** — un **Polynôme** (degré 1 à 5, coefficients saisis selon la même convention
   de puissances décroissantes que le propre moteur de régression d'Open Gauge — degré le plus
-  élevé en premier, terme constant en dernier), ou une **Formule personnalisée** : une expression à
-  une seule variable en `x` (la valeur mesurée/de sortie), par ex. `2.5 * x + 1.2`. Syntaxe
-  autorisée : `+ − * / ^ ( )` et les fonctions `sqrt`, `exp`, `log`, `ln`, `sin`, `cos`, `tan`,
-  `abs`, `pow`. Une formule personnalisée est entièrement évaluable — elle participe au graphique
-  de courbe ajustée de la calibration enregistrée et à la comparaison de dérive/courbe de
-  l'[onglet Santé](../overview.mdx) exactement comme un polynôme, simplement évaluée à partir de la
-  formule plutôt que de coefficients polynomiaux.
+  élevé en premier, terme constant en dernier), ou une **Formule personnalisée** : écrivez un
+  modèle de formule à une seule variable en `x` (la valeur mesurée/de sortie), toute autre lettre
+  étant un paramètre libre, par ex. `a*x + b`. Open Gauge détecte automatiquement ces paramètres au
+  fur et à mesure de la saisie et vous demande d'indiquer une valeur pour chacun (à partir du
+  certificat/de la fiche technique qui vous a donné le modèle) — voir
+  [Syntaxe des formules personnalisées](./custom-formulas.mdx) pour la syntaxe complète autorisée
+  et des exemples concrets. Ce qui est réellement stocké, c'est la formule entièrement résolue
+  (paramètres remplacés par leurs valeurs). Une formule personnalisée est entièrement évaluable —
+  elle participe au graphique de courbe ajustée de la calibration enregistrée et à la comparaison
+  de dérive/courbe de l'[onglet Santé](../overview.mdx) exactement comme un polynôme, simplement
+  évaluée à partir de la formule plutôt que de coefficients polynomiaux.
 - La **plage de validité** (min/max) sur laquelle le modèle s'applique.
 
 L'étape 3 recueille ensuite les mêmes entrées de [budget d'incertitude](./uncertainty-budget.mdx)
-qu'une calibration à données brutes (incertitude de l'étalon de référence, résolution, exactitude
-nominale du capteur, distribution/confiance, [règle de décision](./decision-rules.mdx)) — comme il
-n'y a pas de données mesurées, la conformité est évaluée en traitant le modèle comme fiable tel que
-déclaré (une erreur évaluée exactement égale à zéro) et en comparant uniquement le budget
-d'incertitude combiné à la spécification de tolérance de la voie, aux deux extrémités de la plage
-de validité déclarée.
+qu'une calibration Référence par rapport à Mesuré (incertitude de l'étalon de référence,
+résolution, exactitude nominale du capteur, distribution/confiance,
+[règle de décision](./decision-rules.mdx)) — comme il n'y a pas de données mesurées, la conformité
+est évaluée en traitant le modèle comme fiable tel que déclaré (une erreur évaluée exactement
+égale à zéro) et en comparant uniquement le budget d'incertitude combiné à la spécification de
+tolérance de la voie, aux deux extrémités de la plage de validité déclarée.
 
-## Référence par rapport à la valeur indiquée
+## Référence par rapport à Indiqué
 
 Utilisez ce mode lorsqu'un laboratoire fournit la mesure de l'étalon de référence ainsi que la
-propre sortie de la voie déjà convertie dans la même grandeur physique — mais la fonction de
-transfert elle-même (comment l'une devient l'autre) n'est pas connue ou n'a pas été fournie. Comme
-il n'y a aucune fonction à ajuster, Open Gauge ne peut pas produire de courbe ajustée ni d'équation
-polynomiale pour cette calibration — mais chaque statistique qui n'a besoin que d'un résidu (la
-différence directe entre les deux valeurs) est tout de même calculée exactement comme d'habitude :
-R², RMSE, erreur maximale, erreur %FS, répétabilité, hystérésis, le budget d'incertitude complet,
-et une véritable déclaration de conformité selon la règle de décision. La vue de détail de la
-calibration enregistrée affiche ces statistiques et un graphique de résidus à la place du graphique
-de courbe ajustée habituel.
+lecture de la propre pastille d'affichage de la voie, déjà convertie dans la même grandeur
+physique — mais la fonction de transfert elle-même (comment l'une devient l'autre) n'est pas
+connue ou n'a pas été fournie. Comme il n'y a aucune fonction à ajuster, Open Gauge ne peut pas
+produire de courbe ajustée ni d'équation polynomiale pour cette calibration — mais chaque
+statistique qui n'a besoin que d'un résidu (la différence directe entre les deux valeurs) est tout
+de même calculée exactement comme d'habitude : R², RMSE, erreur maximale, erreur %FS,
+répétabilité, hystérésis, le budget d'incertitude complet, et une véritable déclaration de
+conformité selon la règle de décision. La vue de détail de la calibration enregistrée affiche ces
+statistiques et un graphique de résidus à la place du graphique de courbe ajustée habituel, et
+étiquette la deuxième colonne **Indiqué** — une lecture de grandeur physique, pas un signal brut
+du capteur — sans colonne « Ajusté » distincte, puisque dans ce mode elle ne ferait que dupliquer
+la colonne Indiqué.
 
-## Référence par rapport à la valeur telle que trouvée/telle que laissée
+## Après réparation : données telles que trouvées/telles que laissées [#after-repair-as-foundas-left-data]
 
-Utilisez ce mode pour une calibration Après réparation lorsque le laboratoire fournit deux
-comparaisons référence-par-rapport-à-valeur du type décrit ci-dessus — l'une prise avant la
-réparation (**telle que trouvée**) et l'autre après (**telle que laissée**) — là encore sans
-fonction de transfert connue. L'étape 2 devient deux tableaux de saisie de données empilés, et
-l'étape 3 affiche les deux résultats côte à côte.
+Lorsque l'**Objectif de la calibration** est **Après réparation**, choisir Référence par rapport à
+Mesuré ou Référence par rapport à Indiqué à l'étape 2 remplace le tableau unique habituel de
+saisie de données par deux tableaux côte à côte — l'un pour les données prises **avant** la
+réparation (**telles que trouvées**, à gauche) et l'autre pour les données prises **après**
+(**telles que laissées**, à droite) — partageant une seule ligne d'unités Référence/Mesuré
+au-dessus des deux, puisqu'il s'agit de la même voie des deux côtés de la réparation.
+
+L'étape 3 affiche alors les entrées du [budget d'incertitude](./uncertainty-budget.mdx) et la
+[règle de décision](./decision-rules.mdx)/tolérance **une seule fois, de façon partagée** entre
+les deux côtés — là encore, la même voie et la même spécification des deux côtés d'une réparation.
+En dessous, deux colonnes (telle que trouvée à gauche, telle que laissée à droite) affichent
+chacune son propre critère de conformité — l'expression réelle
+`[erreur] ± [incertitude] ≤ [tolérance]` avec les vrais nombres, plus un badge CONFORME/NON
+CONFORME — suivie du modèle propre à ce côté (le cas échéant) et de ses statistiques :
+
+- En partant de **Référence par rapport à Mesuré**, chaque côté est ajusté à une courbe de façon
+  indépendante — telle que trouvée et telle que laissée peuvent même se retrouver avec un degré
+  polynomial différent ou une méthode d'ajustement différente, le comportement de l'instrument
+  ayant pu réellement changer suite à la réparation.
+- En partant de **Référence par rapport à Indiqué**, chaque côté est une comparaison de résidu
+  seul, exactement comme décrit ci-dessus, calculée indépendamment pour telle que trouvée et telle
+  que laissée.
 
 Le résultat **telle que laissée** est le résultat officiel de cet enregistrement de calibration :
 c'est lui qui alimente la prochaine date d'échéance, le flux d'approbation, et l'historique de
@@ -77,11 +105,10 @@ conforme à une quelconque spécification par lui-même.
 
 Quel que soit le mode utilisé, l'enregistrement obtenu est une calibration normale — elle apparaît
 dans l'historique de la voie, peut être annulée ou passer par le flux d'approbation, et permet de
-télécharger un certificat. Le certificat d'une calibration à modèle fourni directement ou référence
-par rapport à valeur indiquée affiche toujours chaque statistique qu'Open Gauge a pu calculer pour
-elle ; seules les lignes spécifiques qui ne s'appliquent véritablement pas (par ex. une équation de
-courbe ajustée lorsqu'il n'y a pas de fonction de transfert connue) sont omises plutôt que
-fabriquées.
+télécharger un certificat. Le certificat d'une calibration Modèle ou Référence par rapport à
+Indiqué affiche toujours chaque statistique qu'Open Gauge a pu calculer pour elle ; seules les
+lignes spécifiques qui ne s'appliquent véritablement pas (par ex. une équation de courbe ajustée
+lorsqu'il n'y a pas de fonction de transfert connue) sont omises plutôt que fabriquées.
 
-Voir l'[Exemple 4](./examples/coefficients-only-certificate.mdx) pour un cas concret de modèle
-fourni directement, y compris ce qui est enregistré et affiché.
+Voir l'[Exemple 4](./examples/coefficients-only-certificate.mdx) pour un cas concret de Modèle, y
+compris ce qui est enregistré et affiché.

@@ -264,6 +264,73 @@ instead of a raw `<input type="checkbox">`:
 
 ---
 
+## Compact Numeric Inputs
+
+A numeric input (a coefficient, a tolerance, a coverage factor, a percentage) rarely needs more
+than 4-6 characters of width — sizing its column to a full-width label instead of the number it
+actually holds is a common source of "why is this field so wide" complaints. Piloted in the
+Calibration Wizard's Step 3 (Uncertainty calculation / Conformity assessment panels); apply the
+same pattern wherever else a numeric field is added or reworked.
+
+### Sizing
+
+- Size the input to the content, not the label. A short field (a percentage, a coverage factor, a
+  small coefficient) fits comfortably in `w-16`–`w-20`; only widen it if the value genuinely needs
+  more digits.
+- Let the label's own column drive its width (`w-20`–`w-40` depending on how much else shares the
+  row — a toggle switch, a refresh icon), independent of the input's width below it.
+
+### Long labels: shorten first, then truncate
+
+1. **Shorten the label itself** when a clear abbreviation exists — "Sensor nominal accuracy" →
+   "Sensor acc.", not "Sensor nominal ac…". A real abbreviation reads better than a mid-word
+   ellipsis and doesn't shift every time the column resizes slightly.
+2. **Cap the width and let it truncate** for whatever doesn't fit even after shortening. `WLabel`
+   (the calibration wizard's shared label component) takes a `className` with a `max-w-*` to cap
+   it — the text then ellipsizes via a `truncate` span rather than forcing the column wider.
+3. **Always keep the tooltip.** A shortened or truncated label is not self-explanatory — every
+   `WLabel` usage passes `tooltip` (explaining the concept) so truncation never trades width for
+   comprehension. The truncated text itself also gets a native `title` (the full label, shown on
+   hover) as a second, literal fallback.
+
+### The `NumberInput` component
+
+Use the shared `NumberInput` component (`@/components/number-input`) instead of a raw
+`<input type="number">`:
+
+```tsx
+<NumberInput
+  value={value}
+  onChange={setValue}
+  min={0}
+  step={0.5}          // optional — also the amount the chevron buttons nudge by
+  placeholder="e.g. 0.5"
+/>
+```
+
+- Renders two small theme-aware chevron buttons (up/down) in place of the browser's native
+  spinner arrows, which can only be hidden or shown — never restyled to look like part of the
+  app. Typing, arrow keys, and the scroll-wheel all still work on the input itself; the buttons
+  are an additional pointer-friendly affordance, not a replacement for them.
+- Pass `invalid` to switch to the error border/ring (matches `IB_ERR`), `disabled`/`readOnly` to
+  hide the buttons and dim the field, and `className` to set the width (e.g. `className="w-20"`).
+
+**Rule: never render a raw `<input type="number">` in a place with a visible spinner requirement
+— use `NumberInput`.** A plain `<input type="number">` is still fine where no visual
+increment/decrement affordance is needed at all (rare — most numeric fields benefit from it).
+
+### Native form controls
+
+Some native controls (date inputs, in particular) are worth keeping — they're accessible and
+well-tested, and a bespoke calendar widget is a lot of surface area to maintain for little benefit.
+What they *do* need is to stop looking like they fell out of the OS: `apps/web/src/app/globals.css`
+recolors the date input's calendar icon per theme via `color-scheme` (a light icon on a dark
+background and vice versa, no filter hacks) — this applies automatically to every
+`<input type="date">` in the app, no per-field change needed. Border, radius, and focus ring
+already come from the screen's own `IB`/`IB_OK` classes, same as every other input.
+
+---
+
 ## Scrollbars
 
 Scrollbars are themed globally in `globals.css` (`::-webkit-scrollbar` + the standard
@@ -316,3 +383,7 @@ mind — don't reintroduce a native/unstyled scrollbar with inline styles or a c
 - Build a bespoke picture-upload UI — use the shared `ImageUploadField` component
 - Hand-roll a name+email block for a user in a list — use `UserSummary`/`UserMention`
 - Render a raw `<input type="checkbox">` — use the shared `ToggleSwitch` component
+- Size a numeric input's column to its label instead of its content — shorten the label first,
+  then cap its width and let it truncate (with a tooltip) for whatever's left over
+- Render a raw `<input type="number">` where a visible increment/decrement affordance is
+  expected — use the shared `NumberInput` component

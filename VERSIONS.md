@@ -9,6 +9,74 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.14.0
+
+### Added
+
+- **Calibration method for raw data.** Step 3 (Analysis) of a raw-data calibration offers a
+  **Calibration method** selector alongside the regression degree — **Polynomial Fit** (default),
+  **Lookup Table** (no curve fit; the entered points *are* the model, linearly interpolated —
+  R²/RMSE/max error/non-linearity hidden since they're trivially perfect, but the uncertainty
+  budget and conformity check still compute normally), and **Custom Formula** (write a formula
+  shape with free parameters, e.g. `a*x*sin(x) + b`, fit via nonlinear regression). Any
+  custom-formula input (this method, and `model_direct`'s own) auto-detects free parameter names
+  as you type — see the new "Custom formula syntax" doc page.
+- **Lookup Table linearity deviation chart.** Since an exact interpolant has no fitted curve,
+  non-linearity doesn't apply — Open Gauge instead fits a straight line through the calibration's
+  own points and charts how far the piecewise-linear interpolation strays from it
+  (absolute/relative %FS), with markers at the entered points. Diagnostic only, not compared
+  against a tolerance.
+- **`NumberInput` component** (`@/components/number-input`) — theme-aware chevron up/down buttons
+  replacing the browser's native, unstyleable number-input spinner app-wide; typing, arrow keys,
+  and the scroll-wheel all still work. Native date inputs are themed per color scheme too (the
+  calendar icon recolors for light/dark via `color-scheme`, no per-field change needed). UI.md
+  gained a "Compact Numeric Inputs" section documenting the pattern: size inputs to their content,
+  shorten/truncate long labels, use `NumberInput`.
+
+### Changed
+
+- **Step 3 (Analysis) reorganized** into three panels: **Method** (raw data only — the
+  Calibration method dropdown with its dependent field, laid out horizontally), **Uncertainty
+  calculation** (distribution, confidence level with a live coverage-factor readout, and opt-in
+  Sensor nominal accuracy / Reference standard uncertainty toggles, each shown in a fixed unit as
+  plain text with a refresh icon restoring the channel's own default), and **Conformity
+  assessment** (decision rule dropdown, always-visible Error/Uncertainty/Tolerance boxes forming
+  the real `[error] ± [uncertainty] ≤ [tolerance]` expression, an editable Tolerance box that
+  locks to Sensor nominal accuracy while that toggle is on, and a CONFORMS/DOES NOT CONFORM
+  badge). All three are hidden for Lookup Table, whose points are exact by construction. The
+  Statistics panel's valid range now splits into two lines (measured signal, physical quantity)
+  and dropped its redundant polynomial-degree row (already visible in the Model panel). The old
+  "Equation" panel is now "Model" — two theme-aware LaTeX rows (general form, numeric
+  coefficients) sharing one horizontal scroll region between them instead of each row scrolling
+  independently.
+- **Calibration wizard: input-data method selection is now Step 2's own dropdown** ("Input data")
+  — **Reference vs Measured** (renamed from "Raw data," unchanged behavior), **Reference vs
+  Indicated**, or **Model (transfer function)** — with the rest of the step rendering immediately
+  below the current selection.
+- **Reference vs Indicated** now uses the channel's physical-quantity unit for its second column
+  instead of the raw output-signal unit, is available for every Calibration purpose (not just
+  Verification), and Step 3 labels that column "Indicated" with no separate "Fitted" column
+  (meaningless when there's no fit).
+- **As-Found/As-Left is now an automatic consequence of Calibration purpose = After Repair**,
+  applied to Reference vs Measured or Reference vs Indicated, instead of its own
+  separately-selectable method. Reference vs Measured can now curve-fit both sides independently,
+  even to different polynomial degrees, since the instrument's behavior may have genuinely
+  changed across the repair. Step 2's as-found/as-left tables sit side by side, sharing one
+  Reference/Measured unit row above both; Step 3 shares one Uncertainty calculation and
+  conformity-criteria (decision rule + tolerance) panel across both sides, with two columns below
+  showing each side's own criteria readout (`[error] ± [uncertainty] ≤ [tolerance]` + CONFORMS/
+  DOES NOT CONFORM badge), model (if fitted), and statistics.
+- The Health tab's curve-comparison dropdown excludes Lookup Table calibrations (no formula/
+  coefficients to compare, only its own points) — same treatment as reference-vs-indicated/
+  as-found-as-left modes.
+
+### Fixed
+
+- Conformity assessment panel's "locked to sensor accuracy" / "no accuracy spec" explanatory text
+  under the Tolerance box, and the saved-calibration detail view's Lookup Table equation readout
+  for curve-fit As-Found/As-Left records — both had briefly regressed during the panel reworks
+  above.
+
 ## 3.13.0
 
 ### Added

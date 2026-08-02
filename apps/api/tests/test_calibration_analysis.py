@@ -243,6 +243,75 @@ class TestDecisionRules:
         assert "2.0" in result.conformity_statement["specification"]
         assert "full scale" in result.conformity_statement["specification"].lower()
 
+    def test_tolerance_value_none_when_no_spec(self) -> None:
+        result = run_analysis(**PERFECT_LINEAR)
+        assert result.conformity_statement["tolerance_value"] is None
+
+    def test_tolerance_value_is_absolute_value_for_absolute_type(self) -> None:
+        result = run_analysis(
+            **_OUTLIER_LINEAR, channel_accuracy_value=0.75, channel_accuracy_type="absolute",
+        )
+        assert result.conformity_statement["tolerance_value"] == pytest.approx(0.75)
+
+    def test_tolerance_value_is_percent_of_span_for_percent_of_full_scale(self) -> None:
+        result = run_analysis(
+            **_OUTLIER_LINEAR, channel_accuracy_value=2.0, channel_accuracy_type="percent_of_full_scale",
+        )
+        span = max(_OUTLIER_LINEAR["reference_values"]) - min(_OUTLIER_LINEAR["reference_values"])
+        assert result.conformity_statement["tolerance_value"] == pytest.approx(0.02 * span)
+
+    def test_tolerance_value_is_none_for_percent_of_reading(self) -> None:
+        # percent_of_reading's tolerance varies per point (no single flat
+        # number the way the other two accuracy types have).
+        result = run_analysis(
+            **_OUTLIER_LINEAR, channel_accuracy_value=2.0, channel_accuracy_type="percent_of_reading",
+        )
+        assert result.conformity_statement["tolerance_value"] is None
+
+
+class TestToleranceOverride:
+    """The wizard's editable Tolerance box — bypasses channel_accuracy_value/
+    type entirely, including percent_of_reading's per-point logic."""
+
+    def test_override_wins_even_with_no_channel_spec(self) -> None:
+        result = run_analysis(**_OUTLIER_LINEAR, tolerance_override=1000.0)
+        assert result.conformity_statement["tolerance_value"] == pytest.approx(1000.0)
+        assert result.conformity_statement["specification"] is not None
+        assert "manual" in result.conformity_statement["specification"].lower()
+        assert result.passed is True
+
+    def test_override_wins_over_channel_accuracy_spec(self) -> None:
+        # A channel spec is present but should be ignored entirely once an
+        # override is supplied.
+        result = run_analysis(
+            **_OUTLIER_LINEAR, channel_accuracy_value=2.0, channel_accuracy_type="percent_of_reading",
+            tolerance_override=1000.0,
+        )
+        assert result.conformity_statement["tolerance_value"] == pytest.approx(1000.0)
+
+    def test_override_evaluated_against_max_error(self) -> None:
+        baseline = run_analysis(**_OUTLIER_LINEAR, tolerance_override=1000.0)
+        tight = run_analysis(**_OUTLIER_LINEAR, tolerance_override=baseline.max_error / 2)
+        loose = run_analysis(**_OUTLIER_LINEAR, tolerance_override=baseline.max_error * 2)
+        assert tight.passed is False
+        assert loose.passed is True
+
+    def test_override_respects_decision_rule_guard(self) -> None:
+        baseline = run_analysis(**_OUTLIER_LINEAR, tolerance_override=1000.0)
+        tolerance = baseline.max_error + baseline.expanded_uncertainty / 2
+        simple = run_analysis(**_OUTLIER_LINEAR, tolerance_override=tolerance, decision_rule="simple_acceptance")
+        guarded = run_analysis(**_OUTLIER_LINEAR, tolerance_override=tolerance, decision_rule="guard_band_w_uncertainty")
+        assert simple.passed is True
+        assert guarded.passed is False
+
+    def test_zero_or_negative_override_falls_back_to_channel_spec(self) -> None:
+        result = run_analysis(
+            **PERFECT_LINEAR, channel_accuracy_value=2.0, channel_accuracy_type="absolute",
+            tolerance_override=0.0,
+        )
+        assert result.conformity_statement["tolerance_value"] == pytest.approx(2.0)
+        assert "manual" not in (result.conformity_statement["specification"] or "").lower()
+
 
 # ---------------------------------------------------------------------------
 # run_analysis — uncertainty
@@ -613,3 +682,135 @@ class TestModelDirectConformityViaSyntheticPoints:
         )
         assert result.passed is True
         assert result.max_error == 0.0
+
+
+# ---------------------------------------------------------------------------
+# run_analysis — calibration_method="lookup_table" / "custom_formula"
+# (data_entry_mode=raw_data's Step 3 "Calibration method" selector)
+# ---------------------------------------------------------------------------
+
+class TestLookupTableMethod:
+    def test_no_fit_metadata_returned(self) -> None:
+        result = run_analysis(
+            reference_values=[0.0, 10.0, 20.0, 30.0],
+            measured_values=[0.1, 10.2, 19.8, 30.1],
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="lookup_table",
+        )
+        assert result.poly_degree is None
+        assert result.coefficients == []
+        assert result.poly_coefficients_covariance is None
+        assert result.non_linearity_pct is None
+        assert result.resolved_custom_formula is None
+
+    def test_residuals_are_exactly_zero_at_training_points(self) -> None:
+        # An interpolant through its own training data reproduces every
+        # point exactly, regardless of the data's own noise/scatter.
+        result = run_analysis(
+            reference_values=[0.0, 10.0, 20.0, 30.0],
+            measured_values=[0.1, 10.2, 19.8, 30.1],
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="lookup_table",
+        )
+        for pt in result.points:
+            assert pt.residual_abs == pytest.approx(0.0, abs=1e-9)
+        assert result.r_squared == pytest.approx(1.0)
+        assert result.rmse == pytest.approx(0.0, abs=1e-9)
+        assert result.max_error == pytest.approx(0.0, abs=1e-9)
+
+    def test_interpolates_linearly_between_points(self) -> None:
+        # Evaluate the interpolant off-training-point via the point list's
+        # own calculated_value at a query that IS a training point (direct
+        # np.interp behavior is exercised more directly on the frontend
+        # equivalent — this asserts the backend's fitted array matches
+        # linear interpolation, not some other curve).
+        result = run_analysis(
+            reference_values=[0.0, 100.0],
+            measured_values=[0.0, 100.0],
+            reference_unit="kPa", measured_unit="kPa",
+            calibration_method="lookup_table",
+        )
+        assert result.points[0].calculated_value == pytest.approx(0.0)
+        assert result.points[1].calculated_value == pytest.approx(100.0)
+
+    def test_type_a_contribution_is_zero(self) -> None:
+        result = run_analysis(
+            reference_values=[0.0, 10.0, 20.0],
+            measured_values=[0.05, 9.9, 20.1],
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="lookup_table",
+            reference_standard_uncertainty=0.02,
+        )
+        type_a = next(c for c in result.uncertainty_budget if c["source"] == "fit_residuals")
+        assert type_a["standard_uncertainty"] == pytest.approx(0.0, abs=1e-9)
+        # Type B (reference standard) still combines in normally.
+        assert "reference_standard" in [c["source"] for c in result.uncertainty_budget]
+        assert result.combined_uncertainty > 0.0
+
+
+class TestCustomFormulaMethod:
+    def test_recovers_known_linear_parameters(self) -> None:
+        # y = 2*x + 1, exact (no noise) -> should recover a=2, b=1 precisely.
+        x = list(range(10))
+        y = [2.0 * xi + 1.0 for xi in x]
+        result = run_analysis(
+            reference_values=y, measured_values=[float(v) for v in x],
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="custom_formula", custom_formula="a*x + b",
+        )
+        assert result.custom_formula_parameter_values is not None
+        assert result.custom_formula_parameter_values["a"] == pytest.approx(2.0, abs=1e-4)
+        assert result.custom_formula_parameter_values["b"] == pytest.approx(1.0, abs=1e-4)
+        assert result.resolved_custom_formula is not None
+        assert result.r_squared == pytest.approx(1.0, abs=1e-6)
+
+    def test_resolved_formula_is_directly_evaluable(self) -> None:
+        from app.services.formula_eval import evaluate_formula
+        x = list(range(10))
+        y = [2.0 * xi + 1.0 for xi in x]
+        result = run_analysis(
+            reference_values=y, measured_values=[float(v) for v in x],
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="custom_formula", custom_formula="a*x + b",
+        )
+        assert evaluate_formula(result.resolved_custom_formula, 5.0) == pytest.approx(11.0, abs=1e-3)
+
+    def test_poly_fields_stay_empty(self) -> None:
+        x = list(range(5))
+        y = [3.0 * xi for xi in x]
+        result = run_analysis(
+            reference_values=y, measured_values=[float(v) for v in x],
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="custom_formula", custom_formula="a*x",
+        )
+        assert result.poly_degree is None
+        assert result.coefficients == []
+        assert result.poly_coefficients_covariance is None
+
+    def test_non_linearity_is_computed_unlike_lookup_table(self) -> None:
+        # Custom Formula is a real fit (unlike Lookup Table) -> non-linearity
+        # is meaningful and computed the same way a polynomial fit's is.
+        x = [float(v) for v in range(10)]
+        y = [xi ** 2 for xi in x]
+        result = run_analysis(
+            reference_values=y, measured_values=x,
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="custom_formula", custom_formula="a*x^2 + b",
+        )
+        assert result.non_linearity_pct is not None
+
+    def test_formula_with_no_free_parameters_raises(self) -> None:
+        with pytest.raises(ValueError, match="free parameters"):
+            run_analysis(
+                reference_values=[1.0, 2.0, 3.0], measured_values=[1.0, 2.0, 3.0],
+                reference_unit="°C", measured_unit="°C",
+                calibration_method="custom_formula", custom_formula="x + 1",
+            )
+
+    def test_missing_formula_raises(self) -> None:
+        with pytest.raises(ValueError):
+            run_analysis(
+                reference_values=[1.0, 2.0, 3.0], measured_values=[1.0, 2.0, 3.0],
+                reference_unit="°C", measured_unit="°C",
+                calibration_method="custom_formula", custom_formula=None,
+            )

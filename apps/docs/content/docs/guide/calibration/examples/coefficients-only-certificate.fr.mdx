@@ -4,9 +4,9 @@ description: Le parcours de l'assistant « Modèle fourni directement », pour l
 ---
 
 Exerce le parcours de l'assistant
-[modèle fourni directement](../coefficients-only.mdx#model-provided-directly) — pour les capteurs
-qui arrivent avec un certificat de calibration indiquant directement le modèle de calibration, sans
-points de données référence/mesuré bruts à réajuster.
+[Modèle (fonction de transfert)](../coefficients-only.mdx#model-transfer-function) — pour les
+capteurs qui arrivent avec un certificat de calibration indiquant directement le modèle de
+calibration, sans points de données référence/mesuré bruts à réajuster.
 
 ## 4.0 Configuration
 
@@ -38,13 +38,11 @@ directement est comparée — voir ci-dessous.
 | Type de calibration | Laboratoire externe accrédité |
 | Fournisseur de calibration | Any Cal Lab Inc. |
 | Numéro de certificat | ACL-2026-00842 |
-| Mode de saisie des données | **Modèle fourni directement** |
 
-Sélectionner ce mode remplace l'étape 2 de saisie de données brutes par un formulaire de saisie de
-modèle, et l'indicateur d'étape se relibelle en « Coefficients » / « Vérification » au lieu de
-« Données brutes » / « Analyse ».
+## 4.2 Assistant — Étape 2 (Données d'entrée)
 
-## 4.2 Assistant — Étape 2 (Coefficients)
+L'étape 2 s'ouvre sur un sélecteur de méthode. Choisir **Modèle (fonction de transfert)** remplace
+le reste de l'étape par un formulaire de saisie de modèle au lieu de la saisie de données brutes.
 
 Le certificat indique : *référence ≈ 1,0025 × mesuré − 0,42 kPa, valide 0–1000 kPa, incertitude
 élargie de l'étalon de référence ±0,5 kPa (k=2)*.

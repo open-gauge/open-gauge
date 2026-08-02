@@ -35,8 +35,18 @@ DATA_ENTRY_MODES = (
     "raw_data", "model_direct", "reference_vs_indicated", "reference_vs_as_found_as_left",
 )
 
-# What poly_coefficients/custom_formula on a calibration represent.
-MODEL_TYPES = ("polynomial", "custom_formula")
+# What poly_coefficients/custom_formula on a calibration represent. "lookup_table"
+# has neither — the model is the calibration's own primary points, linearly
+# interpolated (data_entry_mode=raw_data's Step 3 "Calibration method" only;
+# see calibration_analysis.run_analysis's calibration_method param).
+MODEL_TYPES = ("polynomial", "custom_formula", "lookup_table")
+
+# data_entry_mode=raw_data's Step 3 "Calibration method" — how the raw
+# (reference, measured) points become a model. Orthogonal to model_type
+# above: this selects *which* fitting strategy to run; its result is stored
+# using the same model_type/poly_coefficients/custom_formula columns any
+# other calibration uses.
+CALIBRATION_METHODS = ("polynomial_fit", "lookup_table", "custom_formula")
 
 
 # ------------------------------------------------------------------ #
@@ -59,11 +69,26 @@ class AnalyzeRequest(BaseModel):
     # transference function), so no curve is fitted at all; residual =
     # measured - reference. See calibration_analysis.run_analysis.
     skip_fit: bool = False
+    # data_entry_mode=raw_data's Step 3 "Calibration method" — consulted only
+    # when skip_fit=False. See CALIBRATION_METHODS.
+    calibration_method: str = "polynomial_fit"
+    # A "custom formula" *template* with free parameters (e.g. "a*x + b") —
+    # fitted to the points when calibration_method="custom_formula", or
+    # resolved via direct substitution of custom_formula_params when
+    # skip_fit=True (data_entry_mode=model_direct's declared-values flow;
+    # the points above are then the two synthetic zero-residual corner
+    # points, unrelated to the formula itself).
+    custom_formula_template: str | None = None
+    custom_formula_params: dict[str, float] | None = None
     distribution_type: str = "normal"
     confidence_level: float = 95.0
     channel_accuracy_value: float | None = None
     channel_accuracy_type: str | None = None
     decision_rule: str = "simple_acceptance"
+    # The wizard's editable Tolerance box (already converted to reference
+    # units client-side) — when set, overrides channel_accuracy_value/type
+    # entirely for the conformity check. See _apply_decision_rule.
+    tolerance_override_value: float | None = None
 
     # Type B uncertainty contributions (GUM §4.3) — all optional; each is
     # combined into the uncertainty budget only if supplied.
@@ -119,6 +144,11 @@ class AnalyzeResponse(BaseModel):
     effective_degrees_of_freedom: float | None
     poly_coefficients_covariance: list[list[float]] | None
     points: list[AnalyzePointOut]
+    # Set when a custom formula was involved — either fitted
+    # (calibration_method="custom_formula") or declared/resolved directly
+    # (skip_fit=True + custom_formula_template, model_direct's flow).
+    resolved_custom_formula: str | None = None
+    custom_formula_parameter_values: dict[str, float] | None = None
 
 
 # ------------------------------------------------------------------ #
@@ -256,10 +286,15 @@ class CalibrationCreate(BaseModel):
 
     @model_validator(mode="after")
     def _validate_data_entry_mode_purpose_pairing(self) -> "CalibrationCreate":
-        if self.data_entry_mode == "reference_vs_indicated" and self.calibration_purpose != "verification":
-            raise ValueError("data_entry_mode=reference_vs_indicated requires calibration_purpose=verification")
+        # reference_vs_indicated is open to every purpose — the wizard's own
+        # Step 2 no longer restricts it to verification.
         if self.data_entry_mode == "reference_vs_as_found_as_left" and self.calibration_purpose != "after_repair":
             raise ValueError("data_entry_mode=reference_vs_as_found_as_left requires calibration_purpose=after_repair")
+        if self.data_entry_mode == "model_direct" and self.calibration_purpose == "after_repair":
+            raise ValueError(
+                "data_entry_mode=model_direct is not available for calibration_purpose=after_repair — "
+                "use raw_data or reference_vs_indicated, which split into as-found/as-left data instead"
+            )
         return self
 
     # Environmental conditions (canonical units: °C, %RH, Pa)

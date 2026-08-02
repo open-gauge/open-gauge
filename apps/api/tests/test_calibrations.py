@@ -1499,32 +1499,21 @@ class TestDataEntryModeValidation:
 
 
 class TestDataEntryModePurposePairing:
-    """reference_vs_indicated <-> verification, reference_vs_as_found_as_left
-    <-> after_repair — enforced by CalibrationCreate's model_validator."""
+    """reference_vs_as_found_as_left <-> after_repair and model_direct <->
+    not after_repair are enforced by CalibrationCreate's model_validator.
+    reference_vs_indicated has no purpose restriction at all — the wizard's
+    Step 2 "Input data" method picker offers it regardless of purpose."""
 
-    def test_reference_vs_indicated_requires_verification_purpose(
-        self, client: TestClient, auth_headers: dict, asset: dict
+    @pytest.mark.parametrize("purpose", ["initial", "routine", "after_repair", "verification"])
+    def test_reference_vs_indicated_accepted_with_any_purpose(
+        self, client: TestClient, auth_headers: dict, asset: dict, purpose: str
     ) -> None:
-        r = client.post(
-            "/api/v1/calibrations",
-            json=_minimal_payload(
-                asset["id"], data_entry_mode="reference_vs_indicated", calibration_purpose="routine",
-            ),
-            headers=auth_headers,
-        )
-        assert r.status_code == 422
-
-    def test_reference_vs_indicated_accepted_with_verification_purpose(
-        self, client: TestClient, auth_headers: dict, asset: dict
-    ) -> None:
-        r = client.post(
-            "/api/v1/calibrations",
-            json=_minimal_payload(
-                asset["id"], data_entry_mode="reference_vs_indicated", calibration_purpose="verification",
-            ),
-            headers=auth_headers,
-        )
-        assert r.status_code == 201, r.text
+        payload = _minimal_payload(asset["id"], data_entry_mode="reference_vs_indicated", calibration_purpose=purpose)
+        if purpose == "after_repair":
+            payload["repair_date"] = "2025-02-15"
+            payload["repair_description"] = "n/a"
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, (purpose, r.text)
 
     def test_as_found_as_left_requires_after_repair_purpose(
         self, client: TestClient, auth_headers: dict, asset: dict
@@ -1551,16 +1540,29 @@ class TestDataEntryModePurposePairing:
         )
         assert r.status_code == 201, r.text
 
-    def test_model_direct_has_no_purpose_restriction(
+    def test_model_direct_rejected_for_after_repair_purpose(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
-        for purpose in ("initial", "routine", "after_repair", "verification"):
-            payload = _minimal_payload(asset["id"], data_entry_mode="model_direct", calibration_purpose=purpose)
-            if purpose == "after_repair":
-                payload["repair_date"] = "2025-02-15"
-                payload["repair_description"] = "n/a"
-            r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
-            assert r.status_code == 201, (purpose, r.text)
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"], data_entry_mode="model_direct", calibration_purpose="after_repair",
+                repair_date="2025-02-15", repair_description="n/a",
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    @pytest.mark.parametrize("purpose", ["initial", "routine", "verification"])
+    def test_model_direct_accepted_for_non_after_repair_purposes(
+        self, client: TestClient, auth_headers: dict, asset: dict, purpose: str
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(asset["id"], data_entry_mode="model_direct", calibration_purpose=purpose),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, (purpose, r.text)
 
 
 class TestModelDirectRoundTrip:
@@ -1726,4 +1728,159 @@ class TestReferenceVsAsFoundAsLeftRoundTrip:
             f"/api/v1/calibrations/{r.json()['id']}/points", params={"role": "as_found"}, headers=auth_headers,
         ).json()
         assert as_found_pts == []
+
+
+# ---------------------------------------------------------------------------
+# data_entry_mode="raw_data"'s Step 3 "Calibration method" — Polynomial Fit
+# (default, unchanged) / Lookup Table / Custom Formula
+# ---------------------------------------------------------------------------
+
+def _raw_points() -> list[dict]:
+    return [
+        {"reference": 0.0, "measured": 0.0},
+        {"reference": 10.0, "measured": 5.0},
+        {"reference": 20.0, "measured": 10.0},
+        {"reference": 30.0, "measured": 15.0},
+    ]
+
+
+class TestAnalyzeCalibrationMethod:
+    def test_lookup_table_via_analyze_endpoint(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations/analyze",
+            json={
+                "points": _raw_points(), "reference_unit": "°C", "measured_unit": "°C",
+                "poly_degree": None, "calibration_method": "lookup_table",
+                "distribution_type": "normal", "confidence_level": 95.0,
+                "channel_accuracy_value": None, "channel_accuracy_type": None,
+                "decision_rule": "simple_acceptance",
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["poly_degree"] is None
+        assert body["coefficients"] == []
+        assert body["non_linearity_pct"] is None
+        for pt in body["points"]:
+            assert pt["residual_abs"] == pytest.approx(0.0, abs=1e-6)
+
+    def test_custom_formula_via_analyze_endpoint(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations/analyze",
+            json={
+                "points": _raw_points(), "reference_unit": "°C", "measured_unit": "°C",
+                "poly_degree": None, "calibration_method": "custom_formula",
+                "custom_formula_template": "a*x",
+                "distribution_type": "normal", "confidence_level": 95.0,
+                "channel_accuracy_value": None, "channel_accuracy_type": None,
+                "decision_rule": "simple_acceptance",
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["resolved_custom_formula"] is not None
+        assert body["custom_formula_parameter_values"]["a"] == pytest.approx(2.0, abs=1e-3)
+
+    def test_custom_formula_with_no_parameters_returns_422(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations/analyze",
+            json={
+                "points": _raw_points(), "reference_unit": "°C", "measured_unit": "°C",
+                "poly_degree": None, "calibration_method": "custom_formula",
+                "custom_formula_template": "x + 1",
+                "distribution_type": "normal", "confidence_level": 95.0,
+                "channel_accuracy_value": None, "channel_accuracy_type": None,
+                "decision_rule": "simple_acceptance",
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    def test_default_method_is_unchanged_polynomial_fit(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        # Omitting calibration_method entirely must behave exactly like
+        # before this feature existed (backward compatible default).
+        r = client.post(
+            "/api/v1/calibrations/analyze",
+            json={
+                "points": _raw_points(), "reference_unit": "°C", "measured_unit": "°C",
+                "poly_degree": 1,
+                "distribution_type": "normal", "confidence_level": 95.0,
+                "channel_accuracy_value": None, "channel_accuracy_type": None,
+                "decision_rule": "simple_acceptance",
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["poly_degree"] == 1
+        assert len(body["coefficients"]) == 2
+
+
+class TestRawDataCalibrationMethodRoundTrip:
+    def test_lookup_table_round_trip(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        analyze = client.post(
+            "/api/v1/calibrations/analyze",
+            json={
+                "points": _raw_points(), "reference_unit": "°C", "measured_unit": "°C",
+                "poly_degree": None, "calibration_method": "lookup_table",
+                "distribution_type": "normal", "confidence_level": 95.0,
+                "channel_accuracy_value": None, "channel_accuracy_type": None,
+                "decision_rule": "simple_acceptance",
+            },
+            headers=auth_headers,
+        ).json()
+        payload = _minimal_payload(
+            asset["id"],
+            model_type="lookup_table",
+            poly_order=None,
+            poly_coefficients=[],
+            r_squared=analyze["r_squared"],
+            points=[
+                {
+                    "point_index": p["point_index"], "reference_value": p["reference_value"],
+                    "measured_value": p["measured_value"], "calculated_value": p["calculated_value"],
+                    "residual_abs": p["residual_abs"], "residual_pct": p["residual_pct"],
+                    "reference_unit": "°C", "measured_unit": "°C",
+                }
+                for p in analyze["points"]
+            ],
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        assert r.json()["model_type"] == "lookup_table"
+
+    def test_custom_formula_round_trip(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        analyze = client.post(
+            "/api/v1/calibrations/analyze",
+            json={
+                "points": _raw_points(), "reference_unit": "°C", "measured_unit": "°C",
+                "poly_degree": None, "calibration_method": "custom_formula",
+                "custom_formula_template": "a*x",
+                "distribution_type": "normal", "confidence_level": 95.0,
+                "channel_accuracy_value": None, "channel_accuracy_type": None,
+                "decision_rule": "simple_acceptance",
+            },
+            headers=auth_headers,
+        ).json()
+        payload = _minimal_payload(
+            asset["id"],
+            model_type="custom_formula",
+            custom_formula=analyze["resolved_custom_formula"],
+            r_squared=analyze["r_squared"],
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["model_type"] == "custom_formula"
+        assert body["custom_formula"] == analyze["resolved_custom_formula"]
 

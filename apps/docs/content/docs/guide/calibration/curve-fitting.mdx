@@ -1,14 +1,38 @@
 ---
 title: Curve fitting & regression statistics
-description: How Open Gauge fits a calibration curve and computes R², RMSE, max error, non-linearity, repeatability, and hysteresis.
+description: How Open Gauge turns raw calibration data into a model, and computes R², RMSE, max error, non-linearity, repeatability, and hysteresis.
 ---
 
-Open Gauge fits a polynomial calibration curve to your (reference, measured) data points, then
-reports a set of standard regression statistics describing how good that fit is.
+A raw-data calibration's Step 3 (Analysis) turns your (reference, measured) data points into a
+model via one of three **Calibration methods**, then reports a set of standard regression
+statistics describing how good that model is.
 
-## The fit
+## Calibration method [#calibration-method]
 
-Open Gauge fits:
+- **Polynomial Fit** (default) — fits a polynomial curve via least-squares, described below.
+- **Lookup Table** — no curve fit at all. The entered points *are* the model: evaluating it at any
+  measured value linearly interpolates between the two nearest entered points. Since the model
+  reproduces every entered point exactly by construction, R², RMSE, max error, non-linearity, the
+  [uncertainty budget](./uncertainty-budget.mdx), and the
+  [conformity check](./decision-rules.mdx) are all skipped — none of them are meaningful against
+  residuals that are trivially zero at every entered point. Instead, Open Gauge reports
+  [linearity deviation](#linearity-deviation) — see below.
+- **Custom Formula** — write a formula shape with free parameters, e.g. `a*x*sin(x) + b`
+  (everything besides `x` and the allowed function names is treated as a parameter to fit — see
+  [Custom formula syntax](./custom-formulas.mdx)), and Open Gauge fits those parameters to your
+  data via nonlinear least squares (`scipy.optimize.curve_fit`), every parameter's initial guess
+  starting at 1.0. R², RMSE, max error, and non-linearity are all computed normally, same as a
+  polynomial fit — it's a real fit, just against a formula shape you chose instead of a fixed
+  polynomial basis. If the fit doesn't converge (common for exponentials/trig functions against
+  badly-scaled data), Open Gauge shows an error instead of a wrong or misleading result.
+
+`model_direct` (a lab-supplied model with no raw data at all — see
+[Alternative calibration data-entry modes](./coefficients-only.mdx)) uses the same Custom Formula
+mechanism for its own formula input, just with declared parameter values instead of a fit.
+
+## The fit [#regression-degree]
+
+This section covers **Polynomial Fit** specifically. Open Gauge fits:
 
 $$
 \text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
@@ -73,6 +97,27 @@ $$
 For a fit of degree ≥ 2: how far the fitted curve deviates from its own best-fit *straight*
 line, as a percentage of full scale. A large non-linearity is a signal that a higher-degree fit
 was the right call — not just noise the auto-degree-selection happened to pick up.
+
+## Linearity deviation [#linearity-deviation]
+
+**Lookup Table only.** Since a lookup table has no fitted curve, non-linearity (which needs one)
+doesn't apply — but the *piecewise-linear interpolation itself* introduces its own error between
+entered points, worth quantifying. Open Gauge fits a straight line (ordinary least-squares)
+through the calibration's own points, then samples the interpolated curve densely across the
+measured range and reports how far it strays from that line at each sample:
+
+$$
+\text{deviation}(x) = \text{LUT}(x) - (\text{slope} \cdot x + \text{intercept})
+$$
+
+Shown as a chart under the interpolation curve — measured value on the x-axis, deviation on the
+y-axis, toggleable between absolute (in reference units) and relative (as a percentage of the
+reference span, %FS) — rather than a single summary number, since where along the range the
+interpolation strays matters as much as how far. Round markers sit at the calibration's own
+entered points, connected by the curve, the same visual language as the main calibration chart.
+It's diagnostic only: Lookup Table has no conformity check (see
+[Calibration method](#calibration-method) above), so linearity deviation isn't compared against a
+tolerance or folded into a pass/fail decision.
 
 ## Repeatability [#repeatability]
 

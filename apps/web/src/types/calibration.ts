@@ -9,21 +9,48 @@ export type CalibrationType = "oem" | "external_accredited_lab" | "internal_lab"
 export type CalibrationPurpose = "initial" | "routine" | "after_repair" | "verification";
 
 /** How the data was entered — orthogonal to CalibrationType (who performed it)
- * and CalibrationPurpose (why). "reference_vs_indicated" only pairs with
- * purpose "verification"; "reference_vs_as_found_as_left" only with
- * "after_repair" (backend-enforced, see AGENTS.md's calibration philosophy). */
+ * and CalibrationPurpose (why). "reference_vs_as_found_as_left" only pairs
+ * with purpose "after_repair"; "model_direct" never pairs with "after_repair"
+ * (backend-enforced, see AGENTS.md's calibration philosophy). This is the
+ * wire-level value the backend stores — the wizard's own Step 2 selection is
+ * InputMethod below, which derives this value together with the purpose. */
 export type DataEntryMode =
   | "raw_data"
   | "model_direct"
   | "reference_vs_indicated"
   | "reference_vs_as_found_as_left";
 
-export type ModelType = "polynomial" | "custom_formula";
+/** The wizard's own Step 2 "Input data" method choice — distinct from
+ * DataEntryMode above, picked via a dropdown at the top of Step 2 (always
+ * set, defaults to "reference_vs_measured"). As-Found/As-Left is not a
+ * selectable method here; it's an automatic consequence of picking
+ * "reference_vs_measured" or "reference_vs_indicated" together with
+ * purpose="after_repair" (see deriveDataEntryMode in CalibrationWizard.tsx). */
+export type InputMethod = "reference_vs_measured" | "reference_vs_indicated" | "model_direct";
+
+/** What poly_coefficients/custom_formula on a calibration represent.
+ * "lookup_table" has neither — the model is the calibration's own primary
+ * points, linearly interpolated (data_entry_mode=raw_data's Step 3
+ * "Calibration method" only — see CalibrationMethod). */
+export type ModelType = "polynomial" | "custom_formula" | "lookup_table";
+
+/** data_entry_mode=raw_data's Step 3 "Calibration method" — how the raw
+ * (reference, measured) points become a model. Orthogonal to ModelType
+ * above: this selects *which* fitting strategy to run; its result is stored
+ * using the same model_type/poly_coefficients/custom_formula fields any
+ * other calibration uses. */
+export type CalibrationMethod = "polynomial_fit" | "lookup_table" | "custom_formula";
 
 export interface ConformityStatement {
   decision_rule: string;
   specification: string | null;
   expanded_uncertainty_applied: number | null;
+  /** The single numeric tolerance the decision rule compared max_error
+   * against — only populated for the "percent_of_full_scale" and "absolute"
+   * accuracy types. "percent_of_reading" checks each point's residual
+   * against its own point's tolerance rather than max_error against one
+   * flat number, so it has no single value to report here. */
+  tolerance_value: number | null;
   passed: boolean;
   reason: string | null;
 }
@@ -215,11 +242,24 @@ export interface AnalyzeRequest {
   /** True for reference_vs_indicated/reference_vs_as_found_as_left — no
    * transference function is known, so no curve is fitted at all. */
   skip_fit?: boolean;
+  /** data_entry_mode=raw_data's Step 3 "Calibration method" — consulted
+   * only when skip_fit is not set. */
+  calibration_method?: CalibrationMethod;
+  /** A custom-formula *template* with free parameters (e.g. "a*x + b") —
+   * fitted to the points when calibration_method="custom_formula", or
+   * resolved via direct substitution of custom_formula_params when
+   * skip_fit=true (data_entry_mode=model_direct's declared-values flow). */
+  custom_formula_template?: string | null;
+  custom_formula_params?: Record<string, number> | null;
   distribution_type: DistributionType;
   confidence_level: number;
   channel_accuracy_value: number | null;
   channel_accuracy_type: string | null;
   decision_rule?: DecisionRule;
+  /** The wizard's editable Tolerance box (already converted to reference
+   * units client-side) — when set, overrides channel_accuracy_value/type
+   * entirely for the conformity check. */
+  tolerance_override_value?: number | null;
 
   // Type B uncertainty contributions (GUM §4.3) — all optional.
   reference_standard_uncertainty?: number | null;
@@ -274,6 +314,11 @@ export interface AnalyzeResponse {
   effective_degrees_of_freedom: number | null;
   poly_coefficients_covariance: number[][] | null;
   points: AnalyzePointOut[];
+  /** Set when a custom formula was involved — either fitted
+   * (calibration_method="custom_formula") or declared/resolved directly
+   * (skip_fit=true + custom_formula_template, model_direct's flow). */
+  resolved_custom_formula?: string | null;
+  custom_formula_parameter_values?: Record<string, number> | null;
 }
 
 // ------------------------------------------------------------------ //

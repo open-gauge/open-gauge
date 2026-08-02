@@ -34,13 +34,16 @@ Starten Sie eine Kalibrierung vom Kanal einer Anlage aus. Der Assistent hat drei
    **Erfasst von** (eine Dropdown-Liste der Organisationsmitglieder der Anlage, standardmäßig Sie
    selbst), ein optionaler Prüfer **Geprüft von**, Kalibrierintervall, Umgebungsbedingungen und
    Notizen. Je nach gewählter Art/gewähltem Zweck erscheinen zusätzliche Felder — siehe unten.
-   Dieser Schritt hat auch einen **Dateneingabemodus**-Selektor für Kalibrierungen, die nicht in
-   die übliche Rohdaten-Form passen — siehe
-   [Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx).
-2. **Rohdaten** — geben Sie (Referenz-, Mess-)Punktpaare ein (oder, je nach dem oben gewählten
-   Dateneingabemodus, ein direkt eingegebenes Modell oder einen
-   Referenz-vs-bereits-umgerechneter-Wert-Vergleich). Siehe [Kurvenanpassung](./curve-fitting.mdx)
-   dazu, was Open Gauge damit macht.
+2. **Eingabedaten** — beginnt mit einem Methoden-Selektor: **Referenz vs. Gemessen** (Standard —
+   (Referenz-, Mess-)Punktpaare gegenüber dem rohen Ausgangssignal des Kanals, an eine Kurve
+   angepasst), **Referenz vs. Angezeigt** (Referenz gegenüber einem bereits umgerechneten
+   physikalischen Messwert, ohne Kurvenanpassung), oder **Modell (Übertragungsfunktion)** (ein vom
+   Labor angegebenes Modell, ganz ohne Rohdatenpunkte — nicht verfügbar, wenn der Kalibrierzweck
+   Nach Reparatur ist). Siehe
+   [Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx) für die vollständige
+   Aufschlüsselung, einschließlich wie Nach Reparatur Referenz vs. Gemessen/Angezeigt automatisch
+   in Wie-vorgefunden-/Wie-belassen-Daten aufteilt. Siehe
+   [Kurvenanpassung](./curve-fitting.mdx) dazu, was Open Gauge mit den Rohdaten macht.
 3. **Analyse/Überprüfung** — die live berechnete Anpassung, das Unsicherheitsbudget und die
    Konformitätsaussage. Siehe [Das Unsicherheitsbudget](./uncertainty-budget.mdx) und
    [Entscheidungsregeln](./decision-rules.mdx).
@@ -76,8 +79,8 @@ das Feld **Kalibrierlabor** auflöst:
   gekennzeichnet sind. Kein Zertifikats-Upload.
 
 Für OEM, Externes akkreditiertes Labor und Kundenanlage kann die Rohdateneingabe vollständig
-übersprungen werden, indem der **Dateneingabemodus** auf **Modell direkt bereitgestellt** gesetzt
-wird, wenn das Zertifikat das Kalibriermodell direkt angibt — siehe
+übersprungen werden, indem in Schritt 2 die Eingabemethode **Modell (Übertragungsfunktion)**
+gewählt wird, wenn das Zertifikat das Kalibriermodell direkt angibt — siehe
 [Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx).
 
 ### Hochgeladene Zertifikate
@@ -101,8 +104,11 @@ Der **Kalibrierzweck** hält fest, *warum* die Kalibrierung durchgeführt wurde:
 - **Routine** — eine periodische Rekalibrierung. Der Standard, sobald mindestens eine vorherige
   Kalibrierung existiert.
 - **Nach Reparatur** — im Anschluss an eine Reparatur. Zeigt ein **Reparaturdatum**
-  (Datumsauswahl) und eine **Reparaturbeschreibung** (bis zu 500 Zeichen). Siehe unten, wie sich
-  dies auf den Reiter Zustand auswirkt.
+  (Datumsauswahl) und eine **Reparaturbeschreibung** (bis zu 500 Zeichen). Teilt außerdem die
+  Referenz-vs.-Gemessen/Angezeigt-Eingabe aus Schritt 2 automatisch in getrennte
+  Wie-vorgefunden-/Wie-belassen-Daten auf — siehe
+  [Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx#after-repair-as-foundas-left-data).
+  Siehe unten, wie sich dies auf den Reiter Zustand auswirkt.
 - **Verifizierung** — eine Kalibrierung, die durchgeführt wird, um die fortlaufende Konformität zu
   überprüfen, ohne notwendigerweise die Intervalluhr zurückzusetzen, wie es eine routinemäßige
   Rekalibrierung tun würde.

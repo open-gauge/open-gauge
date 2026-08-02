@@ -387,6 +387,73 @@ class TestCurveComparisonCustomFormula:
 
 
 # ---------------------------------------------------------------------------
+# data_entry_mode=raw_data, model_type="lookup_table" — excluded from the
+# Health tab's curve-comparison entirely (see has_model() in calculations.py
+# and the deliberate scope cut documented there).
+# ---------------------------------------------------------------------------
+
+def _create_lookup_table_calibration(
+    client: TestClient, auth_headers: dict, asset_id: str, sensor_id: str, calibration_date: str,
+) -> dict:
+    payload = {
+        "asset_id": asset_id,
+        "calibration_date": calibration_date,
+        "due_date": "2030-01-01",
+        "performed_by_name": "Health Test Tech",
+        "sensor_id": sensor_id,
+        "calibration_type": "internal_lab",
+        "model_type": "lookup_table",
+        "range_min": 0.0,
+        "range_max": 100.0,
+        "valid_range_min": 0.0,
+        "valid_range_max": 100.0,
+        "calibration_interval": 365,
+        "points": [
+            {
+                "point_index": 0, "reference_value": 0.0, "measured_value": 0.0,
+                "reference_unit": "degC", "measured_unit": "degC",
+            },
+            {
+                "point_index": 1, "reference_value": 100.0, "measured_value": 100.0,
+                "reference_unit": "degC", "measured_unit": "degC",
+            },
+        ],
+    }
+    r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+class TestLookupTableExcludedFromCurveComparison:
+    def test_lookup_table_calibration_not_in_calibration_options(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        poly_cal = _create_calibration(client, auth_headers, asset["id"], sensor_id, "2022-01-01", 0.0)
+        lookup_cal = _create_lookup_table_calibration(client, auth_headers, asset["id"], sensor_id, "2023-01-01")
+
+        r = client.get(f"/api/v1/assets/{asset['id']}/health?sensor_id={sensor_id}", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        option_ids = [o["id"] for o in r.json()["calibration_options"]]
+        assert poly_cal["id"] in option_ids
+        assert lookup_cal["id"] not in option_ids
+
+    def test_comparing_against_a_lookup_table_calibration_fails(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        poly_cal = _create_calibration(client, auth_headers, asset["id"], sensor_id, "2022-01-01", 0.0)
+        lookup_cal = _create_lookup_table_calibration(client, auth_headers, asset["id"], sensor_id, "2023-01-01")
+
+        r = client.get(
+            f"/api/v1/assets/{asset['id']}/health/curve-comparison"
+            f"?reference_calibration_id={poly_cal['id']}&current_calibration_id={lookup_cal['id']}",
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
 # GET /assets/{id}/health/repair-periods + after/before scoping
 # ---------------------------------------------------------------------------
 

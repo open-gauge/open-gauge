@@ -1,14 +1,43 @@
 ---
 title: Kurvenanpassung & Regressionsstatistik
-description: Wie Open Gauge eine Kalibrierkurve anpasst und R², RMSE, Maximalfehler, Nichtlinearität, Wiederholbarkeit und Hysterese berechnet.
+description: Wie Open Gauge Roh-Kalibrierdaten in ein Modell umwandelt und R², RMSE, Maximalfehler, Nichtlinearität, Wiederholbarkeit und Hysterese berechnet.
 ---
 
-Open Gauge passt eine polynomiale Kalibrierkurve an Ihre (Referenz-, Mess-)Datenpunkte an und gibt
-dann eine Reihe von Standard-Regressionsstatistiken aus, die beschreiben, wie gut diese Anpassung ist.
+Schritt 3 (Analyse) einer Kalibrierung mit Rohdaten wandelt Ihre (Referenz-, Mess-)Datenpunkte über
+eine von drei **Kalibriermethoden** in ein Modell um und gibt dann eine Reihe von
+Standard-Regressionsstatistiken aus, die beschreiben, wie gut dieses Modell ist.
 
-## Die Anpassung
+## Kalibriermethode [#calibration-method]
 
-Open Gauge passt an:
+- **Polynomanpassung** (Standard) — passt eine Polynomkurve mittels kleinster Quadrate an, unten
+  beschrieben.
+- **Nachschlagetabelle** — überhaupt keine Kurvenanpassung. Die eingegebenen Punkte *sind* das
+  Modell: eine Auswertung bei einem beliebigen Messwert interpoliert linear zwischen den beiden
+  nächstgelegenen eingegebenen Punkten. Da das Modell konstruktionsbedingt jeden eingegebenen Punkt
+  exakt reproduziert, werden R², RMSE, Maximalfehler, Nichtlinearität, das
+  [Unsicherheitsbudget](./uncertainty-budget.mdx) und die
+  [Konformitätsprüfung](./decision-rules.mdx) allesamt übersprungen — keines davon ist
+  aussagekräftig gegenüber Residuen, die an jedem eingegebenen Punkt trivialerweise null sind.
+  Stattdessen gibt Open Gauge die [Linearitätsabweichung](#linearity-deviation) an — siehe unten.
+- **Benutzerdefinierte Formel** — schreiben Sie eine Formelform mit freien Parametern, z. B.
+  `a*x*sin(x) + b` (alles außer `x` und den erlaubten Funktionsnamen wird als anzupassender
+  Parameter behandelt — siehe [Syntax für benutzerdefinierte Formeln](./custom-formulas.mdx)), und
+  Open Gauge passt diese Parameter mittels nichtlinearer kleinster Quadrate
+  (`scipy.optimize.curve_fit`) an Ihre Daten an, wobei der Startwert jedes Parameters bei 1.0
+  beginnt. R², RMSE, Maximalfehler und Nichtlinearität werden alle normal berechnet, genau wie bei
+  einer Polynomanpassung — es ist eine echte Anpassung, nur gegen eine von Ihnen gewählte
+  Formelform statt einer festen Polynombasis. Konvergiert die Anpassung nicht (häufig bei
+  Exponential-/trigonometrischen Funktionen gegenüber schlecht skalierten Daten), zeigt Open Gauge
+  einen Fehler an, statt ein falsches oder irreführendes Ergebnis zu liefern.
+
+`model_direct` (ein vom Labor geliefertes Modell ganz ohne Rohdaten — siehe
+[Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx)) verwendet für seine
+eigene Formeleingabe denselben Mechanismus der Benutzerdefinierten Formel, nur mit deklarierten
+Parameterwerten statt einer Anpassung.
+
+## Die Anpassung [#regression-degree]
+
+Dieser Abschnitt behandelt speziell die **Polynomanpassung**. Open Gauge passt an:
 
 $$
 \text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
@@ -77,6 +106,29 @@ Für eine Anpassung vom Grad ≥ 2: wie weit die angepasste Kurve von ihrer eige
 *Geraden* abweicht, als Prozentsatz des Endwerts. Eine große Nichtlinearität ist ein Hinweis darauf,
 dass eine Anpassung höheren Grades die richtige Wahl war — nicht nur Rauschen, das die automatische
 Gradauswahl zufällig aufgegriffen hat.
+
+## Linearitätsabweichung [#linearity-deviation]
+
+**Nur Nachschlagetabelle.** Da eine Nachschlagetabelle keine angepasste Kurve hat, ist
+Nichtlinearität (die eine solche benötigt) nicht anwendbar — aber die *stückweise lineare
+Interpolation selbst* führt zwischen den eingegebenen Punkten zu einem eigenen Fehler, der es wert
+ist, quantifiziert zu werden. Open Gauge passt eine Gerade (gewöhnliche kleinste Quadrate) durch
+die eigenen Punkte der Kalibrierung an, tastet dann die interpolierte Kurve dicht über den
+gemessenen Bereich ab und gibt an, wie weit sie an jedem Abtastpunkt von dieser Geraden abweicht:
+
+$$
+\text{deviation}(x) = \text{LUT}(x) - (\text{slope} \cdot x + \text{intercept})
+$$
+
+Dargestellt als Diagramm unter der Interpolationskurve — Messwert auf der x-Achse, Abweichung auf
+der y-Achse, umschaltbar zwischen absolut (in Referenzeinheiten) und relativ (als Prozentsatz der
+Referenzspanne, %FS) — anstelle einer einzelnen zusammenfassenden Zahl, da es ebenso darauf
+ankommt, an welcher Stelle des Bereichs die Interpolation abweicht, wie darauf, wie stark. Runde
+Markierungen kennzeichnen die eigenen eingegebenen Punkte der Kalibrierung, verbunden durch die
+Kurve — dieselbe visuelle Sprache wie das Haupt-Kalibrierdiagramm. Es dient nur diagnostischen
+Zwecken: Die Nachschlagetabelle hat keine Konformitätsprüfung (siehe
+[Kalibriermethode](#calibration-method) oben), daher wird die Linearitätsabweichung weder mit
+einer Toleranz verglichen noch in eine Bestehen/Nichtbestehen-Entscheidung einbezogen.
 
 ## Wiederholbarkeit [#repeatability]
 

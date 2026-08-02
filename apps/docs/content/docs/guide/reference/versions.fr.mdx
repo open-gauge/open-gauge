@@ -4,7 +4,7 @@ description: Historique des versions — ce qui a changé dans chaque version d'
 ---
 
 Open Gauge suit un unique numéro de version à travers le frontend et le backend. Il est affiché
-en bas à gauche de la barre latérale (`v3.4.0 · self-hosted`) et dans le schéma OpenAPI. Cette
+en bas à gauche de la barre latérale (`v3.14.0 · self-hosted`) et dans le schéma OpenAPI. Cette
 page reflète le fichier
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) à la racine du
 dépôt.
@@ -14,6 +14,84 @@ numéroté selon l'impact de versionnement sémantique (`0.x` tant que le produi
 pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté, sous licence, et
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
+
+## 3.14.0
+
+### Ajouté
+
+- **Méthode de calibration pour les données brutes.** L'étape 3 (Analyse) d'une calibration à
+  données brutes propose un sélecteur de **Méthode de calibration** aux côtés du degré de
+  régression — **Ajustement polynomial** (par défaut), **Table de correspondance** (aucun
+  ajustement de courbe ; les points saisis *sont* le modèle, interpolés linéairement — R², RMSE,
+  erreur maximale et non-linéarité masqués car trivialement parfaits, mais le budget d'incertitude
+  et la vérification de conformité se calculent toujours normalement), et **Formule personnalisée**
+  (écrivez une forme de formule avec des paramètres libres, par ex. `a*x*sin(x) + b`, ajustée par
+  régression non linéaire). Toute saisie de formule personnalisée (cette méthode, et celle propre à
+  `model_direct`) détecte automatiquement les noms des paramètres libres au fur et à mesure de la
+  saisie — voir [Syntaxe des formules personnalisées](./custom-formulas.mdx).
+- **Graphique de déviation de linéarité (Table de correspondance).** Un interpolant exact n'ayant
+  pas de courbe ajustée, la non-linéarité ne s'applique pas — Open Gauge ajuste plutôt une droite
+  à travers les propres points de la calibration et représente l'écart de l'interpolation linéaire
+  par morceaux par rapport à cette droite (absolu/relatif %FS), avec des marqueurs aux points
+  saisis. Diagnostic uniquement, non comparé à une tolérance.
+- **Composant `NumberInput`** (`@/components/number-input`) — boutons chevron haut/bas sensibles
+  au thème, remplaçant le sélecteur numérique natif du navigateur (non personnalisable) dans toute
+  l'application ; la saisie, les flèches du clavier et la molette de la souris fonctionnent
+  toujours. Les champs de date natifs sont désormais eux aussi thématisés selon le mode couleur
+  (l'icône du calendrier change de couleur pour clair/sombre via `color-scheme`, sans changement
+  par champ). UI.md a gagné une section « Compact Numeric Inputs » documentant le motif : adapter
+  la taille des champs à leur contenu, raccourcir/tronquer les libellés longs, utiliser
+  `NumberInput`.
+
+### Modifié
+
+- **L'étape 3 (Analyse) a été réorganisée** en trois panneaux : **Méthode** (données brutes
+  uniquement — le menu déroulant Méthode de calibration avec son champ dépendant, disposé
+  horizontalement), **Calcul d'incertitude** (distribution, niveau de confiance avec une lecture
+  en direct du facteur de couverture, et des bascules opt-in Exactitude nominale du capteur /
+  Incertitude de l'étalon de référence, chacune affichée dans une unité fixe sous forme de texte
+  brut avec une icône d'actualisation restaurant la valeur par défaut de la voie), et **Évaluation
+  de conformité** (menu déroulant de règle de décision, cases Erreur/Incertitude/Tolérance
+  toujours visibles formant l'expression réelle `[erreur] ± [incertitude] ≤ [tolérance]`, une case
+  Tolérance modifiable qui se verrouille sur Exactitude nominale du capteur tant que cette bascule
+  est active, et un badge CONFORME/NON CONFORME). Les trois sont masqués pour Table de
+  correspondance, dont les points sont exacts par construction. La plage valide du panneau
+  Statistiques se divise désormais en deux lignes (signal mesuré, grandeur physique) et a
+  abandonné sa ligne redondante de degré polynomial (déjà visible dans le panneau Modèle).
+  L'ancien panneau « Équation » est maintenant « Modèle » — deux lignes LaTeX sensibles au thème
+  (forme générale, coefficients numériques) partageant une seule zone de défilement horizontal au
+  lieu que chaque ligne défile indépendamment.
+- **Assistant de calibration : la sélection de la méthode de saisie des données est désormais le
+  propre menu déroulant de l'étape 2** (« Données d'entrée ») — **Référence par rapport à Mesuré**
+  (renommé depuis « Données brutes », comportement inchangé), **Référence par rapport à Indiqué**,
+  ou **Modèle (fonction de transfert)** — le reste de l'étape s'affichant immédiatement en dessous
+  selon la sélection actuelle.
+- **Référence par rapport à Indiqué** utilise désormais l'unité de grandeur physique de la voie
+  pour sa deuxième colonne au lieu de l'unité de signal de sortie brut, est disponible pour tout
+  Objectif de la calibration (pas seulement Vérification), et l'étape 3 étiquette cette colonne
+  « Indiqué » sans colonne « Ajusté » distincte (dénuée de sens en l'absence d'ajustement).
+- **Telle que trouvée/telle que laissée est désormais une conséquence automatique de Objectif de
+  la calibration = Après réparation**, appliquée à Référence par rapport à Mesuré ou Référence par
+  rapport à Indiqué, au lieu d'être sa propre méthode sélectionnable séparément. Référence par
+  rapport à Mesuré peut désormais ajuster une courbe des deux côtés de façon indépendante, même
+  avec un degré polynomial différent, le comportement de l'instrument ayant pu réellement changer
+  suite à la réparation. Les tableaux telle que trouvée/telle que laissée de l'étape 2 sont
+  désormais côte à côte, partageant une seule ligne d'unités Référence/Mesuré au-dessus des deux ;
+  l'étape 3 partage un unique panneau de Calcul d'incertitude et de critère de conformité (règle
+  de décision + tolérance) entre les deux côtés, avec deux colonnes en dessous affichant la
+  lecture du critère de conformité propre à chaque côté (`[erreur] ± [incertitude] ≤ [tolérance]`
+  + badge CONFORME/NON CONFORME), son modèle (le cas échéant) et ses statistiques.
+- Le menu déroulant de comparaison de courbes de l'onglet Santé exclut les calibrations de Table de
+  correspondance (aucune formule/coefficients à comparer, seulement ses propres points) — le même
+  traitement que celui appliqué aux modes référence-par-rapport-à-indiqué/telle-que-trouvée-telle-que-laissée.
+
+### Corrigé
+
+- Le texte explicatif « verrouillé sur l'exactitude du capteur » / « aucune spécification
+  d'exactitude » du panneau Évaluation de conformité sous la case Tolérance, et la lecture
+  d'équation Table de correspondance de la vue de détail de la calibration enregistrée pour les
+  enregistrements Telle que trouvée/telle que laissée ajustés à une courbe — les deux avaient
+  brièvement régressé pendant les réorganisations de panneaux décrites ci-dessus.
 
 ## 3.4.0
 

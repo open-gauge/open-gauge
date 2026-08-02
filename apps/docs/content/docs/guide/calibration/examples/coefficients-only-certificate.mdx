@@ -1,9 +1,9 @@
 ---
 title: "Example 4 — Pressure transmitter, model provided directly"
-description: The "Model provided directly" wizard path, for sensors that arrive with a certificate stating the calibration model directly.
+description: The "Model (transfer function)" wizard path, for sensors that arrive with a certificate stating the calibration model directly.
 ---
 
-Exercises the [model-provided-directly](../coefficients-only.mdx#model-provided-directly) wizard
+Exercises the [Model (transfer function)](../coefficients-only.mdx#model-transfer-function) wizard
 path — for sensors that arrive with a calibration certificate stating the calibration model
 directly, with no raw reference/measured data points to re-fit.
 
@@ -37,12 +37,11 @@ below.
 | Calibration type | External Accredited Lab |
 | Calibration provider | Any Cal Lab Inc. |
 | Certificate number | ACL-2026-00842 |
-| Data entry mode | **Model provided directly** |
 
-Selecting this mode swaps Step 2 from raw-data entry to a model-entry form, and the step indicator
-relabels to "Coefficients" / "Review" instead of "Raw Data" / "Analysis".
+## 4.2 Wizard — Step 2 (Input data)
 
-## 4.2 Wizard — Step 2 (Coefficients)
+Step 2 opens with a method picker. Choosing **Model (transfer function)** swaps the rest of the
+step from raw-data entry to a model-entry form.
 
 The certificate states: *reference ≈ 1.0025 × measured − 0.42 kPa, valid 0–1000 kPa, reference
 standard uncertainty ±0.5 kPa (k=2)*.

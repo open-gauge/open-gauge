@@ -1,0 +1,81 @@
+---
+title: Syntax für benutzerdefinierte Formeln
+description: Wie Sie in Open Gauge eine benutzerdefinierte Kalibrierformel schreiben — erlaubte Syntax, freie Parameter und durchgerechnete Beispiele.
+---
+
+An zwei Stellen in Open Gauge können Sie statt eines Polynoms eine **benutzerdefinierte Formel**
+als Kalibriermodell eingeben: die Option „Benutzerdefinierte Formel" von `model_direct` (ein vom
+Labor geliefertes Modell ohne Rohdaten — siehe
+[Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx)) und die
+[Kalibriermethode](./curve-fitting.mdx#calibration-method) „Benutzerdefinierte Formel" bei
+Rohdaten (passt die Formel an Ihre eingegebenen Daten an). Beide verwenden genau dieselbe
+Formeleingabe und -syntax — sie unterscheiden sich nur darin, *woher die Parameterwerte stammen*.
+
+## Eine Formel schreiben
+
+Eine Formel ist ein Ausdruck mit einer einzigen Variablen `x` — `x` bedeutet immer den
+gemessenen/ausgegebenen Wert. Jeder andere Buchstabe oder jedes andere Wort, das Sie verwenden,
+wird als **freier Parameter** behandelt, z. B.:
+
+```
+a*x + b
+```
+
+hat zwei freie Parameter, `a` und `b`. Open Gauge erkennt sie automatisch während der Eingabe und
+zeigt einen unter dem Formelfeld an:
+
+- **`model_direct`** — geben Sie für jeden Parameter direkt einen Wert ein (aus dem
+  Zertifikat/Datenblatt, das Ihnen das Modell geliefert hat).
+- **Methode „Benutzerdefinierte Formel" bei Rohdaten** — keine Parametereingaben; Open Gauge passt
+  `a` und `b` mittels nichtlinearer Regression an Ihre eingegebenen (Referenz-, Mess-)Punkte an.
+
+So oder so wird tatsächlich die vollständig aufgelöste Formel gespeichert (Parameter durch ihre
+Werte ersetzt, z. B. `2.5 * x + 1.2`) — das erscheint in der Gleichungsanzeige, im Diagramm der
+angepassten Kurve, im Drift-/Kurvenvergleich des Reiters Zustand und auf dem Zertifikat.
+
+## Erlaubte Syntax
+
+| Kategorie | Erlaubt |
+|---|---|
+| Operatoren | `+` `−` `*` `/` `^` (Potenz) `(` `)` |
+| Funktionen | `sqrt` `exp` `log` `ln` `sin` `cos` `tan` `abs` `pow` |
+| Variable | `x` (immer der gemessene/ausgegebene Wert) |
+| Parameter | jeder andere Buchstabe/jedes andere Wort, z. B. `a`, `b`, `k1` |
+
+Nichts anderes ist erlaubt — keine Zuweisung, keine Vergleiche, kein Zugriff auf irgendetwas
+außerhalb des Ausdrucks selbst. Dies wird unabhängig sowohl im Browser (`expr-eval`) als auch auf
+dem Server (`simpleeval`) durchgesetzt, jeweils auf genau dieselbe Positivliste beschränkt, da die
+von Ihnen gespeicherte Formel von jeder Seite separat ausgewertet wird.
+
+`^` bedeutet Potenzierung (`x^2` ist „x zum Quadrat"), kein bitweises XOR — entsprechend der
+Konvention von Tabellenkalkulationen/Taschenrechnern.
+
+## Durchgerechnete Beispiele
+
+**Quadratisch** — `a*x^2 + b*x + c` (3 Parameter: `a`, `b`, `c`). Eine allgemeine gekrümmte
+Korrektur, wenn Sie sich nicht auf die eigene, automatisch gradausgewählte Polynomanpassung von
+Open Gauge festlegen möchten.
+
+**Exponentielles Wachstum/Zerfall** — `a*exp(b*x)` (2 Parameter: `a`, `b`). Üblich bei Sensoren
+mit einer wirklich exponentiellen Reaktion (z. B. manche Gassensoren, Thermistoren über einen
+schmalen Bereich).
+
+**Gedämpfter/verschobener Sinus** — `a*sin(b*x) + c` (3 Parameter: `a`, `b`, `c`). Für eine
+periodische Reaktion — beachten Sie, dass eine nichtlineare Anpassung an einen Sinus einen
+vernünftigen Startwert benötigt, um zu konvergieren; Open Gauge startet immer jeden Parameter bei
+`1.0` (siehe unten), sodass ein Sinus, dessen tatsächliche Periode weit von `2π` entfernt ist,
+möglicherweise eine umgeschriebene Formel benötigt (z. B. durch Vorskalierung von `x`), um
+zuverlässig anzupassen.
+
+## Wenn eine Anpassung nicht konvergiert
+
+Die Methode „Benutzerdefinierte Formel" bei Rohdaten startet jeden freien Parameter mit dem
+Anfangswert `1.0` und führt einen nichtlinearen Least-Squares-Solver
+(`scipy.optimize.curve_fit`) aus. Bei den meisten angemessen skalierten Formeln gegenüber echten
+Kalibrierdaten konvergiert dies ohne jede Feinabstimmung — aber eine Formel, die schlecht zur
+tatsächlichen Form der Daten passt, oder schlecht skaliert ist (z. B. Parameter, die im
+Tausender- oder Millionstelbereich liegen müssen, um zu passen), kann nicht konvergieren. Open
+Gauge zeigt in diesem Fall einen klaren Fehler an, statt stillschweigend ein falsches oder
+irreführendes Ergebnis zurückzugeben — versuchen Sie, die Formel zu vereinfachen, die Daten zu
+überprüfen, oder zur Polynomanpassung zu wechseln, wenn die zugrunde liegende Form keine
+spezifische bekannte Form sein muss.

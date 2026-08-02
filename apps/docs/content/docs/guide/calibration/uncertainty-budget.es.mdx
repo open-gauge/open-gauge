@@ -23,9 +23,9 @@ si es "aleatoria" o "sistemática" (el GUM desaconseja explícitamente esa disti
 | Fuente | Tipo | Cómo se deriva |
 |---|---|---|
 | `fit_residuals` | A | Siempre presente. Desviación estándar de los residuos del ajuste de la curva de calibración. Grados de libertad = puntos − parámetros, o desconocido si eso es ≤ 0. |
-| `reference_standard` | B | Opcional. La propia incertidumbre expandida declarada del patrón de referencia, convertida a incertidumbre estándar mediante $u = U/k$ (GUM §4.3.3). Para calibraciones internas, se obtiene automáticamente de la calibración más reciente del activo de referencia seleccionado; de lo contrario, se ingresa manualmente. |
+| `reference_standard` | B | **Opcional (opt-in)** — un interruptor, desactivado de forma predeterminada, que la excluye por completo del presupuesto. Una vez activado: se obtiene automáticamente de la calibración más reciente del activo de referencia seleccionado cuando hay uno vinculado (mostrado de solo lectura), o se ingresa manualmente en caso contrario, en la unidad de referencia propia de la calibración — convertida a incertidumbre estándar mediante $u = U/k$ (GUM §4.3.3). Consulta [Rellenar un campo de incertidumbre](#uncertainty-box-units) más abajo. |
 | `resolution` | B | Incluida automáticamente siempre que el canal tenga un valor de resolución. Distribución rectangular según GUM §4.3.7 — ver abajo. |
-| `sensor_nominal_accuracy` | B | La incertidumbre declarada por el fabricante del canal, convertida mediante $u = U/k$. Se prellena desde el campo [Incertidumbre (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) del canal pero es libremente editable por calibración. **Solo por adhesión (opt-in)** — incluirla por defecto arriesga un doble conteo respecto a `fit_residuals`, ya que ambas pueden reflejar la misma imprecisión subyacente del instrumento. |
+| `sensor_nominal_accuracy` | B | **Opcional (opt-in)** — un interruptor, desactivado de forma predeterminada, que la excluye por completo del presupuesto (evitando un doble conteo respecto a `fit_residuals`, ya que ambas pueden reflejar la misma imprecisión subyacente del instrumento). Una vez activado: se prellena desde el campo [Incertidumbre (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) del canal, convertida mediante $u = U/k$, pero es libremente editable por calibración — consulta [Rellenar un campo de incertidumbre](#uncertainty-box-units) más abajo. |
 | `external_certificate_stated` | B | Solo aparece en calibraciones [de solo coeficientes](./coefficients-only.mdx) que tienen una incertidumbre declarada por el laboratorio. Se registra como una sola fila que contiene la incertidumbre expandida del certificado y el factor de cobertura tal cual, sin descomponerse más. |
 
 ### La resolución como una distribución rectangular
@@ -88,6 +88,54 @@ sentido estadístico:
   conocidas — quedan completamente fuera de esta suma. Si *ninguna* fila tiene grados de libertad
   finitos, $\nu_{\text{eff}}$ queda indefinido y Open Gauge recurre al cuantil de la distribución normal
   de arriba (el límite correcto cuando $\nu \to \infty$).
+
+  El asistente muestra el $k$ resultante (2 decimales) justo debajo del campo Confianza %, de modo
+  que su efecto en el intervalo es visible de inmediato, sin esperar a que se vuelva a renderizar
+  el análisis completo más abajo.
+
+## Rellenar un campo de incertidumbre [#uncertainty-box-units]
+
+El campo Exactitud nominal del sensor muestra su valor junto a una etiqueta de unidad fija — la
+propia unidad configurada del canal, tomada de su campo
+[Incertidumbre (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) (o la unidad base del
+canal, si ese campo estaba expresado en %FS). Esa unidad no es necesariamente la misma en la que se
+introducen los valores de referencia propios de esta calibración (la unidad de referencia del Paso
+2) — Open Gauge la convierte internamente a esa escala antes de combinarla en el presupuesto, así
+que ambas nunca necesitan coincidir. Un icono de actualizar junto a la etiqueta restablece el valor
+al predeterminado de la hoja de datos del canal, descartando cualquier edición manual.
+
+El campo U del patrón de ref., en cambio, siempre se expresa directamente en la unidad de
+referencia propia de la calibración — el valor del certificado de un patrón de referencia ya debe
+interpretarse en la misma escala en la que se registra la propia calibración, así que ahí no hace
+falta ninguna conversión.
+
+Activar Exactitud nominal del sensor hace más que añadir su contribución al presupuesto: también
+bloquea el campo Tolerancia del panel de evaluación de conformidad (ver
+[Rellenar los campos de conformidad](./decision-rules.mdx#conformity-boxes)) para que refleje el
+mismo valor, convertido a la unidad de referencia, ya que en esa configuración la propia
+especificación de exactitud del sensor *es* el umbral de aprobado/rechazado. Al desactivarlo de
+nuevo, Tolerancia queda con el último valor reflejado, ahora editable libremente otra vez.
+
+La conversión de Exactitud nominal del sensor es para *magnitudes* (deltas de exactitud/
+incertidumbre), no para lecturas — una incertidumbre de 1 °C se convierte en 1.8 °F, **no** en
+33.8 °F. Convertir un delta nunca aplica el desplazamiento que sí aplicaría una conversión de
+lectura absoluta (20 °C ≠ 1.8 × 20 °F; pero *una incertidumbre de* 20 °C realmente es *una
+incertidumbre de* 36 °F).
+
+No todas las combinaciones de unidades se convierten limpiamente. Un puñado de magnitudes en la
+lista de unidades de Open Gauge mezclan conceptos físicos genuinamente distintos bajo una misma
+etiqueta — p. ej. el %HR de la humedad (una relación de presión de vapor) y el punto de rocío en °C
+(una temperatura) no están relacionados por un factor constante, y la Gy de la radiación (dosis
+absorbida) y el Sv (dosis equivalente) difieren por un factor de ponderación que depende del tipo
+de radiación. Si la unidad propia del canal y la unidad de referencia de la calibración caen en
+grupos distintos como estos, Open Gauge no puede convertir entre ellas y excluye la contribución
+del presupuesto en lugar de arriesgarse a un número silenciosamente incorrecto.
+
+**Ejemplo resuelto.** El canal de un sensor de caudal está configurado en m³/h. Su hoja de datos
+indica una exactitud de ±0.5% de la escala completa en un rango de 0–200 m³/h, es decir, ±1 m³/h —
+Exactitud nominal del sensor muestra `1` junto a `m³/h` una vez activado. Si los propios datos de
+esta calibración se introdujeron en gal/min (la unidad de referencia del Paso 2), Open Gauge
+convierte ese `1 m³/h` a ≈4.40 gal/min automáticamente antes de combinarlo en el presupuesto.
 
 ## Redondeo para reportar
 

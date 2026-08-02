@@ -1,35 +1,42 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { AssetProfile } from "@/types/asset";
+import type { AssetProfile, SensorChannelFull } from "@/types/asset";
 import type {
-  AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationLabCandidate,
+  AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationLabCandidate, CalibrationMethod,
   CalibrationPointInline, CalibrationPurpose, CalibrationRecord, CalibrationType, CalibrationUser,
-  DataEntryMode, DecisionRule, DistributionType, ModelType,
+  DataEntryMode, DecisionRule, DistributionType, InputMethod, ModelType,
   FrequencyResponsePointInline, ResidualPoint, WizardRawPoint,
 } from "@/types/calibration";
 import {
   analyzeCalibration, createCalibration, getAssetCalibrations,
   listAssets, listCalibrationUsers, listProcedures, uploadCalibrationCertificate,
 } from "@/services/asset.service";
-import { evaluateModel, evalPolynomial, validateCustomFormula } from "@/lib/evaluate-model";
+import {
+  evaluateModel, extractFormulaParameters, validateFormulaTemplate,
+  polynomialGeneralFormLatex, formulaToLatex, POLY_LETTERS, computeLinearityDeviation, computeLinearityDeviationAtPoints,
+} from "@/lib/evaluate-model";
 import { listCalibrationLabs } from "@/services/location.service";
 import { listCalibrationLabCandidates } from "@/services/organization.service";
 import { useTranslations } from "next-intl";
 import { COLORS } from "@/lib/tokens";
 import { translateDynamic } from "@/lib/translate-dynamic";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
-import { getUnitsForQuantity, getOutputUnits, resolveSpecValue, FREQUENCY_OUTPUT_UNITS } from "@/lib/sensor-options";
+import { getUnitsForQuantity, getOutputUnits, resolveSpecValue, getSpecUnitOptions, PERCENT_FS_UNIT, FREQUENCY_OUTPUT_UNITS } from "@/lib/sensor-options";
+import { convertMagnitude } from "@/lib/unit-conversion";
 import { useAuth } from "@/lib/auth-context";
 import { STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { StatRow } from "@/components/stat-row";
 import { ToggleSwitch } from "@/components/toggle-switch";
+import { NumberInput } from "@/components/number-input";
 import { Tooltip } from "@/components/tooltip";
 import { FrequencyResponseChart } from "@/components/frequency-response-chart";
 import { ResidualsChart } from "@/components/residuals-chart";
+import { LinearityDeviationChart } from "@/components/linearity-deviation-chart";
 import { hasPlottableFrequencyPoints } from "@/lib/frequency-response-chart";
 import {
-  CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon, WarningIcon, XIcon,
+  CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, RestoreIcon, TrashIcon,
+  WarningIcon, XIcon,
 } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
@@ -49,13 +56,47 @@ function FieldTooltip({ tooltip, docsHref }: { tooltip?: string; docsHref?: stri
   );
 }
 
+// Renders a LaTeX string via KaTeX (dynamically imported — only Step3's
+// Model panel needs it, so it shouldn't inflate every wizard step's bundle).
+// Falls back to the raw LaTeX-ish text on any parse error, since a formula
+// converted from user input (formulaToLatex) isn't guaranteed to be valid.
+function Katex({ math, className }: { math: string; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    let cancelled = false;
+    import("katex").then((katexModule) => {
+      if (cancelled || !ref.current) return;
+      try {
+        katexModule.default.render(math, ref.current, { throwOnError: true, displayMode: false });
+      } catch {
+        if (ref.current) ref.current.textContent = math;
+      }
+    });
+    return () => { cancelled = true; };
+  }, [math]);
+  // KaTeX's own CSS doesn't set a color, so its output normally inherits
+  // from the nearest ancestor — but body's default `color` (--foreground)
+  // isn't theme-aware (unlike --og-text), so without an explicit
+  // text-og-text here the formula reads as near-black in dark mode too.
+  return <span ref={ref} className={`text-og-text ${className ?? ""}`} />;
+}
+
+// Content-sized by default (inline-flex), same as before — pass `className`
+// with a `max-w-[...]` when the caller wants the label capped to a compact
+// field's width; the text then truncates with an ellipsis instead of
+// forcing the column wider (min-w-0 is what lets the truncate span actually
+// shrink below the text's natural width once that cap is in effect). Always
+// paired with a `title` (the full text, shown natively on hover once
+// truncated) and, where the caller supplies one, the FieldTooltip info icon
+// explaining the concept itself.
 function WLabel({
-  text, required, tooltip, docsHref,
-}: { text: string; required?: boolean; tooltip?: string; docsHref?: string }) {
+  text, required, tooltip, docsHref, className,
+}: { text: string; required?: boolean; tooltip?: string; docsHref?: string; className?: string }) {
   return (
-    <span className="text-xs text-gray-400 inline-flex items-center gap-1">
-      {text}{required && <span className="text-red-400 ml-0.5">*</span>}
-      <FieldTooltip tooltip={tooltip} docsHref={docsHref} />
+    <span className={`text-xs text-gray-400 inline-flex min-w-0 items-center gap-1 ${className ?? ""}`}>
+      <span className="truncate" title={text}>{text}</span>
+      {required && <span className="text-red-400 shrink-0">*</span>}
+      <span className="shrink-0"><FieldTooltip tooltip={tooltip} docsHref={docsHref} /></span>
     </span>
   );
 }
@@ -170,6 +211,184 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Derives the wire-level DataEntryMode from Step 2's own InputMethod choice
+// (a dropdown, always set) plus Step 1's calibration_purpose — As-Found/
+// As-Left isn't a separately selectable method, it's an automatic
+// consequence of purpose="after_repair" applied to either
+// "reference_vs_measured" or "reference_vs_indicated".
+function deriveDataEntryMode(inputMethod: InputMethod, purpose: CalibrationPurpose): DataEntryMode {
+  if (inputMethod === "model_direct") return "model_direct";
+  const isAfterRepair = purpose === "after_repair";
+  if (inputMethod === "reference_vs_measured") return isAfterRepair ? "reference_vs_as_found_as_left" : "raw_data";
+  return isAfterRepair ? "reference_vs_as_found_as_left" : "reference_vs_indicated";
+}
+
+// The channel's own nominal accuracy, resolved to a single flat magnitude
+// (in the channel's own unit terms) and converted to referenceUnit — the
+// default the Conformity assessment panel's Tolerance box "refresh" icon
+// restores. Null when the channel has no accuracy spec, "percent_of_reading"
+// (no single flat value — see _apply_decision_rule's own reasoning), or the
+// conversion to referenceUnit isn't defined (see unit-conversion.ts).
+function channelToleranceDefault(
+  channel: { accuracy_value: number | null; accuracy_type: string | null; accuracy_unit: string | null; unit: string; physical_quantity: string; measurement_min: number | null; measurement_max: number | null } | undefined,
+  referenceUnit: string,
+): number | null {
+  if (!channel || channel.accuracy_value == null) return null;
+  let absolute: number | null = null;
+  let baseUnit: string = channel.accuracy_unit ?? channel.unit;
+  if (channel.accuracy_type === "absolute") {
+    absolute = channel.accuracy_value;
+  } else if (channel.accuracy_type === "percent_of_full_scale") {
+    if (channel.measurement_min == null || channel.measurement_max == null) return null;
+    absolute = (channel.accuracy_value / 100) * (channel.measurement_max - channel.measurement_min);
+    baseUnit = channel.unit;
+  } else {
+    return null; // percent_of_reading — no single flat value
+  }
+  return convertMagnitude(absolute, baseUnit, referenceUnit, channel.physical_quantity);
+}
+
+// The channel's own datasheet measurement uncertainty, resolved to a single
+// flat magnitude in its own configured unit (or the channel's base unit if
+// it was expressed as %FS) — the default the Uncertainty calculation
+// panel's Sensor nominal accuracy box "refresh" icon restores. Null when the
+// channel has no measurement uncertainty configured, or a %FS value with no
+// measurement range to resolve it against.
+function sensorNominalAccuracyDefault(
+  channel: { measurement_uncertainty: number | null; uncertainty_unit: string | null; unit: string; measurement_min: number | null; measurement_max: number | null } | undefined,
+): { value: number; unit: string } | null {
+  if (!channel) return null;
+  const value = resolveSpecValue(
+    channel.measurement_uncertainty ?? null, channel.uncertainty_unit ?? null,
+    channel.measurement_min ?? null, channel.measurement_max ?? null,
+  );
+  if (value == null) return null;
+  const unit = channel.uncertainty_unit && channel.uncertainty_unit !== PERCENT_FS_UNIT
+    ? channel.uncertainty_unit
+    : channel.unit;
+  return { value, unit };
+}
+
+// Converts an uncertainty magnitude between any two units a box's unit
+// dropdown offers — including %FS, which convertMagnitude doesn't know
+// about (it's range-relative, not a fixed physical unit), resolved against
+// the channel's own measurement range via the same logic getSpecUnitOptions/
+// resolveSpecValue already use for the channel's own spec fields. Used both
+// for the dropdown's onChange (so switching units keeps the same underlying
+// magnitude) and for resolving a box's final value into referenceUnit
+// before sending it to /analyze.
+function convertUncertaintyBoxValue(
+  value: number,
+  fromUnit: string,
+  toUnit: string,
+  physicalQuantity: string,
+  channelUnit: string,
+  measurementMin: number | null,
+  measurementMax: number | null,
+): number | null {
+  if (fromUnit === toUnit) return value;
+  const absolute = fromUnit === PERCENT_FS_UNIT
+    ? resolveSpecValue(value, PERCENT_FS_UNIT, measurementMin, measurementMax)
+    : convertMagnitude(value, fromUnit, channelUnit, physicalQuantity);
+  if (absolute == null) return null;
+  if (toUnit === PERCENT_FS_UNIT) {
+    if (measurementMin == null || measurementMax == null || measurementMax === measurementMin) return null;
+    return (absolute / (measurementMax - measurementMin)) * 100;
+  }
+  return convertMagnitude(absolute, channelUnit, toUnit, physicalQuantity);
+}
+
+// Resolves a manually-entered uncertainty box's raw string + selected unit
+// down to a single number in referenceUnit — shared by Sensor nominal
+// accuracy and Reference standard uncertainty's manual-entry sub-case,
+// since both boxes follow the same "value + unit dropdown" pattern.
+function resolveManualUncertaintyValue(
+  valueStr: string,
+  unit: string,
+  physicalQuantity: string,
+  measurementMin: number | null,
+  measurementMax: number | null,
+  channelUnit: string,
+  referenceUnit: string,
+): number | null {
+  const raw = parseFloat(valueStr);
+  if (valueStr.trim() === "" || isNaN(raw)) return null;
+  return convertUncertaintyBoxValue(raw, unit, referenceUnit, physicalQuantity, channelUnit, measurementMin, measurementMax);
+}
+
+// The full set of Uncertainty calculation / Conformity assessment panel
+// inputs, bundled together — the single-dataset case uses one directly, and
+// As-Found/As-Left shares one instance across both sides too (same channel/
+// spec either side of the repair; only the resulting Error/Uncertainty
+// numbers differ per side, computed from each side's own AnalyzeResponse).
+interface UncertaintyConformityState {
+  includeSensorNominalUncertainty: boolean;
+  sensorNominalUncertaintyManual: string;
+  sensorNominalUncertaintyUnit: string;
+  decisionRule: DecisionRule;
+  toleranceOverrideValue: string;
+  includeReferenceStandardManual: boolean;
+  referenceStandardManualUncertainty: string;
+  referenceStandardManualUnit: string;
+  referenceStandardManualCoverageFactor: string;
+}
+
+// Same defaults the single-dataset case's own channel-change effect applies
+// — pre-fill Sensor nominal accuracy from the channel's datasheet spec and
+// Tolerance from its accuracy spec, both switches off, Ref. standard unit
+// reset to referenceUnit.
+function defaultUncertaintyConformityState(
+  channel: Parameters<typeof sensorNominalAccuracyDefault>[0] & Parameters<typeof channelToleranceDefault>[0],
+  referenceUnit: string,
+): UncertaintyConformityState {
+  const sensorDefault = sensorNominalAccuracyDefault(channel);
+  const toleranceDefault = channelToleranceDefault(channel, referenceUnit);
+  return {
+    includeSensorNominalUncertainty: false,
+    sensorNominalUncertaintyManual: sensorDefault != null ? String(sensorDefault.value) : "",
+    sensorNominalUncertaintyUnit: sensorDefault?.unit ?? (channel?.unit ?? ""),
+    decisionRule: "simple_acceptance",
+    toleranceOverrideValue: toleranceDefault != null ? String(toleranceDefault) : "",
+    includeReferenceStandardManual: false,
+    referenceStandardManualUncertainty: "",
+    referenceStandardManualUnit: referenceUnit,
+    referenceStandardManualCoverageFactor: "2",
+  };
+}
+
+// Reduces an UncertaintyConformityState bundle down to the actual numbers
+// /analyze needs (referenceUnit-scale) — the same derivation the
+// single-dataset case applies to its own state, generalized so the
+// As-Found/As-Left case's shared bundle can reuse it too.
+function deriveUncertaintyBudgetInputs(
+  bundle: UncertaintyConformityState,
+  selectedChannel: SensorChannelFull | undefined,
+  referenceUnit: string,
+  referenceStandardAuto: { expandedUncertainty: number; coverageFactor: number } | null,
+): { sensorNominalUncertaintyNum: number | null; referenceStandardUncertainty: number | null; referenceStandardCoverageFactor: number } {
+  const sensorNominalUncertaintyNum = bundle.includeSensorNominalUncertainty
+    ? resolveManualUncertaintyValue(
+        bundle.sensorNominalUncertaintyManual, bundle.sensorNominalUncertaintyUnit,
+        selectedChannel?.physical_quantity ?? "",
+        selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+        selectedChannel?.unit ?? "", referenceUnit,
+      )
+    : null;
+  const referenceStandardManualUncertaintyNum = resolveManualUncertaintyValue(
+    bundle.referenceStandardManualUncertainty, bundle.referenceStandardManualUnit,
+    selectedChannel?.physical_quantity ?? "",
+    selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+    selectedChannel?.unit ?? "", referenceUnit,
+  );
+  const referenceStandardUncertainty = bundle.includeReferenceStandardManual
+    ? (referenceStandardAuto ? referenceStandardAuto.expandedUncertainty : referenceStandardManualUncertaintyNum)
+    : null;
+  const referenceStandardCoverageFactor = referenceStandardAuto
+    ? referenceStandardAuto.coverageFactor
+    : (parseFloat(bundle.referenceStandardManualCoverageFactor) || 2.0);
+  return { sensorNominalUncertaintyNum, referenceStandardUncertainty, referenceStandardCoverageFactor };
+}
+
 const SUPERS: Record<number, string> = { 2: "²", 3: "³", 4: "⁴", 5: "⁵" };
 
 // Label for a polynomial coefficient's power of x, e.g. "× x²", "× x", "Constant".
@@ -214,7 +433,11 @@ interface Step1State {
   external_lab_certificate_number: string;
   calibration_organization_id: string;
   certificate_file: File | null;
-  data_entry_mode: DataEntryMode;
+  /** Step 2's own "Input data" method choice (a dropdown at the top of the
+   * step, always set — defaults to "reference_vs_measured") — see
+   * InputMethod's doc comment. Combined with calibration_purpose to derive
+   * the actual wire-level DataEntryMode via deriveDataEntryMode(). */
+  input_method: InputMethod;
   internal_procedure_id: string;
   internal_reference_asset_id: string;
   calibration_location_id: string;
@@ -280,7 +503,12 @@ interface AnalyzeParams {
 // to how the model was entered.
 interface ManualCoeffState {
   model_type: ModelType;
-  custom_formula: string;
+  // A custom-formula *template* with free parameters (e.g. "a*x + b") plus a
+  // declared value per parameter — resolved server-side into a plain x-only
+  // formula on analyze/save (see the model_direct useEffect). Never store
+  // the resolved string here; it always comes back from the API.
+  custom_formula_template: string;
+  custom_formula_params: Record<string, string>;
   poly_order: number;
   coefficients: string[];
   range_min: string;
@@ -321,7 +549,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     external_lab_certificate_number: "",
     calibration_organization_id: "",
     certificate_file: null,
-    data_entry_mode: "raw_data",
+    input_method: "reference_vs_measured",
     internal_procedure_id: "",
     internal_reference_asset_id: "",
     calibration_location_id: "",
@@ -341,10 +569,32 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     add_frequency_response: false,
   });
 
-  // Which of the 4 data-entry mechanisms is active — see Step1State.data_entry_mode.
-  const isModelDirect = step1.data_entry_mode === "model_direct";
-  const isRefVsIndicated = step1.data_entry_mode === "reference_vs_indicated";
-  const isRefVsAsFoundAsLeft = step1.data_entry_mode === "reference_vs_as_found_as_left";
+  // The wire-level DataEntryMode, derived from Step 2's own method choice
+  // (input_method) plus Step 1's calibration_purpose — see
+  // deriveDataEntryMode's own doc comment. null until a method is chosen.
+  const dataEntryMode = deriveDataEntryMode(step1.input_method, step1.calibration_purpose);
+  const isModelDirect = dataEntryMode === "model_direct";
+  const isRawData = dataEntryMode === "raw_data";
+  const isRefVsIndicated = dataEntryMode === "reference_vs_indicated";
+  const isRefVsAsFoundAsLeft = dataEntryMode === "reference_vs_as_found_as_left";
+  // True for the Reference-vs-Indicated-based As-Found/As-Left variant
+  // (skip_fit both sides, no transference function) — false for the
+  // Reference-vs-Measured-based variant (curve-fit both sides).
+  const isAfalSkipFit = isRefVsAsFoundAsLeft && step1.input_method === "reference_vs_indicated";
+  // Same calibration_type gate Step1 itself uses for showsCertificateUpload/
+  // its own allowsModelDirect — duplicated here (a one-line check) since
+  // Step 2's method picker needs it too and the two components don't share
+  // scope.
+  const allowsModelDirect = step1.calibration_type === "oem" || step1.calibration_type === "external_accredited_lab" || step1.calibration_type === "customer_asset";
+
+  // data_entry_mode="raw_data"'s Step 3 "Calibration method" — how the
+  // entered points become a model. Named curveFitMethod (not
+  // "calibrationMethod") to avoid confusion with the unrelated
+  // calibrationMethods state below (internal-lab procedures).
+  const [curveFitMethod, setCurveFitMethod] = useState<CalibrationMethod>("polynomial_fit");
+  const [rawCustomFormulaTemplate, setRawCustomFormulaTemplate] = useState<string>("");
+  const [rawCustomFormulaError, setRawCustomFormulaError] = useState<string | null>(null);
+  const isRawCustomFormula = isRawData && curveFitMethod === "custom_formula";
 
   // Reference assets, calibration methods, and calibration labs (loaded once)
   const [referenceAssets, setReferenceAssets] = useState<{ id: string; name: string; asset_id: string }[]>([]);
@@ -391,7 +641,8 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // Step 2 alternative: model entered directly (data_entry_mode="model_direct")
   const [manualCoeff, setManualCoeff] = useState<ManualCoeffState>({
     model_type: "polynomial",
-    custom_formula: "",
+    custom_formula_template: "",
+    custom_formula_params: {},
     poly_order: 1,
     coefficients: ["", ""],
     range_min: "",
@@ -462,20 +713,51 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // event, not silently to the channel.
   const [includeSensorNominalUncertainty, setIncludeSensorNominalUncertainty] = useState(false);
   const [sensorNominalUncertaintyManual, setSensorNominalUncertaintyManual] = useState<string>("");
+  // Unit the box above is currently expressed in — defaults to the channel's
+  // own physical-quantity unit, switchable to any unit convertMagnitude
+  // considers interchangeable with it (see unit-conversion.ts), or %FS.
+  const [sensorNominalUncertaintyUnit, setSensorNominalUncertaintyUnit] = useState<string>("");
   // ISO/IEC 17025 §7.1.3/§7.8.6 decision rule — how measurement uncertainty is
   // factored into the pass/fail conformity statement. This is the value that
   // gets stored and printed on the certificate (unlike the ad-hoc tolerance
   // preview below, which is just for exploring "what if" thresholds).
   const [decisionRule, setDecisionRule] = useState<DecisionRule>("simple_acceptance");
+  // The Conformity assessment panel's editable Tolerance box — independent
+  // of the channel's own accuracy spec; overrides it entirely when set. The
+  // refresh icon next to it resets it back to the channel's nominal
+  // accuracy (converted to reference units), see toleranceOverrideDefault.
+  // Always expressed in referenceUnit — same scale as Error/Uncertainty
+  // above it, and the scale channelToleranceDefault's own default is
+  // already computed in.
+  const [toleranceOverrideValue, setToleranceOverrideValue] = useState<string>("");
   // Type B: uncertainty of the reference standard used for this calibration.
   // For an internal reference asset, auto-fetched from its own most recent
   // calibration; otherwise (external labs, or an internal asset with no prior
   // calibration on record) the technician can enter it manually from the
-  // reference standard's own certificate.
+  // reference standard's own certificate. Opt-in (off by default) — matches
+  // Sensor nominal accuracy's toggle-gated visibility/inclusion above.
+  const [includeReferenceStandardManual, setIncludeReferenceStandardManual] = useState(false);
   const [referenceStandardAuto, setReferenceStandardAuto] = useState<{ expandedUncertainty: number; coverageFactor: number } | null>(null);
   const [referenceStandardAutoLoading, setReferenceStandardAutoLoading] = useState(false);
   const [referenceStandardManualUncertainty, setReferenceStandardManualUncertainty] = useState<string>("");
+  const [referenceStandardManualUnit, setReferenceStandardManualUnit] = useState<string>("");
   const [referenceStandardManualCoverageFactor, setReferenceStandardManualCoverageFactor] = useState<string>("2");
+
+  // data_entry_mode="reference_vs_as_found_as_left": Uncertainty calculation
+  // and the conformity criteria (decision rule + tolerance override) are
+  // shared across both sides — same channel/spec either side of the repair
+  // — see UncertaintyConformityState. Only the resulting Error/Uncertainty
+  // numbers (computed per side from each side's own AnalyzeResponse) and the
+  // Statistics panel differ per side. referenceStandardAuto/AutoLoading above
+  // stay shared too (same physical reference instrument either side).
+  const [afalUncertainty, setAfalUncertainty] = useState<UncertaintyConformityState>(() => defaultUncertaintyConformityState(undefined, ""));
+  // The As-Found/As-Left curve-fit method — shared across both sides (same
+  // physical instrument before/after repair, fit with the same method/
+  // degree for a meaningful comparison), only used when the base input
+  // method is "reference_vs_measured" (isAfalSkipFit === false).
+  const [afalCurveFitMethod, setAfalCurveFitMethod] = useState<CalibrationMethod>("polynomial_fit");
+  const [afalCustomFormulaTemplate, setAfalCustomFormulaTemplate] = useState<string>("");
+  const [afalCustomFormulaError, setAfalCustomFormulaError] = useState<string | null>(null);
 
   // Confirmation dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -519,10 +801,24 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     isNumOrEmpty(step1.pressure_value) &&
     isNumOrEmpty(step1.humidity_value);
 
+  function formulaParamsValid(template: string, params: Record<string, string>): boolean {
+    if (template.trim() === "") return false;
+    try {
+      const names = extractFormulaParameters(template);
+      return names.every((p) => {
+        const v = params[p];
+        return v !== undefined && v.trim() !== "" && !isNaN(parseFloat(v));
+      });
+    } catch {
+      return false;
+    }
+  }
+
   const manualCoeffValid =
     (manualCoeff.model_type === "polynomial"
       ? manualCoeff.coefficients.every((c) => c.trim() !== "" && !isNaN(parseFloat(c)))
-      : manualCoeff.custom_formula.trim() !== "" && customFormulaError === null) &&
+      : customFormulaError === null &&
+        formulaParamsValid(manualCoeff.custom_formula_template, manualCoeff.custom_formula_params)) &&
     manualCoeff.range_min.trim() !== "" && !isNaN(parseFloat(manualCoeff.range_min)) &&
     manualCoeff.range_max.trim() !== "" && !isNaN(parseFloat(manualCoeff.range_max));
 
@@ -543,8 +839,24 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // ready to save — mirrors handleSave's own guard so the Confirm & Save
   // button's disabled state never drifts out of sync with it.
   const canSave =
-    isModelDirect ? manualCoeffValid
-    : isRefVsAsFoundAsLeft ? (asFoundResult != null && asLeftResult != null && !asFoundAsLeftAnalyzing)
+    isModelDirect
+      ? manualCoeffValid && (
+          // A custom formula's stored value always comes from the server
+          // (resolved template + params) — wait for that round-trip so
+          // Save can never write a stale/empty custom_formula.
+          manualCoeff.model_type !== "custom_formula"
+            || (analysisResult?.resolved_custom_formula != null && !analyzing)
+        )
+    : isRefVsAsFoundAsLeft
+      ? (asFoundResult != null && asLeftResult != null && !asFoundAsLeftAnalyzing && (
+          // Curve-fit As-Found/As-Left's Custom Formula method — same
+          // reasoning as raw_data's own guard above.
+          isAfalSkipFit || afalCurveFitMethod !== "custom_formula" || asLeftResult.resolved_custom_formula != null
+        ))
+    : isRawCustomFormula
+      // Same reasoning as model_direct above — the fitted formula's resolved
+      // value always comes from the server.
+      ? (analysisResult?.resolved_custom_formula != null && !analyzing)
     : (analysisResult != null && !analyzing);
 
   // When frequency response is enabled, it becomes step 3 and analysis moves to step 4;
@@ -559,19 +871,53 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // spec whenever the selected channel changes; still freely editable per
   // calibration afterwards (the value used belongs to this calibration event).
   useEffect(() => {
-    const defaultVal = resolveSpecValue(
-      selectedChannel?.measurement_uncertainty ?? null, selectedChannel?.uncertainty_unit ?? null,
-      selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
-    );
-    setSensorNominalUncertaintyManual(defaultVal != null ? String(defaultVal) : "");
+    const def = sensorNominalAccuracyDefault(selectedChannel);
+    setSensorNominalUncertaintyManual(def != null ? String(def.value) : "");
+    setSensorNominalUncertaintyUnit(def?.unit ?? (selectedChannel?.unit ?? ""));
     setIncludeSensorNominalUncertainty(false);
+    setToleranceOverrideValue(
+      (() => {
+        const def = channelToleranceDefault(selectedChannel, referenceUnit);
+        return def != null ? String(def) : "";
+      })()
+    );
+    setReferenceStandardManualUnit(referenceUnit);
+    setIncludeReferenceStandardManual(false);
+    setAfalUncertainty(defaultUncertaintyConformityState(selectedChannel, referenceUnit));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChannel?.id]);
 
-  const sensorNominalUncertaintyNum = (() => {
-    const v = parseFloat(sensorNominalUncertaintyManual);
-    return sensorNominalUncertaintyManual.trim() !== "" && !isNaN(v) ? v : null;
-  })();
+  // While Sensor nominal accuracy is included in the uncertainty budget, the
+  // Conformity assessment panel's Tolerance box mirrors it — converted from
+  // the sensor box's own unit into referenceUnit, since Tolerance (like
+  // Error/Uncertainty next to it) is always expressed in referenceUnit — and
+  // becomes read-only, since the sensor's own accuracy IS the pass/fail
+  // threshold in that case. Switching it back off leaves Tolerance at
+  // whatever it last mirrored, now freely editable again.
+  useEffect(() => {
+    if (!includeSensorNominalUncertainty) return;
+    const converted = resolveManualUncertaintyValue(
+      sensorNominalUncertaintyManual, sensorNominalUncertaintyUnit,
+      selectedChannel?.physical_quantity ?? "",
+      selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+      selectedChannel?.unit ?? "", referenceUnit,
+    );
+    if (converted != null) setToleranceOverrideValue(String(converted));
+  }, [includeSensorNominalUncertainty, sensorNominalUncertaintyManual, sensorNominalUncertaintyUnit, selectedChannel, referenceUnit]);
+
+  // Off (default): excluded entirely — no contribution, box hidden. On: the
+  // box's value, converted from its selected unit (or %FS, resolved against
+  // the channel's own measurement range) into referenceUnit, since that's
+  // the scale every other budget term (fit residuals, reference standard,
+  // resolution) is combined in.
+  const sensorNominalUncertaintyNum = includeSensorNominalUncertainty
+    ? resolveManualUncertaintyValue(
+        sensorNominalUncertaintyManual, sensorNominalUncertaintyUnit,
+        selectedChannel?.physical_quantity ?? "",
+        selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+        selectedChannel?.unit ?? "", referenceUnit,
+      )
+    : null;
 
   // OEM calibrations snapshot the asset's manufacturer as the (read-only)
   // calibration lab — keep external_lab_name in sync whenever the type
@@ -637,16 +983,48 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     return () => { cancelled = true; };
   }, [step1.internal_reference_asset_id, step1.calibration_type]);
 
-  const referenceStandardManualUncertaintyNum = (() => {
-    const v = parseFloat(referenceStandardManualUncertainty);
-    return referenceStandardManualUncertainty.trim() !== "" && !isNaN(v) ? v : null;
-  })();
-  const referenceStandardUncertainty = referenceStandardAuto
-    ? referenceStandardAuto.expandedUncertainty
-    : referenceStandardManualUncertaintyNum;
+  const referenceStandardManualUncertaintyNum = resolveManualUncertaintyValue(
+    referenceStandardManualUncertainty, referenceStandardManualUnit,
+    selectedChannel?.physical_quantity ?? "",
+    selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+    selectedChannel?.unit ?? "", referenceUnit,
+  );
+  // Off (default): excluded entirely — no contribution, no box shown, even
+  // when a reference asset would otherwise auto-fetch a value. On: the
+  // auto-fetched certificate value when available, else the manual box.
+  const referenceStandardUncertainty = includeReferenceStandardManual
+    ? (referenceStandardAuto ? referenceStandardAuto.expandedUncertainty : referenceStandardManualUncertaintyNum)
+    : null;
   const referenceStandardCoverageFactor = referenceStandardAuto
     ? referenceStandardAuto.coverageFactor
     : (parseFloat(referenceStandardManualCoverageFactor) || 2.0);
+  // The Conformity assessment panel's editable Tolerance box, already in
+  // referenceUnit — overrides channel_accuracy_value/type entirely when set.
+  const toleranceOverrideNum = (() => {
+    const v = parseFloat(toleranceOverrideValue);
+    return toleranceOverrideValue.trim() !== "" && !isNaN(v) && v > 0 ? v : null;
+  })();
+
+  // As-Found/As-Left's shared bundle — same derivation as the single-dataset
+  // case above, generalized via deriveUncertaintyBudgetInputs.
+  const afalBudget = deriveUncertaintyBudgetInputs(afalUncertainty, selectedChannel, referenceUnit, referenceStandardAuto);
+  const afalToleranceOverrideNum = (() => {
+    const v = parseFloat(afalUncertainty.toleranceOverrideValue);
+    return afalUncertainty.toleranceOverrideValue.trim() !== "" && !isNaN(v) && v > 0 ? v : null;
+  })();
+
+  // Mirrors the shared (single-dataset) case's own "Tolerance locks to
+  // Sensor nominal accuracy" sync effect above.
+  useEffect(() => {
+    if (!afalUncertainty.includeSensorNominalUncertainty) return;
+    const converted = resolveManualUncertaintyValue(
+      afalUncertainty.sensorNominalUncertaintyManual, afalUncertainty.sensorNominalUncertaintyUnit,
+      selectedChannel?.physical_quantity ?? "",
+      selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+      selectedChannel?.unit ?? "", referenceUnit,
+    );
+    if (converted != null) setAfalUncertainty((s) => ({ ...s, toleranceOverrideValue: String(converted) }));
+  }, [afalUncertainty.includeSensorNominalUncertainty, afalUncertainty.sensorNominalUncertaintyManual, afalUncertainty.sensorNominalUncertaintyUnit, selectedChannel, referenceUnit]);
 
   // ---------------------------------------------------------------------------
   // Analysis debounce (Step 3) — stable, no blinking
@@ -659,7 +1037,9 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // raw_data (fitted) and reference_vs_indicated (skip_fit, no curve) modes,
   // since both share the exact same live /analyze pipeline over rawPoints.
   useEffect(() => {
-    if (step !== lastStep || !(step1.data_entry_mode === "raw_data" || isRefVsIndicated)) return;
+    if (step !== lastStep || !(isRawData || isRefVsIndicated)) return;
+    // Custom Formula needs a parseable template before there's anything to fit.
+    if (isRawCustomFormula && (rawCustomFormulaTemplate.trim() === "" || rawCustomFormulaError !== null)) return;
 
     const vp = rawPoints.filter(
       (p) =>
@@ -672,8 +1052,10 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
 
     const key = JSON.stringify({
       vp, referenceUnit, measuredUnit, analyzeParams, includeSensorNominalUncertainty, decisionRule,
-      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum,
+      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum, toleranceOverrideNum,
       skipFit: isRefVsIndicated,
+      curveFitMethod: isRawData ? curveFitMethod : null,
+      rawCustomFormulaTemplate: isRawCustomFormula ? rawCustomFormulaTemplate : null,
     });
     if (key === lastAnalysisKeyRef.current) return;
     lastAnalysisKeyRef.current = key;
@@ -690,6 +1072,8 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         physical_quantity: selectedChannel?.physical_quantity ?? "",
         poly_degree: analyzeParams.poly_degree,
         skip_fit: isRefVsIndicated,
+        calibration_method: isRawData ? curveFitMethod : "polynomial_fit",
+        ...(isRawCustomFormula ? { custom_formula_template: rawCustomFormulaTemplate } : {}),
         distribution_type: analyzeParams.distribution_type,
         confidence_level: analyzeParams.confidence_level,
         channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
@@ -714,6 +1098,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         // (auto-fetched from its own last calibration, or entered manually).
         reference_standard_uncertainty: referenceStandardUncertainty,
         reference_standard_coverage_factor: referenceStandardCoverageFactor,
+        tolerance_override_value: toleranceOverrideNum,
       };
       setAnalyzing(true);
       setAnalyzeError(null);
@@ -728,7 +1113,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     }, 400);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [step, lastStep, rawPoints, referenceUnit, measuredUnit, analyzeParams, step1.data_entry_mode, isRefVsIndicated, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
+  }, [step, lastStep, rawPoints, referenceUnit, measuredUnit, analyzeParams, dataEntryMode, isRawData, isRefVsIndicated, isRawCustomFormula, curveFitMethod, rawCustomFormulaTemplate, rawCustomFormulaError, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum, toleranceOverrideNum]);
 
   // data_entry_mode="model_direct": there's no raw data, so "residuals" are
   // synthesized as exactly zero at both ends of the declared valid range
@@ -749,8 +1134,10 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     const key = JSON.stringify({
       mode: "model_direct", rMin, rMax, referenceUnit, analyzeParams,
       includeSensorNominalUncertainty, decisionRule,
-      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum,
+      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum, toleranceOverrideNum,
       accV: selectedChannel?.accuracy_value, accT: selectedChannel?.accuracy_type,
+      formulaTemplate: manualCoeff.model_type === "custom_formula" ? manualCoeff.custom_formula_template : null,
+      formulaParams: manualCoeff.model_type === "custom_formula" ? manualCoeff.custom_formula_params : null,
     });
     if (key === lastAnalysisKeyRef.current) return;
     lastAnalysisKeyRef.current = key;
@@ -781,6 +1168,12 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         include_sensor_nominal_uncertainty: includeSensorNominalUncertainty,
         reference_standard_uncertainty: referenceStandardUncertainty,
         reference_standard_coverage_factor: referenceStandardCoverageFactor,
+        ...(manualCoeff.model_type === "custom_formula" ? {
+          custom_formula_template: manualCoeff.custom_formula_template,
+          custom_formula_params: Object.fromEntries(
+            Object.entries(manualCoeff.custom_formula_params).map(([k, v]) => [k, parseFloat(v)])
+          ),
+        } : {}),
       };
       setAnalyzing(true);
       setAnalyzeError(null);
@@ -795,21 +1188,27 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     }, 400);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [step, lastStep, isModelDirect, manualCoeffValid, manualCoeff.range_min, manualCoeff.range_max, referenceUnit, analyzeParams, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
+  }, [step, lastStep, isModelDirect, manualCoeffValid, manualCoeff.range_min, manualCoeff.range_max, manualCoeff.model_type, manualCoeff.custom_formula_template, manualCoeff.custom_formula_params, referenceUnit, analyzeParams, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum, toleranceOverrideNum]);
 
   // data_entry_mode="reference_vs_as_found_as_left": two independent
-  // skip_fit=true /analyze calls (no curve, direct reference/indicated
-  // residuals) — as-left is this calibration's primary/official result
-  // (feeds due-date/approval/Health tab); as-found is diagnostic-only,
-  // stored into as_found_summary rather than the record's primary fields.
+  // /analyze calls — skip_fit when the base method is reference_vs_indicated
+  // (no curve, direct reference/indicated residuals), or a real curve fit
+  // (shared afalCurveFitMethod/degree/formula) when the base method is
+  // reference_vs_measured. Both sides share the same Uncertainty/Conformity
+  // settings (afalUncertainty) — same channel/spec either side of the
+  // repair. As-left is this calibration's primary/official result (feeds
+  // due-date/approval/Health tab); as-found is diagnostic-only, stored into
+  // as_found_summary rather than the record's primary fields.
   useEffect(() => {
     if (step !== lastStep || !isRefVsAsFoundAsLeft) return;
     if (validAsFoundPoints.length < 2 || validAsLeftPoints.length < 2) return;
+    const isAfalCustomFormula = !isAfalSkipFit && afalCurveFitMethod === "custom_formula";
+    if (isAfalCustomFormula && (afalCustomFormulaTemplate.trim() === "" || afalCustomFormulaError !== null)) return;
 
     const key = JSON.stringify({
       mode: "as_found_as_left", validAsFoundPoints, validAsLeftPoints, referenceUnit, measuredUnit,
-      analyzeParams, includeSensorNominalUncertainty, decisionRule,
-      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum,
+      analyzeParams, afalUncertainty, referenceStandardAuto,
+      isAfalSkipFit, afalCurveFitMethod, afalCustomFormulaTemplate,
     });
     if (key === lastAnalysisKeyRef.current) return;
     lastAnalysisKeyRef.current = key;
@@ -821,22 +1220,25 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         reference_unit: referenceUnit,
         measured_unit: measuredUnit,
         physical_quantity: selectedChannel?.physical_quantity ?? "",
-        poly_degree: null,
-        skip_fit: true,
+        poly_degree: isAfalSkipFit ? null : analyzeParams.poly_degree,
+        skip_fit: isAfalSkipFit,
+        calibration_method: isAfalSkipFit ? undefined : afalCurveFitMethod,
+        ...(isAfalCustomFormula ? { custom_formula_template: afalCustomFormulaTemplate } : {}),
         distribution_type: analyzeParams.distribution_type,
         confidence_level: analyzeParams.confidence_level,
         channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
         channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
-        decision_rule: decisionRule,
+        decision_rule: afalUncertainty.decisionRule,
         resolution: resolveSpecValue(
           selectedChannel?.resolution ?? null, selectedChannel?.resolution_unit ?? null,
           selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
         ),
-        sensor_nominal_uncertainty: sensorNominalUncertaintyNum,
+        sensor_nominal_uncertainty: afalBudget.sensorNominalUncertaintyNum,
         sensor_nominal_coverage_factor: 2.0,
-        include_sensor_nominal_uncertainty: includeSensorNominalUncertainty,
-        reference_standard_uncertainty: referenceStandardUncertainty,
-        reference_standard_coverage_factor: referenceStandardCoverageFactor,
+        include_sensor_nominal_uncertainty: afalUncertainty.includeSensorNominalUncertainty,
+        reference_standard_uncertainty: afalBudget.referenceStandardUncertainty,
+        reference_standard_coverage_factor: afalBudget.referenceStandardCoverageFactor,
+        tolerance_override_value: afalToleranceOverrideNum,
       });
 
       setAsFoundAsLeftAnalyzing(true);
@@ -856,7 +1258,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     }, 400);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [step, lastStep, isRefVsAsFoundAsLeft, validAsFoundPoints, validAsLeftPoints, referenceUnit, measuredUnit, analyzeParams, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
+  }, [step, lastStep, isRefVsAsFoundAsLeft, isAfalSkipFit, validAsFoundPoints, validAsLeftPoints, referenceUnit, measuredUnit, analyzeParams, selectedChannel, afalUncertainty, afalBudget, afalToleranceOverrideNum, afalCurveFitMethod, afalCustomFormulaTemplate, afalCustomFormulaError, referenceStandardAuto]);
 
   // ---------------------------------------------------------------------------
   // CSV parsing
@@ -993,8 +1395,8 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // ---------------------------------------------------------------------------
 
   async function handleSave() {
-    const mode = step1.data_entry_mode;
     if (!canSave) return;
+    const mode = dataEntryMode;
     if (!freqResponseValid) return;
 
     setSaving(true);
@@ -1190,8 +1592,26 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         frequency_response_phase_unit: step1.add_frequency_response && freqSettings.phase_active ? freqSettings.phase_unit : null,
         frequency_response_points: freqRespPoints,
         data_entry_mode: mode,
-        model_type: mode === "model_direct" ? manualCoeff.model_type : "polynomial",
-        custom_formula: mode === "model_direct" && manualCoeff.model_type === "custom_formula" ? manualCoeff.custom_formula : null,
+        model_type: mode === "model_direct" ? manualCoeff.model_type
+          : mode === "raw_data" ? (curveFitMethod === "polynomial_fit" ? "polynomial" : curveFitMethod)
+          // Reference-vs-Measured-based As-Found/As-Left curve-fits both
+          // sides with the shared afalCurveFitMethod, same mapping raw_data
+          // uses; the Reference-vs-Indicated-based variant (isAfalSkipFit)
+          // has no real model, "polynomial" is a harmless default.
+          : mode === "reference_vs_as_found_as_left" && !isAfalSkipFit
+            ? (afalCurveFitMethod === "polynomial_fit" ? "polynomial" : afalCurveFitMethod)
+          : "polynomial",
+        // The resolved (numbers-only) formula always comes from the server
+        // — either fitted (raw_data's/curve-fit As-Found-As-Left's Custom
+        // Formula method) or resolved by direct substitution (model_direct's
+        // declared-values flow). Never send the unresolved template.
+        custom_formula:
+          (mode === "model_direct" && manualCoeff.model_type === "custom_formula")
+          || (mode === "raw_data" && curveFitMethod === "custom_formula")
+            ? analysisResult?.resolved_custom_formula ?? null
+          : (mode === "reference_vs_as_found_as_left" && !isAfalSkipFit && afalCurveFitMethod === "custom_formula")
+            ? asLeftResult?.resolved_custom_formula ?? null
+            : null,
         as_found_points: asFoundPointsBody,
         as_found_summary: asFoundSummaryBody,
         ...polyStats,
@@ -1239,9 +1659,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
               step={step}
               steps={[
                 t("stepGeneralInfo"),
-                isModelDirect ? t("stepCoefficients")
-                  : isRefVsAsFoundAsLeft ? t("stepAsFoundAsLeftData")
-                  : t("stepRawData"),
+                t("stepInputData"),
                 ...(step1.add_frequency_response ? [t("stepFrequencyResponse")] : []),
                 isModelDirect ? t("stepReview") : t("stepAnalysis"),
               ]}
@@ -1276,6 +1694,23 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
             />
           )}
           {step === 2 && (
+            <div className="px-6 pt-6 pb-2">
+              <InputMethodPicker
+                value={step1.input_method}
+                onChange={(m) => {
+                  setStep1((s) => ({ ...s, input_method: m }));
+                  // Reference vs Indicated is a display reading, always in
+                  // the channel's own physical unit — Reference vs Measured
+                  // is the channel's raw output signal (today's default).
+                  if (m === "reference_vs_indicated") setMeasuredUnit(selectedChannel?.unit ?? "");
+                  else if (m === "reference_vs_measured") setMeasuredUnit(selectedChannel?.output_signal_unit ?? selectedChannel?.unit ?? "");
+                }}
+                allowsModelDirect={allowsModelDirect}
+                purpose={step1.calibration_purpose}
+              />
+            </div>
+          )}
+          {step === 2 && (
             isModelDirect ? (
               <ManualCoefficientsStep
                 state={manualCoeff}
@@ -1296,6 +1731,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 onMeasuredUnitChange={setMeasuredUnit}
                 physicalQuantity={selectedChannel?.physical_quantity ?? ""}
                 outputType={selectedChannel?.output_type ?? null}
+                measuredUnitIsPhysical={isAfalSkipFit}
                 asFoundInputMode={asFoundInputMode}
                 onAsFoundInputModeChange={setAsFoundInputMode}
                 asFoundCsvError={asFoundCsvError}
@@ -1323,6 +1759,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 onFileUpload={handleFileUpload}
                 fileInputRef={fileInputRef}
                 measuredLabel={isRefVsIndicated ? t("indicatedValue") : undefined}
+                measuredUnitIsPhysical={isRefVsIndicated}
               />
             )
           )}
@@ -1348,21 +1785,22 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 analyzing={asFoundAsLeftAnalyzing}
                 analyzeError={asFoundAsLeftError}
                 referenceUnit={referenceUnit}
+                measuredUnit={measuredUnit}
+                selectedChannel={selectedChannel}
+                isAfalSkipFit={isAfalSkipFit}
+                afalCurveFitMethod={afalCurveFitMethod}
+                onAfalCurveFitMethodChange={setAfalCurveFitMethod}
+                afalCustomFormulaTemplate={afalCustomFormulaTemplate}
+                onAfalCustomFormulaTemplateChange={setAfalCustomFormulaTemplate}
+                afalCustomFormulaError={afalCustomFormulaError}
+                onAfalCustomFormulaErrorChange={setAfalCustomFormulaError}
                 analyzeParams={analyzeParams}
                 onAnalyzeParamsChange={setAnalyzeParams}
-                includeSensorNominalUncertainty={includeSensorNominalUncertainty}
-                onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
-                sensorNominalUncertaintyManual={sensorNominalUncertaintyManual}
-                onSensorNominalUncertaintyManualChange={setSensorNominalUncertaintyManual}
-                decisionRule={decisionRule}
-                onDecisionRuleChange={setDecisionRule}
+                afalUncertainty={afalUncertainty}
+                onAfalUncertaintyChange={setAfalUncertainty}
                 referenceStandardAuto={referenceStandardAuto}
                 referenceStandardAutoLoading={referenceStandardAutoLoading}
                 referenceAssetName={referenceAssets.find((a) => a.id === step1.internal_reference_asset_id)?.name ?? null}
-                referenceStandardManualUncertainty={referenceStandardManualUncertainty}
-                onReferenceStandardManualUncertaintyChange={setReferenceStandardManualUncertainty}
-                referenceStandardManualCoverageFactor={referenceStandardManualCoverageFactor}
-                onReferenceStandardManualCoverageFactorChange={setReferenceStandardManualCoverageFactor}
               />
             ) : (
               <Step3
@@ -1376,21 +1814,34 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 measuredUnit={measuredUnit}
                 hoveredPointIdx={hoveredPointIdx}
                 onHoverPoint={setHoveredPointIdx}
-                dataEntryMode={step1.data_entry_mode}
+                dataEntryMode={dataEntryMode}
                 manualCoeff={manualCoeff}
+                selectedChannel={selectedChannel}
                 includeSensorNominalUncertainty={includeSensorNominalUncertainty}
                 onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
                 sensorNominalUncertaintyManual={sensorNominalUncertaintyManual}
                 onSensorNominalUncertaintyManualChange={setSensorNominalUncertaintyManual}
+                sensorNominalUncertaintyUnit={sensorNominalUncertaintyUnit}
                 decisionRule={decisionRule}
                 onDecisionRuleChange={setDecisionRule}
+                toleranceOverrideValue={toleranceOverrideValue}
+                onToleranceOverrideValueChange={setToleranceOverrideValue}
+                includeReferenceStandardManual={includeReferenceStandardManual}
+                onIncludeReferenceStandardManualChange={setIncludeReferenceStandardManual}
                 referenceStandardAuto={referenceStandardAuto}
                 referenceStandardAutoLoading={referenceStandardAutoLoading}
                 referenceAssetName={referenceAssets.find((a) => a.id === step1.internal_reference_asset_id)?.name ?? null}
                 referenceStandardManualUncertainty={referenceStandardManualUncertainty}
                 onReferenceStandardManualUncertaintyChange={setReferenceStandardManualUncertainty}
+                referenceStandardManualUnit={referenceStandardManualUnit}
                 referenceStandardManualCoverageFactor={referenceStandardManualCoverageFactor}
                 onReferenceStandardManualCoverageFactorChange={setReferenceStandardManualCoverageFactor}
+                curveFitMethod={curveFitMethod}
+                onCurveFitMethodChange={setCurveFitMethod}
+                rawCustomFormulaTemplate={rawCustomFormulaTemplate}
+                onRawCustomFormulaTemplateChange={setRawCustomFormulaTemplate}
+                rawCustomFormulaError={rawCustomFormulaError}
+                onRawCustomFormulaErrorChange={setRawCustomFormulaError}
               />
             )
           )}
@@ -1540,19 +1991,9 @@ function Step1({
   const showsCertificateUpload = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab";
   // model_direct is the successor of the original "coefficients only" mode —
   // same calibration_type gate (a lab/manufacturer delivering a model instead
-  // of raw data). reference_vs_indicated/reference_vs_as_found_as_left are
-  // gated on calibration_purpose instead (see DATA_ENTRY_MODE_OPTIONS below).
+  // of raw data). The Input data method itself is now chosen on Step 2 (see
+  // allowsModelDirect there) — this copy only feeds the reset below.
   const allowsModelDirect = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab" || state.calibration_type === "customer_asset";
-  const DATA_ENTRY_MODE_OPTIONS: { value: DataEntryMode; label: string }[] = [
-    { value: "raw_data", label: t("dataEntryModeRawData") },
-    ...(allowsModelDirect ? [{ value: "model_direct" as DataEntryMode, label: t("dataEntryModeModelDirect") }] : []),
-    ...(state.calibration_purpose === "verification"
-      ? [{ value: "reference_vs_indicated" as DataEntryMode, label: t("dataEntryModeReferenceVsIndicated") }]
-      : []),
-    ...(state.calibration_purpose === "after_repair"
-      ? [{ value: "reference_vs_as_found_as_left" as DataEntryMode, label: t("dataEntryModeReferenceVsAsFoundAsLeft") }]
-      : []),
-  ];
 
   function handleCertificateFile(file: File | null) {
     if (!file) {
@@ -1669,7 +2110,7 @@ function Step1({
             onChange({
               ...state,
               calibration_type: newType,
-              data_entry_mode: state.data_entry_mode === "model_direct" && !stillAllowsModelDirect ? "raw_data" : state.data_entry_mode,
+              input_method: state.input_method === "model_direct" && !stillAllowsModelDirect ? "reference_vs_measured" : state.input_method,
             });
           }}
           options={CALIBRATION_TYPE_OPTIONS}
@@ -1682,10 +2123,11 @@ function Step1({
           value={state.calibration_purpose}
           onChange={(v) => {
             const newPurpose = v as CalibrationPurpose;
-            let mode = state.data_entry_mode;
-            if (mode === "reference_vs_indicated" && newPurpose !== "verification") mode = "raw_data";
-            if (mode === "reference_vs_as_found_as_left" && newPurpose !== "after_repair") mode = "raw_data";
-            onChange({ ...state, calibration_purpose: newPurpose, data_entry_mode: mode });
+            // Model isn't offered for After Repair (it splits into As
+            // Found/As Left instead) — every other input_method/purpose
+            // pairing is valid, dataEntryMode just reflows automatically.
+            const resetModelDirect = state.input_method === "model_direct" && newPurpose === "after_repair";
+            onChange({ ...state, calibration_purpose: newPurpose, input_method: resetModelDirect ? "reference_vs_measured" : state.input_method });
           }}
           options={CALIBRATION_PURPOSE_OPTIONS}
           required
@@ -1826,16 +2268,9 @@ function Step1({
         </div>
       )}
 
-      {/* Mode switches, right above Environmental Conditions / Notes */}
-      <div className="grid grid-cols-2 gap-4 items-end pt-1">
-        <WSelect
-          label={t("dataEntryMode")}
-          value={state.data_entry_mode}
-          onChange={(v) => onChange({ ...state, data_entry_mode: v as DataEntryMode })}
-          options={DATA_ENTRY_MODE_OPTIONS}
-          tooltip={t("tips.dataEntryMode")}
-          docsHref={WIZARD_DOCS_LINKS.data_entry_mode}
-        />
+      {/* Add frequency response, right above Environmental Conditions / Notes
+          — the Input data method itself is now chosen on Step 2. */}
+      <div className="pt-1">
         <WCheckbox
           label={t("addFrequencyResponseLabel")}
           checked={state.add_frequency_response}
@@ -1942,14 +2377,114 @@ function Step1({
 }
 
 // ---------------------------------------------------------------------------
+// Step 2 — Input data method picker
+// ---------------------------------------------------------------------------
+
+// A single dropdown at the top of Step 2, always set (defaults to
+// "reference_vs_measured") — the rest of the step renders immediately below
+// according to the current selection, no separate "pick a method" screen.
+// As-Found/As-Left is deliberately not one of the options here; it's an
+// automatic consequence of purpose="after_repair" applied to either of the
+// first two (see deriveDataEntryMode).
+function InputMethodPicker({
+  value, onChange, allowsModelDirect, purpose,
+}: {
+  value: InputMethod;
+  onChange: (m: InputMethod) => void;
+  allowsModelDirect: boolean;
+  purpose: CalibrationPurpose;
+}) {
+  const t = useTranslations("assets.wizard");
+  const showModel = allowsModelDirect && purpose !== "after_repair";
+  const options: { value: InputMethod; label: string }[] = [
+    { value: "reference_vs_measured", label: t("inputMethodMeasuredTitle") },
+    { value: "reference_vs_indicated", label: t("inputMethodIndicatedTitle") },
+    ...(showModel ? [{ value: "model_direct" as InputMethod, label: t("inputMethodModelTitle") }] : []),
+  ];
+
+  return (
+    <div className="flex flex-col gap-1 w-72">
+      <WLabel text={t("dataEntryMode")} tooltip={t("tips.dataEntryMode")} docsHref={WIZARD_DOCS_LINKS.data_entry_mode} />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as InputMethod)}
+        className={`${IB} ${IB_OK} py-1.5`}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Step 2 — Raw Data
 // ---------------------------------------------------------------------------
+
+// The Reference/Measured (or Indicated) unit dropdowns — extracted so
+// AsFoundAsLeftStep can render one shared row above its two side-by-side
+// tables instead of duplicating it (or showing it only above one side).
+function UnitSelectorsRow({
+  referenceUnit, measuredUnit, onReferenceUnitChange, onMeasuredUnitChange,
+  physicalQuantity, outputType, measuredUnitIsPhysical = false, measuredLabel,
+}: {
+  referenceUnit: string;
+  measuredUnit: string;
+  onReferenceUnitChange: (u: string) => void;
+  onMeasuredUnitChange: (u: string) => void;
+  physicalQuantity: string;
+  outputType: string | null;
+  measuredUnitIsPhysical?: boolean;
+  measuredLabel?: string;
+}) {
+  const t = useTranslations("assets.wizard");
+  const refUnitOpts = (() => {
+    const base = getUnitsForQuantity(physicalQuantity);
+    const opts = base.length > 0 ? base : [{ value: referenceUnit, label: referenceUnit }];
+    return opts.some(u => u.value === referenceUnit) ? opts : [{ value: referenceUnit, label: referenceUnit }, ...opts];
+  })();
+  const measUnitOpts = (() => {
+    const fromOutput = (!measuredUnitIsPhysical && outputType) ? (getOutputUnits(outputType, physicalQuantity) ?? []) : [];
+    const base = fromOutput.length > 0 ? fromOutput : getUnitsForQuantity(physicalQuantity);
+    const opts = base.length > 0 ? base : [{ value: measuredUnit, label: measuredUnit }];
+    return opts.some(u => u.value === measuredUnit) ? opts : [{ value: measuredUnit, label: measuredUnit }, ...opts];
+  })();
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-1">
+        <WLabel text={t("referenceUnit")} />
+        <select
+          value={referenceUnit}
+          onChange={(e) => onReferenceUnitChange(e.target.value)}
+          className={`${IB} ${IB_OK} py-1.5`}
+        >
+          {refUnitOpts.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1">
+        <WLabel text={measuredLabel ?? t("measuredUnit")} />
+        <select
+          value={measuredUnit}
+          onChange={(e) => onMeasuredUnitChange(e.target.value)}
+          className={`${IB} ${IB_OK} py-1.5`}
+        >
+          {measUnitOpts.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 function Step2({
   points, onPointsChange, referenceUnit, measuredUnit,
   onReferenceUnitChange, onMeasuredUnitChange, physicalQuantity, outputType,
   inputMode, onInputModeChange, csvError, onFileUpload, fileInputRef,
-  title, showUnitSelectors = true, measuredLabel,
+  title, showUnitSelectors = true, measuredLabel, measuredUnitIsPhysical = false,
 }: {
   points: WizardRawPoint[];
   onPointsChange: (p: WizardRawPoint[]) => void;
@@ -1971,6 +2506,11 @@ function Step2({
   title?: string;
   showUnitSelectors?: boolean;
   measuredLabel?: string;
+  // True for Reference vs Indicated (and its As-Found/As-Left variant): an
+  // "indicated" value is a display reading, in the channel's own physical
+  // unit — never the raw electrical output signal (e.g. mA) raw_data's
+  // "Measured" column uses.
+  measuredUnitIsPhysical?: boolean;
 }) {
   const t = useTranslations("assets.wizard");
   const [dragging, setDragging] = useState(false);
@@ -1990,50 +2530,21 @@ function Step2({
     onPointsChange(points.filter((_, i) => i !== idx));
   }
 
-  const refUnitOpts = (() => {
-    const base = getUnitsForQuantity(physicalQuantity);
-    const opts = base.length > 0 ? base : [{ value: referenceUnit, label: referenceUnit }];
-    return opts.some(u => u.value === referenceUnit) ? opts : [{ value: referenceUnit, label: referenceUnit }, ...opts];
-  })();
-
-  const measUnitOpts = (() => {
-    const fromOutput = outputType ? (getOutputUnits(outputType, physicalQuantity) ?? []) : [];
-    const base = fromOutput.length > 0 ? fromOutput : getUnitsForQuantity(physicalQuantity);
-    const opts = base.length > 0 ? base : [{ value: measuredUnit, label: measuredUnit }];
-    return opts.some(u => u.value === measuredUnit) ? opts : [{ value: measuredUnit, label: measuredUnit }, ...opts];
-  })();
-
   return (
     <div className="p-6 space-y-4">
       {title && <p className="text-xs font-semibold text-og-text -mb-1">{title}</p>}
       {/* Unit selectors */}
       {showUnitSelectors && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <WLabel text={t("referenceUnit")} />
-            <select
-              value={referenceUnit}
-              onChange={(e) => onReferenceUnitChange(e.target.value)}
-              className={`${IB} ${IB_OK} py-1.5`}
-            >
-              {refUnitOpts.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <WLabel text={measuredLabel ?? t("measuredUnit")} />
-            <select
-              value={measuredUnit}
-              onChange={(e) => onMeasuredUnitChange(e.target.value)}
-              className={`${IB} ${IB_OK} py-1.5`}
-            >
-              {measUnitOpts.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <UnitSelectorsRow
+          referenceUnit={referenceUnit}
+          measuredUnit={measuredUnit}
+          onReferenceUnitChange={onReferenceUnitChange}
+          onMeasuredUnitChange={onMeasuredUnitChange}
+          physicalQuantity={physicalQuantity}
+          outputType={outputType}
+          measuredUnitIsPhysical={measuredUnitIsPhysical}
+          measuredLabel={measuredLabel}
+        />
       )}
 
       {/* Mode tabs */}
@@ -2169,7 +2680,7 @@ function Step2({
 function AsFoundAsLeftStep({
   asFoundPoints, onAsFoundPointsChange, asLeftPoints, onAsLeftPointsChange,
   referenceUnit, measuredUnit, onReferenceUnitChange, onMeasuredUnitChange,
-  physicalQuantity, outputType,
+  physicalQuantity, outputType, measuredUnitIsPhysical = false,
   asFoundInputMode, onAsFoundInputModeChange, asFoundCsvError, onAsFoundFileUpload, asFoundFileInputRef,
   asLeftInputMode, onAsLeftInputModeChange, asLeftCsvError, onAsLeftFileUpload, asLeftFileInputRef,
 }: {
@@ -2183,6 +2694,7 @@ function AsFoundAsLeftStep({
   onMeasuredUnitChange: (u: string) => void;
   physicalQuantity: string;
   outputType: string | null;
+  measuredUnitIsPhysical?: boolean;
   asFoundInputMode: "manual" | "csv";
   onAsFoundInputModeChange: (m: "manual" | "csv") => void;
   asFoundCsvError: string | null;
@@ -2195,41 +2707,64 @@ function AsFoundAsLeftStep({
   asLeftFileInputRef: React.MutableRefObject<HTMLInputElement | null>;
 }) {
   const t = useTranslations("assets.wizard");
+  const measuredLabel = measuredUnitIsPhysical ? t("indicatedValue") : undefined;
   return (
-    <div className="divide-y divide-og-border">
-      <Step2
-        title={t("asFoundData")}
-        points={asFoundPoints}
-        onPointsChange={onAsFoundPointsChange}
-        referenceUnit={referenceUnit}
-        measuredUnit={measuredUnit}
-        onReferenceUnitChange={onReferenceUnitChange}
-        onMeasuredUnitChange={onMeasuredUnitChange}
-        physicalQuantity={physicalQuantity}
-        outputType={outputType}
-        inputMode={asFoundInputMode}
-        onInputModeChange={onAsFoundInputModeChange}
-        csvError={asFoundCsvError}
-        onFileUpload={onAsFoundFileUpload}
-        fileInputRef={asFoundFileInputRef}
-      />
-      <Step2
-        title={t("asLeftData")}
-        points={asLeftPoints}
-        onPointsChange={onAsLeftPointsChange}
-        referenceUnit={referenceUnit}
-        measuredUnit={measuredUnit}
-        onReferenceUnitChange={onReferenceUnitChange}
-        onMeasuredUnitChange={onMeasuredUnitChange}
-        physicalQuantity={physicalQuantity}
-        outputType={outputType}
-        inputMode={asLeftInputMode}
-        onInputModeChange={onAsLeftInputModeChange}
-        csvError={asLeftCsvError}
-        onFileUpload={onAsLeftFileUpload}
-        fileInputRef={asLeftFileInputRef}
-        showUnitSelectors={false}
-      />
+    <div>
+      {/* Units are shared between As Found and As Left — same channel, same
+          session either side of the repair — shown once, above both
+          side-by-side tables. */}
+      <div className="px-6 pt-6 pb-2">
+        <UnitSelectorsRow
+          referenceUnit={referenceUnit}
+          measuredUnit={measuredUnit}
+          onReferenceUnitChange={onReferenceUnitChange}
+          onMeasuredUnitChange={onMeasuredUnitChange}
+          physicalQuantity={physicalQuantity}
+          outputType={outputType}
+          measuredUnitIsPhysical={measuredUnitIsPhysical}
+          measuredLabel={measuredLabel}
+        />
+      </div>
+      <div className="grid grid-cols-2 divide-x divide-og-border border-t border-og-border">
+        <Step2
+          title={t("asFoundData")}
+          points={asFoundPoints}
+          onPointsChange={onAsFoundPointsChange}
+          referenceUnit={referenceUnit}
+          measuredUnit={measuredUnit}
+          onReferenceUnitChange={onReferenceUnitChange}
+          onMeasuredUnitChange={onMeasuredUnitChange}
+          physicalQuantity={physicalQuantity}
+          outputType={outputType}
+          measuredUnitIsPhysical={measuredUnitIsPhysical}
+          measuredLabel={measuredLabel}
+          inputMode={asFoundInputMode}
+          onInputModeChange={onAsFoundInputModeChange}
+          csvError={asFoundCsvError}
+          onFileUpload={onAsFoundFileUpload}
+          fileInputRef={asFoundFileInputRef}
+          showUnitSelectors={false}
+        />
+        <Step2
+          title={t("asLeftData")}
+          points={asLeftPoints}
+          onPointsChange={onAsLeftPointsChange}
+          referenceUnit={referenceUnit}
+          measuredUnit={measuredUnit}
+          onReferenceUnitChange={onReferenceUnitChange}
+          onMeasuredUnitChange={onMeasuredUnitChange}
+          physicalQuantity={physicalQuantity}
+          outputType={outputType}
+          measuredUnitIsPhysical={measuredUnitIsPhysical}
+          measuredLabel={measuredLabel}
+          inputMode={asLeftInputMode}
+          onInputModeChange={onAsLeftInputModeChange}
+          csvError={asLeftCsvError}
+          onFileUpload={onAsLeftFileUpload}
+          fileInputRef={asLeftFileInputRef}
+          showUnitSelectors={false}
+        />
+      </div>
     </div>
   );
 }
@@ -2541,19 +3076,55 @@ function ManualCoefficientsStep({
     onChange({ ...state, coefficients });
   }
 
-  function setCustomFormula(formula: string) {
-    onChange({ ...state, custom_formula: formula });
-    if (formula.trim() === "") { onCustomFormulaErrorChange(null); return; }
-    try {
-      validateCustomFormula(formula);
-      onCustomFormulaErrorChange(null);
-    } catch {
-      onCustomFormulaErrorChange(t("customFormulaInvalid"));
+  function setCustomFormulaTemplate(template: string) {
+    // Re-derive the parameter-value map from the new template: keep values
+    // for names still present, add blank entries for newly-detected ones,
+    // drop ones that no longer appear — same "live re-derive" pattern as
+    // setOrder's coefficient-array resizing above.
+    let params: Record<string, string> = {};
+    let error: string | null = null;
+    if (template.trim() !== "") {
+      try {
+        validateFormulaTemplate(template);
+        const names = extractFormulaParameters(template);
+        params = Object.fromEntries(names.map((n) => [n, state.custom_formula_params[n] ?? ""]));
+      } catch {
+        error = t("customFormulaInvalid");
+        params = state.custom_formula_params;
+      }
     }
+    onChange({ ...state, custom_formula_template: template, custom_formula_params: params });
+    onCustomFormulaErrorChange(error);
+  }
+
+  function setCustomFormulaParam(name: string, value: string) {
+    onChange({ ...state, custom_formula_params: { ...state.custom_formula_params, [name]: value } });
   }
 
   const numericCoeffs = state.coefficients.map((c) => parseFloat(c));
   const previewValid = numericCoeffs.every((c) => !isNaN(c));
+
+  const detectedParams = (() => {
+    if (state.custom_formula_template.trim() === "") return [];
+    try {
+      return extractFormulaParameters(state.custom_formula_template);
+    } catch {
+      return [];
+    }
+  })();
+  // Local, display-only preview (simple word-boundary substitution) — the
+  // authoritative resolved formula always comes back from the server, since
+  // it's the only side guaranteed to produce valid, re-parseable syntax
+  // (see evaluate-model.ts's validateFormulaTemplate doc comment).
+  const previewFormula = (() => {
+    let text = state.custom_formula_template;
+    for (const name of detectedParams) {
+      const v = state.custom_formula_params[name];
+      if (v === undefined || v.trim() === "" || isNaN(parseFloat(v))) return null;
+      text = text.replace(new RegExp(`\\b${name}\\b`, "g"), v);
+    }
+    return text;
+  })();
 
   return (
     <div className="p-6 space-y-5">
@@ -2611,22 +3182,47 @@ function ManualCoefficientsStep({
           )}
         </>
       ) : (
-        <div className="flex flex-col gap-1">
-          <WInput
-            label={t("customFormula")}
-            value={state.custom_formula}
-            onChange={setCustomFormula}
-            placeholder={t("customFormulaPlaceholder")}
-            required
-            error={customFormulaError ?? undefined}
-            tooltip={t("tips.customFormula")}
-          />
-          <p className="text-xs text-gray-400">{t("customFormulaHint")}</p>
-          {customFormulaError && <p className="text-xs text-red-500">{customFormulaError}</p>}
-          {!customFormulaError && state.custom_formula.trim() !== "" && (
-            <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border mt-1">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <WInput
+              label={t("customFormula")}
+              value={state.custom_formula_template}
+              onChange={setCustomFormulaTemplate}
+              placeholder={t("customFormulaPlaceholder")}
+              required
+              error={customFormulaError ?? undefined}
+              tooltip={t("tips.customFormula")}
+              docsHref={STAT_DOCS_LINKS.custom_formula_syntax}
+            />
+            <p className="text-xs text-gray-400">{t("customFormulaHint")}</p>
+            {customFormulaError && <p className="text-xs text-red-500">{customFormulaError}</p>}
+          </div>
+
+          {detectedParams.length > 0 && !customFormulaError && (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400">
+                {t("detectedParameters", { params: detectedParams.join(", ") })}
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {detectedParams.map((name) => (
+                  <WInput
+                    key={name}
+                    label={t("parameterValueLabel", { name })}
+                    type="number"
+                    value={state.custom_formula_params[name] ?? ""}
+                    onChange={(v) => setCustomFormulaParam(name, v)}
+                    placeholder="0.0"
+                    required
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {previewFormula && (
+            <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
               <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
-              <span className="text-xs font-mono text-og-text">f(x) = {state.custom_formula}</span>
+              <span className="text-xs font-mono text-og-text">f(x) = {previewFormula}</span>
             </div>
           )}
         </div>
@@ -2658,28 +3254,699 @@ function ManualCoefficientsStep({
 // Step 3 — Analysis & Results
 // ---------------------------------------------------------------------------
 
-function evalPoly(coefficients: number[], x: number): number {
-  let y = 0;
-  const deg = coefficients.length - 1;
-  for (let j = 0; j <= deg; j++) y += coefficients[j] * Math.pow(x, deg - j);
-  return y;
-}
-
 function residualColor(residual: number, maxAbsResidual: number): string {
   const t = Math.min(Math.abs(residual) / (maxAbsResidual || 1), 1);
   const hue = Math.round(120 * (1 - t)); // green(120) → yellow(60) → red(0)
   return `hsl(${hue},80%,42%)`;
 }
 
+// One labeled LaTeX row of the Model panel below — a small tooltip'd label
+// above a KaTeX-rendered formula, horizontally scrollable since a degree-5
+// polynomial's coefficient list or a long custom formula can overflow the
+// panel's width.
+function ModelRow({ label, tooltip, docsHref, latex }: { label: string; tooltip: string; docsHref?: string; latex: string | null }) {
+  return (
+    <div>
+      <span className="text-[11px] text-gray-400 inline-flex items-center gap-1 mb-1">
+        {label}
+        <FieldTooltip tooltip={tooltip} docsHref={docsHref} />
+      </span>
+      {latex ? <Katex math={latex} className="block text-sm" /> : <span className="text-xs text-gray-400">…</span>}
+    </div>
+  );
+}
+
+// The "Model" panel — three LaTeX-rendered rows: (1) the equation's general
+// shape with letter placeholders instead of numbers, so the *kind* of model
+// is obvious at a glance; (2) the numeric value substituted for each letter;
+// (3) the valid range, both the measured signal's own domain and the
+// physical quantity (reference) range it maps to. Shared by raw_data's
+// Polynomial Fit/Custom Formula methods and model_direct's declared model.
+function ModelPanel({
+  isPolynomial, degree, coefficients, formulaTemplate, formulaParamValues,
+}: {
+  isPolynomial: boolean;
+  degree: number;
+  coefficients: number[];
+  formulaTemplate: string | null;
+  formulaParamValues: Record<string, number> | null;
+}) {
+  const t = useTranslations("assets.wizard");
+  const generalFormLatex = isPolynomial
+    ? polynomialGeneralFormLatex(degree)
+    : (formulaTemplate ? formulaToLatex(formulaTemplate) : null);
+  const coeffPairs: [string, number][] = isPolynomial
+    ? POLY_LETTERS.slice(0, degree + 1).map((letter, i) => [letter, coefficients[i]])
+    : (formulaTemplate && formulaParamValues
+      ? (() => {
+        try {
+          return extractFormulaParameters(formulaTemplate)
+            .filter((name) => formulaParamValues[name] != null)
+            .map((name) => [name, formulaParamValues[name]] as [string, number]);
+        } catch {
+          return [];
+        }
+      })()
+      : []);
+  const coeffLatex = coeffPairs.length > 0
+    ? coeffPairs.map(([letter, value]) => `${letter} = ${fmtN(value)}`).join(",\\ \\ ")
+    : null;
+  return (
+    <div className="px-4 py-3 rounded-lg bg-og-surface-alt border border-og-border space-y-2">
+      <p className="text-xs font-semibold text-og-text">{t("model")}</p>
+      {/* One shared horizontal scroll region for both rows together — two
+          independent overflow-x-auto wrappers (one per row) produced two
+          separate scrollbars for a long custom formula/coefficient list. */}
+      <div className="overflow-x-auto space-y-2">
+        <ModelRow label={t("equation")} tooltip={t("tips.modelGeneralForm")} latex={generalFormLatex} />
+        <ModelRow label={t("modelCoefficients")} tooltip={t("tips.modelCoefficients")} latex={coeffLatex} />
+      </div>
+    </div>
+  );
+}
+
+// The "Method" panel (raw_data's Polynomial Fit/Lookup Table/Custom Formula
+// selector) — extracted so it can render once, shared, above a curve-fit
+// As-Found/As-Left pair (both sides fit with the same method/degree/formula)
+// as well as inside the single-dataset Step3.
+function CalibrationMethodPanel({
+  curveFitMethod, onCurveFitMethodChange, analyzeParams, onAnalyzeParamsChange,
+  customFormulaTemplate, onCustomFormulaTemplateChange, customFormulaError, onCustomFormulaErrorChange,
+}: {
+  curveFitMethod: CalibrationMethod;
+  onCurveFitMethodChange: (m: CalibrationMethod) => void;
+  analyzeParams: AnalyzeParams;
+  onAnalyzeParamsChange: (p: AnalyzeParams) => void;
+  customFormulaTemplate: string;
+  onCustomFormulaTemplateChange: (v: string) => void;
+  customFormulaError: string | null;
+  onCustomFormulaErrorChange: (e: string | null) => void;
+}) {
+  const t = useTranslations("assets.wizard");
+
+  function setFormulaTemplate(template: string) {
+    onCustomFormulaTemplateChange(template);
+    if (template.trim() === "") { onCustomFormulaErrorChange(null); return; }
+    try {
+      validateFormulaTemplate(template);
+      onCustomFormulaErrorChange(null);
+    } catch {
+      onCustomFormulaErrorChange(t("customFormulaInvalid"));
+    }
+  }
+  const detectedParams = (() => {
+    if (customFormulaTemplate.trim() === "" || customFormulaError) return [];
+    try {
+      return extractFormulaParameters(customFormulaTemplate);
+    } catch {
+      return [];
+    }
+  })();
+
+  return (
+    <div className="flex flex-col gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
+      <p className="text-xs font-semibold text-og-text">{t("methodSectionTitle")}</p>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="flex flex-col gap-1 w-56 shrink-0">
+          <WLabel text={t("calibrationMethod")} tooltip={t("tips.calibrationMethodAnalysis")} docsHref={STAT_DOCS_LINKS.calibration_method} />
+          <select
+            value={curveFitMethod}
+            onChange={(e) => onCurveFitMethodChange(e.target.value as CalibrationMethod)}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            <option value="polynomial_fit">{t("calibrationMethodPolynomialFit")}</option>
+            <option value="lookup_table">{t("calibrationMethodLookupTable")}</option>
+            <option value="custom_formula">{t("calibrationMethodCustomFormula")}</option>
+          </select>
+        </div>
+        {curveFitMethod === "polynomial_fit" && (
+        <div className="flex flex-col gap-1 w-40">
+          <WLabel text={t("regressionDegree")} tooltip={t("tips.regressionDegree")} docsHref={STAT_DOCS_LINKS.regression_degree} />
+          <select
+            value={analyzeParams.poly_degree === null ? "auto" : String(analyzeParams.poly_degree)}
+            onChange={(e) => onAnalyzeParamsChange({ ...analyzeParams, poly_degree: e.target.value === "auto" ? null : parseInt(e.target.value) })}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            <option value="auto">{t("auto")}</option>
+            {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+        )}
+        {curveFitMethod === "custom_formula" && (
+        <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+          <WInput
+            label={t("customFormula")}
+            value={customFormulaTemplate}
+            onChange={setFormulaTemplate}
+            placeholder={t("customFormulaPlaceholder")}
+            required
+            error={customFormulaError ?? undefined}
+            tooltip={t("tips.customFormula")}
+            docsHref={STAT_DOCS_LINKS.custom_formula_syntax}
+          />
+          {detectedParams.length > 0 && (
+            <p className="text-[11px] text-gray-400">
+              {t("detectedParameters", { params: detectedParams.join(", ") })}
+            </p>
+          )}
+        </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// The "Uncertainty calculation" panel (Type B budget inputs — Distribution,
+// Confidence %, Sensor nominal accuracy, Reference standard uncertainty) —
+// extracted so it can render once for the single-dataset case and once,
+// shared, above an As-Found/As-Left pair (same channel/spec either side of
+// the repair — see AsFoundAsLeftResults).
+function UncertaintyCalculationPanel({
+  analyzeParams, onAnalyzeParamsChange, result, referenceUnit, selectedChannel,
+  includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange,
+  sensorNominalUncertaintyManual, onSensorNominalUncertaintyManualChange,
+  sensorNominalUncertaintyUnit,
+  includeReferenceStandardManual, onIncludeReferenceStandardManualChange,
+  referenceStandardAuto, referenceStandardAutoLoading, referenceAssetName,
+  referenceStandardManualUncertainty, onReferenceStandardManualUncertaintyChange,
+  referenceStandardManualUnit,
+  referenceStandardManualCoverageFactor, onReferenceStandardManualCoverageFactorChange,
+}: {
+  analyzeParams: AnalyzeParams;
+  onAnalyzeParamsChange: (p: AnalyzeParams) => void;
+  result: AnalyzeResponse | null;
+  referenceUnit: string;
+  selectedChannel: SensorChannelFull | undefined;
+  includeSensorNominalUncertainty: boolean;
+  onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
+  sensorNominalUncertaintyManual: string;
+  onSensorNominalUncertaintyManualChange: (v: string) => void;
+  sensorNominalUncertaintyUnit: string;
+  includeReferenceStandardManual: boolean;
+  onIncludeReferenceStandardManualChange: (v: boolean) => void;
+  referenceStandardAuto: { expandedUncertainty: number; coverageFactor: number } | null;
+  referenceStandardAutoLoading: boolean;
+  referenceAssetName: string | null;
+  referenceStandardManualUncertainty: string;
+  onReferenceStandardManualUncertaintyChange: (v: string) => void;
+  referenceStandardManualUnit: string;
+  referenceStandardManualCoverageFactor: string;
+  onReferenceStandardManualCoverageFactorChange: (v: string) => void;
+}) {
+  const t = useTranslations("assets.wizard");
+  const setParam = <K extends keyof AnalyzeParams>(key: K) => (value: AnalyzeParams[K]) =>
+    onAnalyzeParamsChange({ ...analyzeParams, [key]: value });
+
+  function handleSensorNominalRefresh() {
+    const def = sensorNominalAccuracyDefault(selectedChannel);
+    if (def == null) return;
+    onSensorNominalUncertaintyManualChange(String(def.value));
+  }
+  const sensorNominalDefault = sensorNominalAccuracyDefault(selectedChannel);
+
+  return (
+    <div className="flex flex-col gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
+      <p className="text-xs font-semibold text-og-text">{t("uncertaintyCalculationTitle")}</p>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="flex flex-col gap-1 min-w-[130px]">
+          <div className="min-h-[32px] flex items-end"><WLabel text={t("distribution")} tooltip={t("tips.distribution")} docsHref={STAT_DOCS_LINKS.coverage_factor} /></div>
+          <select
+            value={analyzeParams.distribution_type}
+            onChange={(e) => setParam("distribution_type")(e.target.value as DistributionType)}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            <option value="normal">{t("distributionNormal")}</option>
+            <option value="t">{t("distributionT")}</option>
+            <option value="chi_squared">{t("distributionChiSquared")}</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 w-20">
+          <div className="min-h-[32px] flex items-end">
+            <WLabel text={t("confidencePercent")} tooltip={t("tips.confidencePercent")} docsHref={STAT_DOCS_LINKS.coverage_factor} className="max-w-20" />
+          </div>
+          <NumberInput
+            value={String(analyzeParams.confidence_level)}
+            onChange={(v) => setParam("confidence_level")(parseFloat(v) || 95)}
+            min={50} max={99.99} step={0.5}
+          />
+          {result && (
+            <span className="text-[10px] text-gray-400">{t("coverageFactorLabel", { value: fmtN(result.coverage_factor, 2) })}</span>
+          )}
+        </div>
+        {/* Sensor nominal accuracy (Type B) — off by default: excluded
+            entirely, no box shown. On: pre-filled from the channel's
+            manufacturer spec (still freely editable; unit is fixed to
+            whatever the channel's own spec is configured in, shown as
+            plain text next to the box) and included in the budget. The
+            contribution readout shows the real number the uncertainty
+            budget currently attributes to this source. */}
+        <div className="flex flex-col gap-1 w-40">
+          <div className="min-h-[32px] flex items-end gap-1">
+            <label className="flex items-center gap-1.5 min-w-0 text-xs text-gray-400 cursor-pointer">
+              <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" />
+              <WLabel text={t("sensorNominalAccuracy")} tooltip={t("tips.sensorNominalAccuracy")} docsHref={STAT_DOCS_LINKS.uncertainty_box_units} className="max-w-24" />
+            </label>
+            {includeSensorNominalUncertainty && sensorNominalDefault != null && (
+              <button
+                type="button"
+                onClick={handleSensorNominalRefresh}
+                title={t("refreshSensorNominalFromDatasheet")}
+                className="text-gray-400 hover:text-og-text transition-colors shrink-0"
+              >
+                <RestoreIcon size={11} />
+              </button>
+            )}
+          </div>
+          {includeSensorNominalUncertainty && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <NumberInput
+                  value={sensorNominalUncertaintyManual}
+                  onChange={onSensorNominalUncertaintyManualChange}
+                  min={0}
+                  placeholder={t("fromDatasheet")}
+                  className="w-20"
+                />
+                <span className="text-xs text-gray-400">{sensorNominalUncertaintyUnit}</span>
+              </div>
+              {(() => {
+                const contribution = result?.uncertainty_budget.find((c) => c.source === "sensor_nominal_accuracy");
+                return contribution ? (
+                  <span className="text-[10px] text-gray-400">{t("usedInBudget", { value: `${fmtN(contribution.standard_uncertainty)} ${referenceUnit}` })}</span>
+                ) : null;
+              })()}
+            </>
+          )}
+        </div>
+        {/* Reference standard uncertainty (Type B) — off by default:
+            excluded entirely, no box shown (even when a reference asset
+            would auto-fetch a value). On: the auto-fetched certificate
+            value when available, else a manual box (unit fixed to
+            referenceUnit, shown as plain text next to the box). */}
+        <div className="flex flex-col gap-1 w-56">
+          <div className="min-h-[32px] flex items-end gap-3">
+            <label className="flex items-center gap-1.5 min-w-0 text-xs text-gray-400 cursor-pointer">
+              <ToggleSwitch checked={includeReferenceStandardManual} onChange={onIncludeReferenceStandardManualChange} size="sm" />
+              <WLabel text={t("refStandardU")} tooltip={t("tips.refStandardUManual")} docsHref={STAT_DOCS_LINKS.uncertainty_box_units} className="max-w-24" />
+            </label>
+            {includeReferenceStandardManual && !referenceStandardAutoLoading && !referenceStandardAuto
+              && referenceStandardManualUncertainty.trim() !== "" && (
+              <WLabel text={t("refStdK")} tooltip={t("tips.refStdK")} docsHref={STAT_DOCS_LINKS.coverage_factor} />
+            )}
+          </div>
+          {includeReferenceStandardManual && (
+            referenceStandardAutoLoading ? (
+              <span className="text-xs text-gray-400 flex items-center gap-1.5">
+                <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+                {t("loadingReferenceStandard")}
+              </span>
+            ) : referenceStandardAuto ? (
+              <span className="text-xs text-gray-400">
+                <span className="font-mono text-og-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
+                {referenceAssetName && <span className="text-gray-400"> {t("lastCalibrationOf", { name: referenceAssetName })}</span>}
+              </span>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <NumberInput
+                      value={referenceStandardManualUncertainty}
+                      onChange={onReferenceStandardManualUncertaintyChange}
+                      min={0}
+                      placeholder={t("fromCert")}
+                      className="w-20"
+                    />
+                    <span className="text-xs text-gray-400">{referenceStandardManualUnit}</span>
+                  </div>
+                  {referenceStandardManualUncertainty.trim() !== "" && (
+                    <NumberInput
+                      value={referenceStandardManualCoverageFactor}
+                      onChange={onReferenceStandardManualCoverageFactorChange}
+                      min={1} max={5} step={0.1}
+                      className="w-14"
+                    />
+                  )}
+                </div>
+                {(() => {
+                  const contribution = result?.uncertainty_budget.find((c) => c.source === "reference_standard");
+                  return contribution ? (
+                    <span className="text-[10px] text-gray-400">{t("usedInBudget", { value: `${fmtN(contribution.standard_uncertainty)} ${referenceUnit}` })}</span>
+                  ) : null;
+                })()}
+              </>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The "Conformity assessment" panel (decision rule + Error/Uncertainty/
+// Tolerance boxes + CONFORMS badge) — used for the single-dataset case.
+// As-Found/As-Left uses a decomposed pair instead (ConformityCriteriaSelector
+// shared above both sides + a per-side ConformityCriteriaReadout below,
+// since only the decision rule/tolerance *settings* are shared there — the
+// actual Error/Uncertainty numbers differ per side).
+function ConformityAssessmentPanel({
+  result, referenceUnit, selectedChannel, decisionRule, onDecisionRuleChange,
+  toleranceOverrideValue, onToleranceOverrideValueChange, includeSensorNominalUncertainty,
+}: {
+  result: AnalyzeResponse | null;
+  referenceUnit: string;
+  selectedChannel: SensorChannelFull | undefined;
+  decisionRule: DecisionRule;
+  onDecisionRuleChange: (v: DecisionRule) => void;
+  toleranceOverrideValue: string;
+  onToleranceOverrideValueChange: (v: string) => void;
+  // Tolerance mirrors Sensor nominal accuracy (and locks) while that switch
+  // is on — see the calling scope's own sync effect, which is what actually
+  // keeps toleranceOverrideValue in sync; this panel only reflects the
+  // locked *display* state.
+  includeSensorNominalUncertainty: boolean;
+}) {
+  const t = useTranslations("assets.wizard");
+  const tDecisionRule = useTranslations("tokens.decisionRule");
+
+  function handleToleranceRefresh() {
+    const def = channelToleranceDefault(selectedChannel, referenceUnit);
+    if (def != null) onToleranceOverrideValueChange(String(def));
+  }
+  const toleranceDefault = channelToleranceDefault(selectedChannel, referenceUnit);
+
+  return (
+    <div className="flex flex-col gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
+      <p className="text-xs font-semibold text-og-text">{t("conformityAssessmentTitle")}</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex flex-col gap-1 w-56 shrink-0">
+            <WLabel text={t("decisionRuleLabel")} tooltip={t("tips.decisionRuleCert")} docsHref={STAT_DOCS_LINKS.decision_rule} />
+            <select
+              value={decisionRule}
+              onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
+              className={`${IB} ${IB_OK} py-1.5`}
+            >
+              <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
+              <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
+              <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-end gap-1.5">
+              <div className="flex flex-col gap-1">
+                <WLabel text={t("errorValueLabel")} tooltip={t("tips.errorValueBox")} docsHref={STAT_DOCS_LINKS.conformity_boxes} className="max-w-20" />
+                <div className={`${IB} border-og-border-md bg-og-surface text-og-text font-mono text-right w-20 py-1.5`}>
+                  {result ? fmtN(result.max_error) : "–"}
+                </div>
+              </div>
+              <span className="text-xs text-gray-400 pb-2">{referenceUnit}</span>
+              {decisionRule !== "simple_acceptance" && (
+                <>
+                  <span className="text-sm text-gray-400 pb-2 px-0.5">{decisionRule === "guard_band_w_uncertainty" ? "+" : "−"}</span>
+                  <div className="flex flex-col gap-1">
+                    <WLabel text={t("uncertaintyValueLabel")} tooltip={t("tips.uncertaintyValueBox")} docsHref={STAT_DOCS_LINKS.conformity_boxes} className="max-w-20" />
+                    <div className={`${IB} border-og-border-md bg-og-surface text-og-text font-mono text-right w-20 py-1.5`}>
+                      {result?.conformity_statement.expanded_uncertainty_applied != null ? fmtN(result.conformity_statement.expanded_uncertainty_applied) : "–"}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400 pb-2">{referenceUnit}</span>
+                </>
+              )}
+              <span className="text-sm text-gray-400 pb-2 px-0.5">≤</span>
+              <div className="flex flex-col gap-1 w-20">
+                <div className="flex items-center gap-1">
+                  <WLabel text={t("toleranceValueLabel")} tooltip={t("tips.toleranceValueBox")} docsHref={STAT_DOCS_LINKS.conformity_boxes} className="max-w-16" />
+                  {toleranceDefault != null && !includeSensorNominalUncertainty && (
+                    <button
+                      type="button"
+                      onClick={handleToleranceRefresh}
+                      title={t("refreshToleranceFromNominal")}
+                      className="text-gray-400 hover:text-og-text transition-colors shrink-0"
+                    >
+                      <RestoreIcon size={11} />
+                    </button>
+                  )}
+                </div>
+                <NumberInput
+                  value={toleranceOverrideValue}
+                  onChange={onToleranceOverrideValueChange}
+                  min={0}
+                  disabled={includeSensorNominalUncertainty}
+                  title={includeSensorNominalUncertainty ? t("toleranceLockedFromSensorAccuracy") : undefined}
+                />
+              </div>
+              <span className="text-xs text-gray-400 pb-2">{referenceUnit}</span>
+            </div>
+          </div>
+        </div>
+        {result?.conformity_statement.tolerance_value != null && (
+          <span className={`flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ${
+            result.passed
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
+              : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
+          }`}>
+            {result.passed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
+            {result.passed ? t("conforms") : t("doesNotConform")}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// The "conformity criteria" — decision rule + tolerance override — shared
+// across both sides of an As-Found/As-Left pair (same channel/spec either
+// side of a repair): only the *settings* half of a Conformity assessment.
+// Each side's own Error/Uncertainty/Tolerance readout is a separate
+// ConformityCriteriaReadout below, since only those numbers (computed from
+// each side's own AnalyzeResponse) actually differ per side.
+function ConformityCriteriaSelector({
+  decisionRule, onDecisionRuleChange,
+  toleranceOverrideValue, onToleranceOverrideValueChange,
+  toleranceDefault, includeSensorNominalUncertainty, referenceUnit,
+}: {
+  decisionRule: DecisionRule;
+  onDecisionRuleChange: (v: DecisionRule) => void;
+  toleranceOverrideValue: string;
+  onToleranceOverrideValueChange: (v: string) => void;
+  toleranceDefault: number | null;
+  includeSensorNominalUncertainty: boolean;
+  referenceUnit: string;
+}) {
+  const t = useTranslations("assets.wizard");
+  const tDecisionRule = useTranslations("tokens.decisionRule");
+
+  function handleToleranceRefresh() {
+    if (toleranceDefault != null) onToleranceOverrideValueChange(String(toleranceDefault));
+  }
+
+  return (
+    <div className="flex flex-col gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
+      <p className="text-xs font-semibold text-og-text">{t("conformityCriteriaTitle")}</p>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="flex flex-col gap-1 w-56 shrink-0">
+          <WLabel text={t("decisionRuleLabel")} tooltip={t("tips.decisionRuleCert")} docsHref={STAT_DOCS_LINKS.decision_rule} />
+          <select
+            value={decisionRule}
+            onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
+            <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
+            <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 w-20">
+          <div className="flex items-center gap-1">
+            <WLabel text={t("toleranceValueLabel")} tooltip={t("tips.toleranceValueBox")} docsHref={STAT_DOCS_LINKS.conformity_boxes} className="max-w-16" />
+            {toleranceDefault != null && !includeSensorNominalUncertainty && (
+              <button
+                type="button"
+                onClick={handleToleranceRefresh}
+                title={t("refreshToleranceFromNominal")}
+                className="text-gray-400 hover:text-og-text transition-colors shrink-0"
+              >
+                <RestoreIcon size={11} />
+              </button>
+            )}
+          </div>
+          <NumberInput
+            value={toleranceOverrideValue}
+            onChange={onToleranceOverrideValueChange}
+            min={0}
+            disabled={includeSensorNominalUncertainty}
+            title={includeSensorNominalUncertainty ? t("toleranceLockedFromSensorAccuracy") : undefined}
+          />
+          <span className="text-[10px] text-gray-400">{referenceUnit}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The read-only "[error] ± [uncertainty] ≤ [tolerance]" criteria expression
+// plus the CONFORMS/DOES NOT CONFORM badge, computed from one specific
+// AnalyzeResponse — the per-side counterpart to a shared
+// ConformityCriteriaSelector above (decision rule and tolerance come from
+// there; Tolerance is mirrored read-only here purely so the full expression
+// reads at a glance alongside that side's own Error/Uncertainty numbers).
+function ConformityCriteriaReadout({
+  result, referenceUnit, decisionRule,
+}: {
+  result: AnalyzeResponse | null;
+  referenceUnit: string;
+  decisionRule: DecisionRule;
+}) {
+  const t = useTranslations("assets.wizard");
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-og-surface-alt rounded-xl border border-og-border">
+      <div className="flex flex-wrap items-end gap-1.5">
+        <div className="flex flex-col gap-1">
+          <WLabel text={t("errorValueLabel")} tooltip={t("tips.errorValueBox")} docsHref={STAT_DOCS_LINKS.conformity_boxes} className="max-w-20" />
+          <div className={`${IB} border-og-border-md bg-og-surface text-og-text font-mono text-right w-20 py-1.5`}>
+            {result ? fmtN(result.max_error) : "–"}
+          </div>
+        </div>
+        <span className="text-xs text-gray-400 pb-2">{referenceUnit}</span>
+        {decisionRule !== "simple_acceptance" && (
+          <>
+            <span className="text-sm text-gray-400 pb-2 px-0.5">{decisionRule === "guard_band_w_uncertainty" ? "+" : "−"}</span>
+            <div className="flex flex-col gap-1">
+              <WLabel text={t("uncertaintyValueLabel")} tooltip={t("tips.uncertaintyValueBox")} docsHref={STAT_DOCS_LINKS.conformity_boxes} className="max-w-20" />
+              <div className={`${IB} border-og-border-md bg-og-surface text-og-text font-mono text-right w-20 py-1.5`}>
+                {result?.conformity_statement.expanded_uncertainty_applied != null ? fmtN(result.conformity_statement.expanded_uncertainty_applied) : "–"}
+              </div>
+            </div>
+            <span className="text-xs text-gray-400 pb-2">{referenceUnit}</span>
+          </>
+        )}
+        <span className="text-sm text-gray-400 pb-2 px-0.5">≤</span>
+        <div className="flex flex-col gap-1">
+          <WLabel text={t("toleranceValueLabel")} tooltip={t("tips.toleranceValueBox")} docsHref={STAT_DOCS_LINKS.conformity_boxes} className="max-w-16" />
+          <div className={`${IB} border-og-border-md bg-og-surface text-og-text font-mono text-right w-20 py-1.5`}>
+            {result?.conformity_statement.tolerance_value != null ? fmtN(result.conformity_statement.tolerance_value) : "–"}
+          </div>
+        </div>
+        <span className="text-xs text-gray-400 pb-2">{referenceUnit}</span>
+      </div>
+      {result?.conformity_statement.tolerance_value != null && (
+        <span className={`flex items-center gap-1 px-2 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ${
+          result.passed
+            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
+            : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
+        }`}>
+          {result.passed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
+          {result.passed ? t("conforms") : t("doesNotConform")}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// The "Statistics" panel (valid range, R²/RMSE/max error/repeatability/
+// hysteresis, uncertainty budget rows, combined/expanded uncertainty) —
+// extracted so it can render independently per side of an As-Found/As-Left
+// pair as well as once for the single-dataset case. Deliberately excludes
+// the chart/table toggle next to it in Step3 — that stays Step3-specific
+// (the curve overlay only makes sense for a single dataset at a time).
+function StatisticsPanel({
+  result, referenceUnit, measuredUnit, secondColumnLabel, isModelDirect, isRawData, className,
+}: {
+  result: AnalyzeResponse;
+  referenceUnit: string;
+  measuredUnit: string;
+  secondColumnLabel: string;
+  isModelDirect: boolean;
+  isRawData: boolean;
+  className?: string;
+}) {
+  const t = useTranslations("assets.wizard");
+  const tUncertaintySource = useTranslations("tokens.uncertaintySource");
+  return (
+    <div className={`rounded-xl border border-og-border p-4 bg-og-surface-alt ${className ?? ""}`}>
+      <p className="text-xs font-semibold text-og-text mb-2">{t("calibration")}</p>
+      <StatRow
+        label={`${t("validRange")} (${secondColumnLabel})`}
+        value={`${fmtN(Math.min(...result.points.map((p) => p.measured_value)))} ${t("to")} ${fmtN(Math.max(...result.points.map((p) => p.measured_value)))} ${measuredUnit}`}
+        tip={t("tips.validRange")}
+      />
+      <StatRow
+        label={`${t("validRange")} (${t("reference")})`}
+        value={`${fmtN(result.valid_range_min)} ${t("to")} ${fmtN(result.valid_range_max)} ${referenceUnit}`}
+        tip={t("tips.validRange")}
+      />
+      {/* model_direct's "residuals" are two synthetic zero-error corner
+          points — a trivial artifact (1.0, 0, 0, 0%…), not real statistics.
+          Lookup Table has the same problem but is excluded entirely by the
+          caller, before reaching this panel. Only reference_vs_indicated
+          (real, fit-free residuals) and raw_data's Polynomial Fit/Custom
+          Formula methods (real, fitted residuals) show them. */}
+      {!isModelDirect && (
+        <>
+          <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("statistics")}</p>
+          <StatRow label={t("rSquared")} value={fmtN(result.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
+          <StatRow label={t("rmse")} value={`${fmtN(result.rmse)} ${referenceUnit}`} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
+          <StatRow label={t("maxError")} value={`${fmtN(result.max_error)} ${referenceUnit}`} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
+          <StatRow label={t("fsError")} value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
+          {isRawData && (
+            <StatRow label={t("nonLinearity")} value={`${fmtN(result.non_linearity_pct, 3)}%`} tip={t("tips.nonLinearity")} docsHref={STAT_DOCS_LINKS.non_linearity} />
+          )}
+          {result.repeatability != null && (
+            <StatRow label={t("repeatability")} value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
+          )}
+          {result.hysteresis != null && (
+            <StatRow label={t("hysteresis")} value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
+          )}
+        </>
+      )}
+      <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("uncertaintyBudget")}</p>
+      {result.uncertainty_budget.map((c) => (
+        <StatRow
+          key={c.source}
+          label={translateDynamic(tUncertaintySource, c.source)}
+          value={`${fmtN(c.standard_uncertainty)} ${referenceUnit}`}
+          tip={t("tips.uncertaintyBudgetRow", { description: c.description, distribution: c.distribution, divisor: fmtN(c.divisor, 3) })}
+          docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
+        />
+      ))}
+      <StatRow
+        label={t("combinedRss")}
+        value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`}
+        tip={t("tips.combinedRss")}
+        docsHref={STAT_DOCS_LINKS.combined_uncertainty}
+      />
+      <StatRow
+        label={t("expanded")}
+        value={`${fmtN(roundToSigFigs(result.expanded_uncertainty, 2))} ${referenceUnit}`}
+        tip={
+          (result.effective_degrees_of_freedom != null
+            ? t("tips.expandedWithDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level, dof: fmtN(result.effective_degrees_of_freedom, 1) })
+            : t("tips.expandedNoDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level }))
+          + " " + t("tips.expandedRoundedCert")
+        }
+        docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
+      />
+    </div>
+  );
+}
+
 function Step3({
   analyzeParams, onAnalyzeParamsChange, result, analyzing, analyzeError,
   referenceUnit, measuredUnit, hoveredPointIdx, onHoverPoint, dataEntryMode, manualCoeff,
+  selectedChannel,
   includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange,
   sensorNominalUncertaintyManual, onSensorNominalUncertaintyManualChange,
+  sensorNominalUncertaintyUnit,
   decisionRule, onDecisionRuleChange,
+  toleranceOverrideValue, onToleranceOverrideValueChange,
+  includeReferenceStandardManual, onIncludeReferenceStandardManualChange,
   referenceStandardAuto, referenceStandardAutoLoading, referenceAssetName,
   referenceStandardManualUncertainty, onReferenceStandardManualUncertaintyChange,
+  referenceStandardManualUnit,
   referenceStandardManualCoverageFactor, onReferenceStandardManualCoverageFactorChange,
+  curveFitMethod, onCurveFitMethodChange,
+  rawCustomFormulaTemplate, onRawCustomFormulaTemplateChange,
+  rawCustomFormulaError, onRawCustomFormulaErrorChange,
 }: {
   state: Step1State;
   analyzeParams: AnalyzeParams;
@@ -2693,29 +3960,53 @@ function Step3({
   onHoverPoint: (i: number | null) => void;
   dataEntryMode: DataEntryMode;
   manualCoeff: ManualCoeffState;
+  selectedChannel: SensorChannelFull | undefined;
   includeSensorNominalUncertainty: boolean;
   onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
   sensorNominalUncertaintyManual: string;
   onSensorNominalUncertaintyManualChange: (v: string) => void;
+  sensorNominalUncertaintyUnit: string;
   decisionRule: DecisionRule;
   onDecisionRuleChange: (v: DecisionRule) => void;
+  toleranceOverrideValue: string;
+  onToleranceOverrideValueChange: (v: string) => void;
+  includeReferenceStandardManual: boolean;
+  onIncludeReferenceStandardManualChange: (v: boolean) => void;
   referenceStandardAuto: { expandedUncertainty: number; coverageFactor: number } | null;
   referenceStandardAutoLoading: boolean;
   referenceAssetName: string | null;
   referenceStandardManualUncertainty: string;
   onReferenceStandardManualUncertaintyChange: (v: string) => void;
+  referenceStandardManualUnit: string;
   referenceStandardManualCoverageFactor: string;
   onReferenceStandardManualCoverageFactorChange: (v: string) => void;
+  curveFitMethod: CalibrationMethod;
+  onCurveFitMethodChange: (m: CalibrationMethod) => void;
+  rawCustomFormulaTemplate: string;
+  onRawCustomFormulaTemplateChange: (v: string) => void;
+  rawCustomFormulaError: string | null;
+  onRawCustomFormulaErrorChange: (e: string | null) => void;
 }) {
   const t = useTranslations("assets.wizard");
-  const tUncertaintySource = useTranslations("tokens.uncertaintySource");
-  const tDecisionRule = useTranslations("tokens.decisionRule");
   const [rightView, setRightView] = useState<"chart" | "table">("chart");
   const plotDivRef = useRef<HTMLDivElement>(null);
   const plotlyRef = useRef<typeof import("plotly.js-dist-min").default | null>(null);
 
-  const setParam = <K extends keyof AnalyzeParams>(key: K) => (value: AnalyzeParams[K]) =>
-    onAnalyzeParamsChange({ ...analyzeParams, [key]: value });
+  const isRawData = dataEntryMode === "raw_data";
+  const isModelDirect = dataEntryMode === "model_direct";
+  const isRefVsIndicated = dataEntryMode === "reference_vs_indicated";
+  // Reference vs Indicated compares against what the instrument's own
+  // display shows — a physical-quantity reading, not the raw measured
+  // signal — so its second column reads "Indicated" everywhere, not
+  // "Measured" (table header, chart axis/tooltip, valid-range label).
+  const secondColumnLabel = isRefVsIndicated ? t("indicatedValue") : t("measured");
+  // Only raw_data ever fits a curve — model_direct's "residuals" are the two
+  // synthetic zero-error corner points (see the model_direct useEffect), and
+  // reference_vs_indicated has no transference function at all.
+  const showCurveChart = isRawData;
+  // model_direct has no real points to plot/tabulate at all.
+  const showChartPanel = !isModelDirect;
+  const isLookupTable = isRawData && curveFitMethod === "lookup_table";
 
   useEffect(() => {
     if (!result) return;
@@ -2736,9 +4027,18 @@ function Step3({
       idx: p.point_index,
     }));
 
+    // Lookup Table has no coefficients/formula — the model *is* the
+    // calibration's own points, linearly interpolated (evaluateModel's
+    // "lookup_table" branch); Custom Formula reads the resolved (fitted)
+    // formula the server already returned.
+    const modelType: ModelType =
+      curveFitMethod === "lookup_table" ? "lookup_table"
+      : curveFitMethod === "custom_formula" ? "custom_formula"
+      : "polynomial";
+    const lookupPoints = result.points.map((p) => ({ x: p.measured_value, y: p.reference_value }));
     const curve = Array.from({ length: 81 }, (_, i) => {
       const x = mn + (i * (mx - mn)) / 80;
-      return { x, y: evalPoly(result.coefficients, x) };
+      return { x, y: evaluateModel(modelType, result.coefficients, result.resolved_custom_formula ?? null, x, lookupPoints) };
     });
 
     import("plotly.js-dist-min").then((mod) => {
@@ -2769,7 +4069,7 @@ function Step3({
           customdata: scatter.map((d) => [d.idx + 1, d.residual] as [number, number]),
           hovertemplate:
             `<b>${t("hoverPoint")} %{customdata[0]}</b><br>` +
-            `${t("measured")}: %{x:.4g} ${measuredUnit}<br>` +
+            `${secondColumnLabel}: %{x:.4g} ${measuredUnit}<br>` +
             `${t("reference")}: %{y:.4g} ${referenceUnit}<br>` +
             `${t("residual")}: %{customdata[1]:.4g} ${referenceUnit}` +
             `<extra></extra>`,
@@ -2782,7 +4082,7 @@ function Step3({
         paper_bgcolor: "transparent",
         plot_bgcolor: "transparent",
         xaxis: {
-          title: { text: `${t("measured")} (${measuredUnit})`, font: { size: 10, color: "#9ca3af" } },
+          title: { text: `${secondColumnLabel} (${measuredUnit})`, font: { size: 10, color: "#9ca3af" } },
           tickfont: { size: 10, color: "#9ca3af" },
           gridcolor: "rgba(156,163,175,0.15)",
           linecolor: "rgba(156,163,175,0.3)",
@@ -2817,7 +4117,7 @@ function Step3({
     return () => {
       mounted = false;
     };
-  }, [result, measuredUnit, referenceUnit, rightView]);
+  }, [result, measuredUnit, referenceUnit, rightView, curveFitMethod, secondColumnLabel]);
 
   useEffect(() => {
     const div = plotDivRef.current;
@@ -2828,166 +4128,105 @@ function Step3({
     };
   }, []);
 
-  const isRawData = dataEntryMode === "raw_data";
-  const isModelDirect = dataEntryMode === "model_direct";
-  // Only raw_data ever fits a curve — model_direct's "residuals" are the two
-  // synthetic zero-error corner points (see the model_direct useEffect), and
-  // reference_vs_indicated has no transference function at all.
-  const showCurveChart = isRawData;
-  // model_direct has no real points to plot/tabulate at all.
-  const showChartPanel = !isModelDirect;
-
   return (
     <div className="p-5 space-y-4">
-      {/* Controls row */}
-      <div className="flex flex-wrap gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
+      {/* Controls — split by function: Method (how raw data becomes a
+          model), Uncertainty calculation (Type B budget inputs), Conformity
+          assessment (decision rule + the numbers it's evaluated against). */}
+      <div className="flex flex-col gap-3">
         {isRawData && (
-        <div className="flex flex-col gap-1 min-w-[120px]">
-          <WLabel text={t("regressionDegree")} />
-          <select
-            value={analyzeParams.poly_degree === null ? "auto" : String(analyzeParams.poly_degree)}
-            onChange={(e) => setParam("poly_degree")(e.target.value === "auto" ? null : parseInt(e.target.value))}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="auto">{t("auto")}</option>
-            {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-        )}
-        <div className="flex flex-col gap-1 min-w-[130px]">
-          <WLabel text={t("distribution")} />
-          <select
-            value={analyzeParams.distribution_type}
-            onChange={(e) => setParam("distribution_type")(e.target.value as DistributionType)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="normal">{t("distributionNormal")}</option>
-            <option value="t">{t("distributionT")}</option>
-            <option value="chi_squared">{t("distributionChiSquared")}</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1 w-24">
-          <WLabel text={t("confidencePercent")} />
-          <input
-            type="number"
-            value={analyzeParams.confidence_level}
-            onChange={(e) => setParam("confidence_level")(parseFloat(e.target.value) || 95)}
-            min={50} max={99.99} step={0.5}
-            className={`${IB} ${IB_OK} py-1.5`}
+          <CalibrationMethodPanel
+            curveFitMethod={curveFitMethod}
+            onCurveFitMethodChange={onCurveFitMethodChange}
+            analyzeParams={analyzeParams}
+            onAnalyzeParamsChange={onAnalyzeParamsChange}
+            customFormulaTemplate={rawCustomFormulaTemplate}
+            onCustomFormulaTemplateChange={onRawCustomFormulaTemplateChange}
+            customFormulaError={rawCustomFormulaError}
+            onCustomFormulaErrorChange={onRawCustomFormulaErrorChange}
           />
-        </div>
-        <div className="flex flex-col gap-1 min-w-[170px]">
-          <WLabel text={t("decisionRuleLabel")} />
-          <select
-            value={decisionRule}
-            onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
-            <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
-            <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
-          </select>
-        </div>
-        {/* Sensor nominal accuracy (Type B) — pre-filled from the channel's
-            manufacturer spec but editable per calibration; the uncertainty
-            actually used belongs to this calibration event, not the channel. */}
-        <div className="flex flex-col gap-1 w-36">
-          <WLabel text={t("sensorNominalAccuracy")} />
-          <input
-            type="number"
-            value={sensorNominalUncertaintyManual}
-            onChange={(e) => onSensorNominalUncertaintyManualChange(e.target.value)}
-            min={0} step="any"
-            placeholder={t("fromDatasheet")}
-            className={`${IB} ${IB_OK} py-1.5`}
+        )}
+
+        {/* Hidden for Lookup Table: an exact interpolant's own results panel
+            doesn't show uncertainty/statistics either (see the results
+            section below), so there's nothing for these inputs to feed
+            visibly. */}
+        {!isLookupTable && (
+          <UncertaintyCalculationPanel
+            analyzeParams={analyzeParams}
+            onAnalyzeParamsChange={onAnalyzeParamsChange}
+            result={result}
+            referenceUnit={referenceUnit}
+            selectedChannel={selectedChannel}
+            includeSensorNominalUncertainty={includeSensorNominalUncertainty}
+            onIncludeSensorNominalUncertaintyChange={onIncludeSensorNominalUncertaintyChange}
+            sensorNominalUncertaintyManual={sensorNominalUncertaintyManual}
+            onSensorNominalUncertaintyManualChange={onSensorNominalUncertaintyManualChange}
+            sensorNominalUncertaintyUnit={sensorNominalUncertaintyUnit}
+            includeReferenceStandardManual={includeReferenceStandardManual}
+            onIncludeReferenceStandardManualChange={onIncludeReferenceStandardManualChange}
+            referenceStandardAuto={referenceStandardAuto}
+            referenceStandardAutoLoading={referenceStandardAutoLoading}
+            referenceAssetName={referenceAssetName}
+            referenceStandardManualUncertainty={referenceStandardManualUncertainty}
+            onReferenceStandardManualUncertaintyChange={onReferenceStandardManualUncertaintyChange}
+            referenceStandardManualUnit={referenceStandardManualUnit}
+            referenceStandardManualCoverageFactor={referenceStandardManualCoverageFactor}
+            onReferenceStandardManualCoverageFactorChange={onReferenceStandardManualCoverageFactorChange}
           />
-        </div>
-        {sensorNominalUncertaintyManual.trim() !== "" && !isNaN(parseFloat(sensorNominalUncertaintyManual)) && (
-          <div className="flex flex-col gap-1 justify-end pb-1.5">
-            <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
-              <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" />
-              {t("includeInBudget")}
-            </label>
-          </div>
         )}
-        {/* Reference standard uncertainty (Type B) — auto-fetched from the
-            selected reference asset's last calibration when available;
-            otherwise a manual fallback for external reference standards. */}
-        {referenceStandardAutoLoading ? (
-          <div className="flex flex-col gap-1 justify-end pb-1.5">
-            <span className="text-xs text-gray-400 flex items-center gap-1.5">
-              <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-              {t("loadingReferenceStandard")}
-            </span>
-          </div>
-        ) : referenceStandardAuto ? (
-          <div className="flex flex-col gap-1 justify-end pb-1.5">
-            <span className="text-xs text-gray-400">
-              {t("refStandardU")}: <span className="font-mono text-og-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
-              {referenceAssetName && <span className="text-gray-400"> {t("lastCalibrationOf", { name: referenceAssetName })}</span>}
-            </span>
-          </div>
-        ) : (
-          <>
-            <div className="flex flex-col gap-1 w-36">
-              <WLabel text={t("refStandardUManual")} />
-              <input
-                type="number"
-                value={referenceStandardManualUncertainty}
-                onChange={(e) => onReferenceStandardManualUncertaintyChange(e.target.value)}
-                min={0} step="any"
-                placeholder={t("fromCert")}
-                className={`${IB} ${IB_OK} py-1.5`}
-              />
-            </div>
-            {referenceStandardManualUncertainty.trim() !== "" && (
-              <div className="flex flex-col gap-1 w-20">
-                <WLabel text={t("refStdK")} />
-                <input
-                  type="number"
-                  value={referenceStandardManualCoverageFactor}
-                  onChange={(e) => onReferenceStandardManualCoverageFactorChange(e.target.value)}
-                  min={1} max={5} step={0.1}
-                  className={`${IB} ${IB_OK} py-1.5`}
-                />
-              </div>
-            )}
-          </>
+
+        {/* Not shown for Lookup Table: the entered points are exact by
+            construction, so comparing them to a spec is trivially always
+            true and not a meaningful conformity check (see the Linearity
+            deviation chart below instead). */}
+        {!isLookupTable && (
+          <ConformityAssessmentPanel
+            result={result}
+            referenceUnit={referenceUnit}
+            selectedChannel={selectedChannel}
+            decisionRule={decisionRule}
+            onDecisionRuleChange={onDecisionRuleChange}
+            toleranceOverrideValue={toleranceOverrideValue}
+            onToleranceOverrideValueChange={onToleranceOverrideValueChange}
+            includeSensorNominalUncertainty={includeSensorNominalUncertainty}
+          />
         )}
+
         {analyzing && (
-          <div className="ml-auto flex items-end">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-              {t("analyzing")}
-            </div>
+          <div className="flex items-center gap-2 text-xs text-gray-400 pt-2">
+            <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+            {t("analyzing")}
           </div>
         )}
       </div>
 
-      {/* Equation display — raw_data shows the fitted curve; model_direct
-          shows the declared model (formula-aware); reference_vs_indicated
-          has no transference function, so no equation at all. */}
-      {result && !analyzing && isRawData && (
-        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
-          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
-          <span className="text-xs font-mono text-og-text">
-            {formatEquation(result.coefficients, result.poly_degree ?? 0)}
-          </span>
-          <span className="text-[11px] text-gray-400 ml-2">
-            ({measuredUnit} → {referenceUnit})
-          </span>
-        </div>
+      {/* Model display — raw_data's Polynomial Fit/Custom Formula methods
+          show the fitted model, model_direct shows the declared model
+          (formula-aware); reference_vs_indicated has no transference
+          function, and Lookup Table has no model at all (the points
+          themselves are the model — no panel needed). */}
+      {result && !analyzing && isRawData && !isLookupTable && (
+        <ModelPanel
+          isPolynomial={curveFitMethod === "polynomial_fit"}
+          degree={result.poly_degree ?? 0}
+          coefficients={result.coefficients}
+          formulaTemplate={curveFitMethod === "custom_formula" ? rawCustomFormulaTemplate : null}
+          formulaParamValues={result.custom_formula_parameter_values ?? null}
+        />
       )}
       {result && !analyzing && isModelDirect && (
-        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
-          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
-          <span className="text-xs font-mono text-og-text">
-            {manualCoeff.model_type === "custom_formula"
-              ? `f(x) = ${manualCoeff.custom_formula}`
-              : formatEquation(manualCoeff.coefficients.map((c) => parseFloat(c)), manualCoeff.poly_order)}
-          </span>
-          {referenceUnit && <span className="text-[11px] text-gray-400 ml-2">({referenceUnit})</span>}
-        </div>
+        <ModelPanel
+          isPolynomial={manualCoeff.model_type === "polynomial"}
+          degree={manualCoeff.poly_order}
+          coefficients={manualCoeff.coefficients.map((c) => parseFloat(c))}
+          formulaTemplate={manualCoeff.model_type === "custom_formula" ? manualCoeff.custom_formula_template : null}
+          formulaParamValues={
+            manualCoeff.model_type === "custom_formula"
+              ? Object.fromEntries(Object.entries(manualCoeff.custom_formula_params).map(([k, v]) => [k, parseFloat(v)]))
+              : null
+          }
+        />
       )}
 
       {analyzeError && (
@@ -2997,87 +4236,75 @@ function Step3({
         </div>
       )}
 
-      {result && !analyzing && (
+      {/* Lookup Table: the fit-statistics/uncertainty-budget/conformity panel
+          isn't shown here — an exact interpolant's residuals are ~0 by
+          construction, so there's nothing informative in it (the same
+          numbers are still on the certificate, see the Uncertainty
+          calculation panel above). Instead show the calibration's own
+          points (the model itself) alongside the interpolated curve. */}
+      {result && !analyzing && isLookupTable && (
+        <div className="flex gap-4 min-h-0">
+          <div className="w-[40%] shrink-0 rounded-xl border border-og-border overflow-hidden" style={{ maxHeight: 440, overflowY: "auto" }}>
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-og-border bg-og-surface-alt">
+                  {[
+                    "#",
+                    `${t("measured")} (${measuredUnit})`,
+                    `${t("reference")} (${referenceUnit})`,
+                  ].map((h) => (
+                    <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {result.points.map((pt) => (
+                  <tr
+                    key={pt.point_index}
+                    onMouseEnter={() => onHoverPoint(pt.point_index)}
+                    onMouseLeave={() => onHoverPoint(null)}
+                    className={`border-b border-og-border last:border-b-0 cursor-default transition-colors ${
+                      hoveredPointIdx === pt.point_index ? "bg-og-accent/10" : "hover:bg-og-surface-alt/50"
+                    }`}
+                  >
+                    <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
+                    <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.measured_value)}</td>
+                    <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.reference_value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col gap-3" style={{ minHeight: 440 }}>
+            <div className="flex-1 min-h-0 rounded-xl border border-og-border bg-og-surface relative overflow-hidden">
+              <div ref={plotDivRef} style={{ height: "100%", width: "100%" }} />
+            </div>
+            <LinearityDeviationChart
+              className="flex-1 min-h-0"
+              points={computeLinearityDeviation(result.points.map((p) => ({ x: p.measured_value, y: p.reference_value })))}
+              markerPoints={computeLinearityDeviationAtPoints(result.points.map((p) => ({ x: p.measured_value, y: p.reference_value })))}
+              measuredUnit={measuredUnit}
+              referenceUnit={referenceUnit}
+              measuredLabel={t("measured")}
+              deviationLabel={t("linearityDeviation")}
+              deviationPercentLabel={t("linearityDeviationPercent")}
+            />
+          </div>
+        </div>
+      )}
+
+      {result && !analyzing && !isLookupTable && (
         <div className="flex gap-4 min-h-0">
           {/* Left: stats + uncertainty (40%, full width when there's no chart panel) */}
-          <div className={`${showChartPanel ? "w-[40%] shrink-0" : "w-full max-w-xl"} rounded-xl border border-og-border p-4 bg-og-surface-alt`}>
-            <p className="text-xs font-semibold text-og-text mb-2">{t("calibration")}</p>
-            <StatRow label={t("validRange")} value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
-            {isRawData && <StatRow label={t("polynomialDegree")} value={String(result.poly_degree)} />}
-            {/* model_direct's "residuals" are two synthetic zero-error corner
-                points — r²/RMSE/max error/%FS/repeatability/hysteresis would
-                all be trivial artifacts of that (1.0, 0, 0, 0%…), not real
-                statistics, so only reference_vs_indicated (real, fit-free
-                residuals) and raw_data (real, fitted residuals) show them. */}
-            {!isModelDirect && (
-              <>
-                <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("statistics")}</p>
-                <StatRow label={t("rSquared")} value={fmtN(result.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
-                <StatRow label={t("rmse")} value={`${fmtN(result.rmse)} ${referenceUnit}`} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
-                <StatRow label={t("maxError")} value={`${fmtN(result.max_error)} ${referenceUnit}`} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
-                <StatRow label={t("fsError")} value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
-                {isRawData && (
-                  <StatRow label={t("nonLinearity")} value={`${fmtN(result.non_linearity_pct, 3)}%`} tip={t("tips.nonLinearity")} docsHref={STAT_DOCS_LINKS.non_linearity} />
-                )}
-                {result.repeatability != null && (
-                  <StatRow label={t("repeatability")} value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
-                )}
-                {result.hysteresis != null && (
-                  <StatRow label={t("hysteresis")} value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
-                )}
-              </>
-            )}
-            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("uncertaintyBudget")}</p>
-            {result.uncertainty_budget.map((c) => (
-              <StatRow
-                key={c.source}
-                label={translateDynamic(tUncertaintySource, c.source)}
-                value={`${fmtN(c.standard_uncertainty)} ${referenceUnit}`}
-                tip={t("tips.uncertaintyBudgetRow", { description: c.description, distribution: c.distribution, divisor: fmtN(c.divisor, 3) })}
-                docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
-              />
-            ))}
-            <StatRow
-              label={t("combinedRss")}
-              value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`}
-              tip={t("tips.combinedRss")}
-              docsHref={STAT_DOCS_LINKS.combined_uncertainty}
-            />
-            <StatRow
-              label={t("expanded")}
-              value={`${fmtN(roundToSigFigs(result.expanded_uncertainty, 2))} ${referenceUnit}`}
-              tip={
-                (result.effective_degrees_of_freedom != null
-                  ? t("tips.expandedWithDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level, dof: fmtN(result.effective_degrees_of_freedom, 1) })
-                  : t("tips.expandedNoDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level }))
-                + " " + t("tips.expandedRoundedCert")
-              }
-              docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
-            />
-            {result.conformity_statement.specification && (
-              <>
-                <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("conformity")}</p>
-                <div className="flex items-center justify-between gap-2 py-1">
-                  <span className="text-xs text-gray-400">{t("statement")}</span>
-                  <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
-                    result.passed
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
-                      : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
-                  }`}>
-                    {result.passed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
-                    {result.passed ? t("conforms") : t("doesNotConform")}
-                  </span>
-                </div>
-                <StatRow label={t("specification")} value={result.conformity_statement.specification} />
-                <StatRow
-                  label={t("decisionRuleLabel")}
-                  value={translateDynamic(tDecisionRule, result.conformity_statement.decision_rule)}
-                  tip={t("tips.decisionRuleCert")}
-                  docsHref={STAT_DOCS_LINKS.decision_rule}
-                />
-              </>
-            )}
-          </div>
+          <StatisticsPanel
+            className={showChartPanel ? "w-[40%] shrink-0" : "w-full max-w-xl"}
+            result={result}
+            referenceUnit={referenceUnit}
+            measuredUnit={measuredUnit}
+            secondColumnLabel={secondColumnLabel}
+            isModelDirect={isModelDirect}
+            isRawData={isRawData}
+          />
 
           {/* Right: chart / table toggle (60%) — no real points for
               model_direct, so this whole panel is skipped for that mode. */}
@@ -3142,9 +4369,14 @@ function Step3({
                     <tr className="border-b border-og-border bg-og-surface-alt">
                       {[
                         "#",
-                        `${t("measured")} (${measuredUnit})`,
+                        `${secondColumnLabel} (${measuredUnit})`,
                         `${t("reference")} (${referenceUnit})`,
-                        `${t("fitted")} (${referenceUnit})`,
+                        // skip_fit makes calculated_value === measured_value —
+                        // a "Fitted" column would just duplicate the Indicated
+                        // column under a different unit label, so it's omitted
+                        // entirely for this mode rather than showing a
+                        // meaningless exact copy.
+                        ...(isRefVsIndicated ? [] : [`${t("fitted")} (${referenceUnit})`]),
                         `${t("residual")} (${referenceUnit})`,
                         t("residualPercent"),
                       ].map((h) => (
@@ -3165,7 +4397,9 @@ function Step3({
                         <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
                         <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.measured_value)}</td>
                         <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.reference_value)}</td>
-                        <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.calculated_value)}</td>
+                        {!isRefVsIndicated && (
+                          <td className="px-3 py-1.5 font-mono text-og-text">{fmtN(pt.calculated_value)}</td>
+                        )}
                         <td className={`px-3 py-1.5 font-mono ${Math.abs(pt.residual_abs ?? 0) > (result.rmse * 2) ? "text-amber-400 dark:text-amber-300" : "text-og-text"}`}>
                           {fmtN(pt.residual_abs)}
                         </td>
@@ -3199,114 +4433,72 @@ function Step3({
 // ---------------------------------------------------------------------------
 
 function AsFoundAsLeftResults({
-  asFoundResult, asLeftResult, analyzing, analyzeError, referenceUnit,
+  asFoundResult, asLeftResult, analyzing, analyzeError, referenceUnit, measuredUnit, selectedChannel,
+  isAfalSkipFit,
+  afalCurveFitMethod, onAfalCurveFitMethodChange,
+  afalCustomFormulaTemplate, onAfalCustomFormulaTemplateChange,
+  afalCustomFormulaError, onAfalCustomFormulaErrorChange,
   analyzeParams, onAnalyzeParamsChange,
-  includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange,
-  sensorNominalUncertaintyManual, onSensorNominalUncertaintyManualChange,
-  decisionRule, onDecisionRuleChange,
+  afalUncertainty, onAfalUncertaintyChange,
   referenceStandardAuto, referenceStandardAutoLoading, referenceAssetName,
-  referenceStandardManualUncertainty, onReferenceStandardManualUncertaintyChange,
-  referenceStandardManualCoverageFactor, onReferenceStandardManualCoverageFactorChange,
 }: {
   asFoundResult: AnalyzeResponse | null;
   asLeftResult: AnalyzeResponse | null;
   analyzing: boolean;
   analyzeError: string | null;
   referenceUnit: string;
+  measuredUnit: string;
+  selectedChannel: SensorChannelFull | undefined;
+  isAfalSkipFit: boolean;
+  afalCurveFitMethod: CalibrationMethod;
+  onAfalCurveFitMethodChange: (m: CalibrationMethod) => void;
+  afalCustomFormulaTemplate: string;
+  onAfalCustomFormulaTemplateChange: (v: string) => void;
+  afalCustomFormulaError: string | null;
+  onAfalCustomFormulaErrorChange: (e: string | null) => void;
   analyzeParams: AnalyzeParams;
   onAnalyzeParamsChange: (p: AnalyzeParams) => void;
-  includeSensorNominalUncertainty: boolean;
-  onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
-  sensorNominalUncertaintyManual: string;
-  onSensorNominalUncertaintyManualChange: (v: string) => void;
-  decisionRule: DecisionRule;
-  onDecisionRuleChange: (v: DecisionRule) => void;
+  afalUncertainty: UncertaintyConformityState;
+  onAfalUncertaintyChange: (updater: (s: UncertaintyConformityState) => UncertaintyConformityState) => void;
   referenceStandardAuto: { expandedUncertainty: number; coverageFactor: number } | null;
   referenceStandardAutoLoading: boolean;
   referenceAssetName: string | null;
-  referenceStandardManualUncertainty: string;
-  onReferenceStandardManualUncertaintyChange: (v: string) => void;
-  referenceStandardManualCoverageFactor: string;
-  onReferenceStandardManualCoverageFactorChange: (v: string) => void;
 }) {
   const t = useTranslations("assets.wizard");
-  const tUncertaintySource = useTranslations("tokens.uncertaintySource");
-  const tDecisionRule = useTranslations("tokens.decisionRule");
-  const setParam = <K extends keyof AnalyzeParams>(key: K) => (value: AnalyzeParams[K]) =>
-    onAnalyzeParamsChange({ ...analyzeParams, [key]: value });
+  const secondColumnLabel = isAfalSkipFit ? t("indicatedValue") : t("measured");
+  const toleranceDefault = channelToleranceDefault(selectedChannel, referenceUnit);
 
-  function panel(label: string, result: AnalyzeResponse | null, primary: boolean) {
+  function sideColumn(title: string, result: AnalyzeResponse | null, primary: boolean) {
     return (
-      <div className="flex-1 min-w-0 space-y-3">
+      <div className="space-y-3 min-w-0">
         <p className="text-xs font-semibold text-og-text flex items-center gap-2">
-          {label}
+          {title}
           {!primary && (
             <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-og-surface-alt border border-og-border text-gray-400">
               {t("diagnosticOnly")}
             </span>
           )}
         </p>
+        <ConformityCriteriaReadout result={result} referenceUnit={referenceUnit} decisionRule={afalUncertainty.decisionRule} />
         {result ? (
           <>
-            <div className="rounded-xl border border-og-border p-4 bg-og-surface-alt">
-              <StatRow label={t("validRange")} value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
-              <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("statistics")}</p>
-              <StatRow label={t("rSquared")} value={fmtN(result.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
-              <StatRow label={t("rmse")} value={`${fmtN(result.rmse)} ${referenceUnit}`} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
-              <StatRow label={t("maxError")} value={`${fmtN(result.max_error)} ${referenceUnit}`} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
-              <StatRow label={t("fsError")} value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
-              {result.repeatability != null && (
-                <StatRow label={t("repeatability")} value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
-              )}
-              {result.hysteresis != null && (
-                <StatRow label={t("hysteresis")} value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
-              )}
-              <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("uncertaintyBudget")}</p>
-              {result.uncertainty_budget.map((c) => (
-                <StatRow
-                  key={c.source}
-                  label={translateDynamic(tUncertaintySource, c.source)}
-                  value={`${fmtN(c.standard_uncertainty)} ${referenceUnit}`}
-                  tip={t("tips.uncertaintyBudgetRow", { description: c.description, distribution: c.distribution, divisor: fmtN(c.divisor, 3) })}
-                  docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
-                />
-              ))}
-              <StatRow label={t("combinedRss")} value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`} tip={t("tips.combinedRss")} docsHref={STAT_DOCS_LINKS.combined_uncertainty} />
-              <StatRow
-                label={t("expanded")}
-                value={`${fmtN(roundToSigFigs(result.expanded_uncertainty, 2))} ${referenceUnit}`}
-                tip={
-                  (result.effective_degrees_of_freedom != null
-                    ? t("tips.expandedWithDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level, dof: fmtN(result.effective_degrees_of_freedom, 1) })
-                    : t("tips.expandedNoDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level }))
-                  + " " + t("tips.expandedRoundedCert")
-                }
-                docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
+            {!isAfalSkipFit && (
+              <ModelPanel
+                isPolynomial={afalCurveFitMethod === "polynomial_fit"}
+                degree={result.poly_degree ?? 0}
+                coefficients={result.coefficients}
+                formulaTemplate={afalCurveFitMethod === "custom_formula" ? afalCustomFormulaTemplate : null}
+                formulaParamValues={result.custom_formula_parameter_values ?? null}
               />
-              {result.conformity_statement.specification && (
-                <>
-                  <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("conformity")}</p>
-                  <div className="flex items-center justify-between gap-2 py-1">
-                    <span className="text-xs text-gray-400">{t("statement")}</span>
-                    <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
-                      result.passed
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
-                        : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
-                    }`}>
-                      {result.passed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
-                      {result.passed ? t("conforms") : t("doesNotConform")}
-                    </span>
-                  </div>
-                  <StatRow label={t("specification")} value={result.conformity_statement.specification} />
-                  <StatRow
-                    label={t("decisionRuleLabel")}
-                    value={translateDynamic(tDecisionRule, result.conformity_statement.decision_rule)}
-                    tip={t("tips.decisionRuleCert")}
-                    docsHref={STAT_DOCS_LINKS.decision_rule}
-                  />
-                </>
-              )}
-            </div>
+            )}
+            <StatisticsPanel
+              result={result}
+              referenceUnit={referenceUnit}
+              measuredUnit={measuredUnit}
+              secondColumnLabel={secondColumnLabel}
+              isModelDirect={false}
+              isRawData={!isAfalSkipFit}
+            />
             <ResidualsChart
               className="h-56"
               points={result.points.map((p) => ({
@@ -3331,112 +4523,30 @@ function AsFoundAsLeftResults({
   }
 
   return (
-    <div className="p-5 space-y-4">
-      {/* Controls row — shared Type B budget, same as raw_data's Step3 */}
-      <div className="flex flex-wrap gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
-        <div className="flex flex-col gap-1 min-w-[130px]">
-          <WLabel text={t("distribution")} />
-          <select
-            value={analyzeParams.distribution_type}
-            onChange={(e) => setParam("distribution_type")(e.target.value as DistributionType)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="normal">{t("distributionNormal")}</option>
-            <option value="t">{t("distributionT")}</option>
-            <option value="chi_squared">{t("distributionChiSquared")}</option>
-          </select>
+    <div className="p-5 space-y-5">
+      {/* The curve-fit method is shared across both sides — same physical
+          instrument before/after repair, fit with the same method/degree
+          for a meaningful comparison. Omitted entirely for the skip_fit
+          (Reference vs Indicated) variant, which has no model at all. */}
+      {!isAfalSkipFit && (
+        <CalibrationMethodPanel
+          curveFitMethod={afalCurveFitMethod}
+          onCurveFitMethodChange={onAfalCurveFitMethodChange}
+          analyzeParams={analyzeParams}
+          onAnalyzeParamsChange={onAnalyzeParamsChange}
+          customFormulaTemplate={afalCustomFormulaTemplate}
+          onCustomFormulaTemplateChange={onAfalCustomFormulaTemplateChange}
+          customFormulaError={afalCustomFormulaError}
+          onCustomFormulaErrorChange={onAfalCustomFormulaErrorChange}
+        />
+      )}
+
+      {analyzing && (
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+          {t("analyzing")}
         </div>
-        <div className="flex flex-col gap-1 w-24">
-          <WLabel text={t("confidencePercent")} />
-          <input
-            type="number"
-            value={analyzeParams.confidence_level}
-            onChange={(e) => setParam("confidence_level")(parseFloat(e.target.value) || 95)}
-            min={50} max={99.99} step={0.5}
-            className={`${IB} ${IB_OK} py-1.5`}
-          />
-        </div>
-        <div className="flex flex-col gap-1 min-w-[170px]">
-          <WLabel text={t("decisionRuleLabel")} />
-          <select
-            value={decisionRule}
-            onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
-            <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
-            <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1 w-36">
-          <WLabel text={t("sensorNominalAccuracy")} />
-          <input
-            type="number"
-            value={sensorNominalUncertaintyManual}
-            onChange={(e) => onSensorNominalUncertaintyManualChange(e.target.value)}
-            min={0} step="any"
-            placeholder={t("fromDatasheet")}
-            className={`${IB} ${IB_OK} py-1.5`}
-          />
-        </div>
-        {sensorNominalUncertaintyManual.trim() !== "" && !isNaN(parseFloat(sensorNominalUncertaintyManual)) && (
-          <div className="flex flex-col gap-1 justify-end pb-1.5">
-            <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
-              <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" />
-              {t("includeInBudget")}
-            </label>
-          </div>
-        )}
-        {referenceStandardAutoLoading ? (
-          <div className="flex flex-col gap-1 justify-end pb-1.5">
-            <span className="text-xs text-gray-400 flex items-center gap-1.5">
-              <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-              {t("loadingReferenceStandard")}
-            </span>
-          </div>
-        ) : referenceStandardAuto ? (
-          <div className="flex flex-col gap-1 justify-end pb-1.5">
-            <span className="text-xs text-gray-400">
-              {t("refStandardU")}: <span className="font-mono text-og-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
-              {referenceAssetName && <span className="text-gray-400"> {t("lastCalibrationOf", { name: referenceAssetName })}</span>}
-            </span>
-          </div>
-        ) : (
-          <>
-            <div className="flex flex-col gap-1 w-36">
-              <WLabel text={t("refStandardUManual")} />
-              <input
-                type="number"
-                value={referenceStandardManualUncertainty}
-                onChange={(e) => onReferenceStandardManualUncertaintyChange(e.target.value)}
-                min={0} step="any"
-                placeholder={t("fromCert")}
-                className={`${IB} ${IB_OK} py-1.5`}
-              />
-            </div>
-            {referenceStandardManualUncertainty.trim() !== "" && (
-              <div className="flex flex-col gap-1 w-20">
-                <WLabel text={t("refStdK")} />
-                <input
-                  type="number"
-                  value={referenceStandardManualCoverageFactor}
-                  onChange={(e) => onReferenceStandardManualCoverageFactorChange(e.target.value)}
-                  min={1} max={5} step={0.1}
-                  className={`${IB} ${IB_OK} py-1.5`}
-                />
-              </div>
-            )}
-          </>
-        )}
-        {analyzing && (
-          <div className="ml-auto flex items-end">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-              {t("analyzing")}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {analyzeError && (
         <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-200 dark:border-red-900/30">
@@ -3445,9 +4555,46 @@ function AsFoundAsLeftResults({
         </div>
       )}
 
-      <div className="flex gap-4">
-        {panel(t("asFoundData"), asFoundResult, false)}
-        {panel(t("asLeftData"), asLeftResult, true)}
+      {/* Uncertainty calculation and the conformity criteria (decision rule
+          + tolerance) are shared across both sides — same channel/spec
+          either side of the repair. Only the resulting Error/Uncertainty
+          numbers and statistics differ per side, in the two columns below. */}
+      <UncertaintyCalculationPanel
+        analyzeParams={analyzeParams}
+        onAnalyzeParamsChange={onAnalyzeParamsChange}
+        result={asLeftResult}
+        referenceUnit={referenceUnit}
+        selectedChannel={selectedChannel}
+        includeSensorNominalUncertainty={afalUncertainty.includeSensorNominalUncertainty}
+        onIncludeSensorNominalUncertaintyChange={(v) => onAfalUncertaintyChange((s) => ({ ...s, includeSensorNominalUncertainty: v }))}
+        sensorNominalUncertaintyManual={afalUncertainty.sensorNominalUncertaintyManual}
+        onSensorNominalUncertaintyManualChange={(v) => onAfalUncertaintyChange((s) => ({ ...s, sensorNominalUncertaintyManual: v }))}
+        sensorNominalUncertaintyUnit={afalUncertainty.sensorNominalUncertaintyUnit}
+        includeReferenceStandardManual={afalUncertainty.includeReferenceStandardManual}
+        onIncludeReferenceStandardManualChange={(v) => onAfalUncertaintyChange((s) => ({ ...s, includeReferenceStandardManual: v }))}
+        referenceStandardAuto={referenceStandardAuto}
+        referenceStandardAutoLoading={referenceStandardAutoLoading}
+        referenceAssetName={referenceAssetName}
+        referenceStandardManualUncertainty={afalUncertainty.referenceStandardManualUncertainty}
+        onReferenceStandardManualUncertaintyChange={(v) => onAfalUncertaintyChange((s) => ({ ...s, referenceStandardManualUncertainty: v }))}
+        referenceStandardManualUnit={afalUncertainty.referenceStandardManualUnit}
+        referenceStandardManualCoverageFactor={afalUncertainty.referenceStandardManualCoverageFactor}
+        onReferenceStandardManualCoverageFactorChange={(v) => onAfalUncertaintyChange((s) => ({ ...s, referenceStandardManualCoverageFactor: v }))}
+      />
+
+      <ConformityCriteriaSelector
+        decisionRule={afalUncertainty.decisionRule}
+        onDecisionRuleChange={(v) => onAfalUncertaintyChange((s) => ({ ...s, decisionRule: v }))}
+        toleranceOverrideValue={afalUncertainty.toleranceOverrideValue}
+        onToleranceOverrideValueChange={(v) => onAfalUncertaintyChange((s) => ({ ...s, toleranceOverrideValue: v }))}
+        toleranceDefault={toleranceDefault}
+        includeSensorNominalUncertainty={afalUncertainty.includeSensorNominalUncertainty}
+        referenceUnit={referenceUnit}
+      />
+
+      <div className="grid grid-cols-2 gap-5">
+        {sideColumn(t("asFoundData"), asFoundResult, false)}
+        {sideColumn(t("asLeftData"), asLeftResult, true)}
       </div>
     </div>
   );

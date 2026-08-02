@@ -33,14 +33,24 @@ ALLOWED_FUNCTIONS = {
 }
 
 
-def evaluate_formula(formula: str, x: float) -> float:
+def evaluate_formula(formula: str, x: float, extra_names: dict[str, float] | None = None) -> float:
     """Evaluate `formula` (a single-variable expression in `x`) at one point.
+
+    `extra_names` supplies additional bindings beyond `x` — used only while
+    fitting a "custom formula" *template* that still has free parameters
+    (e.g. evaluating "a*x + b" at trial values of a/b during
+    scipy.optimize.curve_fit; see calibration_analysis.py's
+    calibration_method="custom_formula"). A fully-resolved, stored
+    Calibration.custom_formula never needs this — it's x-only by then.
 
     Raises ValueError for an empty/invalid formula or one that fails to
     evaluate (e.g. a disallowed name, division by zero, domain error).
     """
     if not formula or not formula.strip():
         raise ValueError("Formula must not be empty")
+    names = {"x": x}
+    if extra_names:
+        names.update(extra_names)
     # The documented/user-facing formula syntax (and expr-eval on the
     # frontend) uses `^` for exponentiation, spreadsheet/calculator-style.
     # Python's own grammar gives `^` (bitwise XOR) a much *lower* precedence
@@ -48,7 +58,7 @@ def evaluate_formula(formula: str, x: float) -> float:
     # remapping just the operator's evaluated function isn't enough; the
     # substitution has to happen before ast.parse ever sees it, so Python's
     # own (correct, tight-binding) `**` precedence is what actually applies.
-    evaluator = SimpleEval(functions=ALLOWED_FUNCTIONS, names={"x": x})
+    evaluator = SimpleEval(functions=ALLOWED_FUNCTIONS, names=names)
     try:
         result = evaluator.eval(formula.replace("^", "**"))
     except Exception as e:

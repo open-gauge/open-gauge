@@ -24,9 +24,9 @@ ausdrücklich):
 | Quelle | Typ | Wie sie abgeleitet wird |
 |---|---|---|
 | `fit_residuals` | A | Immer vorhanden. Standardabweichung der Anpassungsresiduen der Kalibrierkurve. Freiheitsgrade = Punkte − Parameter, oder unbekannt, falls das ≤ 0 ist. |
-| `reference_standard` | B | Optional. Die eigene angegebene erweiterte Unsicherheit des Referenznormals, umgerechnet in eine Standardunsicherheit über $u = U/k$ (GUM §4.3.3). Bei internen Kalibrierungen automatisch aus der letzten Kalibrierung der ausgewählten Referenz-Anlage abgerufen; andernfalls manuell eingegeben. |
+| `reference_standard` | B | **Opt-in** — ein Schalter, standardmäßig deaktiviert, der ihn vollständig aus dem Budget ausschließt. Sobald aktiviert: automatisch aus der letzten Kalibrierung der ausgewählten Referenz-Anlage abgerufen, sofern eine verknüpft ist (schreibgeschützt angezeigt), oder andernfalls manuell eingegeben, in der eigenen Referenzeinheit der Kalibrierung — umgerechnet in eine Standardunsicherheit über $u = U/k$ (GUM §4.3.3). Siehe [Ein Unsicherheitsfeld ausfüllen](#uncertainty-box-units) unten. |
 | `resolution` | B | Wird automatisch einbezogen, sobald der Kanal einen Auflösungswert hat. Rechteckverteilung gemäß GUM §4.3.7 — siehe unten. |
-| `sensor_nominal_accuracy` | B | Die vom Hersteller angegebene Unsicherheit des Kanals, umgerechnet über $u = U/k$. Wird aus dem Feld [Unsicherheit (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) des Kanals vorausgefüllt, ist jedoch pro Kalibrierung frei bearbeitbar. **Nur Opt-in** — das standardmäßige Einrechnen birgt die Gefahr einer Doppelzählung gegenüber `fit_residuals`, da beide dieselbe zugrunde liegende Geräteungenauigkeit widerspiegeln können. |
+| `sensor_nominal_accuracy` | B | **Opt-in** — ein Schalter, standardmäßig deaktiviert, der ihn vollständig aus dem Budget ausschließt (und so eine Doppelzählung gegenüber `fit_residuals` vermeidet, da beide dieselbe zugrunde liegende Geräteungenauigkeit widerspiegeln können). Sobald aktiviert: wird aus dem Feld [Unsicherheit (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) des Kanals vorausgefüllt, umgerechnet über $u = U/k$, ist aber pro Kalibrierung frei bearbeitbar — siehe [Ein Unsicherheitsfeld ausfüllen](#uncertainty-box-units) unten. |
 | `external_certificate_stated` | B | Erscheint nur bei [Nur-Koeffizienten](./coefficients-only.mdx)-Kalibrierungen, die eine vom Labor angegebene Unsicherheit haben. Wird als einzelne Zeile erfasst, die die erweiterte Unsicherheit und den Erweiterungsfaktor des Zertifikats unverändert enthält, nicht weiter zerlegt. |
 
 ### Auflösung als Rechteckverteilung
@@ -89,6 +89,55 @@ nicht aussagekräftig wäre:
   vollständig aus dieser Summe heraus. Hat *keine* Zeile endliche Freiheitsgrade, ist
   $\nu_{\text{eff}}$ undefiniert, und Open Gauge greift auf das obige Normalverteilungsquantil zurück
   (der korrekte Grenzwert für $\nu \to \infty$).
+
+  Der Assistent zeigt das resultierende $k$ (2 Dezimalstellen) direkt unter dem Feld Konfidenz %
+  an, sodass seine Auswirkung auf das Intervall sofort sichtbar ist, ohne auf das erneute Rendern
+  der vollständigen Analyse weiter unten zu warten.
+
+## Ein Unsicherheitsfeld ausfüllen [#uncertainty-box-units]
+
+Das Feld Nominale Sensorgenauigkeit zeigt seinen Wert neben einer festen Einheitenbezeichnung — der
+eigenen konfigurierten Einheit des Kanals, aus seinem Feld
+[Unsicherheit (±)](../sensors/adding-a-sensor.mdx#measurement-uncertainty) (oder der Basiseinheit
+des Kanals, falls dieses Feld in %FS ausgedrückt war). Das ist nicht zwangsläufig dieselbe Einheit,
+in der die eigenen Referenzwerte dieser Kalibrierung eingegeben werden (die Referenzeinheit aus
+Schritt 2) — Open Gauge rechnet sie intern in diese Skala um, bevor sie in das Budget einbezogen
+wird, sodass die beiden nie übereinstimmen müssen. Ein Aktualisieren-Symbol neben der Bezeichnung
+setzt den Wert auf den Datenblatt-Standardwert des Kanals zurück und verwirft jede manuelle
+Bearbeitung.
+
+Das Feld U des Referenznormals dagegen wird immer direkt in der eigenen Referenzeinheit der
+Kalibrierung ausgedrückt — der Zertifikatswert eines Referenznormals sollte bereits auf derselben
+Skala interpretiert werden, auf der die Kalibrierung selbst erfasst wird, daher ist hier keine
+Umrechnung nötig.
+
+Das Aktivieren von Nominale Sensorgenauigkeit tut mehr, als nur ihren Beitrag zum Budget
+hinzuzufügen: Es sperrt auch das Feld Toleranz im Panel zur Konformitätsbewertung (siehe
+[Die Konformitätsfelder ausfüllen](./decision-rules.mdx#conformity-boxes)), sodass es denselben
+Wert widerspiegelt, umgerechnet in die Referenzeinheit, da in dieser Konfiguration die eigene
+Genauigkeitsspezifikation des Sensors der Schwellenwert *ist*. Wird der Schalter wieder
+ausgeschaltet, bleibt Toleranz beim zuletzt gespiegelten Wert, nun wieder frei bearbeitbar.
+
+Die Umrechnung von Nominale Sensorgenauigkeit gilt für *Größenordnungen* (Genauigkeits-/
+Unsicherheitsdeltas), nicht für Messwerte — eine Unsicherheit von 1 °C wird zu 1,8 °F umgerechnet,
+**nicht** zu 33,8 °F. Die Umrechnung eines Deltas wendet nie den Offset an, den eine Umrechnung
+eines absoluten Messwerts anwenden würde (20 °C ≠ 1,8 × 20 °F; aber *eine Unsicherheit von* 20 °C
+ist tatsächlich *eine Unsicherheit von* 36 °F).
+
+Nicht jede Einheitenpaarung lässt sich sauber umrechnen. Eine Handvoll Größen in der Einheitenliste
+von Open Gauge vermengen unter einer Bezeichnung tatsächlich unterschiedliche physikalische
+Konzepte — z. B. sind das %RH der Feuchtigkeit (ein Dampfdruckverhältnis) und der Taupunkt in °C
+(eine Temperatur) nicht durch einen konstanten Faktor verbunden, und Gy (absorbierte Dosis) und Sv
+(Äquivalentdosis) bei der Strahlung unterscheiden sich durch einen strahlungstypabhängigen
+Gewichtungsfaktor. Fallen die eigene Einheit des Kanals und die Referenzeinheit der Kalibrierung in
+solche unterschiedlichen Gruppen, kann Open Gauge nicht zwischen ihnen umrechnen und schließt den
+Beitrag aus dem Budget aus, statt eine unbemerkt falsche Zahl zu riskieren.
+
+**Durchgerechnetes Beispiel.** Der Kanal eines Durchflusssensors ist in m³/h konfiguriert. Sein
+Datenblatt gibt eine Genauigkeit von ±0,5 % vom Endwert über einen Bereich von 0–200 m³/h an, d. h.
+±1 m³/h — Nominale Sensorgenauigkeit zeigt nach dem Aktivieren `1` neben `m³/h`. Wurden die eigenen
+Daten dieser Kalibrierung in gal/min erfasst (die Referenzeinheit aus Schritt 2), rechnet Open
+Gauge dieses `1 m³/h` automatisch in ≈4,40 gal/min um, bevor es in das Budget einbezogen wird.
 
 ## Rundung bei der Berichterstattung
 

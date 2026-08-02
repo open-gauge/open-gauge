@@ -35,6 +35,7 @@ from app.services.certificate_service import (
 
 def _cal(**overrides) -> SimpleNamespace:
     base = dict(
+        model_type="polynomial",
         poly_coefficients=[1.0, 0.5],
         r_squared=0.999,
         rmse=0.01,
@@ -166,6 +167,18 @@ class TestStatRows:
         labels = [r["label"] for r in rows]
         assert "R²" in labels
         assert "RMSE" in labels
+
+    def test_lookup_table_omits_fit_statistics_but_keeps_uncertainty(self) -> None:
+        rows = _build_stat_rows(_cal(model_type="lookup_table"))
+        labels = [r["label"] for r in rows]
+        assert "R²" not in labels
+        assert "RMSE" not in labels
+        assert "Max Error" not in labels
+        assert "Std Error" not in labels
+        assert "Full-Scale Error" not in labels
+        assert "Non-Linearity" not in labels
+        assert "Expanded Uncertainty (U)" in labels
+        assert "Combined Uncertainty (u_c)" in labels
 
 
 class TestResultsSummary:

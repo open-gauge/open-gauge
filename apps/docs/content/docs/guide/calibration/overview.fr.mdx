@@ -35,14 +35,18 @@ Démarrez une calibration depuis la voie d'un actif. L'assistant comporte trois 
    calibration, **Enregistré par** (une liste déroulante des membres de l'organisation de
    l'actif, vous par défaut), un réviseur optionnel **Vérifié par**, intervalle de calibration,
    conditions environnementales, et notes. Selon le type/objet choisi, des champs supplémentaires
-   apparaissent — voir ci-dessous. Cette étape possède également un sélecteur **Mode de saisie des
-   données** pour les calibrations qui ne correspondent pas à la forme habituelle des données
-   brutes — voir
-   [Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx).
-2. **Données brutes** — saisissez les paires de points (référence, mesuré) (ou, selon le mode de
-   saisie des données choisi ci-dessus, un modèle saisi directement, ou une comparaison
-   référence-par-rapport-à-une-valeur-déjà-convertie). Voir
-   [Ajustement de courbe](./curve-fitting.mdx) pour savoir ce qu'Open Gauge en fait.
+   apparaissent — voir ci-dessous.
+2. **Données d'entrée** — commence par un sélecteur de méthode : **Référence par rapport à
+   Mesuré** (par défaut — paires de points (référence, mesuré) par rapport au signal de sortie
+   brut de la voie, ajustées à une courbe), **Référence par rapport à Indiqué** (référence par
+   rapport à une lecture de grandeur physique déjà convertie, sans ajustement de courbe), ou
+   **Modèle (fonction de transfert)** (un modèle indiqué par le laboratoire, sans aucun point de
+   données brutes — non proposé lorsque l'Objectif de la calibration est Après réparation). Voir
+   [Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx) pour le
+   détail complet, y compris comment Après réparation scinde automatiquement Référence par
+   rapport à Mesuré/Indiqué en données telles que trouvées/telles que laissées. Voir
+   [Ajustement de courbe](./curve-fitting.mdx) pour savoir ce qu'Open Gauge fait des données
+   brutes.
 3. **Analyse / révision** — l'ajustement calculé en direct, le budget d'incertitude, et la
    déclaration de conformité. Voir [Le budget d'incertitude](./uncertainty-budget.mdx) et
    [Règles de décision](./decision-rules.mdx).
@@ -82,8 +86,8 @@ résout le champ **Laboratoire de calibration** :
   Aucun téléversement de certificat.
 
 Pour OEM, Laboratoire externe accrédité, et Actif d'un client, la saisie de données brutes peut
-être entièrement ignorée en réglant le **Mode de saisie des données** sur **Modèle fourni
-directement** lorsque le certificat indique directement le modèle de calibration — voir
+être entièrement ignorée en choisissant la méthode d'entrée **Modèle (fonction de transfert)** à
+l'étape 2 lorsque le certificat indique directement le modèle de calibration — voir
 [Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx).
 
 ### Certificats téléversés
@@ -107,8 +111,11 @@ L'**Objet de la calibration** enregistre *pourquoi* la calibration a été effec
 - **Routine** — une recalibration périodique. La valeur par défaut dès qu'il existe au moins une
   calibration antérieure.
 - **Après réparation** — suite à une réparation. Révèle une **Date de réparation** (sélecteur de
-  date) et une **Description de la réparation** (jusqu'à 500 caractères). Voir ci-dessous comment
-  cela affecte l'onglet Santé.
+  date) et une **Description de la réparation** (jusqu'à 500 caractères). Scinde également
+  automatiquement la saisie Référence par rapport à Mesuré/Indiqué de l'étape 2 en données
+  distinctes telles que trouvées/telles que laissées — voir
+  [Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx#after-repair-as-foundas-left-data).
+  Voir ci-dessous comment cela affecte l'onglet Santé.
 - **Vérification** — une calibration effectuée pour vérifier la conformité continue, sans
   nécessairement réinitialiser l'horloge de l'intervalle comme le ferait une recalibration de
   routine.

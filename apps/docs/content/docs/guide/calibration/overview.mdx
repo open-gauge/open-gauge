@@ -32,12 +32,16 @@ Start a calibration from an asset's channel. The wizard has three steps:
 1. **General info** — calibration type and purpose (below), calibration date, **Registered by**
    (a dropdown of the asset's organization members, defaulting to you), an optional
    **Checked by** reviewer, calibration interval, environmental conditions, and notes. Depending
-   on the type/purpose chosen, additional fields appear — see below. This step also has a
-   **Data entry mode** selector for calibrations that don't fit the usual raw-data shape — see
-   [Alternative calibration data-entry modes](./coefficients-only.mdx).
-2. **Raw data** — enter (reference, measured) point pairs (or, depending on the data entry mode
-   chosen above, a model entered directly, or a reference-vs-already-converted-value comparison).
-   See [Curve fitting](./curve-fitting.mdx) for what Open Gauge does with raw data.
+   on the type/purpose chosen, additional fields appear — see below.
+2. **Input data** — starts with a method picker: **Reference vs Measured** (the default —
+   (reference, measured) point pairs against the channel's raw output signal, fitted to a curve),
+   **Reference vs Indicated** (reference vs. an already-converted physical-quantity reading, no
+   curve fit), or **Model (transfer function)** (a lab-stated model, no raw data points at all —
+   not offered when Calibration purpose is After Repair). See
+   [Alternative calibration data-entry modes](./coefficients-only.mdx) for the full breakdown,
+   including how After Repair automatically splits Reference vs Measured/Indicated into
+   as-found/as-left data. See [Curve fitting](./curve-fitting.mdx) for what Open Gauge does with
+   raw data.
 3. **Analysis / review** — the live-computed fit, uncertainty budget, and conformity
    statement. See [The uncertainty budget](./uncertainty-budget.mdx) and
    [Decision rules](./decision-rules.mdx).
@@ -70,7 +74,7 @@ The **Calibration type** describes *who performed the calibration*, and determin
   lab is a dropdown of your external organizations marked as customers. No certificate upload.
 
 For OEM, External Accredited Lab, and Customer's Asset, raw data entry can be skipped entirely by
-setting **Data entry mode** to **Model provided directly** when the certificate states the
+choosing the **Model (transfer function)** input method on Step 2 when the certificate states the
 calibration model directly — see
 [Alternative calibration data-entry modes](./coefficients-only.mdx).
 
@@ -93,7 +97,10 @@ The **Calibration purpose** records *why* the calibration was performed:
   calibration exists for the channel; you can change it if needed.
 - **Routine** — a periodic recalibration. The default once at least one prior calibration exists.
 - **After Repair** — following a repair. Reveals a **Repair date** (date picker) and **Repair
-  description** (up to 500 characters). See below for how this affects the Health tab.
+  description** (up to 500 characters). Also automatically splits Step 2's Reference vs
+  Measured/Indicated input into separate as-found/as-left data — see
+  [Alternative calibration data-entry modes](./coefficients-only.mdx#after-repair-as-foundas-left-data).
+  See below for how this affects the Health tab.
 - **Verification** — a calibration performed to verify continued conformity, without necessarily
   resetting the interval clock the way a routine recalibration would.
 

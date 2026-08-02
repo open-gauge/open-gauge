@@ -11,8 +11,10 @@ resulting conformity statement on every calibration.
 ## The three rules [#decision-rule]
 
 Let $\text{error}$ be the calibration's [max error](./curve-fitting.mdx#max-error)
-and $\text{tolerance}$ be the channel's accuracy spec (e.g. ±0.5 °C, or ±1% FS converted to an
-absolute value), and $U$ be the [expanded uncertainty](./uncertainty-budget.mdx#expanded-uncertainty).
+and $\text{tolerance}$ be the value in the wizard's **Tolerance** box (pre-filled from the
+channel's accuracy spec when available — e.g. ±0.5 °C, or ±1% FS converted to an absolute value —
+but freely editable; see [Filling in the conformity boxes](#conformity-boxes) below), and $U$ be
+the [expanded uncertainty](./uncertainty-budget.mdx#expanded-uncertainty).
 
 | Rule | Passes when | Effect | When to use |
 |---|---|---|---|
@@ -27,9 +29,47 @@ where all three rules produce a different verdict from identical input data.
 ## What gets stored
 
 Every calibration stores a `conformity_statement` carrying the full record: the decision rule
-used, a human-readable rendering of the specification (e.g. `"±0.5% of full scale"`), the
-expanded uncertainty applied (if any), whether it passed, and a reason (populated only when no
-accuracy spec was configured at all, meaning conformity wasn't evaluated).
+used, a human-readable rendering of the specification (e.g. `"±0.5% of full scale"`, or
+`"±1.0 (manual)"` when the Tolerance box was edited by hand — see below), the expanded
+uncertainty applied (if any), the numeric tolerance value compared against, whether it passed,
+and a reason (populated only when no accuracy spec was configured and no manual tolerance was
+entered either, meaning conformity wasn't evaluated at all).
+
+## Filling in the conformity boxes [#conformity-boxes]
+
+The Conformity assessment panel visualizes the rule from the table above as boxes: **Error**
+and **Uncertainty** are read-only, taken directly from this calibration's own results; between
+them is a **+** (guard band), a **−** (shared risk), or nothing at all (simple acceptance, which
+ignores uncertainty). **Tolerance** is the one editable box.
+
+- **Error** — this calibration's own [max error](./curve-fitting.mdx#max-error). Not editable;
+  it's a result, not an input.
+- **Uncertainty** — this calibration's own
+  [expanded uncertainty](./uncertainty-budget.mdx#expanded-uncertainty), $U$. Not editable, and
+  only shown for the guard-band/shared-risk rules (simple acceptance doesn't use it at all).
+- **Tolerance** — the maximum acceptable error. Editable, and independent of the channel's own
+  accuracy specification — typing a value here (or clicking the refresh icon next to it, which
+  copies in the channel's own nominal accuracy, when the channel has one) overrides whatever the
+  channel's spec says, for this calibration only. This also sidesteps **percent of reading**'s
+  per-point tolerance entirely: whatever accuracy type the channel is configured with, a
+  manually-entered Tolerance box is always evaluated as one flat number against max error, exactly
+  like the **absolute** and **percent of full scale** types already are. Like Error and
+  Uncertainty next to it, Tolerance is always expressed in the calibration's own reference unit
+  (shown as plain text next to the box, not a dropdown) — the refresh icon fills in the channel's
+  default, already on that scale. When the
+  [Sensor nominal accuracy](./uncertainty-budget.mdx#uncertainty-box-units) switch on the
+  Uncertainty calculation panel is on, Tolerance mirrors that box's value, converted to the
+  reference unit, and becomes read-only — the sensor's own accuracy spec *is* the threshold in
+  that case. Switch it back off to edit Tolerance independently again.
+
+**Worked example.** A pressure transmitter's channel spec is ±0.5% of full scale over a
+0–10 bar range (i.e. ±0.05 bar). A calibration comes back with max error = 0.03 bar and expanded
+uncertainty = 0.01 bar, decision rule = guard band. The Tolerance box pre-fills to `0.05` (the
+channel's own spec, converted from %FS). The boxes read `Error: 0.03 + Uncertainty: 0.01 ≤
+Tolerance: 0.05` — `0.04 ≤ 0.05`, so it conforms. If the customer's own contract instead specifies
+a tighter ±0.03 bar tolerance regardless of the sensor's nameplate spec, typing `0.03` into the
+Tolerance box re-evaluates against that number instead: `0.04 ≤ 0.03` is false, so it now shows
+DOES NOT CONFORM — without touching the channel's own configured accuracy spec at all.
 
 ## Saving a non-conforming calibration
 
@@ -38,10 +78,3 @@ important record — Open Gauge's [calibration philosophy](../concepts/data-mode
 history as immutable and never suppresses a real result just because it's inconvenient. When a
 result doesn't conform, the save-confirmation dialog names the specification and decision rule
 explicitly, and the save button relabels to **"Save anyway."**
-
-## No standalone tolerance preview
-
-There's no separate client-side "what if" tolerance field — an earlier version of the wizard
-had one, disconnected from the channel's real spec and never persisted, which could contradict
-the actual saved conformity result. The conformity statement shown in the wizard's uncertainty
-panel *is* the one that gets saved and printed on the certificate.

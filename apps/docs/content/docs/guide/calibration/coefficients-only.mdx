@@ -3,21 +3,26 @@ title: Alternative calibration data-entry modes
 description: Recording a calibration when the data doesn't come as the usual reference-vs-measured-signal points — a lab-supplied model, or an already-converted reference-vs-value comparison.
 ---
 
-By default, a calibration's raw data is a set of (reference, measured) point pairs — the
-reference standard's reading against the channel's own output signal — which Open Gauge fits to a
-curve. Some labs deliver calibration results in other shapes instead. Step 1's **Data entry mode**
-selector covers three alternatives, alongside the default **Raw data**:
+Step 2 of the calibration wizard, **Input data**, opens with a dropdown offering three ways of
+delivering a calibration's data; the rest of the step renders immediately below according to the
+current selection:
 
-- **Model provided directly** — the lab/manufacturer certificate states the calibration model
-  itself, with no raw data points at all.
-- **Reference vs. indicated value** — the lab provides the reference standard's reading and the
-  channel's output already converted to a physical quantity, with no known transfer function
-  between them. Only available when Calibration purpose is **Verification**.
-- **Reference vs. as-found/as-left value** — the same kind of reference-vs-converted-value
-  comparison, recorded twice: once before a repair (as-found) and once after (as-left). Only
-  available when Calibration purpose is **After Repair**.
+- **Reference vs Measured** — the default: (reference, measured) point pairs, the reference
+  standard's reading against the channel's own raw output signal, which Open Gauge fits to a
+  curve.
+- **Reference vs Indicated** — the reference standard's reading against what the channel's own
+  display already shows, converted to the same physical quantity — no known transfer function
+  between them.
+- **Model (transfer function)** — the lab/manufacturer certificate states the calibration model
+  itself, with no raw data points at all. Only offered for OEM/External Accredited Lab/Customer's
+  Asset calibrations, and not offered at all when Calibration purpose is After Repair.
 
-## Model provided directly
+If the calibration's **Calibration purpose** is **After Repair**, Reference vs Measured and
+Reference vs Indicated both automatically split into two comparisons instead of one — see below.
+Model isn't offered at all for After Repair, since a single lab-stated model can't represent a
+before/after comparison.
+
+## Model (transfer function) [#model-transfer-function]
 
 Use this when the certificate states the calibration model directly rather than raw data points —
 common for OEM/External Accredited Lab/Customer's Asset calibrations. Step 2 becomes a
@@ -25,38 +30,57 @@ model-entry form:
 
 - **Model type** — a **Polynomial** (order 1–5, coefficients entered in the same descending-power
   convention Open Gauge's own regression engine uses — highest degree first, constant term last),
-  or a **Custom formula**: a single-variable expression in `x` (the measured/output value), e.g.
-  `2.5 * x + 1.2`. Allowed syntax: `+ − * / ^ ( )` and the functions `sqrt`, `exp`, `log`, `ln`,
-  `sin`, `cos`, `tan`, `abs`, `pow`. A custom formula is fully evaluable — it participates in the
-  saved calibration's fitted-curve chart and the [Health tab](../overview.mdx)'s drift/curve
-  comparison exactly like a polynomial, just evaluated from the formula instead of polynomial
-  coefficients.
+  or a **Custom formula**: write a formula *shape* in `x` (the measured/output value) with any
+  other letters as free parameters, e.g. `a*x + b`, and Open Gauge detects them automatically and
+  asks you to enter a value for each one (from the certificate/datasheet that gave you the model)
+  — see [Custom formula syntax](./custom-formulas.mdx) for the full allowed syntax and worked
+  examples. What's actually stored is the fully-resolved formula (parameters replaced with their
+  values). A custom formula is fully evaluable — it participates in the saved calibration's
+  fitted-curve chart and the [Health tab](../overview.mdx)'s drift/curve comparison exactly like a
+  polynomial, just evaluated from the formula instead of polynomial coefficients.
 - The **valid range** (min/max) the model applies over.
 
-Step 3 then collects the same [uncertainty budget](./uncertainty-budget.mdx) inputs a raw-data
-calibration collects (reference standard uncertainty, resolution, sensor nominal accuracy,
-distribution/confidence, [decision rule](./decision-rules.mdx)) — because there's no measured
-data, conformity is assessed by treating the model as trusted-as-declared (an assessed error of
-exactly zero) and comparing only the combined uncertainty budget against the channel's tolerance
-spec, at both ends of the declared valid range.
+Step 3 then collects the same [uncertainty budget](./uncertainty-budget.mdx) inputs a
+Reference-vs-Measured calibration collects (reference standard uncertainty, resolution, sensor
+nominal accuracy, distribution/confidence, [decision rule](./decision-rules.mdx)) — because
+there's no measured data, conformity is assessed by treating the model as trusted-as-declared (an
+assessed error of exactly zero) and comparing only the combined uncertainty budget against the
+channel's tolerance spec, at both ends of the declared valid range.
 
-## Reference vs. indicated value
+## Reference vs Indicated
 
 Use this when a lab provides the reference standard's measurement alongside the channel's own
-output already converted to the same physical quantity — but the transfer function itself (how
-one becomes the other) isn't known or wasn't provided. Since there's no function to fit, Open
-Gauge can't produce a fitted curve or a polynomial equation for this calibration — but every
-statistic that only needs a residual (the direct difference between the two values) is still
+display reading, already converted to the same physical quantity — but the transfer function
+itself (how one becomes the other) isn't known or wasn't provided. Since there's no function to
+fit, Open Gauge can't produce a fitted curve or a polynomial equation for this calibration — but
+every statistic that only needs a residual (the direct difference between the two values) is still
 computed exactly as usual: R², RMSE, max error, %FS error, repeatability, hysteresis, the full
 uncertainty budget, and a real decision-rule conformity statement. The saved calibration's detail
-view shows these statistics and a residuals chart in place of the usual fitted-curve chart.
+view shows these statistics and a residuals chart in place of the usual fitted-curve chart, and
+labels the second column **Indicated** — a physical-quantity reading, not a raw sensor
+signal — with no separate "Fitted" column, since under this mode it would just duplicate the
+Indicated column.
 
-## Reference vs. as-found/as-left value
+## After Repair: As-Found/As-Left data [#after-repair-as-foundas-left-data]
 
-Use this for an After Repair calibration when the lab provides two reference-vs-value comparisons
-of the kind described above — one taken before the repair (**as-found**) and one after
-(**as-left**) — again with no known transfer function. Step 2 becomes two stacked data-entry
-tables, and Step 3 shows both results side by side.
+When **Calibration purpose** is **After Repair**, choosing Reference vs Measured or Reference vs
+Indicated on Step 2 replaces the usual single data-entry table with two tables side by side — one
+for data taken **before** the repair (**as-found**, left) and one for data taken **after**
+(**as-left**, right) — sharing a single Reference/Measured unit row above both, since it's the
+same channel either side of the repair.
+
+Step 3 then shows the [uncertainty budget](./uncertainty-budget.mdx) inputs and the
+[decision rule](./decision-rules.mdx)/tolerance **once, shared** across both sides — again, the
+same channel and spec either side of a repair. Below that, two columns (as-found left, as-left
+right) each show that side's own conformity criteria — the actual
+`[error] ± [uncertainty] ≤ [tolerance]` expression with real numbers plugged in, plus a CONFORMS/
+DOES NOT CONFORM badge — followed by that side's own model (if fitted) and statistics:
+
+- Starting from **Reference vs Measured**, each side is independently curve-fit — as-found and
+  as-left can even end up with different polynomial degrees or a different fit method, since the
+  instrument's behavior may have genuinely changed across the repair.
+- Starting from **Reference vs Indicated**, each side is a residual-only comparison, exactly as
+  described above, computed independently for as-found and as-left.
 
 The **as-left** result is this calibration record's official result: it's what feeds the next due
 date, the approval workflow, and the Health tab's history. The **as-found** result is kept purely
@@ -66,11 +90,10 @@ used for due-date or drift calculations, and doesn't need to conform to any spec
 ## What's the same either way
 
 Whichever mode you use, the record you get is a normal calibration — it appears in the channel's
-history, can be voided or go through the approval workflow, and downloads a certificate. A
-model-provided-directly or reference-vs-indicated calibration's certificate still shows every
-statistic Open Gauge was able to compute for it; only the specific rows that genuinely don't apply
-(e.g. a fitted-curve equation when there's no known transfer function) are left out rather than
-fabricated.
+history, can be voided or go through the approval workflow, and downloads a certificate. A Model
+or Reference-vs-Indicated calibration's certificate still shows every statistic Open Gauge was
+able to compute for it; only the specific rows that genuinely don't apply (e.g. a fitted-curve
+equation when there's no known transfer function) are left out rather than fabricated.
 
-See [Example 4](./examples/coefficients-only-certificate.mdx) for a worked model-provided-directly
-case, including what gets saved and displayed.
+See [Example 4](./examples/coefficients-only-certificate.mdx) for a worked Model case, including
+what gets saved and displayed.

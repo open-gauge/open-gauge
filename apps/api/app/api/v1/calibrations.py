@@ -29,6 +29,7 @@ from ...services import calibration_notify
 from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
 from ...services.formula_eval import validate_formula
+from ...services.formula_params import substitute_formula_parameters
 from ...services.latex_service import LatexCompileError
 from ...services.pdf_signing_service import CertificateSigningError
 from ...services.storage import (
@@ -88,6 +89,21 @@ def analyze_calibration(
     _: User = Depends(get_current_user),
 ) -> AnalyzeResponse:
     """Ephemeral analysis — runs regression and returns statistics without saving."""
+    # data_entry_mode=model_direct's declared custom formula: no fitting at
+    # all, just substitute the user-supplied parameter values into the
+    # template. The points on the body are unrelated synthetic zero-residual
+    # corner points (still analyzed below for the uncertainty budget/
+    # conformity, same as any other skip_fit=True model_direct call).
+    resolved_custom_formula: str | None = None
+    custom_formula_parameter_values: dict[str, float] | None = None
+    if body.skip_fit and body.custom_formula_template:
+        try:
+            resolved_custom_formula = substitute_formula_parameters(
+                body.custom_formula_template, body.custom_formula_params or {}
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
     try:
         result = run_analysis(
             reference_values=[p.reference for p in body.points],
@@ -96,6 +112,8 @@ def analyze_calibration(
             measured_unit=body.measured_unit,
             poly_degree=body.poly_degree,
             skip_fit=body.skip_fit,
+            calibration_method=body.calibration_method,  # type: ignore[arg-type]
+            custom_formula=body.custom_formula_template if not body.skip_fit else None,
             distribution_type=body.distribution_type,  # type: ignore[arg-type]
             confidence_level=body.confidence_level,
             channel_accuracy_value=body.channel_accuracy_value,
@@ -107,9 +125,16 @@ def analyze_calibration(
             sensor_nominal_coverage_factor=body.sensor_nominal_coverage_factor,
             include_sensor_nominal_uncertainty=body.include_sensor_nominal_uncertainty,
             decision_rule=body.decision_rule,  # type: ignore[arg-type]
+            tolerance_override=body.tolerance_override_value,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    # The fitted path (calibration_method="custom_formula") resolves via
+    # run_analysis itself; the declared path (skip_fit=True) resolved above.
+    if result.resolved_custom_formula is not None:
+        resolved_custom_formula = result.resolved_custom_formula
+        custom_formula_parameter_values = result.custom_formula_parameter_values
 
     return AnalyzeResponse(
         poly_degree=result.poly_degree,
@@ -145,6 +170,8 @@ def analyze_calibration(
             )
             for p in result.points
         ],
+        resolved_custom_formula=resolved_custom_formula,
+        custom_formula_parameter_values=custom_formula_parameter_values,
     )
 
 

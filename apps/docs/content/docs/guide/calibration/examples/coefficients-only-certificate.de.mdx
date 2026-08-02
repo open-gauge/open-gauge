@@ -4,8 +4,8 @@ description: Der Assistentenpfad "Modell direkt angegeben", für Sensoren, die m
 ---
 
 Trainiert den Assistentenpfad
-[Modell direkt angegeben](../coefficients-only.mdx#model-provided-directly) — für Sensoren, die mit
-einem Kalibrierzertifikat ankommen, das das Kalibriermodell direkt angibt, ohne rohe
+[Modell (Übertragungsfunktion)](../coefficients-only.mdx#model-transfer-function) — für Sensoren,
+die mit einem Kalibrierzertifikat ankommen, das das Kalibriermodell direkt angibt, ohne rohe
 Referenz-/Messdatenpunkte, die neu angepasst werden könnten.
 
 ## 4.0 Einrichtung
@@ -38,13 +38,11 @@ vergleicht — siehe unten.
 | Kalibrierart | Externes akkreditiertes Labor |
 | Kalibrieranbieter | Any Cal Lab Inc. |
 | Zertifikatsnummer | ACL-2026-00842 |
-| Dateneingabemodus | **Modell direkt angegeben** |
 
-Die Auswahl dieses Modus tauscht Schritt 2 von der Rohdaten-Eingabe zu einem
-Modell-Eingabeformular, und die Schrittanzeige wird zu "Koeffizienten" / "Überprüfung" statt
-"Rohdaten" / "Analyse" umbenannt.
+## 4.2 Assistent — Schritt 2 (Eingabedaten)
 
-## 4.2 Assistent — Schritt 2 (Koeffizienten)
+Schritt 2 beginnt mit einem Methoden-Selektor. Die Wahl von **Modell (Übertragungsfunktion)**
+tauscht den Rest des Schritts von der Rohdaten-Eingabe zu einem Modell-Eingabeformular.
 
 Das Zertifikat gibt an: *Referenz ≈ 1,0025 × Messwert − 0,42 kPa, gültig 0–1000 kPa, erweiterte
 Unsicherheit des Referenznormals ±0,5 kPa (k=2)*.

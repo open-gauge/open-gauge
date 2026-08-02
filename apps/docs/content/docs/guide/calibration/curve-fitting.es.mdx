@@ -1,14 +1,42 @@
 ---
 title: Ajuste de curvas y estadísticas de regresión
-description: Cómo Open Gauge ajusta una curva de calibración y calcula R², RMSE, error máximo, no linealidad, repetibilidad e histéresis.
+description: Cómo Open Gauge convierte los datos de calibración en bruto en un modelo, y calcula R², RMSE, error máximo, no linealidad, repetibilidad e histéresis.
 ---
 
-Open Gauge ajusta una curva de calibración polinomial a tus puntos de datos (referencia, medido), y luego
-reporta un conjunto de estadísticas de regresión estándar que describen qué tan bueno es ese ajuste.
+El Paso 3 (Análisis) de una calibración con datos en bruto convierte tus puntos de datos
+(referencia, medido) en un modelo mediante uno de tres **Métodos de calibración**, y luego reporta
+un conjunto de estadísticas de regresión estándar que describen qué tan bueno es ese modelo.
 
-## El ajuste
+## Método de calibración [#calibration-method]
 
-Open Gauge ajusta:
+- **Ajuste polinomial** (por defecto) — ajusta una curva polinomial mediante mínimos cuadrados,
+  descrito más abajo.
+- **Tabla de consulta** — sin ningún ajuste de curva. Los puntos ingresados *son* el modelo:
+  evaluarlo en cualquier valor medido interpola linealmente entre los dos puntos ingresados más
+  cercanos. Como el modelo reproduce exactamente cada punto ingresado por construcción, R², RMSE,
+  error máximo, no linealidad, el [presupuesto de incertidumbre](./uncertainty-budget.mdx) y la
+  [comprobación de conformidad](./decision-rules.mdx) se omiten todos — ninguno de ellos tiene
+  sentido frente a residuos que son trivialmente cero en cada punto ingresado. En su lugar, Open
+  Gauge reporta la [desviación de linealidad](#linearity-deviation) — ver más abajo.
+- **Fórmula personalizada** — escribe una fórmula con parámetros libres, p. ej. `a*x*sin(x) + b`
+  (todo lo que no sea `x` ni los nombres de función permitidos se trata como un parámetro a
+  ajustar — consulta [Sintaxis de fórmula personalizada](./custom-formulas.mdx)), y Open Gauge
+  ajusta esos parámetros a tus datos mediante mínimos cuadrados no lineales
+  (`scipy.optimize.curve_fit`), con el valor inicial de cada parámetro partiendo de 1.0. R², RMSE,
+  error máximo y no linealidad se calculan todos normalmente, igual que en un ajuste polinomial —
+  es un ajuste real, solo que contra una forma de fórmula que elegiste en lugar de una base
+  polinomial fija. Si el ajuste no converge (algo habitual con exponenciales/funciones
+  trigonométricas frente a datos mal escalados), Open Gauge muestra un error en lugar de un
+  resultado incorrecto o engañoso.
+
+`model_direct` (un modelo proporcionado por el laboratorio sin ningún dato en bruto — consulta
+[Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx)) usa el mismo
+mecanismo de Fórmula personalizada para su propia entrada de fórmula, solo que con valores de
+parámetros declarados en lugar de un ajuste.
+
+## El ajuste [#regression-degree]
+
+Esta sección cubre específicamente el **Ajuste polinomial**. Open Gauge ajusta:
 
 $$
 \text{reference} = f(\text{measured}) = c_0 \cdot \text{measured}^n + c_1 \cdot \text{measured}^{n-1} + \dots + c_n
@@ -75,6 +103,29 @@ Para un ajuste de grado ≥ 2: cuánto se desvía la curva ajustada de su propia
 *recta* de ajuste, como un porcentaje de la escala completa. Una no linealidad grande es una señal de que un
 ajuste de grado superior fue la decisión correcta — no solo ruido que la selección automática de grado
 llegó a captar.
+
+## Desviación de linealidad [#linearity-deviation]
+
+**Solo para Tabla de consulta.** Como una tabla de consulta no tiene una curva ajustada, la no
+linealidad (que necesita una) no aplica — pero la *interpolación lineal por tramos en sí misma*
+introduce su propio error entre los puntos ingresados, que vale la pena cuantificar. Open Gauge
+ajusta una línea recta (mínimos cuadrados ordinarios) a través de los propios puntos de la
+calibración, luego muestrea la curva interpolada densamente a lo largo del intervalo medido y
+reporta cuánto se aleja de esa línea en cada muestra:
+
+$$
+\text{deviation}(x) = \text{LUT}(x) - (\text{slope} \cdot x + \text{intercept})
+$$
+
+Se muestra como un gráfico debajo de la curva de interpolación — valor medido en el eje x,
+desviación en el eje y, alternable entre absoluta (en unidades de referencia) y relativa (como un
+porcentaje del intervalo de referencia, %FS) — en lugar de un único número resumen, ya que el
+lugar del intervalo donde la interpolación se aleja importa tanto como cuánto se aleja. Marcadores
+redondos señalan los propios puntos ingresados de la calibración, unidos por la curva, el mismo
+lenguaje visual que el gráfico principal de calibración. Es solo diagnóstico: Tabla de consulta no
+tiene comprobación de conformidad (consulta
+[Método de calibración](#calibration-method) más arriba), por lo que la desviación de linealidad
+no se compara contra una tolerancia ni se incorpora a una decisión de aprobado/rechazado.
 
 ## Repetibilidad [#repeatability]
 
