@@ -290,6 +290,23 @@ def _atomic_payload(asset_id: str, sensor_id: str | None = None) -> dict:
     }
 
 
+def _atomic_payload_with_frequency_response(asset_id: str) -> dict:
+    payload = _atomic_payload(asset_id)
+    payload.update({
+        "has_frequency_response": True,
+        "frequency_response_frequency_unit": "Hz",
+        "frequency_response_amplitude_type": "dB",
+        "frequency_response_amplitude_unit": None,
+        "frequency_response_phase_unit": "°",
+        "frequency_response_points": [
+            {"sweep_index": 0, "frequency_value": 10.0, "amplitude_value": 0.0, "phase_value": -2.0},
+            {"sweep_index": 1, "frequency_value": 100.0, "amplitude_value": -1.0, "phase_value": -15.0},
+            {"sweep_index": 2, "frequency_value": 1000.0, "amplitude_value": -3.0, "phase_value": -45.0},
+        ],
+    })
+    return payload
+
+
 class TestAtomicCalibrationCreate:
     def test_creates_calibration_with_regression_fields_and_points(
         self, client: TestClient, auth_headers: dict, asset: dict
@@ -392,6 +409,51 @@ class TestAtomicCalibrationCreate:
         r = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]))
         assert r.status_code == 403  # HTTPBearer returns 403 when missing
 
+    def test_creates_calibration_with_frequency_response_points(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_atomic_payload_with_frequency_response(asset["id"]),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["has_frequency_response"] is True
+        assert body["frequency_response_frequency_unit"] == "Hz"
+        assert body["frequency_response_amplitude_type"] == "dB"
+        assert body["frequency_response_amplitude_unit"] is None
+        assert body["frequency_response_phase_unit"] == "°"
+
+    def test_frequency_response_defaults_false_when_omitted(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_atomic_payload(asset["id"]),
+            headers=auth_headers,
+        )
+        body = r.json()
+        assert body["has_frequency_response"] is False
+        assert body["frequency_response_frequency_unit"] is None
+        assert body["frequency_response_amplitude_type"] is None
+        assert body["frequency_response_amplitude_unit"] is None
+        assert body["frequency_response_phase_unit"] is None
+
+    def test_frequency_response_points_nullable_amplitude_or_phase(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        payload = _atomic_payload_with_frequency_response(asset["id"])
+        payload["frequency_response_points"] = [
+            {"sweep_index": 0, "frequency_value": 10.0, "amplitude_value": 0.0},
+            {"sweep_index": 1, "frequency_value": 100.0, "amplitude_value": -1.0},
+        ]
+        cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers).json()
+        pts = client.get(f"/api/v1/calibrations/{cal['id']}/frequency-points", headers=auth_headers).json()
+        assert len(pts) == 2
+        assert all(p["phase_value"] is None for p in pts)
+        assert all(p["amplitude_value"] is not None for p in pts)
+
 
 # ---------------------------------------------------------------------------
 # GET /calibrations/{id}/points
@@ -445,6 +507,62 @@ class TestGetCalibrationPoints:
         self, client: TestClient, calibration: dict
     ) -> None:
         r = client.get(f"/api/v1/calibrations/{calibration['id']}/points")
+        assert r.status_code == 403  # HTTPBearer returns 403 when missing
+
+
+# ---------------------------------------------------------------------------
+# GET /calibrations/{id}/frequency-points
+# ---------------------------------------------------------------------------
+
+class TestGetCalibrationFrequencyPoints:
+    def test_returns_points_for_valid_calibration(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        cal = client.post(
+            "/api/v1/calibrations",
+            json=_atomic_payload_with_frequency_response(asset["id"]),
+            headers=auth_headers,
+        ).json()
+        r = client.get(f"/api/v1/calibrations/{cal['id']}/frequency-points", headers=auth_headers)
+        assert r.status_code == 200
+        pts = r.json()
+        assert len(pts) == 3
+        assert pts[0]["frequency_value"] == 10.0
+        assert pts[0]["amplitude_value"] == 0.0
+        assert pts[0]["phase_value"] == -2.0
+
+    def test_returns_empty_list_when_no_frequency_response(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.get(f"/api/v1/calibrations/{calibration['id']}/frequency-points", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_points_ordered_by_sweep_index(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        cal = client.post(
+            "/api/v1/calibrations",
+            json=_atomic_payload_with_frequency_response(asset["id"]),
+            headers=auth_headers,
+        ).json()
+        pts = client.get(f"/api/v1/calibrations/{cal['id']}/frequency-points", headers=auth_headers).json()
+        indices = [p["sweep_index"] for p in pts]
+        assert indices == sorted(indices)
+
+    def test_returns_404_for_unknown_calibration(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        r = client.get(
+            f"/api/v1/calibrations/{uuid.uuid4()}/frequency-points",
+            headers=auth_headers,
+        )
+        assert r.status_code == 404
+
+    def test_requires_authentication(
+        self, client: TestClient, calibration: dict
+    ) -> None:
+        r = client.get(f"/api/v1/calibrations/{calibration['id']}/frequency-points")
         assert r.status_code == 403  # HTTPBearer returns 403 when missing
 
 

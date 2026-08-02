@@ -1,0 +1,67 @@
+---
+title: Respuesta en frecuencia
+description: Registrar un barrido opcional de amplitud/fase en función de la frecuencia junto a una calibración, y revisarlo más tarde.
+---
+
+Para sensores AC/dinámicos — transductores de presión, acelerómetros, micrófonos — una
+caracterización completa suele necesitar algo más que la curva estática de referencia frente a
+medido que captura el resto del asistente: un barrido de **respuesta en frecuencia** que muestra
+cómo cambia la respuesta de amplitud y/o fase del sensor con la frecuencia de la señal (una
+caracterización clásica de tipo diagrama de Bode). Open Gauge admite registrar esto como un
+complemento opcional de cualquier calibración.
+
+## Cómo habilitarla
+
+Marca **"Agregar respuesta en frecuencia"** en el Paso 1 del asistente de calibración. Esto
+inserta un nuevo paso entre el paso de datos en bruto y el paso de análisis, dividido en un área
+de ingreso de datos (izquierda) y un gráfico en vivo (derecha) que se actualiza mientras escribes
+— no hay ida y vuelta al servidor para este gráfico, ya que un barrido de frecuencia no se ajusta
+ni se analiza como la curva de referencia frente a medido, simplemente se grafica directamente.
+
+## Los campos del paso
+
+- **Frecuencia** — siempre se captura, con un menú desplegable de unidad (Hz, kHz, MHz, GHz).
+- **Amplitud** — un interruptor para incluirla. Cuando está activado, elige un **tipo de
+  amplitud** (dB, RMS, Pico a pico, o Pico) y, para cualquier caso distinto de dB, una **unidad
+  física** tomada de la propia lista de unidades del canal del sensor (las mismas unidades que
+  usan los menús desplegables de referencia/medido del asistente).
+- **Fase** — un interruptor para incluirla, con un menú desplegable de unidad (grados o
+  radianes).
+
+Puedes habilitar amplitud, fase, o ambas — la tabla de datos y el gráfico se adaptan para mostrar
+solo las columnas/trazas de lo que esté activo. Ingresa los puntos manualmente (agrega/elimina
+filas libremente) o sube un CSV — se requiere una fila de encabezado, con una columna que
+contenga "frequency" (obligatoria) y, cuando estén activas, "amplitude" y/o "phase" (coincidencia
+por subcadena sin distinguir mayúsculas/minúsculas, así que tanto "Freq (Hz)" como "Amplitude
+(dB)" funcionan).
+
+## El gráfico
+
+- La frecuencia siempre es el eje x. El gráfico cambia automáticamente a un eje x
+  **logarítmico** cuando el barrido abarca al menos una década (`max/min ≥ 10`) — la convención
+  estándar una vez que un barrido cubre un rango lo bastante amplio — y permanece lineal en caso
+  contrario.
+- Con solo amplitud o solo fase activa, es un gráfico de líneas de un solo eje, con los puntos
+  conectados por líneas, con valores exactos al pasar el cursor.
+- Con ambas activas, el gráfico se divide en un **diseño apilado estilo Bode**: la traza de
+  amplitud arriba, la traza de fase justo debajo, compartiendo un solo eje de frecuencia — no
+  superpuestas, ya que la amplitud y la fase tienen escalas muy diferentes.
+
+El mismo componente de gráfico (y la misma lógica de escala logarítmica/diseño) se usa tanto en
+el paso de edición en vivo del asistente como al revisar una calibración guardada, así que lo que
+ves mientras ingresas datos es exactamente lo que verás después.
+
+## Almacenamiento
+
+Al igual que los propios puntos de datos en bruto de la calibración, los valores de
+frecuencia/amplitud/fase se almacenan **exactamente como se ingresaron** — en las unidades que
+hayas elegido para el barrido — sin convertirlos a SI. Las unidades elegidas y el tipo de
+amplitud forman parte de lo que se está registrando, no son una elección de visualización
+incidental.
+
+## Revisarla más tarde
+
+Una vez que se guarda una calibración con datos de respuesta en frecuencia, su vista de detalle
+en la página del activo muestra un panel **"Respuesta en frecuencia"** (junto al panel existente
+de "Condiciones y notas") con el gráfico interactivo y la tabla de datos completa uno al lado del
+otro — el zoom, el desplazamiento y el cursor funcionan igual ahí que en el asistente.

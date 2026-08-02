@@ -9,6 +9,20 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.8.0
+
+### Added
+
+- **Frequency response data entry in the calibration wizard.** An optional "Add Frequency
+  Response" checkbox on Step 1 inserts a new step for capturing an amplitude (dB, RMS,
+  Peak-to-Peak, or Peak) and/or phase (degrees or radians) sweep against frequency, via manual
+  entry or CSV upload. The step live-plots the entered points with no server round-trip — a
+  single-axis chart when only amplitude or only phase is captured, or a stacked Bode-style
+  layout (amplitude on top, phase below, sharing one x-axis) when both are, with automatic
+  logarithmic frequency-axis detection for sweeps spanning a decade or more. Saved sweeps are
+  stored in a new `calibration_frequency_points` table and shown on the calibration detail page
+  in a new "Frequency Response" panel with an interactive chart and data table.
+
 ## 3.7.0
 
 ### Added

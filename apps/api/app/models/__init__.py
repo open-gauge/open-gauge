@@ -3,6 +3,7 @@ from . import (  # noqa: F401
     asset_location,
     audit_log,
     calibration,
+    calibration_frequency_point,
     calibration_method,
     calibration_point,
     certificate_template,

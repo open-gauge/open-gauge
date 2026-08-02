@@ -1,0 +1,69 @@
+---
+title: Frequenzgang
+description: Erfassen eines optionalen Amplituden-/Phasen-vs-Frequenz-Durchlaufs zusätzlich zu einer Kalibrierung und dessen spätere Überprüfung.
+---
+
+Bei AC-/dynamischen Sensoren — Drucksensoren, Beschleunigungssensoren, Mikrofonen — braucht eine
+vollständige Charakterisierung oft mehr als die statische Referenz-vs-Mess-Kurve, die der Rest
+des Assistenten erfasst: einen **Frequenzgang**-Durchlauf, der zeigt, wie sich die Amplituden-
+und/oder Phasenantwort des Sensors mit der Signalfrequenz ändert (eine klassische
+Bode-Diagramm-Charakterisierung). Open Gauge unterstützt die Erfassung dessen als optionale
+Ergänzung zu jeder Kalibrierung.
+
+## Aktivieren
+
+Aktivieren Sie **"Frequenzgang hinzufügen"** in Schritt 1 des Kalibrier-Assistenten. Dies fügt
+einen neuen Schritt zwischen dem Rohdaten-Schritt und dem Analyse-Schritt ein, aufgeteilt in
+einen Bereich zur Dateneingabe (links) und ein Live-Diagramm (rechts), das sich beim Tippen
+aktualisiert — für dieses Diagramm gibt es keinen Server-Roundtrip, da ein Frequenzdurchlauf
+nicht wie die Referenz-vs-Mess-Kurve angepasst oder analysiert wird, sondern einfach direkt
+geplottet wird.
+
+## Die Felder des Schritts
+
+- **Frequenz** — wird immer erfasst, mit einem Einheiten-Dropdown (Hz, kHz, MHz, GHz).
+- **Amplitude** — ein Schalter, um sie einzubeziehen. Wenn aktiviert, wählen Sie einen
+  **Amplitudentyp** (dB, RMS, Spitze-Spitze oder Spitze) und, für alles außer dB, eine
+  **physikalische Einheit** aus der eigenen Einheitenliste des Sensorkanals (dieselben Einheiten,
+  die die Referenz-/Mess-Dropdowns des Assistenten verwenden).
+- **Phase** — ein Schalter, um sie einzubeziehen, mit einem Einheiten-Dropdown (Grad oder
+  Radiant).
+
+Sie können Amplitude, Phase oder beides aktivieren — die Datentabelle und das Diagramm passen
+sich an und zeigen nur die Spalten/Kurven für das an, was aktiv ist. Geben Sie Punkte manuell ein
+(Zeilen frei hinzufügen/entfernen) oder laden Sie eine CSV-Datei hoch — eine Kopfzeile ist
+erforderlich, mit einer Spalte, die "frequency" enthält (obligatorisch), und, sofern aktiv,
+"amplitude" und/oder "phase" (Abgleich per Groß-/Kleinschreibung-unabhängiger Teilzeichenkette,
+sodass sowohl "Freq (Hz)" als auch "Amplitude (dB)" funktionieren).
+
+## Das Diagramm
+
+- Die Frequenz ist immer die x-Achse. Das Diagramm wechselt automatisch zu einer
+  **logarithmischen** x-Achse, wenn der Durchlauf mindestens eine Dekade umfasst (`max/min ≥
+  10`) — die Standardkonvention, sobald ein Durchlauf einen ausreichend weiten Bereich abdeckt —
+  und bleibt andernfalls linear.
+- Wenn nur Amplitude oder nur Phase aktiv ist, handelt es sich um ein Liniendiagramm mit einer
+  Achse, dessen Punkte durch Linien verbunden und für exakte Werte mit dem Mauszeiger abfragbar
+  sind.
+- Wenn beide aktiv sind, teilt sich das Diagramm in ein **gestapeltes Bode-Layout**: die
+  Amplitudenkurve oben, die Phasenkurve direkt darunter, mit einer gemeinsamen Frequenzachse —
+  nicht überlagert, da Amplitude und Phase sehr unterschiedliche Skalen haben.
+
+Dieselbe Diagrammkomponente (und dieselbe Logarithmusskalen-/Layout-Logik) wird sowohl im
+Live-Bearbeitungsschritt des Assistenten als auch beim Überprüfen einer gespeicherten
+Kalibrierung verwendet, sodass das, was Sie bei der Dateneingabe sehen, genau dem entspricht, was
+Sie danach sehen werden.
+
+## Speicherung
+
+Wie die eigenen Rohdatenpunkte der Kalibrierung werden auch die Frequenz-/Amplituden-/
+Phasenwerte **genau so gespeichert, wie sie eingegeben wurden** — in den Einheiten, die Sie für
+den Durchlauf gewählt haben — nicht in SI umgerechnet. Die gewählten Einheiten und der
+Amplitudentyp sind Teil dessen, was erfasst wird, keine beiläufige Anzeigeentscheidung.
+
+## Spätere Überprüfung
+
+Sobald eine Kalibrierung mit Frequenzgang-Daten gespeichert ist, zeigt ihre Detailansicht auf der
+Anlagenseite ein Panel **"Frequenzgang"** (neben dem bestehenden Panel "Bedingungen & Notizen")
+mit dem interaktiven Diagramm und der vollständigen Datentabelle nebeneinander — Zoom, Verschieben
+und Hover funktionieren dort genauso wie im Assistenten.

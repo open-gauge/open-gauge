@@ -1,7 +1,7 @@
 import { apiBlob, apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetCreateBody, AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
-import type { CalibrationRecord, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
+import type { CalibrationRecord, CalibrationPoint, FrequencyResponsePoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 
@@ -186,6 +186,12 @@ export async function retireAsset(id: string, reason?: string): Promise<void> {
 
 export async function getCalibrationPoints(calId: string): Promise<CalibrationPoint[]> {
   return apiFetch<CalibrationPoint[]>(`/api/v1/calibrations/${calId}/points`, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function getCalibrationFrequencyPoints(calId: string): Promise<FrequencyResponsePoint[]> {
+  return apiFetch<FrequencyResponsePoint[]>(`/api/v1/calibrations/${calId}/frequency-points`, {
     headers: tokenHeader(),
   });
 }

@@ -22,6 +22,7 @@ from ...schemas.calibration import (
     CalibrationCreate,
     CalibrationPointResponse,
     CalibrationResponse,
+    FrequencyResponsePointResponse,
 )
 from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
@@ -214,6 +215,25 @@ def list_points(
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
     return cal_repo.list_points(db, cal_id)
+
+
+@router.get(
+    "/{cal_id}/frequency-points",
+    response_model=list[FrequencyResponsePointResponse],
+    summary="List frequency-response sweep points",
+    description="Returns the optional frequency-response sweep points recorded for this "
+    "calibration, ordered by sweep_index. Empty list if the calibration has no "
+    "frequency-response data.",
+)
+def list_frequency_points(
+    cal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[FrequencyResponsePointResponse]:
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    return cal_repo.list_frequency_points(db, cal_id)
 
 
 @router.delete("/{cal_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -43,6 +43,17 @@ class Calibration(Base):
     humidity: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     pressure: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
+    # Optional frequency-response sweep (see CalibrationFrequencyPoint for the swept
+    # points). Values are stored exactly as entered, not canonicalized — the sweep's
+    # chosen units are part of what's being recorded, same rationale as
+    # reference_unit/measured_unit on CalibrationData. amplitude_type/phase_unit being
+    # null means that field wasn't captured for this sweep (no separate "active" flags).
+    has_frequency_response: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    frequency_response_frequency_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    frequency_response_amplitude_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    frequency_response_amplitude_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    frequency_response_phase_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
     # Polynomial model
     poly_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     poly_coefficients: Mapped[list | None] = mapped_column(JSONB, nullable=True)

@@ -3,6 +3,7 @@
   "pages": [
     "overview",
     "curve-fitting",
+    "frequency-response",
     "uncertainty-budget",
     "decision-rules",
     "coefficients-only",

@@ -13,6 +13,7 @@ import {
   getAssetFiles,
   getAssetProfile,
   getCalibrationCertificateUrl,
+  getCalibrationFrequencyPoints,
   getCalibrationPoints,
   listCalibrationCertificateTemplates,
   listLocations,
@@ -26,11 +27,12 @@ import {
   voidCalibration,
   type CertificateTemplateOption,
 } from "@/services/asset.service";
+import { FrequencyResponseChart } from "@/components/frequency-response-chart";
 import { useAuth } from "@/lib/auth-context";
 import { listMyOrganizations } from "@/services/organization.service";
 import type { OrganizationListItem } from "@/types/organization";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
-import type { CalibrationPoint, CalibrationRecord } from "@/types/calibration";
+import type { CalibrationPoint, CalibrationRecord, FrequencyResponsePoint } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 import {
@@ -1577,6 +1579,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const [selectedCalId, setSelectedCalId] = useState<string | null>(null);
   const [points, setPoints] = useState<CalibrationPoint[]>([]);
   const [loadingPoints, setLoadingPoints] = useState(false);
+  const [freqPoints, setFreqPoints] = useState<FrequencyResponsePoint[]>([]);
+  const [loadingFreqPoints, setLoadingFreqPoints] = useState(false);
   const [rightView, setRightView] = useState<"chart" | "table">("chart");
   const [resultView, setResultView] = useState<ResultView>("equation");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -1617,6 +1621,17 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       .catch(() => setPoints([]))
       .finally(() => setLoadingPoints(false));
   }, [selectedCal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Separate from the points fetch above so calibrations without a frequency
+  // response never issue the extra request.
+  useEffect(() => {
+    if (!selectedCal?.has_frequency_response) { setFreqPoints([]); return; }
+    setLoadingFreqPoints(true);
+    getCalibrationFrequencyPoints(selectedCal.id)
+      .then(setFreqPoints)
+      .catch(() => setFreqPoints([]))
+      .finally(() => setLoadingFreqPoints(false));
+  }, [selectedCal?.id, selectedCal?.has_frequency_response]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const locId = selectedCal?.calibration_location_id;
@@ -2070,6 +2085,69 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("notes")}</p>
                   <p className="text-xs text-og-text leading-relaxed">{selectedCal.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Frequency Response */}
+          {selectedCal.has_frequency_response && (
+            <div className="rounded-xl border border-og-border bg-og-surface-alt p-4 space-y-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("frequencyResponse")}</p>
+              {loadingFreqPoints ? (
+                <div className="flex items-center justify-center text-gray-400 gap-2 text-xs py-10">
+                  <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+                  {t("loadingData")}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <FrequencyResponseChart
+                    points={freqPoints}
+                    frequencyUnit={selectedCal.frequency_response_frequency_unit ?? ""}
+                    amplitudeActive={selectedCal.frequency_response_amplitude_type != null}
+                    amplitudeType={selectedCal.frequency_response_amplitude_type}
+                    amplitudeUnit={selectedCal.frequency_response_amplitude_unit}
+                    phaseActive={selectedCal.frequency_response_phase_unit != null}
+                    phaseUnit={selectedCal.frequency_response_phase_unit}
+                    height={300}
+                  />
+                  <div className="rounded-lg border border-og-border overflow-hidden" style={{ maxHeight: 300, overflowY: "auto" }}>
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="border-b border-og-border bg-og-surface-alt">
+                          <th className="text-left px-3 py-2 text-gray-400 font-medium">#</th>
+                          <th className="text-left px-3 py-2 text-gray-400 font-medium">
+                            {t("frequency")} ({selectedCal.frequency_response_frequency_unit})
+                          </th>
+                          {selectedCal.frequency_response_amplitude_type != null && (
+                            <th className="text-left px-3 py-2 text-gray-400 font-medium">
+                              {t("amplitude")} ({selectedCal.frequency_response_amplitude_type === "dB"
+                                ? "dB" : selectedCal.frequency_response_amplitude_unit})
+                            </th>
+                          )}
+                          {selectedCal.frequency_response_phase_unit != null && (
+                            <th className="text-left px-3 py-2 text-gray-400 font-medium">
+                              {t("phase")} ({selectedCal.frequency_response_phase_unit})
+                            </th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {freqPoints.map((p) => (
+                          <tr key={p.id} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
+                            <td className="px-3 py-1.5 font-mono text-gray-400">{p.sweep_index + 1}</td>
+                            <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.frequency_value)}</td>
+                            {selectedCal.frequency_response_amplitude_type != null && (
+                              <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.amplitude_value)}</td>
+                            )}
+                            {selectedCal.frequency_response_phase_unit != null && (
+                              <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.phase_value)}</td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

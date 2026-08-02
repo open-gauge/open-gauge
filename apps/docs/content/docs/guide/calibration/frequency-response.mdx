@@ -1,0 +1,60 @@
+---
+title: Frequency response
+description: Recording an optional amplitude/phase-vs-frequency sweep alongside a calibration, and reviewing it later.
+---
+
+For AC/dynamic sensors — pressure transducers, accelerometers, microphones — a full
+characterization often needs more than the static reference-vs-measured curve the rest of the
+wizard captures: a **frequency response** sweep showing how the sensor's amplitude and/or phase
+response changes with signal frequency (a classic Bode-plot characterization). Open Gauge
+supports recording this as an optional add-on to any calibration.
+
+## Enabling it
+
+Check **"Add Frequency Response"** in Step 1 of the calibration wizard. This inserts a new step
+between the raw-data step and the analysis step, split into a data-entry area (left) and a live
+chart (right) that updates as you type — there's no server round-trip for this chart, since a
+frequency sweep isn't fit or analyzed the way the reference-vs-measured curve is, just plotted
+directly.
+
+## The step's fields
+
+- **Frequency** — always captured, with a unit dropdown (Hz, kHz, MHz, GHz).
+- **Amplitude** — a switch to include it. When on, choose an **amplitude type** (dB, RMS,
+  Peak-to-Peak, or Peak) and, for anything other than dB, a **physical unit** drawn from the
+  sensor channel's own unit list (the same units the wizard's reference/measured dropdowns use).
+- **Phase** — a switch to include it, with a unit dropdown (degrees or radians).
+
+You can enable amplitude, phase, or both — the data table and chart adapt to show only the
+columns/traces for what's active. Enter points manually (add/remove rows freely) or upload a
+CSV — a header row is required, with a column containing "frequency" (mandatory) and, when
+active, "amplitude" and/or "phase" (matched by a case-insensitive substring, so "Freq (Hz)" or
+"Amplitude (dB)" both work).
+
+## The chart
+
+- Frequency is always the x-axis. The chart automatically switches to a **logarithmic** x-axis
+  when the sweep spans at least one decade (`max/min ≥ 10`) — the standard convention once a
+  sweep covers a wide enough range — and stays linear otherwise.
+- With only amplitude or only phase active, it's a single-axis line chart, points connected by
+  lines, hoverable for exact values.
+- With both active, the chart splits into a **stacked Bode-style layout**: the amplitude trace
+  on top, the phase trace directly below, sharing one frequency axis — not overlaid, since
+  amplitude and phase have very different scales.
+
+The same chart component (and the same log-scale/layout logic) is used both in the wizard's
+live-editing step and when reviewing a saved calibration, so what you see while entering data is
+exactly what you'll see afterward.
+
+## Storage
+
+Like the calibration's own raw data points, frequency/amplitude/phase values are stored **exactly
+as entered** — in whichever units you picked for the sweep — not converted to SI. The chosen
+units and amplitude type are part of what's being recorded, not an incidental display choice.
+
+## Reviewing it later
+
+Once a calibration with frequency-response data is saved, its detail view on the asset page
+shows a **"Frequency Response"** panel (alongside the existing "Conditions & Notes" panel) with
+the interactive chart and the full data table side by side — zoom, pan, and hover all work the
+same way there as in the wizard.

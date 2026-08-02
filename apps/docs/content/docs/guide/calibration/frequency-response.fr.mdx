@@ -1,0 +1,69 @@
+---
+title: Réponse en fréquence
+description: Enregistrer un balayage optionnel d'amplitude/phase en fonction de la fréquence en plus d'une calibration, et le consulter plus tard.
+---
+
+Pour les capteurs AC/dynamiques — transducteurs de pression, accéléromètres, microphones — une
+caractérisation complète nécessite souvent plus que la courbe statique référence/mesuré que
+capture le reste de l'assistant : un balayage de **réponse en fréquence** montrant comment la
+réponse en amplitude et/ou en phase du capteur varie avec la fréquence du signal (une
+caractérisation classique de type diagramme de Bode). Open Gauge permet d'enregistrer cela en
+complément optionnel de toute calibration.
+
+## Activation
+
+Cochez **« Ajouter la réponse en fréquence »** à l'étape 1 de l'assistant de calibration. Cela
+insère une nouvelle étape entre l'étape de données brutes et l'étape d'analyse, divisée en une
+zone de saisie de données (à gauche) et un graphique en direct (à droite) qui se met à jour au
+fur et à mesure que vous tapez — il n'y a pas d'aller-retour serveur pour ce graphique, car un
+balayage en fréquence n'est ni ajusté ni analysé comme l'est la courbe référence/mesuré, il est
+simplement tracé directement.
+
+## Les champs de l'étape
+
+- **Fréquence** — toujours saisie, avec un menu déroulant d'unité (Hz, kHz, MHz, GHz).
+- **Amplitude** — un interrupteur pour l'inclure. Lorsqu'il est activé, choisissez un **type
+  d'amplitude** (dB, RMS, Crête à crête, ou Crête) et, pour tout ce qui n'est pas dB, une **unité
+  physique** issue de la propre liste d'unités du canal du capteur (les mêmes unités que celles
+  utilisées par les menus déroulants référence/mesuré de l'assistant).
+- **Phase** — un interrupteur pour l'inclure, avec un menu déroulant d'unité (degrés ou radians).
+
+Vous pouvez activer l'amplitude, la phase, ou les deux — le tableau de données et le graphique
+s'adaptent pour n'afficher que les colonnes/tracés correspondant à ce qui est actif. Saisissez
+les points manuellement (ajoutez/supprimez des lignes librement) ou importez un CSV — une ligne
+d'en-tête est requise, avec une colonne contenant « frequency » (obligatoire) et, lorsqu'elles
+sont actives, « amplitude » et/ou « phase » (correspondance par sous-chaîne insensible à la
+casse, donc « Freq (Hz) » ou « Amplitude (dB) » fonctionnent tous les deux).
+
+## Le graphique
+
+- La fréquence est toujours l'axe des x. Le graphique bascule automatiquement vers un axe des x
+  **logarithmique** lorsque le balayage couvre au moins une décade (`max/min ≥ 10`) — la
+  convention standard une fois qu'un balayage couvre une plage suffisamment large — et reste
+  linéaire dans le cas contraire.
+- Avec seulement l'amplitude ou seulement la phase active, c'est un graphique en courbes à un
+  seul axe, points reliés par des lignes, survolables pour obtenir les valeurs exactes.
+- Avec les deux actives, le graphique se divise en une **disposition empilée de type Bode** :
+  le tracé de l'amplitude en haut, le tracé de la phase directement en dessous, partageant un
+  seul axe de fréquence — non superposés, car l'amplitude et la phase ont des échelles très
+  différentes.
+
+Le même composant de graphique (et la même logique d'échelle logarithmique/disposition) est
+utilisé aussi bien dans l'étape d'édition en direct de l'assistant que lors de la consultation
+d'une calibration enregistrée, de sorte que ce que vous voyez pendant la saisie des données est
+exactement ce que vous verrez ensuite.
+
+## Stockage
+
+Comme les propres points de données bruts de la calibration, les valeurs de
+fréquence/amplitude/phase sont stockées **exactement telles que saisies** — dans les unités que
+vous avez choisies pour le balayage — sans conversion en SI. Les unités choisies et le type
+d'amplitude font partie de ce qui est enregistré, ce n'est pas un choix d'affichage accessoire.
+
+## Consultation ultérieure
+
+Une fois qu'une calibration avec des données de réponse en fréquence est enregistrée, sa vue
+détaillée sur la page de l'actif affiche un panneau **« Réponse en fréquence »** (à côté du
+panneau existant « Conditions et notes ») avec le graphique interactif et le tableau de données
+complet côte à côte — le zoom, le déplacement et le survol fonctionnent tous de la même manière
+là qu'à dans l'assistant.

@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models.calibration import Calibration
+from ..models.calibration_frequency_point import CalibrationFrequencyPoint
 from ..models.calibration_point import CalibrationData
 from ..schemas.calibration import CalibrationCreate
 
@@ -82,10 +83,11 @@ def restore_calibration(db: Session, cal: Calibration) -> Calibration:
 
 def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -> Calibration:
     """
-    Atomically create a Calibration and all CalibrationData rows in one transaction.
-    Sets calibration_data_id to the first data point created (if any).
+    Atomically create a Calibration and all CalibrationData/CalibrationFrequencyPoint
+    rows in one transaction. Sets calibration_data_id to the first data point created
+    (if any).
     """
-    data = body.model_dump(exclude={"points"})
+    data = body.model_dump(exclude={"points", "frequency_response_points"})
     cal = Calibration(created_by=created_by, **data)
     db.add(cal)
     db.flush()
@@ -102,6 +104,11 @@ def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -
 
     if first_point_id is not None:
         cal.calibration_data_id = first_point_id
+
+    for fp in body.frequency_response_points:
+        fp_data = fp.model_dump()
+        fp_data["calibration_id"] = cal.id
+        db.add(CalibrationFrequencyPoint(**fp_data))
 
     db.commit()
     db.refresh(cal)
@@ -121,5 +128,14 @@ def list_points(db: Session, calibration_id: uuid.UUID) -> list[CalibrationData]
         db.query(CalibrationData)
         .filter(CalibrationData.calibration_id == calibration_id)
         .order_by(CalibrationData.point_index)
+        .all()
+    )
+
+
+def list_frequency_points(db: Session, calibration_id: uuid.UUID) -> list[CalibrationFrequencyPoint]:
+    return (
+        db.query(CalibrationFrequencyPoint)
+        .filter(CalibrationFrequencyPoint.calibration_id == calibration_id)
+        .order_by(CalibrationFrequencyPoint.sweep_index)
         .all()
     )

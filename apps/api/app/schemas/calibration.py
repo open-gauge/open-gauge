@@ -113,6 +113,29 @@ class CalibrationPointResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
+# Frequency-response sweep points                                    #
+# ------------------------------------------------------------------ #
+
+class FrequencyResponsePointInline(BaseModel):
+    sweep_index: int
+    frequency_value: float
+    amplitude_value: float | None = None
+    phase_value: float | None = None
+
+
+class FrequencyResponsePointResponse(BaseModel):
+    id: uuid.UUID
+    calibration_id: uuid.UUID
+    sweep_index: int
+    frequency_value: float
+    amplitude_value: float | None
+    phase_value: float | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ------------------------------------------------------------------ #
 # Calibration create / response (flat)                               #
 # ------------------------------------------------------------------ #
 
@@ -176,6 +199,14 @@ class CalibrationCreate(BaseModel):
     # Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
     decision_rule: str | None = None
     conformity_statement: dict | None = None
+
+    # Frequency response sweep (optional)
+    has_frequency_response: bool = False
+    frequency_response_frequency_unit: str | None = None
+    frequency_response_amplitude_type: str | None = None
+    frequency_response_amplitude_unit: str | None = None
+    frequency_response_phase_unit: str | None = None
+    frequency_response_points: list[FrequencyResponsePointInline] = Field(default_factory=list)
 
     # Embedded data points
     points: list[CalibrationPointInline] = Field(default_factory=list)
@@ -247,6 +278,13 @@ class CalibrationResponse(BaseModel):
     # Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
     decision_rule: str | None = None
     conformity_statement: Any | None = None
+
+    # Frequency response sweep (optional)
+    has_frequency_response: bool = False
+    frequency_response_frequency_unit: str | None = None
+    frequency_response_amplitude_type: str | None = None
+    frequency_response_amplitude_unit: str | None = None
+    frequency_response_phase_unit: str | None = None
 
     # Soft-void state
     is_active: bool = True

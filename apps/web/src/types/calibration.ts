@@ -77,6 +77,13 @@ export interface CalibrationRecord {
   decision_rule: string | null;
   conformity_statement: ConformityStatement | null;
 
+  // Frequency response sweep (optional)
+  has_frequency_response: boolean;
+  frequency_response_frequency_unit: string | null;
+  frequency_response_amplitude_type: string | null;
+  frequency_response_amplitude_unit: string | null;
+  frequency_response_phase_unit: string | null;
+
   // Soft-void state
   is_active: boolean;
   voided_at: string | null;
@@ -96,6 +103,23 @@ export interface CalibrationPoint {
   reference_unit: string;
   measured_unit: string;
   created_at: string;
+}
+
+export interface FrequencyResponsePoint {
+  id: string;
+  calibration_id: string;
+  sweep_index: number;
+  frequency_value: number;
+  amplitude_value: number | null;
+  phase_value: number | null;
+  created_at: string;
+}
+
+export interface FrequencyResponsePointInline {
+  sweep_index: number;
+  frequency_value: number;
+  amplitude_value?: number | null;
+  phase_value?: number | null;
 }
 
 // ------------------------------------------------------------------ //
@@ -284,6 +308,14 @@ export interface CalibrationCreateBody {
   // Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
   decision_rule?: string | null;
   conformity_statement?: ConformityStatement | null;
+
+  // Frequency response sweep (optional)
+  has_frequency_response?: boolean;
+  frequency_response_frequency_unit?: string | null;
+  frequency_response_amplitude_type?: string | null;
+  frequency_response_amplitude_unit?: string | null;
+  frequency_response_phase_unit?: string | null;
+  frequency_response_points?: FrequencyResponsePointInline[];
 
   // Embedded data points
   points?: CalibrationPointInline[];
