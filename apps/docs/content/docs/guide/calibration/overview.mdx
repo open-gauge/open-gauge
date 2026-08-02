@@ -51,7 +51,61 @@ important, real record. If the result doesn't conform to the channel's spec, the
 confirmation shows an explicit warning naming the specification and decision rule, and the
 save button relabels to **"Save anyway."**
 
-## Calibration type
+### Choosing a workflow [#choosing-a-workflow]
+
+Two choices decide everything about what the rest of the wizard looks like and what the saved
+record can do: **Calibration purpose** on Step 1, and the **Input data method** on Step 2. Every
+other Step 1 field (type, dates, lab, notes) only affects *who* the calibration is attributed to
+and *where its certificate comes from* — it never changes the shape of Step 2 or Step 3, except
+that **Calibration type** gates whether **Model (transfer function)** is offered at all (only for
+OEM, External Accredited Lab, and Customer's Asset — see [Calibration type](#calibration-type)
+below).
+
+```mermaid
+flowchart TD
+    Start(["Start a calibration<br/>from an asset channel"]) --> Step1["Step 1 — General info:<br/>pick Calibration type + purpose"]
+    Step1 --> Purpose{"Calibration purpose?"}
+
+    Purpose -->|"Initial / Routine / Verification"| Picker1["Step 2 — Input data method"]
+    Purpose -->|"After Repair"| Picker2["Step 2 — Input data method<br/>(Model not offered)"]
+
+    Picker1 --> RVM["Reference vs Measured"]
+    Picker1 --> RVI["Reference vs Indicated"]
+    Picker1 --> Model["Model (transfer function)<br/>only if type = OEM / Ext. Lab / Customer's Asset"]
+
+    Picker2 --> RVMAfter["Reference vs Measured"]
+    Picker2 --> RVIAfter["Reference vs Indicated"]
+
+    RVM --> RVMEntry["Enter (reference, measured) points<br/>choose Polynomial Fit / Lookup Table / Custom Formula"]
+    RVMEntry --> RVMOut(["Outcome: fitted equation,<br/>R² / RMSE / max error,<br/>uncertainty budget, conformity"])
+
+    RVI --> RVIEntry["Enter (reference, indicated) points<br/>no curve fit"]
+    RVIEntry --> RVIOut(["Outcome: residual statistics,<br/>uncertainty budget, conformity —<br/>no equation"])
+
+    Model --> ModelEntry["Declare coefficients or formula<br/>+ valid range — no raw data"]
+    ModelEntry --> ModelOut(["Outcome: model trusted as declared,<br/>conformity from the uncertainty<br/>budget alone at both range ends"])
+
+    RVMAfter --> AfalEntry["Enter As-Found AND As-Left<br/>point tables, side by side,<br/>shared reference/measured units"]
+    RVIAfter --> AfalEntry
+    AfalEntry --> AfalCalc["Step 3: one shared Uncertainty +<br/>conformity-criteria panel;<br/>Reference vs Measured fits each side<br/>independently, Reference vs Indicated<br/>compares residuals on each side"]
+    AfalCalc --> AfalOut(["Outcome: As-Left = official result<br/>(due date, approval, Health tab) —<br/>As-Found = read-only diagnostic only"])
+
+    RVMOut --> Save["Confirm & Save"]
+    RVIOut --> Save
+    ModelOut --> Save
+    AfalOut --> Save
+```
+
+Every path converges on the same [approval workflow](#approval-workflow) and
+[version numbering](#version-numbers) once you save — a failed or diagnostic-only result is saved
+exactly the same way as a passing one, and every path produces a normal calibration record with a
+certificate. What differs between paths is only *what could be computed*: Reference vs Indicated
+and Model never produce a fitted-curve equation (there's no known transfer function to fit),
+and After Repair's as-found side never feeds the due date or Health tab, no matter which base
+method it started from. See [Alternative calibration data-entry modes](./coefficients-only.mdx)
+for the full field-by-field breakdown of every branch above.
+
+## Calibration type [#calibration-type]
 
 The **Calibration type** describes *who performed the calibration*, and determines what the
 **Calibration lab** field resolves to:

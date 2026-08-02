@@ -4,7 +4,7 @@ description: Historique des versions — ce qui a changé dans chaque version d'
 ---
 
 Open Gauge suit un unique numéro de version à travers le frontend et le backend. Il est affiché
-en bas à gauche de la barre latérale (`v3.14.0 · self-hosted`) et dans le schéma OpenAPI. Cette
+en bas à gauche de la barre latérale (`v3.15.0 · self-hosted`) et dans le schéma OpenAPI. Cette
 page reflète le fichier
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) à la racine du
 dépôt.
@@ -14,6 +14,22 @@ numéroté selon l'impact de versionnement sémantique (`0.x` tant que le produi
 pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté, sous licence, et
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
+
+## 3.15.0
+
+### Ajouté
+
+- **Prise en charge des diagrammes Mermaid dans le Centre de connaissances.** `apps/docs` affiche
+  désormais les blocs de code ```` ```mermaid ```` sous forme de diagrammes SVG en direct, sensibles
+  au thème (via le plugin `remarkMdxMermaid` de `fumadocs-core` et un nouveau composant MDX
+  `Mermaid` côté client qui charge la bibliothèque `mermaid` et se réaffiche lors des changements
+  de thème clair/sombre) — disponible sur toute page de guide désormais, pas seulement celle
+  ci-dessous.
+- **Section « Choisir un flux de travail » dans le guide Aperçu de la calibration**, avec un
+  organigramme retraçant chaque combinaison d'Objectif de la calibration et de méthode de saisie
+  des données de l'étape 2 jusqu'à son résultat — ce qui obtient une équation ajustée, ce qui est
+  purement résiduel, ce qui est purement diagnostique, et ce qui alimente toujours la date
+  d'échéance/l'onglet Santé quel que soit le chemin.
 
 ## 3.14.0
 

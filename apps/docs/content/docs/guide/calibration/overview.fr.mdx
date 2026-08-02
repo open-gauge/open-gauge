@@ -57,7 +57,63 @@ spécification de la voie, la confirmation d'enregistrement affiche un avertisse
 nommant la spécification et la règle de décision, et le bouton d'enregistrement se relibelle en
 **« Enregistrer quand même »**.
 
-## Type de calibration
+### Choisir un flux de travail [#choosing-a-workflow]
+
+Deux choix déterminent tout l'aspect du reste de l'assistant et ce que l'enregistrement peut
+faire une fois enregistré : l'**Objectif de la calibration** à l'étape 1, et la **méthode de
+saisie des données** à l'étape 2. Tout autre champ de l'étape 1 (type, dates, laboratoire, notes)
+n'affecte que *à qui* la calibration est attribuée et *d'où vient son certificat* — cela ne change
+jamais la forme de l'étape 2 ou de l'étape 3, sauf que le **Type de calibration** détermine si
+**Modèle (fonction de transfert)** est proposé (uniquement pour OEM, Laboratoire externe accrédité
+et Actif d'un client — voir [Type de calibration](#calibration-type) ci-dessous).
+
+```mermaid
+flowchart TD
+    Start(["Démarrer une calibration<br/>depuis une voie de l'actif"]) --> Step1["Étape 1 — Infos générales :<br/>choisir Type de calibration + objectif"]
+    Step1 --> Purpose{"Objectif de la calibration ?"}
+
+    Purpose -->|"Initiale / Routine / Vérification"| Picker1["Étape 2 — Méthode de saisie des données"]
+    Purpose -->|"Après réparation"| Picker2["Étape 2 — Méthode de saisie des données<br/>(Modèle non proposé)"]
+
+    Picker1 --> RVM["Référence par rapport à Mesuré"]
+    Picker1 --> RVI["Référence par rapport à Indiqué"]
+    Picker1 --> Model["Modèle (fonction de transfert)<br/>seulement si type = OEM / Lab. externe / Actif client"]
+
+    Picker2 --> RVMAfter["Référence par rapport à Mesuré"]
+    Picker2 --> RVIAfter["Référence par rapport à Indiqué"]
+
+    RVM --> RVMEntry["Saisir des points (référence, mesuré)<br/>choisir Ajustement polynomial / Table de correspondance / Formule personnalisée"]
+    RVMEntry --> RVMOut(["Résultat : équation ajustée,<br/>R² / RMSE / erreur maximale,<br/>budget d'incertitude, conformité"])
+
+    RVI --> RVIEntry["Saisir des points (référence, indiqué)<br/>sans ajustement de courbe"]
+    RVIEntry --> RVIOut(["Résultat : statistiques de résidu,<br/>budget d'incertitude, conformité —<br/>pas d'équation"])
+
+    Model --> ModelEntry["Déclarer les coefficients ou la formule<br/>+ la plage de validité — sans données brutes"]
+    ModelEntry --> ModelOut(["Résultat : modèle jugé fiable tel que<br/>déclaré, conformité issue uniquement du<br/>budget d'incertitude aux deux extrémités"])
+
+    RVMAfter --> AfalEntry["Saisir les tableaux de points Telle Que<br/>Trouvée ET Telle Que Laissée, côte à côte,<br/>unités partagées"]
+    RVIAfter --> AfalEntry
+    AfalEntry --> AfalCalc["Étape 3 : un seul panneau partagé de<br/>Calcul d'incertitude + critère de conformité ;<br/>Référence par rapport à Mesuré ajuste chaque<br/>côté indépendamment, Référence par rapport à<br/>Indiqué compare les résidus de chaque côté"]
+    AfalCalc --> AfalOut(["Résultat : Telle Que Laissée = résultat<br/>officiel (date d'échéance, approbation,<br/>onglet Santé) — Telle Que Trouvée =<br/>diagnostic en lecture seule uniquement"])
+
+    RVMOut --> Save["Confirmer et enregistrer"]
+    RVIOut --> Save
+    ModelOut --> Save
+    AfalOut --> Save
+```
+
+Tous les chemins convergent vers le même [flux d'approbation](#approval-workflow) et la même
+[numérotation des versions](#version-numbers) lors de l'enregistrement — un résultat échoué ou
+purement diagnostique est enregistré exactement comme un résultat conforme, et chaque chemin
+produit une calibration normale avec certificat. Ce qui diffère entre les chemins, c'est
+uniquement *ce qui a pu être calculé* : Référence par rapport à Indiqué et Modèle ne produisent
+jamais d'équation de courbe ajustée (il n'y a pas de fonction de transfert connue à ajuster), et
+le côté telle que trouvée d'Après réparation n'alimente jamais la date d'échéance ni l'onglet
+Santé, quelle que soit la méthode de base utilisée. Voir
+[Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx) pour le détail
+complet, champ par champ, de chaque branche ci-dessus.
+
+## Type de calibration [#calibration-type]
 
 Le **Type de calibration** décrit *qui a effectué la calibration*, et détermine ce à quoi se
 résout le champ **Laboratoire de calibration** :

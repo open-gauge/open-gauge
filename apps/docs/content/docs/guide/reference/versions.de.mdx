@@ -4,7 +4,7 @@ description: Release-Historie — was sich in jeder Version von Open Gauge geän
 ---
 
 Open Gauge verfolgt eine einzige Versionsnummer über Frontend und Backend hinweg. Sie wird unten
-links in der Seitenleiste angezeigt (`v3.14.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
+links in der Seitenleiste angezeigt (`v3.15.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
 spiegelt [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) im
 Repository-Root wider.
 
@@ -14,6 +14,21 @@ Veröffentlichung/instabil war, `1.0.0` ab dem Punkt, an dem es zu einem dokumen
 lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern die kleineren
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
+
+## 3.15.0
+
+### Hinzugefügt
+
+- **Mermaid-Diagrammunterstützung im Knowledge Center.** `apps/docs` rendert ```` ```mermaid ````
+  Code-Blöcke jetzt als live, themasensitive SVG-Diagramme (über das `remarkMdxMermaid`-Plugin von
+  `fumadocs-core` und eine neue clientseitige `Mermaid`-MDX-Komponente, die die `mermaid`-
+  Bibliothek lädt und bei Hell-/Dunkel-Themenwechseln neu rendert) — ab sofort auf jeder Guide-Seite
+  verfügbar, nicht nur auf der unten genannten.
+- **Abschnitt „Einen Arbeitsablauf wählen" im Leitfaden Kalibrierübersicht**, mit einem
+  Flussdiagramm, das jede Kombination aus Kalibrierzweck und der Dateneingabemethode aus Schritt 2
+  bis zu ihrem Ergebnis nachzeichnet — was eine angepasste Gleichung erhält, was rein
+  residuenbasiert ist, was rein diagnostisch ist, und was unabhängig vom Pfad immer in das
+  Fälligkeitsdatum/den Reiter Zustand einfließt.
 
 ## 3.14.0
 

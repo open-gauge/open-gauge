@@ -9,6 +9,19 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.15.0
+
+### Added
+
+- **Mermaid diagram support in the Knowledge Center.** `apps/docs` now renders ```` ```mermaid ````
+  code fences as live, theme-aware SVG diagrams (via `fumadocs-core`'s `remarkMdxMermaid` plugin
+  and a new client-side `Mermaid` MDX component that loads the `mermaid` library and re-renders on
+  light/dark theme changes) — available on every guide page going forward, not just the one below.
+- **"Choosing a workflow" section on the Calibration overview guide**, with a flowchart tracing
+  every combination of Calibration purpose and Step 2's input data method through to its outcome —
+  what gets a fitted equation, what's residual-only, what's diagnostic-only, and what always feeds
+  the due date/Health tab regardless of path.
+
 ## 3.14.0
 
 ### Added

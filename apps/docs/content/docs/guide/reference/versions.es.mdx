@@ -4,7 +4,7 @@ description: Historial de versiones — qué cambió en cada versión de Open Ga
 ---
 
 Open Gauge lleva un único número de versión en todo el frontend y el backend. Se muestra en la
-parte inferior izquierda de la barra lateral (`v3.14.0 · self-hosted`) y en el esquema OpenAPI. Esta
+parte inferior izquierda de la barra lateral (`v3.15.0 · self-hosted`) y en el esquema OpenAPI. Esta
 página refleja [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) en
 la raíz del repositorio.
 
@@ -13,6 +13,21 @@ según el impacto de versionado semántico (`0.x` mientras el producto estaba en
 lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto documentado, con
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
+
+## 3.15.0
+
+### Agregado
+
+- **Soporte de diagramas Mermaid en el Centro de conocimiento.** `apps/docs` ahora renderiza los
+  bloques de código ```` ```mermaid ```` como diagramas SVG en vivo, conscientes del tema (mediante
+  el plugin `remarkMdxMermaid` de `fumadocs-core` y un nuevo componente MDX `Mermaid` del lado del
+  cliente que carga la librería `mermaid` y se vuelve a renderizar al cambiar entre tema claro y
+  oscuro) — disponible en cualquier página de guía a partir de ahora, no solo en la de abajo.
+- **Sección "Elegir un flujo de trabajo" en la guía de Resumen de calibración**, con un diagrama de
+  flujo que traza cada combinación de Propósito de la calibración y el método de entrada de datos
+  del Paso 2 hasta su resultado — qué obtiene una ecuación ajustada, qué es solo de residuo, qué es
+  solo diagnóstico, y qué siempre alimenta la fecha de vencimiento/pestaña Estado sin importar el
+  camino.
 
 ## 3.14.0
 

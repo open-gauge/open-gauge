@@ -54,7 +54,63 @@ nicht der Spezifikation des Kanals, zeigt die Speicherbestätigung eine explizit
 der Spezifikation und Entscheidungsregel, und die Speichern-Schaltfläche wird zu
 **"Trotzdem speichern"** umbenannt.
 
-## Kalibrierart
+### Einen Arbeitsablauf wählen [#choosing-a-workflow]
+
+Zwei Entscheidungen bestimmen alles darüber, wie der Rest des Assistenten aussieht und was der
+gespeicherte Datensatz kann: der **Kalibrierzweck** in Schritt 1 und die **Dateneingabemethode**
+in Schritt 2. Jedes andere Feld in Schritt 1 (Art, Daten, Labor, Notizen) wirkt sich nur darauf
+aus, *wem* die Kalibrierung zugeschrieben wird und *woher ihr Zertifikat stammt* — es ändert nie
+die Form von Schritt 2 oder Schritt 3, außer dass die **Kalibrierart** bestimmt, ob **Modell
+(Übertragungsfunktion)** überhaupt angeboten wird (nur für OEM, Externes akkreditiertes Labor und
+Kundenanlage — siehe [Kalibrierart](#calibration-type) unten).
+
+```mermaid
+flowchart TD
+    Start(["Kalibrierung von einem<br/>Anlagenkanal aus starten"]) --> Step1["Schritt 1 — Allgemeine Infos:<br/>Kalibrierart + Kalibrierzweck wählen"]
+    Step1 --> Purpose{"Kalibrierzweck?"}
+
+    Purpose -->|"Erstkalibrierung / Routine / Verifizierung"| Picker1["Schritt 2 — Dateneingabemethode"]
+    Purpose -->|"Nach Reparatur"| Picker2["Schritt 2 — Dateneingabemethode<br/>(Modell nicht angeboten)"]
+
+    Picker1 --> RVM["Referenz vs. Gemessen"]
+    Picker1 --> RVI["Referenz vs. Angezeigt"]
+    Picker1 --> Model["Modell (Übertragungsfunktion)<br/>nur wenn Art = OEM / Ext. Labor / Kundenanlage"]
+
+    Picker2 --> RVMAfter["Referenz vs. Gemessen"]
+    Picker2 --> RVIAfter["Referenz vs. Angezeigt"]
+
+    RVM --> RVMEntry["(Referenz-, Mess-)Punkte eingeben<br/>Polynomanpassung / Nachschlagetabelle / Benutzerdefinierte Formel wählen"]
+    RVMEntry --> RVMOut(["Ergebnis: angepasste Gleichung,<br/>R² / RMSE / Maximalfehler,<br/>Unsicherheitsbudget, Konformität"])
+
+    RVI --> RVIEntry["(Referenz-, Anzeige-)Punkte eingeben<br/>keine Kurvenanpassung"]
+    RVIEntry --> RVIOut(["Ergebnis: Residuen-Statistik,<br/>Unsicherheitsbudget, Konformität —<br/>keine Gleichung"])
+
+    Model --> ModelEntry["Koeffizienten oder Formel deklarieren<br/>+ gültiger Bereich — keine Rohdaten"]
+    ModelEntry --> ModelOut(["Ergebnis: Modell wie deklariert vertrauens-<br/>würdig, Konformität nur aus dem Unsicherheits-<br/>budget an beiden Bereichsenden"])
+
+    RVMAfter --> AfalEntry["Wie-vorgefunden- UND Wie-belassen-<br/>Punkttabellen eingeben, nebeneinander,<br/>gemeinsame Einheiten"]
+    RVIAfter --> AfalEntry
+    AfalEntry --> AfalCalc["Schritt 3: ein gemeinsames Panel für<br/>Unsicherheit + Konformitätskriterium;<br/>Referenz vs. Gemessen passt jede Seite<br/>unabhängig an, Referenz vs. Angezeigt<br/>vergleicht Residuen auf jeder Seite"]
+    AfalCalc --> AfalOut(["Ergebnis: Wie belassen = offizielles<br/>Ergebnis (Fälligkeitsdatum, Genehmigung,<br/>Reiter Zustand) — Wie vorgefunden =<br/>nur schreibgeschützte Diagnose"])
+
+    RVMOut --> Save["Bestätigen & speichern"]
+    RVIOut --> Save
+    ModelOut --> Save
+    AfalOut --> Save
+```
+
+Alle Pfade laufen beim Speichern im selben [Genehmigungsablauf](#approval-workflow) und derselben
+[Versionsnummerierung](#version-numbers) zusammen — ein nicht bestandenes oder rein diagnostisches
+Ergebnis wird genauso gespeichert wie ein konformes, und jeder Pfad erzeugt einen normalen
+Kalibrierdatensatz mit Zertifikat. Was sich zwischen den Pfaden unterscheidet, ist nur, *was
+berechnet werden konnte*: Referenz vs. Angezeigt und Modell erzeugen nie eine angepasste
+Kurvengleichung (es gibt keine bekannte Übertragungsfunktion, die angepasst werden könnte), und
+die Wie-vorgefunden-Seite von Nach Reparatur fließt nie in das Fälligkeitsdatum oder den Reiter
+Zustand ein, unabhängig davon, von welcher Basismethode aus gestartet wurde. Siehe
+[Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx) für die vollständige
+feldweise Aufschlüsselung jedes Zweigs oben.
+
+## Kalibrierart [#calibration-type]
 
 Die **Kalibrierart** beschreibt, *wer die Kalibrierung durchgeführt hat*, und bestimmt, worauf sich
 das Feld **Kalibrierlabor** auflöst:
