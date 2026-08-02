@@ -1,37 +1,76 @@
 ---
-title: Coefficients-only calibrations
-description: Recording an external lab certificate that states the calibration polynomial directly, with no raw data points.
+title: Alternative calibration data-entry modes
+description: Recording a calibration when the data doesn't come as the usual reference-vs-measured-signal points — a lab-supplied model, or an already-converted reference-vs-value comparison.
 ---
 
-Some sensors — mainly ones sent to an outside lab — come back with a calibration certificate
-that states the calibration polynomial's coefficients directly, with no raw reference/measured
-data points included. For these, Open Gauge has a dedicated path so you don't have to fabricate fake
-data points just to record the result.
+By default, a calibration's raw data is a set of (reference, measured) point pairs — the
+reference standard's reading against the channel's own output signal — which Open Gauge fits to a
+curve. Some labs deliver calibration results in other shapes instead. Step 1's **Data entry mode**
+selector covers three alternatives, alongside the default **Raw data**:
 
-## Using it
+- **Model provided directly** — the lab/manufacturer certificate states the calibration model
+  itself, with no raw data points at all.
+- **Reference vs. indicated value** — the lab provides the reference standard's reading and the
+  channel's output already converted to a physical quantity, with no known transfer function
+  between them. Only available when Calibration purpose is **Verification**.
+- **Reference vs. as-found/as-left value** — the same kind of reference-vs-converted-value
+  comparison, recorded twice: once before a repair (as-found) and once after (as-left). Only
+  available when Calibration purpose is **After Repair**.
 
-On an **External** calibration, checking **"Coefficients only (no raw data)"** in Step 1
-replaces the wizard's raw-data step with a manual coefficient-entry form:
+## Model provided directly
 
-- **Polynomial order** (1–5) and its **coefficients**, entered in the same descending-power
-  convention Open Gauge's own regression engine uses (highest degree first, constant term last).
-- The **valid range** (min/max) the polynomial applies over.
-- Optionally, **"Uncertainty stated on certificate"** — if the lab's certificate states an
-  expanded uncertainty and coverage factor, enter them here to store them directly (rather
-  than fabricating a fit-derived value), producing a single `external_certificate_stated` row
-  in the [uncertainty budget](./uncertainty-budget.mdx#contributions).
+Use this when the certificate states the calibration model directly rather than raw data points —
+common for OEM/External Accredited Lab/Customer's Asset calibrations. Step 2 becomes a
+model-entry form:
 
-## What's intentionally left blank
+- **Model type** — a **Polynomial** (order 1–5, coefficients entered in the same descending-power
+  convention Open Gauge's own regression engine uses — highest degree first, constant term last),
+  or a **Custom formula**: a single-variable expression in `x` (the measured/output value), e.g.
+  `2.5 * x + 1.2`. Allowed syntax: `+ − * / ^ ( )` and the functions `sqrt`, `exp`, `log`, `ln`,
+  `sin`, `cos`, `tan`, `abs`, `pow`. A custom formula is fully evaluable — it participates in the
+  saved calibration's fitted-curve chart and the [Health tab](../overview.mdx)'s drift/curve
+  comparison exactly like a polynomial, just evaluated from the formula instead of polynomial
+  coefficients.
+- The **valid range** (min/max) the model applies over.
 
-Because there's no raw data, Open Gauge doesn't compute (and doesn't display) a fit — this path
-deliberately leaves **R², RMSE**, the `fit_residuals` budget row, and, critically,
-**the decision rule and conformity statement**, all empty.
+Step 3 then collects the same [uncertainty budget](./uncertainty-budget.mdx) inputs a raw-data
+calibration collects (reference standard uncertainty, resolution, sensor nominal accuracy,
+distribution/confidence, [decision rule](./decision-rules.mdx)) — because there's no measured
+data, conformity is assessed by treating the model as trusted-as-declared (an assessed error of
+exactly zero) and comparing only the combined uncertainty budget against the channel's tolerance
+spec, at both ends of the declared valid range.
 
-A conformity (pass/fail) statement requires an *assessed error* to compare against a spec
-(GUM §6.3, ISO/IEC 17025 §7.8.6) — a coefficients-only record has no assessed error, only the
-calibration function itself. So Open Gauge doesn't show or store a fabricated CONFORMS/DOES NOT
-CONFORM badge for these records. If you need a conformity statement, use a regular
-(non-coefficients-only) calibration with the actual raw data instead.
+## Reference vs. indicated value
 
-See [Example 4](./examples/coefficients-only-certificate.mdx) for a complete
-worked case, including what gets saved and displayed.
+Use this when a lab provides the reference standard's measurement alongside the channel's own
+output already converted to the same physical quantity — but the transfer function itself (how
+one becomes the other) isn't known or wasn't provided. Since there's no function to fit, Open
+Gauge can't produce a fitted curve or a polynomial equation for this calibration — but every
+statistic that only needs a residual (the direct difference between the two values) is still
+computed exactly as usual: R², RMSE, max error, %FS error, repeatability, hysteresis, the full
+uncertainty budget, and a real decision-rule conformity statement. The saved calibration's detail
+view shows these statistics and a residuals chart in place of the usual fitted-curve chart.
+
+## Reference vs. as-found/as-left value
+
+Use this for an After Repair calibration when the lab provides two reference-vs-value comparisons
+of the kind described above — one taken before the repair (**as-found**) and one after
+(**as-left**) — again with no known transfer function. Step 2 becomes two stacked data-entry
+tables, and Step 3 shows both results side by side.
+
+The **as-left** result is this calibration record's official result: it's what feeds the next due
+date, the approval workflow, and the Health tab's history. The **as-found** result is kept purely
+as read-only diagnostic context — visible on the saved calibration's detail view, but it's never
+used for due-date or drift calculations, and doesn't need to conform to any spec on its own.
+
+## What's the same either way
+
+Whichever mode you use, the record you get is a normal calibration — it appears in the channel's
+history, can be voided or go through the approval workflow, and downloads a certificate. A
+model-provided-directly or reference-vs-indicated calibration's certificate still shows every
+statistic Open Gauge was able to compute for it; only the specific rows that genuinely don't apply
+(e.g. a fitted-curve equation when there's no known transfer function) are left out rather than
+fabricated.
+
+See [Example 4](./examples/coefficients-only-certificate.mdx) for a worked model-provided-directly
+case, including what gets saved and displayed.

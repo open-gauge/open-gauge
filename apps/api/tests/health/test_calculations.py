@@ -14,6 +14,8 @@ def _summary(
     id_: str = "c1",
     calibration_date: date = date(2024, 1, 1),
     poly_coefficients: object = _UNSET,
+    model_type: str = "polynomial",
+    custom_formula: str | None = None,
     valid_range_min: float | None = 0.0,
     valid_range_max: float | None = 100.0,
     r_squared: float | None = 0.999,
@@ -31,6 +33,8 @@ def _summary(
         performed_by_name="Tester",
         poly_order=1,
         poly_coefficients=[1.0, 0.0] if poly_coefficients is _UNSET else poly_coefficients,  # default: y = x
+        model_type=model_type,
+        custom_formula=custom_formula,
         valid_range_min=valid_range_min,
         valid_range_max=valid_range_max,
         r_squared=r_squared,

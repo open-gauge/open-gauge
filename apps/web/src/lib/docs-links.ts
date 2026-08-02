@@ -122,7 +122,7 @@ export const WIZARD_DOCS_LINKS: Record<string, string> = {
   calibration_purpose: "/docs/guide/calibration/wizard-fields#calibration-purpose",
   calibration_lab: "/docs/guide/calibration/wizard-fields#calibration-lab",
   calibration_certificate: "/docs/guide/calibration/wizard-fields#calibration-certificate",
-  coefficients_only: "/docs/guide/calibration/wizard-fields#coefficients-only",
+  data_entry_mode: "/docs/guide/calibration/wizard-fields#data-entry-mode",
   reference_asset: "/docs/guide/calibration/wizard-fields#reference-asset",
   calibration_method: "/docs/guide/calibration/wizard-fields#calibration-method",
   repair_date: "/docs/guide/calibration/wizard-fields#repair-date",

@@ -79,13 +79,18 @@ Laden Sie das vom Labor ausgestellte PDF-Zertifikat hoch — nur verfügbar für
 vorhanden, wird es überall dort, wo das Zertifikat dieser Kalibrierung heruntergeladen wird,
 anstelle des systemgenerierten Zertifikats ausgeliefert.
 
-## Nur Koeffizienten (keine Rohdaten)
+## Dateneingabemodus
 
-Aktivieren Sie dies, wenn das Zertifikat die Koeffizienten des Kalibrierpolynoms bereits direkt
-angibt, ohne dass rohe Referenz-/Messdatenpunkte enthalten sind — dies überspringt die
-Kurvenanpassung vollständig und wechselt Schritt 2 zur manuellen Koeffizienteneingabe. Siehe
-[Kalibrierungen nur mit Koeffizienten](./coefficients-only.mdx) für den vollständigen Ablauf der
-manuellen Eingabe.
+Wie die Daten dieser Kalibrierung geliefert wurden — **Rohdaten** (Referenz vs. Ausgangssignal, der
+Standard) werden wie gewohnt an eine Kurve angepasst. **Modell direkt angegeben** ist für ein
+Zertifikat, das das Kalibriermodell selbst angibt (ein Polynom oder eine benutzerdefinierte
+Formel), ganz ohne Rohdatenpunkte — nur für OEM-/Externes-akkreditiertes-Labor-/Kundenanlagen-
+Kalibrierungen angeboten. **Referenz vs. angezeigter Wert** und **Referenz vs. wie
+vorgefunden/wie belassen** sind für Labore, die einen bereits in eine physikalische Größe
+umgerechneten Vergleich ohne bekannte Übertragungsfunktion liefern — nur angeboten, wenn der
+Kalibrierzweck Verifizierung bzw. Nach Reparatur ist. Siehe
+[Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx) für die vollständige
+Aufschlüsselung aller vier Modi.
 
 ## Referenz-Anlage
 

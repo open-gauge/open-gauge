@@ -1,38 +1,85 @@
 ---
-title: Calibraciones de solo coeficientes
-description: Registrar un certificado de laboratorio externo que indica el polinomio de calibración directamente, sin puntos de datos en bruto.
+title: Modos alternativos de entrada de datos de calibración
+description: Registrar una calibración cuando los datos no llegan en la forma habitual de puntos referencia-frente-a-señal-medida — un modelo proporcionado por el laboratorio, o una comparación referencia-frente-a-valor ya convertido.
 ---
 
-Algunos sensores — principalmente los enviados a un laboratorio externo — regresan con un certificado de
-calibración que indica los coeficientes del polinomio de calibración directamente, sin ningún punto de
-dato de referencia/medido en bruto incluido. Para estos casos, Open Gauge tiene una ruta dedicada para que no
-tengas que fabricar puntos de datos falsos solo para registrar el resultado.
+Por defecto, los datos en bruto de una calibración son un conjunto de pares de puntos (referencia,
+medido) — la lectura del patrón de referencia frente a la propia señal de salida del canal — que
+Open Gauge ajusta a una curva. Algunos laboratorios entregan los resultados de calibración en otras
+formas. El selector **Modo de entrada de datos** del Paso 1 cubre tres alternativas, además del
+**Datos en bruto** por defecto:
 
-## Cómo usarla
+- **Modelo proporcionado directamente** — el certificado del laboratorio/fabricante indica el
+  propio modelo de calibración, sin ningún punto de dato en bruto.
+- **Referencia frente a valor indicado** — el laboratorio proporciona la lectura del patrón de
+  referencia y la salida del canal ya convertida a una magnitud física, sin una función de
+  transferencia conocida entre ambas. Solo disponible cuando el Propósito de la calibración es
+  **Verificación**.
+- **Referencia frente a valor tal como se encontró/tal como se dejó** — el mismo tipo de
+  comparación referencia-frente-a-valor-convertido, registrada dos veces: una antes de una
+  reparación (tal como se encontró) y otra después (tal como se dejó). Solo disponible cuando el
+  Propósito de la calibración es **Después de reparación**.
 
-En una calibración **externa**, marcar **"Solo coeficientes (sin datos en bruto)"** en el Paso 1
-reemplaza el paso de datos en bruto del asistente con un formulario manual de ingreso de coeficientes:
+## Modelo proporcionado directamente
 
-- El **orden del polinomio** (1–5) y sus **coeficientes**, ingresados con la misma convención de
-  potencias descendentes que usa el propio motor de regresión de Open Gauge (grado más alto primero,
-  término constante al final).
-- El **rango válido** (mín/máx) sobre el cual aplica el polinomio.
-- Opcionalmente, **"Incertidumbre indicada en el certificado"** — si el certificado del laboratorio
-  indica una incertidumbre expandida y un factor de cobertura, ingrésalos aquí para almacenarlos
-  directamente (en lugar de fabricar un valor derivado de un ajuste), produciendo una sola fila
-  `external_certificate_stated` en el [presupuesto de incertidumbre](./uncertainty-budget.mdx#contributions).
+Usa este modo cuando el certificado indica el modelo de calibración directamente en lugar de
+puntos de datos en bruto — habitual en calibraciones OEM/Laboratorio externo acreditado/Activo del
+cliente. El Paso 2 se convierte en un formulario de ingreso de modelo:
 
-## Qué se deja en blanco a propósito
+- **Tipo de modelo** — un **Polinomio** (orden 1–5, coeficientes ingresados con la misma
+  convención de potencias descendentes que usa el propio motor de regresión de Open Gauge — grado
+  más alto primero, término constante al final), o una **Fórmula personalizada**: una expresión de
+  una sola variable en `x` (el valor medido/de salida), p. ej. `2.5 * x + 1.2`. Sintaxis permitida:
+  `+ − * / ^ ( )` y las funciones `sqrt`, `exp`, `log`, `ln`, `sin`, `cos`, `tan`, `abs`, `pow`. Una
+  fórmula personalizada es completamente evaluable — participa en el gráfico de curva ajustada de
+  la calibración guardada y en la comparación de deriva/curva de la
+  [pestaña Estado](../overview.mdx) exactamente igual que un polinomio, solo que evaluada a partir
+  de la fórmula en lugar de coeficientes polinomiales.
+- El **rango válido** (mín/máx) sobre el que aplica el modelo.
 
-Como no hay datos en bruto, Open Gauge no calcula (ni muestra) un ajuste — esta ruta
-deliberadamente deja vacíos **R², RMSE**, la fila de presupuesto `fit_residuals`, y, de forma
-crítica, **la regla de decisión y el dictamen de conformidad**.
+El Paso 3 recopila entonces las mismas entradas del
+[presupuesto de incertidumbre](./uncertainty-budget.mdx) que recopila una calibración con datos en
+bruto (incertidumbre del patrón de referencia, resolución, exactitud nominal del sensor,
+distribución/confianza, [regla de decisión](./decision-rules.mdx)) — porque no hay datos medidos,
+la conformidad se evalúa tratando el modelo como confiable-tal-como-se-declaró (un error evaluado
+de exactamente cero) y comparando solo el presupuesto de incertidumbre combinado con la
+especificación de tolerancia del canal, en ambos extremos del rango válido declarado.
 
-Un dictamen de conformidad (aprobado/rechazado) requiere un *error evaluado* contra el cual comparar
-una especificación (GUM §6.3, ISO/IEC 17025 §7.8.6) — un registro de solo coeficientes no tiene ningún error
-evaluado, solo la propia función de calibración. Así que Open Gauge no muestra ni almacena una insignia
-fabricada de CONFORME/NO CONFORME para estos registros. Si necesitas un dictamen de conformidad, usa
-una calibración regular (que no sea de solo coeficientes) con los datos en bruto reales en su lugar.
+## Referencia frente a valor indicado
 
-Consulta el [Ejemplo 4](./examples/coefficients-only-certificate.mdx) para un caso completo
-resuelto, incluyendo qué se guarda y se muestra.
+Usa este modo cuando un laboratorio proporciona la medición del patrón de referencia junto con la
+propia salida del canal ya convertida a la misma magnitud física — pero la función de transferencia
+en sí (cómo una se convierte en la otra) no se conoce o no se proporcionó. Como no hay ninguna
+función que ajustar, Open Gauge no puede producir una curva ajustada ni una ecuación polinomial
+para esta calibración — pero cada estadística que solo necesita un residuo (la diferencia directa
+entre los dos valores) se sigue calculando exactamente como de costumbre: R², RMSE, error máximo,
+error %FS, repetibilidad, histéresis, el presupuesto de incertidumbre completo, y un dictamen de
+conformidad real según la regla de decisión. La vista de detalle de la calibración guardada muestra
+estas estadísticas y un gráfico de residuos en lugar del gráfico de curva ajustada habitual.
+
+## Referencia frente a valor tal como se encontró/tal como se dejó
+
+Usa este modo para una calibración Después de reparación cuando el laboratorio proporciona dos
+comparaciones referencia-frente-a-valor del tipo descrito arriba — una tomada antes de la
+reparación (**tal como se encontró**) y otra después (**tal como se dejó**) — de nuevo sin una
+función de transferencia conocida. El Paso 2 se convierte en dos tablas de entrada de datos
+apiladas, y el Paso 3 muestra ambos resultados uno al lado del otro.
+
+El resultado **tal como se dejó** es el resultado oficial de este registro de calibración: es el
+que alimenta la próxima fecha de vencimiento, el flujo de aprobación, y el historial de la pestaña
+Estado. El resultado **tal como se encontró** se conserva puramente como contexto de diagnóstico de
+solo lectura — visible en la vista de detalle de la calibración guardada, pero nunca se usa para
+los cálculos de fecha de vencimiento o deriva, y no necesita cumplir ninguna especificación por sí
+mismo.
+
+## Qué es igual en cualquier caso
+
+Sea cual sea el modo que uses, el registro que obtienes es una calibración normal — aparece en el
+historial del canal, puede anularse o pasar por el flujo de aprobación, y descarga un certificado.
+El certificado de una calibración con modelo proporcionado directamente o referencia frente a valor
+indicado sigue mostrando cada estadística que Open Gauge pudo calcular para ella; solo se omiten
+las filas específicas que genuinamente no aplican (p. ej. una ecuación de curva ajustada cuando no
+hay una función de transferencia conocida), en lugar de fabricarlas.
+
+Consulta el [Ejemplo 4](./examples/coefficients-only-certificate.mdx) para un caso resuelto de
+modelo proporcionado directamente, incluyendo qué se guarda y se muestra.

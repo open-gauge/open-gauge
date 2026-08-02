@@ -309,6 +309,12 @@ export interface AnalyzeCalibrationParams {
   referenceUnit: string;
   measuredUnit: string;
   polyDegree: number | null;
+  // Mirrors the backend's run_analysis(skip_fit=...) — used for
+  // data_entry_mode="reference_vs_indicated"/"reference_vs_as_found_as_left"
+  // (measured is already a physical-quantity value, no transfer function)
+  // and "model_direct" (two synthetic zero-residual points at the model's
+  // declared valid range). See calibration_analysis.py's doc comment.
+  skipFit?: boolean;
   distributionType: DistributionType;
   confidenceLevel: number;
   channelAccuracyValue: number | null;
@@ -486,17 +492,36 @@ export function runAnalysis(params: AnalyzeCalibrationParams): AnalyzeResponse {
 
   const ref = points.map((p) => p.reference);
   const meas = points.map((p) => p.measured);
-
-  const degree = params.polyDegree != null
-    ? Math.max(1, Math.min(params.polyDegree, 5))
-    : selectDegree(meas, ref);
-
-  // Calibration function: reference = f(measured).
-  const { coefficients, covariance } = polyfit(meas, ref, degree);
-  const fitted = meas.map((m) => polyval(coefficients, m));
-  const residuals = ref.map((r, i) => r - fitted[i]);
   const n = ref.length;
-  const k = degree + 1;
+  const skipFit = params.skipFit ?? false;
+
+  let degree: number | null;
+  let coefficients: number[];
+  let covariance: number[][] | null;
+  let fitted: number[];
+  let k: number;
+
+  if (skipFit) {
+    // No transference function: "measured" is already directly comparable
+    // to "reference" — the residual is the raw difference, no curve at all.
+    degree = null;
+    coefficients = [];
+    covariance = null;
+    fitted = meas;
+    k = 0;
+  } else {
+    degree = params.polyDegree != null
+      ? Math.max(1, Math.min(params.polyDegree, 5))
+      : selectDegree(meas, ref);
+    // Calibration function: reference = f(measured).
+    const fit = polyfit(meas, ref, degree);
+    coefficients = fit.coefficients;
+    covariance = fit.covariance;
+    fitted = meas.map((m) => polyval(coefficients, m));
+    k = degree + 1;
+  }
+
+  const residuals = ref.map((r, i) => r - fitted[i]);
 
   const ssRes = residuals.reduce((s, r) => s + r * r, 0);
   const refMean = ref.reduce((s, r) => s + r, 0) / n;
@@ -509,11 +534,15 @@ export function runAnalysis(params: AnalyzeCalibrationParams): AnalyzeResponse {
   const span = Math.max(...ref) - Math.min(...ref);
   const fullScaleErrorPct = span > 0 ? (maxError / span) * 100 : 0;
 
-  // Non-linearity: deviation of the fitted curve from its own best-fit line.
-  const { coefficients: linCoeffs } = polyfit(meas, fitted, 1);
-  const linFitted = meas.map((m) => polyval(linCoeffs, m));
-  const nlMax = Math.max(...fitted.map((f, i) => Math.abs(f - linFitted[i])));
-  const nonLinearityPct = span > 0 ? (nlMax / span) * 100 : 0;
+  // Non-linearity: deviation of the fitted curve from its own best-fit line
+  // — undefined without an actual fitted curve.
+  let nonLinearityPct: number | null = null;
+  if (!skipFit) {
+    const { coefficients: linCoeffs } = polyfit(meas, fitted, 1);
+    const linFitted = meas.map((m) => polyval(linCoeffs, m));
+    const nlMax = Math.max(...fitted.map((f, i) => Math.abs(f - linFitted[i])));
+    nonLinearityPct = span > 0 ? (nlMax / span) * 100 : 0;
+  }
 
   const hysteresis = detectHysteresis(ref, meas);
   const repeatability = detectRepeatability(ref, meas);

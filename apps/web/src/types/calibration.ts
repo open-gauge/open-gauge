@@ -8,6 +8,18 @@ export type CalibrationType = "oem" | "external_accredited_lab" | "internal_lab"
 
 export type CalibrationPurpose = "initial" | "routine" | "after_repair" | "verification";
 
+/** How the data was entered — orthogonal to CalibrationType (who performed it)
+ * and CalibrationPurpose (why). "reference_vs_indicated" only pairs with
+ * purpose "verification"; "reference_vs_as_found_as_left" only with
+ * "after_repair" (backend-enforced, see AGENTS.md's calibration philosophy). */
+export type DataEntryMode =
+  | "raw_data"
+  | "model_direct"
+  | "reference_vs_indicated"
+  | "reference_vs_as_found_as_left";
+
+export type ModelType = "polynomial" | "custom_formula";
+
 export interface ConformityStatement {
   decision_rule: string;
   specification: string | null;
@@ -43,6 +55,14 @@ export interface CalibrationRecord {
   // Repair tracking — only meaningful when calibration_purpose === "after_repair"
   repair_date: string | null;
   repair_description: string | null;
+
+  // How this record's data was entered, and what its model (if any) is.
+  data_entry_mode: DataEntryMode;
+  model_type: ModelType;
+  custom_formula: string | null;
+  // Diagnostic-only "as found" result for reference_vs_as_found_as_left — an
+  // AnalyzeResponse-shaped blob; this record's own stats/points are as-left.
+  as_found_summary: AnalyzeResponse | null;
 
   // Traceability
   internal_reference_asset_id: string | null;
@@ -146,6 +166,7 @@ export interface CalibrationPoint {
   residual_pct: number | null;
   reference_unit: string;
   measured_unit: string;
+  point_role: "primary" | "as_found";
   created_at: string;
 }
 
@@ -191,6 +212,9 @@ export interface AnalyzeRequest {
   measured_unit: string;
   physical_quantity?: string;
   poly_degree: number | null;
+  /** True for reference_vs_indicated/reference_vs_as_found_as_left — no
+   * transference function is known, so no curve is fitted at all. */
+  skip_fit?: boolean;
   distribution_type: DistributionType;
   confidence_level: number;
   channel_accuracy_value: number | null;
@@ -226,14 +250,15 @@ export interface UncertaintyContribution {
 }
 
 export interface AnalyzeResponse {
-  poly_degree: number;
+  // Null when the request had skip_fit=true — no curve was fitted.
+  poly_degree: number | null;
   coefficients: number[];
   r_squared: number;
   rmse: number;
   standard_error: number;
   max_error: number;
   full_scale_error_pct: number;
-  non_linearity_pct: number;
+  non_linearity_pct: number | null;
   repeatability: number | null;
   hysteresis: number | null;
   combined_uncertainty: number;
@@ -299,6 +324,7 @@ export interface CalibrationPointInline {
   residual_pct?: number | null;
   reference_unit: string;
   measured_unit: string;
+  point_role?: "primary" | "as_found";
 }
 
 // ------------------------------------------------------------------ //
@@ -326,6 +352,14 @@ export interface CalibrationCreateBody {
   // Repair tracking — only meaningful when calibration_purpose === "after_repair"
   repair_date?: string | null;
   repair_description?: string | null;
+
+  data_entry_mode?: DataEntryMode;
+  model_type?: ModelType;
+  custom_formula?: string | null;
+  // Diagnostic-only "as found" dataset for reference_vs_as_found_as_left —
+  // this record's own points/stats fields are the as-left (primary) result.
+  as_found_points?: CalibrationPointInline[];
+  as_found_summary?: AnalyzeResponse | null;
 
   // Traceability
   internal_reference_asset_id?: string | null;

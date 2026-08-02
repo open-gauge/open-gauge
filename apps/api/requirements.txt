@@ -17,6 +17,10 @@ email-validator==2.1.0
 minio==7.2.7
 numpy==1.26.4
 scipy==1.13.0
+# Safe evaluation of user-supplied "custom formula" calibration models
+# (app/services/formula_eval.py) — restricted, no eval()/exec(), purpose-built
+# for exactly this (untrusted single-expression evaluation).
+simpleeval==1.0.7
 matplotlib==3.9.0
 Jinja2==3.1.4
 qrcode[pil]==8.0

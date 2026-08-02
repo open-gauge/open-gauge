@@ -33,11 +33,13 @@ Inicia una calibración desde el canal de un activo. El asistente tiene tres pas
    **Registrado por** (una lista desplegable con los miembros de la organización del activo, con tu
    nombre por defecto), un revisor opcional **Verificado por**, intervalo de calibración,
    condiciones ambientales, y notas. Según el tipo/propósito elegido, aparecen campos adicionales —
-   ver abajo. Este paso también tiene una casilla **"Solo coeficientes (sin datos en bruto)"** para
-   certificados emitidos externamente que indican un polinomio directamente — consulta
-   [Calibraciones de solo coeficientes](./coefficients-only.mdx).
-2. **Datos en bruto** — ingresa pares de puntos (referencia, medido). Consulta
-   [Ajuste de curvas](./curve-fitting.mdx) para saber qué hace Open Gauge con ellos.
+   ver abajo. Este paso también tiene un selector de **Modo de entrada de datos** para
+   calibraciones que no encajan en la forma habitual de datos en bruto — consulta
+   [Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx).
+2. **Datos en bruto** — ingresa pares de puntos (referencia, medido) (o, según el modo de entrada
+   de datos elegido arriba, un modelo ingresado directamente, o una comparación
+   referencia-frente-a-valor-ya-convertido). Consulta [Ajuste de curvas](./curve-fitting.mdx) para
+   saber qué hace Open Gauge con ellos.
 3. **Análisis / revisión** — el ajuste calculado en vivo, el presupuesto de incertidumbre, y el
    dictamen de conformidad. Consulta [El presupuesto de incertidumbre](./uncertainty-budget.mdx) y
    [Reglas de decisión](./decision-rules.mdx).
@@ -73,8 +75,9 @@ campo **Laboratorio de calibración**:
   carga de certificado.
 
 Para OEM, Laboratorio externo acreditado, y Activo de cliente, la entrada de datos en bruto puede
-omitirse por completo con **"Solo coeficientes (sin datos en bruto)"** cuando el certificado indica
-un polinomio directamente.
+omitirse por completo ajustando el **Modo de entrada de datos** a **Modelo proporcionado
+directamente** cuando el certificado indica el modelo de calibración directamente — consulta
+[Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx).
 
 ### Certificados subidos
 

@@ -33,10 +33,11 @@ Start a calibration from an asset's channel. The wizard has three steps:
    (a dropdown of the asset's organization members, defaulting to you), an optional
    **Checked by** reviewer, calibration interval, environmental conditions, and notes. Depending
    on the type/purpose chosen, additional fields appear — see below. This step also has a
-   **"Coefficients only (no raw data)"** checkbox for externally-issued certificates that state a
-   polynomial directly — see [Coefficients-only calibrations](./coefficients-only.mdx).
-2. **Raw data** — enter (reference, measured) point pairs. See
-   [Curve fitting](./curve-fitting.mdx) for what Open Gauge does with them.
+   **Data entry mode** selector for calibrations that don't fit the usual raw-data shape — see
+   [Alternative calibration data-entry modes](./coefficients-only.mdx).
+2. **Raw data** — enter (reference, measured) point pairs (or, depending on the data entry mode
+   chosen above, a model entered directly, or a reference-vs-already-converted-value comparison).
+   See [Curve fitting](./curve-fitting.mdx) for what Open Gauge does with raw data.
 3. **Analysis / review** — the live-computed fit, uncertainty budget, and conformity
    statement. See [The uncertainty budget](./uncertainty-budget.mdx) and
    [Decision rules](./decision-rules.mdx).
@@ -68,8 +69,10 @@ The **Calibration type** describes *who performed the calibration*, and determin
 - **Customer's Asset** — the asset belongs to a customer, calibrated on their behalf. Calibration
   lab is a dropdown of your external organizations marked as customers. No certificate upload.
 
-For OEM, External Accredited Lab, and Customer's Asset, raw data entry can be skipped entirely
-with **"Coefficients only (no raw data)"** when the certificate states a polynomial directly.
+For OEM, External Accredited Lab, and Customer's Asset, raw data entry can be skipped entirely by
+setting **Data entry mode** to **Model provided directly** when the certificate states the
+calibration model directly — see
+[Alternative calibration data-entry modes](./coefficients-only.mdx).
 
 ### Uploaded certificates
 

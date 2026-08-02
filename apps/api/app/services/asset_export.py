@@ -227,6 +227,7 @@ def build_asset_yaml(db: Session, asset: Asset) -> dict:
             "created_at": cal.created_at,
             "channel_id": sensor_id_to_channel.get(cal.sensor_id),
             "calibration_type": cal.calibration_type,
+            "data_entry_mode": cal.data_entry_mode,
             "calibration_version": cal.calibration_version,
             "is_active": cal.is_active,
             "void_reason": cal.void_reason,

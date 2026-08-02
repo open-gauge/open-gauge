@@ -4,10 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { AssetProfile } from "@/types/asset";
 import type {
   AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationLabCandidate,
-  CalibrationPointInline, CalibrationPurpose, CalibrationRecord, CalibrationType, CalibrationUser, DecisionRule,
-  DistributionType, FrequencyResponsePointInline, ResidualPoint, WizardRawPoint,
+  CalibrationPointInline, CalibrationPurpose, CalibrationRecord, CalibrationType, CalibrationUser,
+  DataEntryMode, DecisionRule, DistributionType, ModelType,
+  FrequencyResponsePointInline, ResidualPoint, WizardRawPoint,
 } from "@/types/calibration";
-import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listCalibrationUsers, listProcedures, uploadCalibrationCertificate } from "@/services/asset.service";
+import {
+  analyzeCalibration, createCalibration, getAssetCalibrations,
+  listAssets, listCalibrationUsers, listProcedures, uploadCalibrationCertificate,
+} from "@/services/asset.service";
+import { evaluateModel, evalPolynomial, validateCustomFormula } from "@/lib/evaluate-model";
 import { listCalibrationLabs } from "@/services/location.service";
 import { listCalibrationLabCandidates } from "@/services/organization.service";
 import { useTranslations } from "next-intl";
@@ -209,7 +214,7 @@ interface Step1State {
   external_lab_certificate_number: string;
   calibration_organization_id: string;
   certificate_file: File | null;
-  coefficients_only: boolean;
+  data_entry_mode: DataEntryMode;
   internal_procedure_id: string;
   internal_reference_asset_id: string;
   calibration_location_id: string;
@@ -264,17 +269,22 @@ interface AnalyzeParams {
   confidence_level: number;
 }
 
-// Manual polynomial entry for "coefficients only" external calibrations —
-// coefficients[0] = highest degree … coefficients[order] = constant term
-// (same np.polyfit-style convention as AnalyzeResponse.coefficients).
+// Manual model entry for data_entry_mode="model_direct" (a lab-supplied
+// model, no raw data) — coefficients[0] = highest degree … coefficients[order]
+// = constant term (same np.polyfit-style convention as AnalyzeResponse.
+// coefficients). The Type B uncertainty budget (reference standard, sensor
+// nominal accuracy, resolution, distribution/confidence, decision rule) is
+// *not* duplicated here — model_direct reuses the exact same wizard-level
+// state/controls Step3 already collects for raw_data (see the model_direct
+// useEffect and Step3's controls row), since none of it is actually specific
+// to how the model was entered.
 interface ManualCoeffState {
+  model_type: ModelType;
+  custom_formula: string;
   poly_order: number;
   coefficients: string[];
   range_min: string;
   range_max: string;
-  has_uncertainty: boolean;
-  expanded_uncertainty: string;
-  coverage_factor: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -311,7 +321,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     external_lab_certificate_number: "",
     calibration_organization_id: "",
     certificate_file: null,
-    coefficients_only: false,
+    data_entry_mode: "raw_data",
     internal_procedure_id: "",
     internal_reference_asset_id: "",
     calibration_location_id: "",
@@ -330,6 +340,11 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     env_expanded: false,
     add_frequency_response: false,
   });
+
+  // Which of the 4 data-entry mechanisms is active — see Step1State.data_entry_mode.
+  const isModelDirect = step1.data_entry_mode === "model_direct";
+  const isRefVsIndicated = step1.data_entry_mode === "reference_vs_indicated";
+  const isRefVsAsFoundAsLeft = step1.data_entry_mode === "reference_vs_as_found_as_left";
 
   // Reference assets, calibration methods, and calibration labs (loaded once)
   const [referenceAssets, setReferenceAssets] = useState<{ id: string; name: string; asset_id: string }[]>([]);
@@ -373,16 +388,43 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   const [csvError, setCsvError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Step 2 alternative: manual coefficient entry ("coefficients only" externals)
+  // Step 2 alternative: model entered directly (data_entry_mode="model_direct")
   const [manualCoeff, setManualCoeff] = useState<ManualCoeffState>({
+    model_type: "polynomial",
+    custom_formula: "",
     poly_order: 1,
     coefficients: ["", ""],
     range_min: "",
     range_max: "",
-    has_uncertainty: false,
-    expanded_uncertainty: "",
-    coverage_factor: "2",
   });
+  const [customFormulaError, setCustomFormulaError] = useState<string | null>(null);
+
+  // data_entry_mode="reference_vs_indicated" reuses rawPoints/analysisResult
+  // below (below) — it's the exact same live /analyze pipeline as raw_data,
+  // just called with skip_fit=true (no curve, direct reference/indicated
+  // residuals); Step3 decides what to render based on data_entry_mode.
+
+  // data_entry_mode="reference_vs_as_found_as_left": two independent point
+  // sets, each analyzed with skip_fit=true. As-left is this calibration's
+  // primary/official result; as-found is diagnostic-only (as_found_summary).
+  const [asFoundPoints, setAsFoundPoints] = useState<WizardRawPoint[]>([
+    { reference: "", measured: "" },
+    { reference: "", measured: "" },
+  ]);
+  const [asLeftPoints, setAsLeftPoints] = useState<WizardRawPoint[]>([
+    { reference: "", measured: "" },
+    { reference: "", measured: "" },
+  ]);
+  const [asFoundResult, setAsFoundResult] = useState<AnalyzeResponse | null>(null);
+  const [asLeftResult, setAsLeftResult] = useState<AnalyzeResponse | null>(null);
+  const [asFoundAsLeftAnalyzing, setAsFoundAsLeftAnalyzing] = useState(false);
+  const [asFoundAsLeftError, setAsFoundAsLeftError] = useState<string | null>(null);
+  const [asFoundInputMode, setAsFoundInputMode] = useState<"manual" | "csv">("manual");
+  const [asFoundCsvError, setAsFoundCsvError] = useState<string | null>(null);
+  const asFoundFileInputRef = useRef<HTMLInputElement>(null);
+  const [asLeftInputMode, setAsLeftInputMode] = useState<"manual" | "csv">("manual");
+  const [asLeftCsvError, setAsLeftCsvError] = useState<string | null>(null);
+  const asLeftFileInputRef = useRef<HTMLInputElement>(null);
 
   // Optional frequency-response step (inserted between raw data and analysis when
   // step1.add_frequency_response is checked). Pure client-side — no /analyze round-trip.
@@ -450,7 +492,12 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // The real, server-computed, decision-rule-aware conformity result (as
   // opposed to an ad-hoc client-side preview) — null when nothing has been
   // analyzed yet, or when the channel has no accuracy spec to check against.
-  const conformityStatement = analysisResult?.conformity_statement ?? null;
+  // reference_vs_as_found_as_left has no `analysisResult` at all (it's
+  // driven by asFoundResult/asLeftResult instead) — as-left is this
+  // record's primary/official result, so its conformity is the one shown.
+  const conformityStatement = isRefVsAsFoundAsLeft
+    ? (asLeftResult?.conformity_statement ?? null)
+    : (analysisResult?.conformity_statement ?? null);
   const hasConformityCheck = conformityStatement?.specification != null;
 
   const validPoints = rawPoints.filter(
@@ -473,14 +520,32 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     isNumOrEmpty(step1.humidity_value);
 
   const manualCoeffValid =
-    manualCoeff.coefficients.every((c) => c.trim() !== "" && !isNaN(parseFloat(c))) &&
+    (manualCoeff.model_type === "polynomial"
+      ? manualCoeff.coefficients.every((c) => c.trim() !== "" && !isNaN(parseFloat(c)))
+      : manualCoeff.custom_formula.trim() !== "" && customFormulaError === null) &&
     manualCoeff.range_min.trim() !== "" && !isNaN(parseFloat(manualCoeff.range_min)) &&
-    manualCoeff.range_max.trim() !== "" && !isNaN(parseFloat(manualCoeff.range_max)) &&
-    (!manualCoeff.has_uncertainty || (
-      manualCoeff.expanded_uncertainty.trim() !== "" && !isNaN(parseFloat(manualCoeff.expanded_uncertainty)) &&
-      manualCoeff.coverage_factor.trim() !== "" && !isNaN(parseFloat(manualCoeff.coverage_factor))
-    ));
-  const step2Valid = step1.coefficients_only ? manualCoeffValid : validPoints.length >= 2;
+    manualCoeff.range_max.trim() !== "" && !isNaN(parseFloat(manualCoeff.range_max));
+
+  const validRefPoints = (pts: WizardRawPoint[]) => pts.filter(
+    (p) => p.reference.trim() !== "" && p.measured.trim() !== "" &&
+      !isNaN(parseFloat(p.reference)) && !isNaN(parseFloat(p.measured))
+  );
+  const validAsFoundPoints = validRefPoints(asFoundPoints);
+  const validAsLeftPoints = validRefPoints(asLeftPoints);
+
+  const step2Valid =
+    isModelDirect ? manualCoeffValid
+    : isRefVsIndicated ? validPoints.length >= 2
+    : isRefVsAsFoundAsLeft ? (validAsFoundPoints.length >= 2 && validAsLeftPoints.length >= 2)
+    : validPoints.length >= 2;
+
+  // Whether the final step's analysis has produced a result that's actually
+  // ready to save — mirrors handleSave's own guard so the Confirm & Save
+  // button's disabled state never drifts out of sync with it.
+  const canSave =
+    isModelDirect ? manualCoeffValid
+    : isRefVsAsFoundAsLeft ? (asFoundResult != null && asLeftResult != null && !asFoundAsLeftAnalyzing)
+    : (analysisResult != null && !analyzing);
 
   // When frequency response is enabled, it becomes step 3 and analysis moves to step 4;
   // otherwise the wizard is unchanged (analysis stays at step 3).
@@ -590,9 +655,11 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAnalysisKeyRef = useRef<string>("");
 
-  // Trigger analysis when entering step 3 or when inputs change
+  // Trigger analysis when entering step 3 or when inputs change — covers both
+  // raw_data (fitted) and reference_vs_indicated (skip_fit, no curve) modes,
+  // since both share the exact same live /analyze pipeline over rawPoints.
   useEffect(() => {
-    if (step !== lastStep || step1.coefficients_only) return;
+    if (step !== lastStep || !(step1.data_entry_mode === "raw_data" || isRefVsIndicated)) return;
 
     const vp = rawPoints.filter(
       (p) =>
@@ -606,6 +673,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     const key = JSON.stringify({
       vp, referenceUnit, measuredUnit, analyzeParams, includeSensorNominalUncertainty, decisionRule,
       referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum,
+      skipFit: isRefVsIndicated,
     });
     if (key === lastAnalysisKeyRef.current) return;
     lastAnalysisKeyRef.current = key;
@@ -621,6 +689,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         measured_unit: measuredUnit,
         physical_quantity: selectedChannel?.physical_quantity ?? "",
         poly_degree: analyzeParams.poly_degree,
+        skip_fit: isRefVsIndicated,
         distribution_type: analyzeParams.distribution_type,
         confidence_level: analyzeParams.confidence_level,
         channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
@@ -659,7 +728,135 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     }, 400);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [step, lastStep, rawPoints, referenceUnit, measuredUnit, analyzeParams, step1.coefficients_only, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
+  }, [step, lastStep, rawPoints, referenceUnit, measuredUnit, analyzeParams, step1.data_entry_mode, isRefVsIndicated, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
+
+  // data_entry_mode="model_direct": there's no raw data, so "residuals" are
+  // synthesized as exactly zero at both ends of the declared valid range
+  // (measured == reference) and run through the same /analyze(skip_fit=true)
+  // pipeline. This combines the *same* Type B budget inputs Step3 already
+  // collects for raw_data (reference standard, sensor nominal accuracy,
+  // resolution, distribution/confidence, decision rule — none of it is
+  // actually specific to how the model was entered) via RSS, and applies the
+  // decision rule against the channel's tolerance spec with the model
+  // trusted as declared (max_error=0) — reusing the tested GUM math server-
+  // side instead of re-deriving coverage factors/effective dof in JS.
+  useEffect(() => {
+    if (step !== lastStep || !isModelDirect || !manualCoeffValid) return;
+
+    const rMin = parseFloat(manualCoeff.range_min);
+    const rMax = parseFloat(manualCoeff.range_max);
+
+    const key = JSON.stringify({
+      mode: "model_direct", rMin, rMax, referenceUnit, analyzeParams,
+      includeSensorNominalUncertainty, decisionRule,
+      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum,
+      accV: selectedChannel?.accuracy_value, accT: selectedChannel?.accuracy_type,
+    });
+    if (key === lastAnalysisKeyRef.current) return;
+    lastAnalysisKeyRef.current = key;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const req: AnalyzeRequest = {
+        points: [
+          { reference: rMin, measured: rMin },
+          { reference: rMax, measured: rMax },
+        ],
+        reference_unit: referenceUnit,
+        measured_unit: referenceUnit,
+        physical_quantity: selectedChannel?.physical_quantity ?? "",
+        poly_degree: null,
+        skip_fit: true,
+        distribution_type: analyzeParams.distribution_type,
+        confidence_level: analyzeParams.confidence_level,
+        channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
+        channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
+        decision_rule: decisionRule,
+        resolution: resolveSpecValue(
+          selectedChannel?.resolution ?? null, selectedChannel?.resolution_unit ?? null,
+          selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+        ),
+        sensor_nominal_uncertainty: sensorNominalUncertaintyNum,
+        sensor_nominal_coverage_factor: 2.0,
+        include_sensor_nominal_uncertainty: includeSensorNominalUncertainty,
+        reference_standard_uncertainty: referenceStandardUncertainty,
+        reference_standard_coverage_factor: referenceStandardCoverageFactor,
+      };
+      setAnalyzing(true);
+      setAnalyzeError(null);
+      try {
+        const result = await analyzeCalibration(req);
+        setAnalysisResult(result);
+      } catch (e: unknown) {
+        setAnalyzeError(e instanceof Error ? e.message : "Analysis failed");
+      } finally {
+        setAnalyzing(false);
+      }
+    }, 400);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [step, lastStep, isModelDirect, manualCoeffValid, manualCoeff.range_min, manualCoeff.range_max, referenceUnit, analyzeParams, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
+
+  // data_entry_mode="reference_vs_as_found_as_left": two independent
+  // skip_fit=true /analyze calls (no curve, direct reference/indicated
+  // residuals) — as-left is this calibration's primary/official result
+  // (feeds due-date/approval/Health tab); as-found is diagnostic-only,
+  // stored into as_found_summary rather than the record's primary fields.
+  useEffect(() => {
+    if (step !== lastStep || !isRefVsAsFoundAsLeft) return;
+    if (validAsFoundPoints.length < 2 || validAsLeftPoints.length < 2) return;
+
+    const key = JSON.stringify({
+      mode: "as_found_as_left", validAsFoundPoints, validAsLeftPoints, referenceUnit, measuredUnit,
+      analyzeParams, includeSensorNominalUncertainty, decisionRule,
+      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum,
+    });
+    if (key === lastAnalysisKeyRef.current) return;
+    lastAnalysisKeyRef.current = key;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const buildReq = (pts: WizardRawPoint[]): AnalyzeRequest => ({
+        points: pts.map((p) => ({ reference: parseFloat(p.reference), measured: parseFloat(p.measured) })),
+        reference_unit: referenceUnit,
+        measured_unit: measuredUnit,
+        physical_quantity: selectedChannel?.physical_quantity ?? "",
+        poly_degree: null,
+        skip_fit: true,
+        distribution_type: analyzeParams.distribution_type,
+        confidence_level: analyzeParams.confidence_level,
+        channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
+        channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
+        decision_rule: decisionRule,
+        resolution: resolveSpecValue(
+          selectedChannel?.resolution ?? null, selectedChannel?.resolution_unit ?? null,
+          selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
+        ),
+        sensor_nominal_uncertainty: sensorNominalUncertaintyNum,
+        sensor_nominal_coverage_factor: 2.0,
+        include_sensor_nominal_uncertainty: includeSensorNominalUncertainty,
+        reference_standard_uncertainty: referenceStandardUncertainty,
+        reference_standard_coverage_factor: referenceStandardCoverageFactor,
+      });
+
+      setAsFoundAsLeftAnalyzing(true);
+      setAsFoundAsLeftError(null);
+      try {
+        const [foundRes, leftRes] = await Promise.all([
+          analyzeCalibration(buildReq(validAsFoundPoints)),
+          analyzeCalibration(buildReq(validAsLeftPoints)),
+        ]);
+        setAsFoundResult(foundRes);
+        setAsLeftResult(leftRes);
+      } catch (e: unknown) {
+        setAsFoundAsLeftError(e instanceof Error ? e.message : "Analysis failed");
+      } finally {
+        setAsFoundAsLeftAnalyzing(false);
+      }
+    }, 400);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [step, lastStep, isRefVsAsFoundAsLeft, validAsFoundPoints, validAsLeftPoints, referenceUnit, measuredUnit, analyzeParams, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum]);
 
   // ---------------------------------------------------------------------------
   // CSV parsing
@@ -700,6 +897,54 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   function handleFileUpload(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => parseCSV((e.target?.result as string) ?? "");
+    reader.readAsText(file);
+  }
+
+  // Shared by the as-found/as-left dual tables (data_entry_mode=
+  // reference_vs_as_found_as_left) — same Reference/Measured CSV shape as
+  // parseCSV above, generalized over which side's state to update.
+  function parseRefMeasuredCSV(
+    text: string,
+    setPoints: (p: WizardRawPoint[]) => void,
+    setError: (e: string | null) => void,
+    setMode: (m: "manual" | "csv") => void,
+  ) {
+    const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) { setError(t("csvNeedHeaderAndRow")); return; }
+
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
+    const refIdx = header.findIndex((h) => h.includes("ref"));
+    const measIdx = header.findIndex((h) => h.includes("meas") || h.includes("actual"));
+    if (refIdx === -1 || measIdx === -1) { setError(t("csvMissingRefMeasuredColumns")); return; }
+
+    const points: WizardRawPoint[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      const ref = cols[refIdx]?.trim() ?? "";
+      const meas = cols[measIdx]?.trim() ?? "";
+      if (ref === "" || meas === "") continue;
+      if (isNaN(parseFloat(ref)) || isNaN(parseFloat(meas))) {
+        setError(t("csvNonNumericRow", { row: i + 1 }));
+        continue;
+      }
+      points.push({ reference: ref, measured: meas });
+    }
+
+    if (points.length < 2) { setError(t("csvNeedTwoValidRows")); return; }
+    setError(null);
+    setPoints(points);
+    setMode("manual");
+  }
+
+  function handleAsFoundFileUpload(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => parseRefMeasuredCSV((e.target?.result as string) ?? "", setAsFoundPoints, setAsFoundCsvError, setAsFoundInputMode);
+    reader.readAsText(file);
+  }
+
+  function handleAsLeftFileUpload(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => parseRefMeasuredCSV((e.target?.result as string) ?? "", setAsLeftPoints, setAsLeftCsvError, setAsLeftInputMode);
     reader.readAsText(file);
   }
 
@@ -748,7 +993,8 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // ---------------------------------------------------------------------------
 
   async function handleSave() {
-    if (step1.coefficients_only ? !manualCoeffValid : !analysisResult) return;
+    const mode = step1.data_entry_mode;
+    if (!canSave) return;
     if (!freqResponseValid) return;
 
     setSaving(true);
@@ -796,40 +1042,17 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         pressUncertaintyVal == null ? null : convertPressureToPa(pressUncertaintyVal, step1.pressure_unit);
 
       let points: CalibrationPointInline[] = [];
+      let asFoundPointsBody: CalibrationPointInline[] = [];
+      let asFoundSummaryBody: AnalyzeResponse | null = null;
       let polyStats: Partial<CalibrationCreateBody> = {};
 
-      if (!step1.coefficients_only && analysisResult) {
-        // Store point values and ranges in the display units that were used for regression.
-        // The polynomial coefficients are fitted in display units (f(measured_display) = ref_display),
-        // so all stored values must stay in display units — converting to SI would break
-        // the stored curve vs. stored points consistency shown in the calibration chart.
-        polyStats = {
-          poly_order: analysisResult.poly_degree,
-          poly_coefficients: analysisResult.coefficients,
-          range_min: analysisResult.valid_range_min,
-          range_max: analysisResult.valid_range_max,
-          r_squared: analysisResult.r_squared,
-          rmse: analysisResult.rmse,
-          standard_error: analysisResult.standard_error,
-          max_error: analysisResult.max_error,
-          full_scale_error: analysisResult.full_scale_error_pct,
-          non_linearity: analysisResult.non_linearity_pct,
-          repeatability: analysisResult.repeatability,
-          hysteresis: analysisResult.hysteresis,
-          distribution_type: analysisResult.distribution_type,
-          confidence_level: analysisResult.confidence_level,
-          coverage_factor: analysisResult.coverage_factor,
-          combined_uncertainty: analysisResult.combined_uncertainty,
-          expanded_uncertainty: analysisResult.expanded_uncertainty,
-          valid_range_min: analysisResult.valid_range_min,
-          valid_range_max: analysisResult.valid_range_max,
-          uncertainty_budget: analysisResult.uncertainty_budget,
-          effective_degrees_of_freedom: analysisResult.effective_degrees_of_freedom,
-          poly_coefficients_covariance: analysisResult.poly_coefficients_covariance,
-          decision_rule: analysisResult.conformity_statement.decision_rule,
-          conformity_statement: analysisResult.conformity_statement,
-        };
-        points = analysisResult.points.map((p) => ({
+      // Store point values and ranges in the display units used for
+      // analysis, matching the exact shape run_analysis returned — for
+      // reference_vs_indicated/reference_vs_as_found_as_left this is a
+      // skip_fit result (poly_order/coefficients/non_linearity stay null,
+      // there's no curve), for raw_data/model_direct it's a real fit.
+      const pointsFromResult = (r: AnalyzeResponse): CalibrationPointInline[] =>
+        r.points.map((p) => ({
           point_index: p.point_index,
           reference_value: p.reference_value,
           measured_value: p.measured_value,
@@ -839,37 +1062,78 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
           reference_unit: referenceUnit,
           measured_unit: measuredUnit,
         }));
-      } else if (step1.coefficients_only) {
-        // No raw data: coefficients come straight from the certificate, so
-        // there's no fit to residuals, no computed budget, and — since there's
-        // no assessed error to compare against a spec — no conformity
-        // statement (decision_rule/conformity_statement stay null).
+      const statsFromResult = (r: AnalyzeResponse): Partial<CalibrationCreateBody> => ({
+        poly_order: r.poly_degree,
+        poly_coefficients: r.coefficients,
+        range_min: r.valid_range_min,
+        range_max: r.valid_range_max,
+        r_squared: r.r_squared,
+        rmse: r.rmse,
+        standard_error: r.standard_error,
+        max_error: r.max_error,
+        full_scale_error: r.full_scale_error_pct,
+        non_linearity: r.non_linearity_pct,
+        repeatability: r.repeatability,
+        hysteresis: r.hysteresis,
+        distribution_type: r.distribution_type,
+        confidence_level: r.confidence_level,
+        coverage_factor: r.coverage_factor,
+        combined_uncertainty: r.combined_uncertainty,
+        expanded_uncertainty: r.expanded_uncertainty,
+        valid_range_min: r.valid_range_min,
+        valid_range_max: r.valid_range_max,
+        uncertainty_budget: r.uncertainty_budget,
+        effective_degrees_of_freedom: r.effective_degrees_of_freedom,
+        poly_coefficients_covariance: r.poly_coefficients_covariance,
+        decision_rule: r.conformity_statement.decision_rule,
+        conformity_statement: r.conformity_statement,
+      });
+
+      if (mode === "model_direct") {
+        // No raw data: the model (coefficients or formula) comes straight
+        // from the certificate. Uncertainty/conformity are still real,
+        // though — they come from the model_direct useEffect's synthetic
+        // zero-residual /analyze(skip_fit=true) call over the same Type B
+        // budget raw_data collects, so points/range there mirror manualCoeff.
         const rangeMin = n(manualCoeff.range_min);
         const rangeMax = n(manualCoeff.range_max);
         polyStats = {
-          poly_order: manualCoeff.poly_order,
-          poly_coefficients: manualCoeff.coefficients.map((c) => parseFloat(c)),
+          poly_order: manualCoeff.model_type === "polynomial" ? manualCoeff.poly_order : null,
+          poly_coefficients: manualCoeff.model_type === "polynomial"
+            ? manualCoeff.coefficients.map((c) => parseFloat(c)) : [],
           range_min: rangeMin,
           range_max: rangeMax,
           valid_range_min: rangeMin,
           valid_range_max: rangeMax,
+          ...(analysisResult ? {
+            distribution_type: analysisResult.distribution_type,
+            confidence_level: analysisResult.confidence_level,
+            coverage_factor: analysisResult.coverage_factor,
+            combined_uncertainty: analysisResult.combined_uncertainty,
+            expanded_uncertainty: analysisResult.expanded_uncertainty,
+            uncertainty_budget: analysisResult.uncertainty_budget,
+            effective_degrees_of_freedom: analysisResult.effective_degrees_of_freedom,
+            decision_rule: analysisResult.conformity_statement.decision_rule,
+            conformity_statement: analysisResult.conformity_statement,
+          } : {}),
         };
-        if (manualCoeff.has_uncertainty) {
-          const expandedU = n(manualCoeff.expanded_uncertainty)!;
-          const k = n(manualCoeff.coverage_factor) || 2;
-          polyStats.expanded_uncertainty = expandedU;
-          polyStats.coverage_factor = k;
-          polyStats.combined_uncertainty = expandedU / k;
-          polyStats.uncertainty_budget = [{
-            source: "external_certificate_stated",
-            description: "Expanded uncertainty as stated on the external calibration certificate (no raw data / fit residuals available)",
-            value: expandedU,
-            distribution: "normal",
-            divisor: k,
-            standard_uncertainty: expandedU / k,
-            degrees_of_freedom: null,
-          }];
+        // No raw data points exist for this mode at all.
+        points = [];
+      } else if (mode === "reference_vs_as_found_as_left" && asLeftResult) {
+        // As-left is this record's primary/official result; as-found is
+        // diagnostic-only, stored separately (point_role="as_found" +
+        // as_found_summary), never feeding due-date/approval/Health tab.
+        polyStats = statsFromResult(asLeftResult);
+        points = pointsFromResult(asLeftResult);
+        if (asFoundResult) {
+          asFoundPointsBody = pointsFromResult(asFoundResult).map((p) => ({ ...p, point_role: "as_found" }));
+          asFoundSummaryBody = asFoundResult;
         }
+      } else if (analysisResult) {
+        // raw_data and reference_vs_indicated share this exact branch —
+        // both are `analysisResult`-driven (the latter via skip_fit=true).
+        polyStats = statsFromResult(analysisResult);
+        points = pointsFromResult(analysisResult);
       }
 
       // Compute due_date from calibration_interval
@@ -925,6 +1189,11 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         frequency_response_amplitude_unit: step1.add_frequency_response && freqSettings.amplitude_active && freqSettings.amplitude_type !== "dB" ? freqSettings.amplitude_unit : null,
         frequency_response_phase_unit: step1.add_frequency_response && freqSettings.phase_active ? freqSettings.phase_unit : null,
         frequency_response_points: freqRespPoints,
+        data_entry_mode: mode,
+        model_type: mode === "model_direct" ? manualCoeff.model_type : "polynomial",
+        custom_formula: mode === "model_direct" && manualCoeff.model_type === "custom_formula" ? manualCoeff.custom_formula : null,
+        as_found_points: asFoundPointsBody,
+        as_found_summary: asFoundSummaryBody,
         ...polyStats,
         points,
       };
@@ -970,9 +1239,11 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
               step={step}
               steps={[
                 t("stepGeneralInfo"),
-                step1.coefficients_only ? t("stepCoefficients") : t("stepRawData"),
+                isModelDirect ? t("stepCoefficients")
+                  : isRefVsAsFoundAsLeft ? t("stepAsFoundAsLeftData")
+                  : t("stepRawData"),
                 ...(step1.add_frequency_response ? [t("stepFrequencyResponse")] : []),
-                step1.coefficients_only ? t("stepReview") : t("stepAnalysis"),
+                isModelDirect ? t("stepReview") : t("stepAnalysis"),
               ]}
             />
             <button
@@ -1005,11 +1276,36 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
             />
           )}
           {step === 2 && (
-            step1.coefficients_only ? (
+            isModelDirect ? (
               <ManualCoefficientsStep
                 state={manualCoeff}
                 onChange={setManualCoeff}
                 referenceUnit={referenceUnit}
+                customFormulaError={customFormulaError}
+                onCustomFormulaErrorChange={setCustomFormulaError}
+              />
+            ) : isRefVsAsFoundAsLeft ? (
+              <AsFoundAsLeftStep
+                asFoundPoints={asFoundPoints}
+                onAsFoundPointsChange={setAsFoundPoints}
+                asLeftPoints={asLeftPoints}
+                onAsLeftPointsChange={setAsLeftPoints}
+                referenceUnit={referenceUnit}
+                measuredUnit={measuredUnit}
+                onReferenceUnitChange={setReferenceUnit}
+                onMeasuredUnitChange={setMeasuredUnit}
+                physicalQuantity={selectedChannel?.physical_quantity ?? ""}
+                outputType={selectedChannel?.output_type ?? null}
+                asFoundInputMode={asFoundInputMode}
+                onAsFoundInputModeChange={setAsFoundInputMode}
+                asFoundCsvError={asFoundCsvError}
+                onAsFoundFileUpload={handleAsFoundFileUpload}
+                asFoundFileInputRef={asFoundFileInputRef}
+                asLeftInputMode={asLeftInputMode}
+                onAsLeftInputModeChange={setAsLeftInputMode}
+                asLeftCsvError={asLeftCsvError}
+                onAsLeftFileUpload={handleAsLeftFileUpload}
+                asLeftFileInputRef={asLeftFileInputRef}
               />
             ) : (
               <Step2
@@ -1026,6 +1322,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 csvError={csvError}
                 onFileUpload={handleFileUpload}
                 fileInputRef={fileInputRef}
+                measuredLabel={isRefVsIndicated ? t("indicatedValue") : undefined}
               />
             )
           )}
@@ -1044,33 +1341,58 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
             />
           )}
           {step === lastStep && (
-            <Step3
-              state={step1}
-              analyzeParams={analyzeParams}
-              onAnalyzeParamsChange={setAnalyzeParams}
-              result={analysisResult}
-              analyzing={analyzing}
-              analyzeError={analyzeError}
-              referenceUnit={referenceUnit}
-              measuredUnit={measuredUnit}
-              hoveredPointIdx={hoveredPointIdx}
-              onHoverPoint={setHoveredPointIdx}
-              coefficientsOnly={step1.coefficients_only}
-              manualCoeff={manualCoeff}
-              includeSensorNominalUncertainty={includeSensorNominalUncertainty}
-              onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
-              sensorNominalUncertaintyManual={sensorNominalUncertaintyManual}
-              onSensorNominalUncertaintyManualChange={setSensorNominalUncertaintyManual}
-              decisionRule={decisionRule}
-              onDecisionRuleChange={setDecisionRule}
-              referenceStandardAuto={referenceStandardAuto}
-              referenceStandardAutoLoading={referenceStandardAutoLoading}
-              referenceAssetName={referenceAssets.find((a) => a.id === step1.internal_reference_asset_id)?.name ?? null}
-              referenceStandardManualUncertainty={referenceStandardManualUncertainty}
-              onReferenceStandardManualUncertaintyChange={setReferenceStandardManualUncertainty}
-              referenceStandardManualCoverageFactor={referenceStandardManualCoverageFactor}
-              onReferenceStandardManualCoverageFactorChange={setReferenceStandardManualCoverageFactor}
-            />
+            isRefVsAsFoundAsLeft ? (
+              <AsFoundAsLeftResults
+                asFoundResult={asFoundResult}
+                asLeftResult={asLeftResult}
+                analyzing={asFoundAsLeftAnalyzing}
+                analyzeError={asFoundAsLeftError}
+                referenceUnit={referenceUnit}
+                analyzeParams={analyzeParams}
+                onAnalyzeParamsChange={setAnalyzeParams}
+                includeSensorNominalUncertainty={includeSensorNominalUncertainty}
+                onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
+                sensorNominalUncertaintyManual={sensorNominalUncertaintyManual}
+                onSensorNominalUncertaintyManualChange={setSensorNominalUncertaintyManual}
+                decisionRule={decisionRule}
+                onDecisionRuleChange={setDecisionRule}
+                referenceStandardAuto={referenceStandardAuto}
+                referenceStandardAutoLoading={referenceStandardAutoLoading}
+                referenceAssetName={referenceAssets.find((a) => a.id === step1.internal_reference_asset_id)?.name ?? null}
+                referenceStandardManualUncertainty={referenceStandardManualUncertainty}
+                onReferenceStandardManualUncertaintyChange={setReferenceStandardManualUncertainty}
+                referenceStandardManualCoverageFactor={referenceStandardManualCoverageFactor}
+                onReferenceStandardManualCoverageFactorChange={setReferenceStandardManualCoverageFactor}
+              />
+            ) : (
+              <Step3
+                state={step1}
+                analyzeParams={analyzeParams}
+                onAnalyzeParamsChange={setAnalyzeParams}
+                result={analysisResult}
+                analyzing={analyzing}
+                analyzeError={analyzeError}
+                referenceUnit={referenceUnit}
+                measuredUnit={measuredUnit}
+                hoveredPointIdx={hoveredPointIdx}
+                onHoverPoint={setHoveredPointIdx}
+                dataEntryMode={step1.data_entry_mode}
+                manualCoeff={manualCoeff}
+                includeSensorNominalUncertainty={includeSensorNominalUncertainty}
+                onIncludeSensorNominalUncertaintyChange={setIncludeSensorNominalUncertainty}
+                sensorNominalUncertaintyManual={sensorNominalUncertaintyManual}
+                onSensorNominalUncertaintyManualChange={setSensorNominalUncertaintyManual}
+                decisionRule={decisionRule}
+                onDecisionRuleChange={setDecisionRule}
+                referenceStandardAuto={referenceStandardAuto}
+                referenceStandardAutoLoading={referenceStandardAutoLoading}
+                referenceAssetName={referenceAssets.find((a) => a.id === step1.internal_reference_asset_id)?.name ?? null}
+                referenceStandardManualUncertainty={referenceStandardManualUncertainty}
+                onReferenceStandardManualUncertaintyChange={setReferenceStandardManualUncertainty}
+                referenceStandardManualCoverageFactor={referenceStandardManualCoverageFactor}
+                onReferenceStandardManualCoverageFactorChange={setReferenceStandardManualCoverageFactor}
+              />
+            )
           )}
         </div>
 
@@ -1107,7 +1429,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
-              disabled={(step1.coefficients_only ? !manualCoeffValid : (analyzing || !analysisResult)) || !freqResponseValid}
+              disabled={!canSave || !freqResponseValid}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t("confirmAndSave")}
@@ -1216,7 +1538,21 @@ function Step1({
     { value: "verification", label: t("purposeVerification") },
   ];
   const showsCertificateUpload = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab";
-  const showsCoefficientsOnly = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab" || state.calibration_type === "customer_asset";
+  // model_direct is the successor of the original "coefficients only" mode —
+  // same calibration_type gate (a lab/manufacturer delivering a model instead
+  // of raw data). reference_vs_indicated/reference_vs_as_found_as_left are
+  // gated on calibration_purpose instead (see DATA_ENTRY_MODE_OPTIONS below).
+  const allowsModelDirect = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab" || state.calibration_type === "customer_asset";
+  const DATA_ENTRY_MODE_OPTIONS: { value: DataEntryMode; label: string }[] = [
+    { value: "raw_data", label: t("dataEntryModeRawData") },
+    ...(allowsModelDirect ? [{ value: "model_direct" as DataEntryMode, label: t("dataEntryModeModelDirect") }] : []),
+    ...(state.calibration_purpose === "verification"
+      ? [{ value: "reference_vs_indicated" as DataEntryMode, label: t("dataEntryModeReferenceVsIndicated") }]
+      : []),
+    ...(state.calibration_purpose === "after_repair"
+      ? [{ value: "reference_vs_as_found_as_left" as DataEntryMode, label: t("dataEntryModeReferenceVsAsFoundAsLeft") }]
+      : []),
+  ];
 
   function handleCertificateFile(file: File | null) {
     if (!file) {
@@ -1327,7 +1663,15 @@ function Step1({
         <WSelect
           label={t("calibrationType")}
           value={state.calibration_type}
-          onChange={(v) => onChange({ ...state, calibration_type: v as CalibrationType })}
+          onChange={(v) => {
+            const newType = v as CalibrationType;
+            const stillAllowsModelDirect = newType === "oem" || newType === "external_accredited_lab" || newType === "customer_asset";
+            onChange({
+              ...state,
+              calibration_type: newType,
+              data_entry_mode: state.data_entry_mode === "model_direct" && !stillAllowsModelDirect ? "raw_data" : state.data_entry_mode,
+            });
+          }}
           options={CALIBRATION_TYPE_OPTIONS}
           required
           tooltip={t("tips.calibrationType")}
@@ -1336,7 +1680,13 @@ function Step1({
         <WSelect
           label={t("calibrationPurpose")}
           value={state.calibration_purpose}
-          onChange={(v) => onChange({ ...state, calibration_purpose: v as CalibrationPurpose })}
+          onChange={(v) => {
+            const newPurpose = v as CalibrationPurpose;
+            let mode = state.data_entry_mode;
+            if (mode === "reference_vs_indicated" && newPurpose !== "verification") mode = "raw_data";
+            if (mode === "reference_vs_as_found_as_left" && newPurpose !== "after_repair") mode = "raw_data";
+            onChange({ ...state, calibration_purpose: newPurpose, data_entry_mode: mode });
+          }}
           options={CALIBRATION_PURPOSE_OPTIONS}
           required
           tooltip={t("tips.calibrationPurpose")}
@@ -1477,7 +1827,15 @@ function Step1({
       )}
 
       {/* Mode switches, right above Environmental Conditions / Notes */}
-      <div className="flex items-center gap-6 pt-1">
+      <div className="grid grid-cols-2 gap-4 items-end pt-1">
+        <WSelect
+          label={t("dataEntryMode")}
+          value={state.data_entry_mode}
+          onChange={(v) => onChange({ ...state, data_entry_mode: v as DataEntryMode })}
+          options={DATA_ENTRY_MODE_OPTIONS}
+          tooltip={t("tips.dataEntryMode")}
+          docsHref={WIZARD_DOCS_LINKS.data_entry_mode}
+        />
         <WCheckbox
           label={t("addFrequencyResponseLabel")}
           checked={state.add_frequency_response}
@@ -1485,15 +1843,6 @@ function Step1({
           tooltip={t("tips.addFrequencyResponse")}
           docsHref={WIZARD_DOCS_LINKS.add_frequency_response}
         />
-        {showsCoefficientsOnly && (
-          <WCheckbox
-            label={t("coefficientsOnlyLabel")}
-            checked={state.coefficients_only}
-            onChange={set("coefficients_only") as (v: boolean) => void}
-            tooltip={t("tips.coefficientsOnly")}
-            docsHref={WIZARD_DOCS_LINKS.coefficients_only}
-          />
-        )}
       </div>
 
       {/* Environmental conditions */}
@@ -1600,6 +1949,7 @@ function Step2({
   points, onPointsChange, referenceUnit, measuredUnit,
   onReferenceUnitChange, onMeasuredUnitChange, physicalQuantity, outputType,
   inputMode, onInputModeChange, csvError, onFileUpload, fileInputRef,
+  title, showUnitSelectors = true, measuredLabel,
 }: {
   points: WizardRawPoint[];
   onPointsChange: (p: WizardRawPoint[]) => void;
@@ -1614,6 +1964,13 @@ function Step2({
   csvError: string | null;
   onFileUpload: (f: File) => void;
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+  // reference_vs_indicated/reference_vs_as_found_as_left reuse this exact
+  // table: `title` labels which dataset it is (e.g. "As Found"), and
+  // showUnitSelectors=false hides a redundant unit picker when a sibling
+  // instance already owns the shared referenceUnit/measuredUnit state.
+  title?: string;
+  showUnitSelectors?: boolean;
+  measuredLabel?: string;
 }) {
   const t = useTranslations("assets.wizard");
   const [dragging, setDragging] = useState(false);
@@ -1648,33 +2005,36 @@ function Step2({
 
   return (
     <div className="p-6 space-y-4">
+      {title && <p className="text-xs font-semibold text-og-text -mb-1">{title}</p>}
       {/* Unit selectors */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <WLabel text={t("referenceUnit")} />
-          <select
-            value={referenceUnit}
-            onChange={(e) => onReferenceUnitChange(e.target.value)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            {refUnitOpts.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+      {showUnitSelectors && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <WLabel text={t("referenceUnit")} />
+            <select
+              value={referenceUnit}
+              onChange={(e) => onReferenceUnitChange(e.target.value)}
+              className={`${IB} ${IB_OK} py-1.5`}
+            >
+              {refUnitOpts.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <WLabel text={measuredLabel ?? t("measuredUnit")} />
+            <select
+              value={measuredUnit}
+              onChange={(e) => onMeasuredUnitChange(e.target.value)}
+              className={`${IB} ${IB_OK} py-1.5`}
+            >
+              {measUnitOpts.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex flex-col gap-1">
-          <WLabel text={t("measuredUnit")} />
-          <select
-            value={measuredUnit}
-            onChange={(e) => onMeasuredUnitChange(e.target.value)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            {measUnitOpts.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      )}
 
       {/* Mode tabs */}
       <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit">
@@ -1794,6 +2154,82 @@ function Step2({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step 2 alternative — data_entry_mode="reference_vs_as_found_as_left":
+// reuses Step2's row-table twice, stacked (as-found, as-left), sharing one
+// pair of reference/measured units — same channel, same session either side
+// of the repair. CSV upload is intentionally per-side but manual-only tables
+// remain the primary path (these datasets are typically small).
+// ---------------------------------------------------------------------------
+
+function AsFoundAsLeftStep({
+  asFoundPoints, onAsFoundPointsChange, asLeftPoints, onAsLeftPointsChange,
+  referenceUnit, measuredUnit, onReferenceUnitChange, onMeasuredUnitChange,
+  physicalQuantity, outputType,
+  asFoundInputMode, onAsFoundInputModeChange, asFoundCsvError, onAsFoundFileUpload, asFoundFileInputRef,
+  asLeftInputMode, onAsLeftInputModeChange, asLeftCsvError, onAsLeftFileUpload, asLeftFileInputRef,
+}: {
+  asFoundPoints: WizardRawPoint[];
+  onAsFoundPointsChange: (p: WizardRawPoint[]) => void;
+  asLeftPoints: WizardRawPoint[];
+  onAsLeftPointsChange: (p: WizardRawPoint[]) => void;
+  referenceUnit: string;
+  measuredUnit: string;
+  onReferenceUnitChange: (u: string) => void;
+  onMeasuredUnitChange: (u: string) => void;
+  physicalQuantity: string;
+  outputType: string | null;
+  asFoundInputMode: "manual" | "csv";
+  onAsFoundInputModeChange: (m: "manual" | "csv") => void;
+  asFoundCsvError: string | null;
+  onAsFoundFileUpload: (f: File) => void;
+  asFoundFileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+  asLeftInputMode: "manual" | "csv";
+  onAsLeftInputModeChange: (m: "manual" | "csv") => void;
+  asLeftCsvError: string | null;
+  onAsLeftFileUpload: (f: File) => void;
+  asLeftFileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+}) {
+  const t = useTranslations("assets.wizard");
+  return (
+    <div className="divide-y divide-og-border">
+      <Step2
+        title={t("asFoundData")}
+        points={asFoundPoints}
+        onPointsChange={onAsFoundPointsChange}
+        referenceUnit={referenceUnit}
+        measuredUnit={measuredUnit}
+        onReferenceUnitChange={onReferenceUnitChange}
+        onMeasuredUnitChange={onMeasuredUnitChange}
+        physicalQuantity={physicalQuantity}
+        outputType={outputType}
+        inputMode={asFoundInputMode}
+        onInputModeChange={onAsFoundInputModeChange}
+        csvError={asFoundCsvError}
+        onFileUpload={onAsFoundFileUpload}
+        fileInputRef={asFoundFileInputRef}
+      />
+      <Step2
+        title={t("asLeftData")}
+        points={asLeftPoints}
+        onPointsChange={onAsLeftPointsChange}
+        referenceUnit={referenceUnit}
+        measuredUnit={measuredUnit}
+        onReferenceUnitChange={onReferenceUnitChange}
+        onMeasuredUnitChange={onMeasuredUnitChange}
+        physicalQuantity={physicalQuantity}
+        outputType={outputType}
+        inputMode={asLeftInputMode}
+        onInputModeChange={onAsLeftInputModeChange}
+        csvError={asLeftCsvError}
+        onFileUpload={onAsLeftFileUpload}
+        fileInputRef={asLeftFileInputRef}
+        showUnitSelectors={false}
+      />
     </div>
   );
 }
@@ -2083,11 +2519,13 @@ function FrequencyResponseStep({
 // ---------------------------------------------------------------------------
 
 function ManualCoefficientsStep({
-  state, onChange, referenceUnit,
+  state, onChange, referenceUnit, customFormulaError, onCustomFormulaErrorChange,
 }: {
   state: ManualCoeffState;
   onChange: (s: ManualCoeffState) => void;
   referenceUnit: string;
+  customFormulaError: string | null;
+  onCustomFormulaErrorChange: (e: string | null) => void;
 }) {
   const t = useTranslations("assets.wizard");
   function setOrder(order: number) {
@@ -2103,6 +2541,17 @@ function ManualCoefficientsStep({
     onChange({ ...state, coefficients });
   }
 
+  function setCustomFormula(formula: string) {
+    onChange({ ...state, custom_formula: formula });
+    if (formula.trim() === "") { onCustomFormulaErrorChange(null); return; }
+    try {
+      validateCustomFormula(formula);
+      onCustomFormulaErrorChange(null);
+    } catch {
+      onCustomFormulaErrorChange(t("customFormulaInvalid"));
+    }
+  }
+
   const numericCoeffs = state.coefficients.map((c) => parseFloat(c));
   const previewValid = numericCoeffs.every((c) => !isNaN(c));
 
@@ -2112,38 +2561,74 @@ function ManualCoefficientsStep({
         {t("manualCoeffHint")}
       </p>
 
-      <div className="flex flex-col gap-1 w-40">
-        <WLabel text={t("polynomialOrder")} required />
+      <div className="flex flex-col gap-1 w-56">
+        <WLabel text={t("modelType")} required tooltip={t("tips.modelType")} />
         <select
-          value={state.poly_order}
-          onChange={(e) => setOrder(parseInt(e.target.value))}
+          value={state.model_type}
+          onChange={(e) => onChange({ ...state, model_type: e.target.value as ModelType })}
           className={`${IB} ${IB_OK}`}
         >
-          {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
+          <option value="polynomial">{t("modelTypePolynomial")}</option>
+          <option value="custom_formula">{t("modelTypeCustomFormula")}</option>
         </select>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {state.coefficients.map((c, i) => {
-          const power = state.poly_order - i;
-          return (
-            <WInput
-              key={i}
-              label={t("coefficientLabel", { power: coeffPowerLabel(power, t) })}
-              type="number"
-              value={c}
-              onChange={(v) => setCoeff(i, v)}
-              placeholder="0.0"
-              required
-            />
-          );
-        })}
-      </div>
+      {state.model_type === "polynomial" ? (
+        <>
+          <div className="flex flex-col gap-1 w-40">
+            <WLabel text={t("polynomialOrder")} required />
+            <select
+              value={state.poly_order}
+              onChange={(e) => setOrder(parseInt(e.target.value))}
+              className={`${IB} ${IB_OK}`}
+            >
+              {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
 
-      {previewValid && (
-        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
-          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
-          <span className="text-xs font-mono text-og-text">{formatEquation(numericCoeffs, state.poly_order)}</span>
+          <div className="grid grid-cols-3 gap-3">
+            {state.coefficients.map((c, i) => {
+              const power = state.poly_order - i;
+              return (
+                <WInput
+                  key={i}
+                  label={t("coefficientLabel", { power: coeffPowerLabel(power, t) })}
+                  type="number"
+                  value={c}
+                  onChange={(v) => setCoeff(i, v)}
+                  placeholder="0.0"
+                  required
+                />
+              );
+            })}
+          </div>
+
+          {previewValid && (
+            <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
+              <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
+              <span className="text-xs font-mono text-og-text">{formatEquation(numericCoeffs, state.poly_order)}</span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <WInput
+            label={t("customFormula")}
+            value={state.custom_formula}
+            onChange={setCustomFormula}
+            placeholder={t("customFormulaPlaceholder")}
+            required
+            error={customFormulaError ?? undefined}
+            tooltip={t("tips.customFormula")}
+          />
+          <p className="text-xs text-gray-400">{t("customFormulaHint")}</p>
+          {customFormulaError && <p className="text-xs text-red-500">{customFormulaError}</p>}
+          {!customFormulaError && state.custom_formula.trim() !== "" && (
+            <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border mt-1">
+              <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
+              <span className="text-xs font-mono text-og-text">f(x) = {state.custom_formula}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -2164,34 +2649,7 @@ function ManualCoefficientsStep({
         />
       </div>
 
-      <div className="border border-og-border rounded-lg overflow-hidden">
-        <div className="px-4 py-3">
-          <WCheckbox
-            label={t("uncertaintyStatedOnCert")}
-            checked={state.has_uncertainty}
-            onChange={(v) => onChange({ ...state, has_uncertainty: v })}
-          />
-        </div>
-        {state.has_uncertainty && (
-          <div className="px-4 pb-4 pt-1 grid grid-cols-2 gap-4 border-t border-og-border">
-            <WInput
-              label={referenceUnit ? t("expandedUncertaintyUnit", { unit: referenceUnit }) : t("expandedUncertainty")}
-              type="number"
-              value={state.expanded_uncertainty}
-              onChange={(v) => onChange({ ...state, expanded_uncertainty: v })}
-              required
-            />
-            <WInput
-              label={t("coverageFactorK")}
-              type="number"
-              value={state.coverage_factor}
-              onChange={(v) => onChange({ ...state, coverage_factor: v })}
-              placeholder="2"
-              required
-            />
-          </div>
-        )}
-      </div>
+      <p className="text-xs text-gray-400">{t("modelDirectUncertaintyHint")}</p>
     </div>
   );
 }
@@ -2215,7 +2673,7 @@ function residualColor(residual: number, maxAbsResidual: number): string {
 
 function Step3({
   analyzeParams, onAnalyzeParamsChange, result, analyzing, analyzeError,
-  referenceUnit, measuredUnit, hoveredPointIdx, onHoverPoint, coefficientsOnly, manualCoeff,
+  referenceUnit, measuredUnit, hoveredPointIdx, onHoverPoint, dataEntryMode, manualCoeff,
   includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange,
   sensorNominalUncertaintyManual, onSensorNominalUncertaintyManualChange,
   decisionRule, onDecisionRuleChange,
@@ -2233,7 +2691,7 @@ function Step3({
   measuredUnit: string;
   hoveredPointIdx: number | null;
   onHoverPoint: (i: number | null) => void;
-  coefficientsOnly: boolean;
+  dataEntryMode: DataEntryMode;
   manualCoeff: ManualCoeffState;
   includeSensorNominalUncertainty: boolean;
   onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
@@ -2370,43 +2828,20 @@ function Step3({
     };
   }, []);
 
-  if (coefficientsOnly) {
-    const numericCoeffs = manualCoeff.coefficients.map((c) => parseFloat(c));
-    const rangeMin = parseFloat(manualCoeff.range_min);
-    const rangeMax = parseFloat(manualCoeff.range_max);
-    const expandedU = manualCoeff.has_uncertainty ? parseFloat(manualCoeff.expanded_uncertainty) : null;
-    const covFactor = manualCoeff.has_uncertainty ? (parseFloat(manualCoeff.coverage_factor) || 2) : null;
-    const hasUncertainty = expandedU != null && !isNaN(expandedU);
-    return (
-      <div className="p-6 space-y-4">
-        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
-          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
-          <span className="text-xs font-mono text-og-text">{formatEquation(numericCoeffs, manualCoeff.poly_order)}</span>
-          {referenceUnit && <span className="text-[11px] text-gray-400 ml-2">({referenceUnit})</span>}
-        </div>
-        <div className="rounded-xl border border-og-border p-4 bg-og-surface-alt max-w-sm">
-          <StatRow label={t("validRange")} value={`${fmtN(rangeMin)} – ${fmtN(rangeMax)} ${referenceUnit}`} />
-          <StatRow label={t("polynomialOrder")} value={String(manualCoeff.poly_order)} />
-          {hasUncertainty && (
-            <StatRow
-              label={t("expandedUncertainty")}
-              value={`${fmtN(expandedU)} ${referenceUnit}`}
-              tip={t("statedOnCertTip", { k: fmtN(covFactor, 3) })}
-              docsHref="/docs/guide/calibration/coefficients-only"
-            />
-          )}
-        </div>
-        <p className="text-xs text-gray-400 max-w-md">
-          {hasUncertainty ? t("noRawDataHintWithUncertainty") : t("noRawDataHint")}
-        </p>
-      </div>
-    );
-  }
+  const isRawData = dataEntryMode === "raw_data";
+  const isModelDirect = dataEntryMode === "model_direct";
+  // Only raw_data ever fits a curve — model_direct's "residuals" are the two
+  // synthetic zero-error corner points (see the model_direct useEffect), and
+  // reference_vs_indicated has no transference function at all.
+  const showCurveChart = isRawData;
+  // model_direct has no real points to plot/tabulate at all.
+  const showChartPanel = !isModelDirect;
 
   return (
     <div className="p-5 space-y-4">
       {/* Controls row */}
       <div className="flex flex-wrap gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
+        {isRawData && (
         <div className="flex flex-col gap-1 min-w-[120px]">
           <WLabel text={t("regressionDegree")} />
           <select
@@ -2418,6 +2853,7 @@ function Step3({
             {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
+        )}
         <div className="flex flex-col gap-1 min-w-[130px]">
           <WLabel text={t("distribution")} />
           <select
@@ -2528,16 +2964,29 @@ function Step3({
         )}
       </div>
 
-      {/* Equation display */}
-      {result && !analyzing && (
+      {/* Equation display — raw_data shows the fitted curve; model_direct
+          shows the declared model (formula-aware); reference_vs_indicated
+          has no transference function, so no equation at all. */}
+      {result && !analyzing && isRawData && (
         <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
           <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
           <span className="text-xs font-mono text-og-text">
-            {formatEquation(result.coefficients, result.poly_degree)}
+            {formatEquation(result.coefficients, result.poly_degree ?? 0)}
           </span>
           <span className="text-[11px] text-gray-400 ml-2">
             ({measuredUnit} → {referenceUnit})
           </span>
+        </div>
+      )}
+      {result && !analyzing && isModelDirect && (
+        <div className="px-4 py-2 rounded-lg bg-og-surface-alt border border-og-border">
+          <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
+          <span className="text-xs font-mono text-og-text">
+            {manualCoeff.model_type === "custom_formula"
+              ? `f(x) = ${manualCoeff.custom_formula}`
+              : formatEquation(manualCoeff.coefficients.map((c) => parseFloat(c)), manualCoeff.poly_order)}
+          </span>
+          {referenceUnit && <span className="text-[11px] text-gray-400 ml-2">({referenceUnit})</span>}
         </div>
       )}
 
@@ -2550,22 +2999,33 @@ function Step3({
 
       {result && !analyzing && (
         <div className="flex gap-4 min-h-0">
-          {/* Left: stats + uncertainty (40%) */}
-          <div className="w-[40%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt">
+          {/* Left: stats + uncertainty (40%, full width when there's no chart panel) */}
+          <div className={`${showChartPanel ? "w-[40%] shrink-0" : "w-full max-w-xl"} rounded-xl border border-og-border p-4 bg-og-surface-alt`}>
             <p className="text-xs font-semibold text-og-text mb-2">{t("calibration")}</p>
             <StatRow label={t("validRange")} value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
-            <StatRow label={t("polynomialDegree")} value={String(result.poly_degree)} />
-            <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("statistics")}</p>
-            <StatRow label={t("rSquared")} value={fmtN(result.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
-            <StatRow label={t("rmse")} value={`${fmtN(result.rmse)} ${referenceUnit}`} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
-            <StatRow label={t("maxError")} value={`${fmtN(result.max_error)} ${referenceUnit}`} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
-            <StatRow label={t("fsError")} value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
-            <StatRow label={t("nonLinearity")} value={`${fmtN(result.non_linearity_pct, 3)}%`} tip={t("tips.nonLinearity")} docsHref={STAT_DOCS_LINKS.non_linearity} />
-            {result.repeatability != null && (
-              <StatRow label={t("repeatability")} value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
-            )}
-            {result.hysteresis != null && (
-              <StatRow label={t("hysteresis")} value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
+            {isRawData && <StatRow label={t("polynomialDegree")} value={String(result.poly_degree)} />}
+            {/* model_direct's "residuals" are two synthetic zero-error corner
+                points — r²/RMSE/max error/%FS/repeatability/hysteresis would
+                all be trivial artifacts of that (1.0, 0, 0, 0%…), not real
+                statistics, so only reference_vs_indicated (real, fit-free
+                residuals) and raw_data (real, fitted residuals) show them. */}
+            {!isModelDirect && (
+              <>
+                <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("statistics")}</p>
+                <StatRow label={t("rSquared")} value={fmtN(result.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
+                <StatRow label={t("rmse")} value={`${fmtN(result.rmse)} ${referenceUnit}`} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
+                <StatRow label={t("maxError")} value={`${fmtN(result.max_error)} ${referenceUnit}`} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
+                <StatRow label={t("fsError")} value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
+                {isRawData && (
+                  <StatRow label={t("nonLinearity")} value={`${fmtN(result.non_linearity_pct, 3)}%`} tip={t("tips.nonLinearity")} docsHref={STAT_DOCS_LINKS.non_linearity} />
+                )}
+                {result.repeatability != null && (
+                  <StatRow label={t("repeatability")} value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
+                )}
+                {result.hysteresis != null && (
+                  <StatRow label={t("hysteresis")} value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
+                )}
+              </>
             )}
             <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("uncertaintyBudget")}</p>
             {result.uncertainty_budget.map((c) => (
@@ -2619,7 +3079,9 @@ function Step3({
             )}
           </div>
 
-          {/* Right: chart / table toggle (60%) */}
+          {/* Right: chart / table toggle (60%) — no real points for
+              model_direct, so this whole panel is skipped for that mode. */}
+          {showChartPanel && (
           <div className="flex-1 min-w-0 flex flex-col gap-2">
             {/* Toggle tabs */}
             <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit border border-og-border">
@@ -2639,6 +3101,7 @@ function Step3({
 
             {rightView === "chart" && (
               <div className="flex-1 min-h-0 flex flex-col gap-3">
+                {showCurveChart && (
                 <div className="rounded-xl border border-og-border bg-og-surface flex-1 min-h-0 relative overflow-hidden">
                   {/* Gradient legend overlay */}
                   <div className="absolute bottom-20 right-3 z-20 pointer-events-none">
@@ -2655,6 +3118,7 @@ function Step3({
                   </div>
                   <div ref={plotDivRef} style={{ height: "100%", width: "100%" }} />
                 </div>
+                )}
                 <ResidualsChart
                   className="flex-1 min-h-0"
                   points={result.points.map((p) => ({
@@ -2713,6 +3177,7 @@ function Step3({
               </div>
             )}
           </div>
+          )}
         </div>
       )}
 
@@ -2721,6 +3186,269 @@ function Step3({
           <p className="text-sm">{t("waitingForAnalysis")}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step 3 equivalent — data_entry_mode="reference_vs_as_found_as_left": two
+// independent skip_fit=true results side by side. As-left is this
+// calibration's primary/official result (feeds due-date/approval/Health
+// tab); as-found is diagnostic-only (stored into as_found_summary). Both
+// share the same Type B uncertainty budget controls raw_data's Step3 uses.
+// ---------------------------------------------------------------------------
+
+function AsFoundAsLeftResults({
+  asFoundResult, asLeftResult, analyzing, analyzeError, referenceUnit,
+  analyzeParams, onAnalyzeParamsChange,
+  includeSensorNominalUncertainty, onIncludeSensorNominalUncertaintyChange,
+  sensorNominalUncertaintyManual, onSensorNominalUncertaintyManualChange,
+  decisionRule, onDecisionRuleChange,
+  referenceStandardAuto, referenceStandardAutoLoading, referenceAssetName,
+  referenceStandardManualUncertainty, onReferenceStandardManualUncertaintyChange,
+  referenceStandardManualCoverageFactor, onReferenceStandardManualCoverageFactorChange,
+}: {
+  asFoundResult: AnalyzeResponse | null;
+  asLeftResult: AnalyzeResponse | null;
+  analyzing: boolean;
+  analyzeError: string | null;
+  referenceUnit: string;
+  analyzeParams: AnalyzeParams;
+  onAnalyzeParamsChange: (p: AnalyzeParams) => void;
+  includeSensorNominalUncertainty: boolean;
+  onIncludeSensorNominalUncertaintyChange: (v: boolean) => void;
+  sensorNominalUncertaintyManual: string;
+  onSensorNominalUncertaintyManualChange: (v: string) => void;
+  decisionRule: DecisionRule;
+  onDecisionRuleChange: (v: DecisionRule) => void;
+  referenceStandardAuto: { expandedUncertainty: number; coverageFactor: number } | null;
+  referenceStandardAutoLoading: boolean;
+  referenceAssetName: string | null;
+  referenceStandardManualUncertainty: string;
+  onReferenceStandardManualUncertaintyChange: (v: string) => void;
+  referenceStandardManualCoverageFactor: string;
+  onReferenceStandardManualCoverageFactorChange: (v: string) => void;
+}) {
+  const t = useTranslations("assets.wizard");
+  const tUncertaintySource = useTranslations("tokens.uncertaintySource");
+  const tDecisionRule = useTranslations("tokens.decisionRule");
+  const setParam = <K extends keyof AnalyzeParams>(key: K) => (value: AnalyzeParams[K]) =>
+    onAnalyzeParamsChange({ ...analyzeParams, [key]: value });
+
+  function panel(label: string, result: AnalyzeResponse | null, primary: boolean) {
+    return (
+      <div className="flex-1 min-w-0 space-y-3">
+        <p className="text-xs font-semibold text-og-text flex items-center gap-2">
+          {label}
+          {!primary && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-og-surface-alt border border-og-border text-gray-400">
+              {t("diagnosticOnly")}
+            </span>
+          )}
+        </p>
+        {result ? (
+          <>
+            <div className="rounded-xl border border-og-border p-4 bg-og-surface-alt">
+              <StatRow label={t("validRange")} value={`${fmtN(result.valid_range_min)} – ${fmtN(result.valid_range_max)} ${referenceUnit}`} />
+              <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("statistics")}</p>
+              <StatRow label={t("rSquared")} value={fmtN(result.r_squared, 6)} tip={t("tips.rSquared")} docsHref={STAT_DOCS_LINKS.r_squared} />
+              <StatRow label={t("rmse")} value={`${fmtN(result.rmse)} ${referenceUnit}`} tip={t("tips.rmse")} docsHref={STAT_DOCS_LINKS.rmse} />
+              <StatRow label={t("maxError")} value={`${fmtN(result.max_error)} ${referenceUnit}`} tip={t("tips.maxError")} docsHref={STAT_DOCS_LINKS.max_error} />
+              <StatRow label={t("fsError")} value={`${fmtN(result.full_scale_error_pct, 3)}%`} tip={t("tips.fsError")} docsHref={STAT_DOCS_LINKS.full_scale_error} />
+              {result.repeatability != null && (
+                <StatRow label={t("repeatability")} value={`${fmtN(result.repeatability)} ${referenceUnit}`} tip={t("tips.repeatability")} docsHref={STAT_DOCS_LINKS.repeatability} />
+              )}
+              {result.hysteresis != null && (
+                <StatRow label={t("hysteresis")} value={`${fmtN(result.hysteresis)} ${referenceUnit}`} tip={t("tips.hysteresis")} docsHref={STAT_DOCS_LINKS.hysteresis} />
+              )}
+              <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("uncertaintyBudget")}</p>
+              {result.uncertainty_budget.map((c) => (
+                <StatRow
+                  key={c.source}
+                  label={translateDynamic(tUncertaintySource, c.source)}
+                  value={`${fmtN(c.standard_uncertainty)} ${referenceUnit}`}
+                  tip={t("tips.uncertaintyBudgetRow", { description: c.description, distribution: c.distribution, divisor: fmtN(c.divisor, 3) })}
+                  docsHref={STAT_DOCS_LINKS.uncertainty_budget_row}
+                />
+              ))}
+              <StatRow label={t("combinedRss")} value={`${fmtN(result.combined_uncertainty)} ${referenceUnit}`} tip={t("tips.combinedRss")} docsHref={STAT_DOCS_LINKS.combined_uncertainty} />
+              <StatRow
+                label={t("expanded")}
+                value={`${fmtN(roundToSigFigs(result.expanded_uncertainty, 2))} ${referenceUnit}`}
+                tip={
+                  (result.effective_degrees_of_freedom != null
+                    ? t("tips.expandedWithDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level, dof: fmtN(result.effective_degrees_of_freedom, 1) })
+                    : t("tips.expandedNoDof", { k: fmtN(result.coverage_factor, 3), confidence: result.confidence_level }))
+                  + " " + t("tips.expandedRoundedCert")
+                }
+                docsHref={STAT_DOCS_LINKS.expanded_uncertainty}
+              />
+              {result.conformity_statement.specification && (
+                <>
+                  <p className="text-xs font-semibold text-og-text pt-3 border-t border-og-border mb-2">{t("conformity")}</p>
+                  <div className="flex items-center justify-between gap-2 py-1">
+                    <span className="text-xs text-gray-400">{t("statement")}</span>
+                    <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
+                      result.passed
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
+                        : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
+                    }`}>
+                      {result.passed ? <CheckIcon size={12} /> : <WarningIcon size={12} />}
+                      {result.passed ? t("conforms") : t("doesNotConform")}
+                    </span>
+                  </div>
+                  <StatRow label={t("specification")} value={result.conformity_statement.specification} />
+                  <StatRow
+                    label={t("decisionRuleLabel")}
+                    value={translateDynamic(tDecisionRule, result.conformity_statement.decision_rule)}
+                    tip={t("tips.decisionRuleCert")}
+                    docsHref={STAT_DOCS_LINKS.decision_rule}
+                  />
+                </>
+              )}
+            </div>
+            <ResidualsChart
+              className="h-56"
+              points={result.points.map((p) => ({
+                point_index: p.point_index,
+                reference_value: p.reference_value,
+                residual_abs: p.residual_abs,
+                residual_pct: p.residual_pct,
+              }))}
+              referenceUnit={referenceUnit}
+              referenceLabel={t("reference")}
+              residualLabel={t("residual")}
+              residualPercentLabel={t("residualPercent")}
+            />
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-40 rounded-xl border border-og-border bg-og-surface-alt text-xs text-gray-400">
+            {t("waitingForAnalysis")}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-5 space-y-4">
+      {/* Controls row — shared Type B budget, same as raw_data's Step3 */}
+      <div className="flex flex-wrap gap-3 p-4 bg-og-surface-alt rounded-xl border border-og-border">
+        <div className="flex flex-col gap-1 min-w-[130px]">
+          <WLabel text={t("distribution")} />
+          <select
+            value={analyzeParams.distribution_type}
+            onChange={(e) => setParam("distribution_type")(e.target.value as DistributionType)}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            <option value="normal">{t("distributionNormal")}</option>
+            <option value="t">{t("distributionT")}</option>
+            <option value="chi_squared">{t("distributionChiSquared")}</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 w-24">
+          <WLabel text={t("confidencePercent")} />
+          <input
+            type="number"
+            value={analyzeParams.confidence_level}
+            onChange={(e) => setParam("confidence_level")(parseFloat(e.target.value) || 95)}
+            min={50} max={99.99} step={0.5}
+            className={`${IB} ${IB_OK} py-1.5`}
+          />
+        </div>
+        <div className="flex flex-col gap-1 min-w-[170px]">
+          <WLabel text={t("decisionRuleLabel")} />
+          <select
+            value={decisionRule}
+            onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
+            <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
+            <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 w-36">
+          <WLabel text={t("sensorNominalAccuracy")} />
+          <input
+            type="number"
+            value={sensorNominalUncertaintyManual}
+            onChange={(e) => onSensorNominalUncertaintyManualChange(e.target.value)}
+            min={0} step="any"
+            placeholder={t("fromDatasheet")}
+            className={`${IB} ${IB_OK} py-1.5`}
+          />
+        </div>
+        {sensorNominalUncertaintyManual.trim() !== "" && !isNaN(parseFloat(sensorNominalUncertaintyManual)) && (
+          <div className="flex flex-col gap-1 justify-end pb-1.5">
+            <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+              <ToggleSwitch checked={includeSensorNominalUncertainty} onChange={onIncludeSensorNominalUncertaintyChange} size="sm" />
+              {t("includeInBudget")}
+            </label>
+          </div>
+        )}
+        {referenceStandardAutoLoading ? (
+          <div className="flex flex-col gap-1 justify-end pb-1.5">
+            <span className="text-xs text-gray-400 flex items-center gap-1.5">
+              <span className="w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+              {t("loadingReferenceStandard")}
+            </span>
+          </div>
+        ) : referenceStandardAuto ? (
+          <div className="flex flex-col gap-1 justify-end pb-1.5">
+            <span className="text-xs text-gray-400">
+              {t("refStandardU")}: <span className="font-mono text-og-text">{fmtN(referenceStandardAuto.expandedUncertainty)}</span> {referenceUnit}
+              {referenceAssetName && <span className="text-gray-400"> {t("lastCalibrationOf", { name: referenceAssetName })}</span>}
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1 w-36">
+              <WLabel text={t("refStandardUManual")} />
+              <input
+                type="number"
+                value={referenceStandardManualUncertainty}
+                onChange={(e) => onReferenceStandardManualUncertaintyChange(e.target.value)}
+                min={0} step="any"
+                placeholder={t("fromCert")}
+                className={`${IB} ${IB_OK} py-1.5`}
+              />
+            </div>
+            {referenceStandardManualUncertainty.trim() !== "" && (
+              <div className="flex flex-col gap-1 w-20">
+                <WLabel text={t("refStdK")} />
+                <input
+                  type="number"
+                  value={referenceStandardManualCoverageFactor}
+                  onChange={(e) => onReferenceStandardManualCoverageFactorChange(e.target.value)}
+                  min={1} max={5} step={0.1}
+                  className={`${IB} ${IB_OK} py-1.5`}
+                />
+              </div>
+            )}
+          </>
+        )}
+        {analyzing && (
+          <div className="ml-auto flex items-end">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+              {t("analyzing")}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {analyzeError && (
+        <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-200 dark:border-red-900/30">
+          <WarningIcon size={13} />
+          {analyzeError}
+        </div>
+      )}
+
+      <div className="flex gap-4">
+        {panel(t("asFoundData"), asFoundResult, false)}
+        {panel(t("asLeftData"), asLeftResult, true)}
+      </div>
     </div>
   );
 }

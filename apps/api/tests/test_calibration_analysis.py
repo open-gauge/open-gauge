@@ -493,3 +493,123 @@ class TestRunAnalysisErrors:
                 reference_unit="°C",
                 measured_unit="°C",
             )
+
+
+# ---------------------------------------------------------------------------
+# run_analysis(skip_fit=True) — data_entry_mode="reference_vs_indicated" /
+# "reference_vs_as_found_as_left" (no transference function), and
+# "model_direct" (synthetic zero-residual points at the declared range).
+# ---------------------------------------------------------------------------
+
+# "measured" is already directly comparable to "reference" (both physical
+# quantities) — some genuine scatter so Type A isn't trivially zero.
+SKIP_FIT_DATA = {
+    "reference_values": [0.0, 10.0, 20.0, 30.0, 40.0, 50.0],
+    "measured_values":  [0.05, 9.9, 20.08, 29.95, 40.1, 49.92],
+    "reference_unit": "°C",
+    "measured_unit": "°C",
+    "skip_fit": True,
+}
+
+
+class TestSkipFit:
+    def test_no_fit_metadata_returned(self) -> None:
+        result = run_analysis(**SKIP_FIT_DATA)
+        assert result.poly_degree is None
+        assert result.coefficients == []
+        assert result.poly_coefficients_covariance is None
+        assert result.non_linearity_pct is None
+
+    def test_residual_is_direct_difference_not_a_fit(self) -> None:
+        result = run_analysis(**SKIP_FIT_DATA)
+        for pt, ref, meas in zip(
+            result.points, SKIP_FIT_DATA["reference_values"], SKIP_FIT_DATA["measured_values"]
+        ):
+            assert pt.calculated_value == pytest.approx(meas)
+            assert pt.residual_abs == pytest.approx(ref - meas)
+
+    def test_r_squared_rmse_max_error_still_computed(self) -> None:
+        result = run_analysis(**SKIP_FIT_DATA)
+        assert result.r_squared is not None
+        assert result.rmse > 0.0
+        assert result.max_error > 0.0
+        assert result.full_scale_error_pct > 0.0
+
+    def test_uncertainty_budget_and_conformity_still_computed(self) -> None:
+        result = run_analysis(
+            **SKIP_FIT_DATA,
+            reference_standard_uncertainty=0.05,
+            reference_standard_coverage_factor=2.0,
+            channel_accuracy_value=1.0,
+            channel_accuracy_type="absolute",
+        )
+        sources = [c["source"] for c in result.uncertainty_budget]
+        assert "fit_residuals" in sources
+        assert "reference_standard" in sources
+        assert result.expanded_uncertainty > 0.0
+        assert result.conformity_statement["specification"] is not None
+
+    def test_standard_error_uses_k_zero_not_fit_params(self) -> None:
+        # skip_fit -> k=0 fitted parameters consumed, so dof = n - k = n (not n - (degree+1)).
+        skip_result = run_analysis(**SKIP_FIT_DATA)
+        n = len(SKIP_FIT_DATA["reference_values"])
+        ss_res = sum((r - m) ** 2 for r, m in zip(
+            SKIP_FIT_DATA["reference_values"], SKIP_FIT_DATA["measured_values"]
+        ))
+        assert skip_result.standard_error == pytest.approx(math.sqrt(ss_res / n))
+
+    def test_repeatability_and_hysteresis_still_detected(self) -> None:
+        ref = [0.0, 0.0, 0.0, 50.0, 100.0]
+        meas = [0.1, 0.15, 0.12, 50.0, 100.0]
+        result = run_analysis(
+            reference_values=ref, measured_values=meas,
+            reference_unit="Pa", measured_unit="Pa", skip_fit=True,
+        )
+        assert result.repeatability is not None
+
+
+class TestModelDirectConformityViaSyntheticPoints:
+    """data_entry_mode="model_direct" has no raw data at all — the wizard
+    feeds two synthetic zero-residual points (measured == reference) at the
+    model's declared valid_range_min/max through this same skip_fit path
+    (see CalibrationWizard.tsx's model_direct useEffect). Verifies that
+    trick actually produces the "model trusted as declared" semantics: a
+    zero Type A contribution and a conformity check against max_error=0."""
+
+    def test_type_a_contribution_is_exactly_zero(self) -> None:
+        result = run_analysis(
+            reference_values=[0.0, 100.0],
+            measured_values=[0.0, 100.0],
+            reference_unit="kPa",
+            measured_unit="kPa",
+            skip_fit=True,
+        )
+        type_a = next(c for c in result.uncertainty_budget if c["source"] == "fit_residuals")
+        assert type_a["standard_uncertainty"] == 0.0
+
+    def test_combined_uncertainty_is_purely_type_b(self) -> None:
+        result = run_analysis(
+            reference_values=[0.0, 100.0],
+            measured_values=[0.0, 100.0],
+            reference_unit="kPa",
+            measured_unit="kPa",
+            skip_fit=True,
+            reference_standard_uncertainty=0.5,
+            reference_standard_coverage_factor=2.0,
+        )
+        assert result.combined_uncertainty == pytest.approx(0.5 / 2.0)
+
+    def test_conformity_checked_at_both_range_endpoints(self) -> None:
+        # percent_of_reading tolerance scales with |ref| -> checking both
+        # endpoints (not just the max) matters for this accuracy type.
+        result = run_analysis(
+            reference_values=[1.0, 100.0],
+            measured_values=[1.0, 100.0],
+            reference_unit="kPa",
+            measured_unit="kPa",
+            skip_fit=True,
+            channel_accuracy_value=0.5,
+            channel_accuracy_type="percent_of_reading",
+        )
+        assert result.passed is True
+        assert result.max_error == 0.0

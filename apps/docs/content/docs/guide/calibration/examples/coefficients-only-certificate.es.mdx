@@ -1,10 +1,11 @@
 ---
-title: "Ejemplo 4 — Transmisor de presión, certificado externo de solo coeficientes"
-description: La ruta del asistente "Solo coeficientes (sin datos en bruto)", para sensores que llegan con un certificado que indica el polinomio de calibración directamente.
+title: "Ejemplo 4 — Transmisor de presión, modelo proporcionado directamente"
+description: La ruta del asistente "Modelo proporcionado directamente", para sensores que llegan con un certificado que indica el modelo de calibración directamente.
 ---
 
-Ejercita la ruta del asistente de [solo coeficientes](../coefficients-only.mdx) — para
-sensores que llegan con un certificado de calibración que indica el polinomio de calibración
+Ejercita la ruta del asistente de
+[modelo proporcionado directamente](../coefficients-only.mdx#model-provided-directly) — para
+sensores que llegan con un certificado de calibración que indica el modelo de calibración
 directamente, sin puntos de datos de referencia/medido en bruto que reajustar.
 
 ## 4.0 Configuración
@@ -25,58 +26,72 @@ Un canal:
 | Magnitud física | Presión |
 | Rango mín / máx | 0 / 1000 |
 | Unidad | kPa |
+| Exactitud | ±0.5 kPa (absoluta) |
 
-No se necesita nada más — una calibración de solo coeficientes no consulta la exactitud, la
-resolución, ni la incertidumbre de medición (no se ejecuta ningún análisis en el que incorporarlas).
+La especificación de exactitud es lo que compara la comprobación de conformidad de modelo
+proporcionado directamente — ver más abajo.
 
 ## 4.1 Asistente — Paso 1 (Información general)
 
 | Campo | Valor |
 |---|---|
-| Tipo de calibración | Externa |
+| Tipo de calibración | Laboratorio externo acreditado |
 | Proveedor de calibración | Any Cal Lab Inc. |
 | Número de certificado | ACL-2026-00842 |
-| Solo coeficientes (sin datos en bruto) | **marcado** |
+| Modo de entrada de datos | **Modelo proporcionado directamente** |
 
-Marcar la casilla cambia el Paso 2 del ingreso de datos en bruto a un formulario de ingreso de
-coeficientes, y el indicador de paso cambia su etiqueta a "Coeficientes" / "Revisión" en lugar de
+Seleccionar este modo cambia el Paso 2 de la entrada de datos en bruto a un formulario de ingreso
+de modelo, y el indicador de paso cambia su etiqueta a "Coeficientes" / "Revisión" en lugar de
 "Datos en bruto" / "Análisis".
 
 ## 4.2 Asistente — Paso 2 (Coeficientes)
 
 El certificado indica: *referencia ≈ 1.0025 × medido − 0.42 kPa, válido 0–1000 kPa, incertidumbre
-expandida ±1.2 kPa (k=2)*.
+expandida del patrón de referencia ±0.5 kPa (k=2)*.
 
 | Campo | Valor |
 |---|---|
+| Tipo de modelo | Polinomio |
 | Orden del polinomio | 1 |
 | Coeficiente (× x) | 1.0025 |
 | Coeficiente (Constante) | −0.42 |
-| Rango válido mín | 0 |
-| Rango válido máx | 1000 |
-| Incertidumbre indicada en el certificado | **marcado** |
-| Incertidumbre expandida (±) | 1.2 |
-| Factor de cobertura k | 2 |
+| Rango válido mín. | 0 |
+| Rango válido máx. | 1000 |
 
 La vista previa de la ecuación muestra: $f(x) = 1.0025x - 0.42\ \text{(kPa)}$.
 
 ## 4.3 Asistente — Paso 3 (Revisión) y qué se guarda
 
-No hay ningún análisis que ejecutar, así que el Paso 3 repite la ecuación, el rango válido y la
-incertidumbre declarada para una comprobación final antes de guardar. Al guardar:
+Incluso sin datos en bruto, el Paso 3 recopila las mismas entradas del
+[presupuesto de incertidumbre](../uncertainty-budget.mdx) que recopila una calibración con datos en
+bruto:
+
+| Campo | Valor |
+|---|---|
+| U del patrón de ref. (manual) | 0.5 |
+| k del patrón de ref. | 2 |
+| Regla de decisión | Aceptación con banda de guarda |
+
+Detrás de escena, el asistente evalúa dos puntos sintéticos de error cero en el rango válido
+declarado (0 y 1000 kPa) a través del mismo pipeline de análisis que usan los datos en bruto, con
+el ajuste omitido — esto combina el presupuesto Tipo B de arriba (aquí, solo el término del patrón
+de referencia) y aplica la regla de decisión con el modelo confiable exactamente tal como se
+declaró. Al guardar:
 
 - `poly_order = 1`, `poly_coefficients = [1.0025, -0.42]`, `range_min = 0`, `range_max = 1000`,
   `valid_range_min = 0`, `valid_range_max = 1000`.
-- `expanded_uncertainty = 1.2`, `coverage_factor = 2`,
-  `combined_uncertainty = 1.2 / 2 = 0.6`.
-- `uncertainty_budget = [{ source: "external_certificate_stated", value: 1.2, divisor: 2,
-  standard_uncertainty: 0.6, ... }]` — una sola fila, no descompuesta en partes Tipo A/B, ya que
-  el certificado solo da una cifra global.
-- `r_squared`, `rmse`, `standard_error`, `max_error`, `decision_rule`, y
-  `conformity_statement` son todos **nulos** — sin datos en bruto no hay ningún ajuste que
-  puntuar ni ningún error evaluado contra el cual comprobar una especificación, así que Open Gauge
-  no muestra una insignia de CONFORMA/NO CONFORMA para este registro (consulta
-  [Calibraciones de solo coeficientes](../coefficients-only.mdx)).
+- `uncertainty_budget` tiene una fila Tipo B (`reference_standard`, incertidumbre típica
+  `0.5 / 2 = 0.25` kPa) — la fila Tipo A (`fit_residuals`) está presente pero es exactamente `0`,
+  ya que el modelo es confiable tal como se declaró.
+- `combined_uncertainty ≈ 0.25` kPa, `expanded_uncertainty ≈ 0.49` kPa (k≈1.96 al 95% de
+  confianza, distribución normal).
+- `r_squared`, `rmse`, `max_error`, y `non_linearity` son todos **nulos** — no hay datos medidos
+  reales de los cuales derivarlos (consulta
+  [Modos alternativos de entrada de datos de calibración](../coefficients-only.mdx)).
+- `decision_rule = "guard_band_w_uncertainty"` y un `conformity_statement` real: la zona de
+  aceptación se reduce hacia dentro por la incertidumbre expandida (`0.5 - 0.49 ≈ 0.01` kPa de
+  margen restante), así que este registro **CONFORMA** — por poco, ilustrando exactamente para qué
+  sirve la banda de guarda.
 
 ## Resultados esperados
 
@@ -84,6 +99,6 @@ incertidumbre declarada para una comprobación final antes de guardar. Al guarda
 |---|---|
 | Ecuación | $f(x) = 1.0025x - 0.42$ |
 | Rango válido | 0 – 1000 kPa |
-| Incertidumbre combinada | 0.6 kPa |
-| Incertidumbre expandida (±) | 1.2 kPa |
-| Dictamen de conformidad | no se muestra / no se calcula |
+| Incertidumbre combinada | ≈0.25 kPa |
+| Incertidumbre expandida (±) | ≈0.49 kPa |
+| Dictamen de conformidad | CONFORMA (con banda de guarda) |

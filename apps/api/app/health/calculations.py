@@ -35,6 +35,10 @@ class CalibrationSummary:
     performed_by_name: str
     poly_order: int | None
     poly_coefficients: list[float] | None
+    # A "custom_formula"-typed calibration has no poly_coefficients at all —
+    # its model lives in custom_formula instead. See has_model()/evaluate_model().
+    model_type: str
+    custom_formula: str | None
     valid_range_min: float | None
     valid_range_max: float | None
     r_squared: float | None
@@ -62,24 +66,35 @@ class CurveComparisonResult:
     residual_drift: float
 
 
+def has_model(cal: CalibrationSummary) -> bool:
+    """True when a calibration has *some* evaluable model — a polynomial fit,
+    or a custom formula (which carries no poly_coefficients at all). A
+    reference-vs-indicated/as-found-as-left calibration has neither (no
+    transference function exists), so this is False for those."""
+    if cal.model_type == "custom_formula":
+        return bool(cal.custom_formula)
+    return bool(cal.poly_coefficients)
+
+
 def max_drift_series(
     calibrations: list[CalibrationSummary],
     baseline: CalibrationSummary,
     n_points: int = 100,
 ) -> list[float | None]:
-    """For each calibration, evaluate its polynomial vs. the baseline's
-    polynomial over their overlapping valid range and return max |delta|.
+    """For each calibration, evaluate its model vs. the baseline's model
+    (polynomial or custom formula) over their overlapping valid range and
+    return max |delta|.
 
     Returns `None` at positions where a calibration (or the baseline) lacks
-    a usable polynomial, or its valid range does not overlap the baseline's.
+    a usable model, or its valid range does not overlap the baseline's.
     The baseline itself (if present in `calibrations`) yields 0.0.
     """
-    if not baseline.poly_coefficients or baseline.valid_range_min is None or baseline.valid_range_max is None:
+    if not has_model(baseline) or baseline.valid_range_min is None or baseline.valid_range_max is None:
         return [None for _ in calibrations]
 
     results: list[float | None] = []
     for cal in calibrations:
-        if not cal.poly_coefficients or cal.valid_range_min is None or cal.valid_range_max is None:
+        if not has_model(cal) or cal.valid_range_min is None or cal.valid_range_max is None:
             results.append(None)
             continue
 
@@ -90,8 +105,8 @@ def max_drift_series(
             continue
 
         xs = regression.generate_x_range(lo, hi, n_points)
-        y_baseline = regression.evaluate_polynomial(baseline.poly_coefficients, xs)
-        y_cal = regression.evaluate_polynomial(cal.poly_coefficients, xs)
+        y_baseline = regression.evaluate_model(baseline.model_type, baseline.poly_coefficients, baseline.custom_formula, xs)
+        y_cal = regression.evaluate_model(cal.model_type, cal.poly_coefficients, cal.custom_formula, xs)
         results.append(max(abs(a - b) for a, b in zip(y_cal, y_baseline)))
 
     return results
@@ -206,13 +221,14 @@ def historical_deltas(calibrations: list[CalibrationSummary]) -> dict:
 def curve_comparison(
     reference: CalibrationSummary, current: CalibrationSummary, n_points: int = 200
 ) -> CurveComparisonResult:
-    """Evaluate both fitted polynomials over their overlapping valid range.
+    """Evaluate both models (polynomial or custom formula) over their
+    overlapping valid range.
 
-    Raises ValueError if either calibration lacks a usable polynomial or
-    their valid ranges do not overlap.
+    Raises ValueError if either calibration lacks a usable model or their
+    valid ranges do not overlap.
     """
-    if not reference.poly_coefficients or not current.poly_coefficients:
-        raise ValueError("Both calibrations must have a fitted polynomial")
+    if not has_model(reference) or not has_model(current):
+        raise ValueError("Both calibrations must have a fitted model")
     if (
         reference.valid_range_min is None or reference.valid_range_max is None
         or current.valid_range_min is None or current.valid_range_max is None
@@ -225,8 +241,8 @@ def curve_comparison(
         raise ValueError("Reference and current calibrations do not have overlapping valid ranges")
 
     xs = regression.generate_x_range(lo, hi, n_points)
-    y_reference = regression.evaluate_polynomial(reference.poly_coefficients, xs)
-    y_current = regression.evaluate_polynomial(current.poly_coefficients, xs)
+    y_reference = regression.evaluate_model(reference.model_type, reference.poly_coefficients, reference.custom_formula, xs)
+    y_current = regression.evaluate_model(current.model_type, current.poly_coefficients, current.custom_formula, xs)
     delta = [c - r for c, r in zip(y_current, y_reference)]
     abs_drift = [abs(d) for d in delta]
 

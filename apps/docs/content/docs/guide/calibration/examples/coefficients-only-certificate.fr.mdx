@@ -1,11 +1,12 @@
 ---
-title: "Exemple 4 — Transmetteur de pression, certificat externe à coefficients uniquement"
-description: Le parcours de l'assistant « Coefficients uniquement (sans données brutes) », pour les capteurs qui arrivent avec un certificat indiquant directement le polynôme de calibration.
+title: "Exemple 4 — Transmetteur de pression, modèle fourni directement"
+description: Le parcours de l'assistant « Modèle fourni directement », pour les capteurs qui arrivent avec un certificat indiquant directement le modèle de calibration.
 ---
 
-Exerce le parcours de l'assistant [à coefficients uniquement](../coefficients-only.mdx) — pour
-les capteurs qui arrivent avec un certificat de calibration indiquant directement le polynôme de
-calibration, sans points de données bruts référence/mesuré à réajuster.
+Exerce le parcours de l'assistant
+[modèle fourni directement](../coefficients-only.mdx#model-provided-directly) — pour les capteurs
+qui arrivent avec un certificat de calibration indiquant directement le modèle de calibration, sans
+points de données référence/mesuré bruts à réajuster.
 
 ## 4.0 Configuration
 
@@ -25,60 +26,71 @@ Une voie :
 | Grandeur physique | Pression |
 | Plage min / max | 0 / 1000 |
 | Unité | kPa |
+| Exactitude | ±0,5 kPa (absolue) |
 
-Rien d'autre n'est requis — une calibration à coefficients uniquement ne consulte ni
-l'exactitude, ni la résolution, ni l'incertitude de mesure (il n'y a aucune analyse exécutée
-pour les y intégrer).
+La spécification d'exactitude est ce à quoi la vérification de conformité du modèle fourni
+directement est comparée — voir ci-dessous.
 
 ## 4.1 Assistant — Étape 1 (Informations générales)
 
 | Champ | Valeur |
 |---|---|
-| Type de calibration | Externe |
+| Type de calibration | Laboratoire externe accrédité |
 | Fournisseur de calibration | Any Cal Lab Inc. |
 | Numéro de certificat | ACL-2026-00842 |
-| Coefficients uniquement (sans données brutes) | **coché** |
+| Mode de saisie des données | **Modèle fourni directement** |
 
-Cocher la case remplace l'étape 2 de saisie de données brutes par un formulaire de saisie de
-coefficients, et l'indicateur d'étape se relibelle en « Coefficients » / « Révision » au lieu de
+Sélectionner ce mode remplace l'étape 2 de saisie de données brutes par un formulaire de saisie de
+modèle, et l'indicateur d'étape se relibelle en « Coefficients » / « Vérification » au lieu de
 « Données brutes » / « Analyse ».
 
 ## 4.2 Assistant — Étape 2 (Coefficients)
 
 Le certificat indique : *référence ≈ 1,0025 × mesuré − 0,42 kPa, valide 0–1000 kPa, incertitude
-élargie ±1,2 kPa (k=2)*.
+élargie de l'étalon de référence ±0,5 kPa (k=2)*.
 
 | Champ | Valeur |
 |---|---|
-| Ordre du polynôme | 1 |
+| Type de modèle | Polynôme |
+| Degré du polynôme | 1 |
 | Coefficient (× x) | 1,0025 |
 | Coefficient (Constante) | −0,42 |
-| Plage de validité min | 0 |
-| Plage de validité max | 1000 |
-| Incertitude déclarée sur le certificat | **coché** |
-| Incertitude élargie (±) | 1,2 |
-| Facteur d'élargissement k | 2 |
+| Plage valide min. | 0 |
+| Plage valide max. | 1000 |
 
 L'aperçu de l'équation affiche : $f(x) = 1.0025x - 0.42\ \text{(kPa)}$.
 
-## 4.3 Assistant — Étape 3 (Révision) et ce qui est enregistré
+## 4.3 Assistant — Étape 3 (Vérification) et ce qui est enregistré
 
-Il n'y a aucune analyse à exécuter, donc l'étape 3 restitue l'équation, la plage de validité, et
-l'incertitude déclarée pour une vérification finale avant l'enregistrement. Lors de
-l'enregistrement :
+Même sans données brutes, l'étape 3 recueille les mêmes entrées de
+[budget d'incertitude](../uncertainty-budget.mdx) qu'une calibration à données brutes :
+
+| Champ | Valeur |
+|---|---|
+| U de l'étalon de réf. (manuel) | 0,5 |
+| k de l'étalon de réf. | 2 |
+| Règle de décision | Acceptation en bande de garde |
+
+En coulisses, l'assistant évalue deux points synthétiques d'erreur nulle à la plage valide
+déclarée (0 et 1000 kPa) via le même pipeline d'analyse que celui utilisé pour les données brutes,
+l'ajustement étant ignoré — cela combine le budget de Type B ci-dessus (ici, uniquement le terme de
+l'étalon de référence) et applique la règle de décision avec le modèle considéré comme fiable
+exactement tel que déclaré. Lors de l'enregistrement :
 
 - `poly_order = 1`, `poly_coefficients = [1.0025, -0.42]`, `range_min = 0`, `range_max = 1000`,
   `valid_range_min = 0`, `valid_range_max = 1000`.
-- `expanded_uncertainty = 1.2`, `coverage_factor = 2`,
-  `combined_uncertainty = 1.2 / 2 = 0.6`.
-- `uncertainty_budget = [{ source: "external_certificate_stated", value: 1.2, divisor: 2,
-  standard_uncertainty: 0.6, ... }]` — une seule ligne, non décomposée en parties de Type A/B,
-  puisque le certificat ne donne qu'un seul chiffre global.
-- `r_squared`, `rmse`, `standard_error`, `max_error`, `decision_rule`, et
-  `conformity_statement` sont tous **null** — sans données brutes, il n'y a aucun ajustement à
-  noter et aucune erreur évaluée à comparer à une spécification, donc Open Gauge n'affiche pas de
-  badge CONFORME/NON CONFORME pour cet enregistrement (voir
-  [Calibrations à coefficients uniquement](../coefficients-only.mdx)).
+- `uncertainty_budget` comporte une ligne de Type B (`reference_standard`, incertitude-type
+  `0.5 / 2 = 0.25` kPa) — la ligne de Type A (`fit_residuals`) est présente mais vaut exactement
+  `0`, puisque le modèle est considéré comme fiable tel que déclaré.
+- `combined_uncertainty ≈ 0.25` kPa, `expanded_uncertainty ≈ 0.49` kPa (k≈1,96 à 95 % de
+  confiance, distribution normale).
+- `r_squared`, `rmse`, `max_error`, et `non_linearity` sont tous **null** — il n'y a pas de
+  véritables données mesurées à partir desquelles les dériver (voir
+  [Modes alternatifs de saisie des données de calibration](../coefficients-only.mdx)).
+- `decision_rule = "guard_band_w_uncertainty"` et une véritable `conformity_statement` : la zone
+  d'acceptation est réduite vers l'intérieur par l'incertitude élargie (`0.5 - 0.49 ≈ 0.01` kPa de
+  marge restante), donc cet enregistrement **est CONFORME** — de justesse, illustrant exactement à
+  quoi sert la bande de garde.
 
 ## Résultats attendus
 
@@ -86,6 +98,6 @@ l'enregistrement :
 |---|---|
 | Équation | $f(x) = 1.0025x - 0.42$ |
 | Plage de validité | 0 – 1000 kPa |
-| Incertitude combinée | 0,6 kPa |
-| Incertitude élargie (±) | 1,2 kPa |
-| Déclaration de conformité | non affichée / non calculée |
+| Incertitude combinée | ≈0,25 kPa |
+| Incertitude élargie (±) | ≈0,49 kPa |
+| Déclaration de conformité | CONFORME (avec bande de garde) |

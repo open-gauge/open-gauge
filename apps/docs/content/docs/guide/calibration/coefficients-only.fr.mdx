@@ -1,42 +1,87 @@
 ---
-title: Calibrations à coefficients uniquement
-description: Enregistrer un certificat de laboratoire externe qui indique directement le polynôme de calibration, sans points de données bruts.
+title: Modes alternatifs de saisie des données de calibration
+description: Enregistrer une calibration lorsque les données n'arrivent pas sous la forme habituelle de points référence-par-rapport-au-signal-mesuré — un modèle fourni par le laboratoire, ou une comparaison référence-par-rapport-à-une-valeur-déjà-convertie.
 ---
 
-Certains capteurs — principalement ceux envoyés à un laboratoire extérieur — reviennent avec un
-certificat de calibration qui indique directement les coefficients du polynôme de calibration,
-sans inclure de points de données bruts référence/mesuré. Pour ceux-ci, Open Gauge dispose d'un
-parcours dédié afin que vous n'ayez pas à fabriquer de faux points de données juste pour
-enregistrer le résultat.
+Par défaut, les données brutes d'une calibration sont un ensemble de paires de points
+(référence, mesuré) — la mesure de l'étalon de référence par rapport au propre signal de sortie de
+la voie — qu'Open Gauge ajuste à une courbe. Certains laboratoires livrent les résultats de
+calibration sous d'autres formes. Le sélecteur **Mode de saisie des données** de l'étape 1 couvre
+trois alternatives, en plus des **Données brutes** par défaut :
 
-## Utilisation
+- **Modèle fourni directement** — le certificat du laboratoire/fabricant indique le modèle de
+  calibration lui-même, sans aucun point de données brutes.
+- **Référence par rapport à la valeur indiquée** — le laboratoire fournit la mesure de l'étalon de
+  référence et la sortie de la voie déjà convertie en une grandeur physique, sans fonction de
+  transfert connue entre les deux. Disponible uniquement lorsque l'Objectif de la calibration est
+  **Vérification**.
+- **Référence par rapport à la valeur telle que trouvée/telle que laissée** — le même type de
+  comparaison référence-par-rapport-à-valeur-convertie, enregistrée deux fois : une fois avant une
+  réparation (telle que trouvée) et une fois après (telle que laissée). Disponible uniquement
+  lorsque l'Objectif de la calibration est **Après réparation**.
 
-Sur une calibration **Externe**, cocher **« Coefficients uniquement (sans données brutes) »** à
-l'étape 1 remplace l'étape de données brutes de l'assistant par un formulaire de saisie manuelle
-des coefficients :
+## Modèle fourni directement
 
-- L'**ordre du polynôme** (1 à 5) et ses **coefficients**, saisis selon la même convention de
-  puissances décroissantes que le propre moteur de régression d'Open Gauge (degré le plus élevé
-  en premier, terme constant en dernier).
-- La **plage de validité** (min/max) sur laquelle le polynôme s'applique.
-- Optionnellement, **« Incertitude déclarée sur le certificat »** — si le certificat du
-  laboratoire indique une incertitude élargie et un facteur d'élargissement, saisissez-les ici
-  pour les stocker directement (plutôt que de fabriquer une valeur dérivée d'un ajustement),
-  produisant une seule ligne `external_certificate_stated` dans le
-  [budget d'incertitude](./uncertainty-budget.mdx#contributions).
+Utilisez ce mode lorsque le certificat indique directement le modèle de calibration plutôt que des
+points de données brutes — courant pour les calibrations OEM/Laboratoire externe accrédité/Actif
+du client. L'étape 2 devient un formulaire de saisie de modèle :
 
-## Ce qui est délibérément laissé vide
+- **Type de modèle** — un **Polynôme** (degré 1 à 5, coefficients saisis selon la même convention
+  de puissances décroissantes que le propre moteur de régression d'Open Gauge — degré le plus
+  élevé en premier, terme constant en dernier), ou une **Formule personnalisée** : une expression à
+  une seule variable en `x` (la valeur mesurée/de sortie), par ex. `2.5 * x + 1.2`. Syntaxe
+  autorisée : `+ − * / ^ ( )` et les fonctions `sqrt`, `exp`, `log`, `ln`, `sin`, `cos`, `tan`,
+  `abs`, `pow`. Une formule personnalisée est entièrement évaluable — elle participe au graphique
+  de courbe ajustée de la calibration enregistrée et à la comparaison de dérive/courbe de
+  l'[onglet Santé](../overview.mdx) exactement comme un polynôme, simplement évaluée à partir de la
+  formule plutôt que de coefficients polynomiaux.
+- La **plage de validité** (min/max) sur laquelle le modèle s'applique.
 
-Comme il n'y a pas de données brutes, Open Gauge ne calcule pas (et n'affiche pas) d'ajustement —
-ce parcours laisse délibérément **R², RMSE**, la ligne de budget `fit_residuals`, et,
-essentiellement, **la règle de décision et la déclaration de conformité**, tous vides.
+L'étape 3 recueille ensuite les mêmes entrées de [budget d'incertitude](./uncertainty-budget.mdx)
+qu'une calibration à données brutes (incertitude de l'étalon de référence, résolution, exactitude
+nominale du capteur, distribution/confiance, [règle de décision](./decision-rules.mdx)) — comme il
+n'y a pas de données mesurées, la conformité est évaluée en traitant le modèle comme fiable tel que
+déclaré (une erreur évaluée exactement égale à zéro) et en comparant uniquement le budget
+d'incertitude combiné à la spécification de tolérance de la voie, aux deux extrémités de la plage
+de validité déclarée.
 
-Une déclaration de conformité (réussite/échec) nécessite une *erreur évaluée* à comparer à une
-spécification (GUM §6.3, ISO/IEC 17025 §7.8.6) — un enregistrement à coefficients uniquement n'a
-aucune erreur évaluée, seulement la fonction de calibration elle-même. Open Gauge n'affiche donc
-ni ne stocke de badge CONFORME/NON CONFORME fabriqué pour ces enregistrements. Si vous avez besoin
-d'une déclaration de conformité, utilisez plutôt une calibration classique (pas à coefficients
-uniquement) avec les données brutes réelles.
+## Référence par rapport à la valeur indiquée
 
-Voir [l'exemple 4](./examples/coefficients-only-certificate.mdx) pour un cas complet détaillé, y
-compris ce qui est enregistré et affiché.
+Utilisez ce mode lorsqu'un laboratoire fournit la mesure de l'étalon de référence ainsi que la
+propre sortie de la voie déjà convertie dans la même grandeur physique — mais la fonction de
+transfert elle-même (comment l'une devient l'autre) n'est pas connue ou n'a pas été fournie. Comme
+il n'y a aucune fonction à ajuster, Open Gauge ne peut pas produire de courbe ajustée ni d'équation
+polynomiale pour cette calibration — mais chaque statistique qui n'a besoin que d'un résidu (la
+différence directe entre les deux valeurs) est tout de même calculée exactement comme d'habitude :
+R², RMSE, erreur maximale, erreur %FS, répétabilité, hystérésis, le budget d'incertitude complet,
+et une véritable déclaration de conformité selon la règle de décision. La vue de détail de la
+calibration enregistrée affiche ces statistiques et un graphique de résidus à la place du graphique
+de courbe ajustée habituel.
+
+## Référence par rapport à la valeur telle que trouvée/telle que laissée
+
+Utilisez ce mode pour une calibration Après réparation lorsque le laboratoire fournit deux
+comparaisons référence-par-rapport-à-valeur du type décrit ci-dessus — l'une prise avant la
+réparation (**telle que trouvée**) et l'autre après (**telle que laissée**) — là encore sans
+fonction de transfert connue. L'étape 2 devient deux tableaux de saisie de données empilés, et
+l'étape 3 affiche les deux résultats côte à côte.
+
+Le résultat **telle que laissée** est le résultat officiel de cet enregistrement de calibration :
+c'est lui qui alimente la prochaine date d'échéance, le flux d'approbation, et l'historique de
+l'onglet Santé. Le résultat **telle que trouvée** est conservé uniquement comme contexte de
+diagnostic en lecture seule — visible sur la vue de détail de la calibration enregistrée, mais il
+n'est jamais utilisé pour les calculs de date d'échéance ou de dérive, et n'a pas besoin d'être
+conforme à une quelconque spécification par lui-même.
+
+## Ce qui est identique dans tous les cas
+
+Quel que soit le mode utilisé, l'enregistrement obtenu est une calibration normale — elle apparaît
+dans l'historique de la voie, peut être annulée ou passer par le flux d'approbation, et permet de
+télécharger un certificat. Le certificat d'une calibration à modèle fourni directement ou référence
+par rapport à valeur indiquée affiche toujours chaque statistique qu'Open Gauge a pu calculer pour
+elle ; seules les lignes spécifiques qui ne s'appliquent véritablement pas (par ex. une équation de
+courbe ajustée lorsqu'il n'y a pas de fonction de transfert connue) sont omises plutôt que
+fabriquées.
+
+Voir l'[Exemple 4](./examples/coefficients-only-certificate.mdx) pour un cas concret de modèle
+fourni directement, y compris ce qui est enregistré et affiché.

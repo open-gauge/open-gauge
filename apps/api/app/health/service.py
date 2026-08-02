@@ -77,6 +77,8 @@ def _to_summary(cal: Calibration) -> CalibrationSummary:
         performed_by_name=cal.performed_by_name,
         poly_order=cal.poly_order,
         poly_coefficients=coefficients,
+        model_type=cal.model_type,
+        custom_formula=cal.custom_formula,
         valid_range_min=_f(cal.valid_range_min),
         valid_range_max=_f(cal.valid_range_max),
         r_squared=_f(cal.r_squared),
@@ -295,7 +297,11 @@ def get_asset_health(
     ]
     stability_out = CalibrationStability(series=series, smoothing_applied=smoothing_applied)
 
-    # --- Curve comparison dropdown options (card 4) ---
+    # --- Curve comparison dropdown options (card 4) --- only calibrations
+    # with an evaluable model (raw_data or model_direct) can be compared —
+    # reference_vs_indicated/reference_vs_as_found_as_left have no
+    # transference function, so offering them would just produce a
+    # guaranteed-to-fail comparison once selected.
     calibration_options = [
         CalibrationOption(
             id=s.id,
@@ -304,6 +310,7 @@ def get_asset_health(
             label=f"{s.calibration_date.isoformat()} (v{c.calibration_version})",
         )
         for s, c in zip(summaries, chronological)
+        if calculations.has_model(s)
     ]
 
     # --- Prediction (card 5) ---
@@ -427,6 +434,7 @@ def _cached_curve_comparison(
     ref = CalibrationSummary(
         id=reference_id, calibration_date=ref_key[0], performed_by_name="",
         poly_order=None, poly_coefficients=list(ref_key[1]) if ref_key[1] else None,
+        model_type=ref_key[4], custom_formula=ref_key[5],
         valid_range_min=ref_key[2], valid_range_max=ref_key[3],
         r_squared=None, rmse=None, max_error=None, expanded_uncertainty=None,
         hysteresis=None, non_linearity=None, repeatability=None, calibration_interval=None,
@@ -434,6 +442,7 @@ def _cached_curve_comparison(
     cur = CalibrationSummary(
         id=current_id, calibration_date=cur_key[0], performed_by_name="",
         poly_order=None, poly_coefficients=list(cur_key[1]) if cur_key[1] else None,
+        model_type=cur_key[4], custom_formula=cur_key[5],
         valid_range_min=cur_key[2], valid_range_max=cur_key[3],
         r_squared=None, rmse=None, max_error=None, expanded_uncertainty=None,
         hysteresis=None, non_linearity=None, repeatability=None, calibration_interval=None,
@@ -454,17 +463,24 @@ def get_curve_comparison(
     if not current or current.asset_id != asset_pk:
         raise CalibrationNotFoundError("Current calibration not found for this asset")
 
+    # model_type/custom_formula are part of the fingerprint too — without them,
+    # editing a custom formula would return a stale cached comparison (the
+    # poly_coefficients-based key alone never changes for a formula-only model).
     ref_key = (
         reference.calibration_date,
         tuple(float(c) for c in reference.poly_coefficients) if reference.poly_coefficients else None,
         _f(reference.valid_range_min),
         _f(reference.valid_range_max),
+        reference.model_type,
+        reference.custom_formula,
     )
     cur_key = (
         current.calibration_date,
         tuple(float(c) for c in current.poly_coefficients) if current.poly_coefficients else None,
         _f(current.valid_range_min),
         _f(current.valid_range_max),
+        current.model_type,
+        current.custom_formula,
     )
 
     result = _cached_curve_comparison(

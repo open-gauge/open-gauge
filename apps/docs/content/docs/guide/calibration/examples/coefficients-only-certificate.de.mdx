@@ -1,10 +1,11 @@
 ---
-title: "Beispiel 4 — Druckmessumformer, externes Zertifikat nur mit Koeffizienten"
-description: Der Assistentenpfad "Nur Koeffizienten (keine Rohdaten)", für Sensoren, die mit einem Zertifikat ankommen, das das Kalibrierpolynom direkt angibt.
+title: "Beispiel 4 — Druckmessumformer, Modell direkt angegeben"
+description: Der Assistentenpfad "Modell direkt angegeben", für Sensoren, die mit einem Zertifikat ankommen, das das Kalibriermodell direkt angibt.
 ---
 
-Trainiert den Assistentenpfad [Nur Koeffizienten](../coefficients-only.mdx) — für Sensoren, die mit
-einem Kalibrierzertifikat ankommen, das das Kalibrierpolynom direkt angibt, ohne rohe
+Trainiert den Assistentenpfad
+[Modell direkt angegeben](../coefficients-only.mdx#model-provided-directly) — für Sensoren, die mit
+einem Kalibrierzertifikat ankommen, das das Kalibriermodell direkt angibt, ohne rohe
 Referenz-/Messdatenpunkte, die neu angepasst werden könnten.
 
 ## 4.0 Einrichtung
@@ -25,59 +26,72 @@ Ein Kanal:
 | Physikalische Größe | Druck |
 | Bereich Min / Max | 0 / 1000 |
 | Einheit | kPa |
+| Genauigkeit | ±0,5 kPa (absolut) |
 
-Nichts weiter ist erforderlich — eine Kalibrierung nur mit Koeffizienten zieht Genauigkeit,
-Auflösung oder Messunsicherheit nicht heran (es gibt keine durchgeführte Analyse, in die sie
-eingerechnet werden könnten).
+Die Genauigkeitsspezifikation ist das, wogegen die Konformitätsprüfung von Modell direkt angegeben
+vergleicht — siehe unten.
 
 ## 4.1 Assistent — Schritt 1 (Allgemeine Informationen)
 
 | Feld | Wert |
 |---|---|
-| Kalibrierart | Extern |
+| Kalibrierart | Externes akkreditiertes Labor |
 | Kalibrieranbieter | Any Cal Lab Inc. |
 | Zertifikatsnummer | ACL-2026-00842 |
-| Nur Koeffizienten (keine Rohdaten) | **aktiviert** |
+| Dateneingabemodus | **Modell direkt angegeben** |
 
-Das Aktivieren des Kontrollkästchens tauscht Schritt 2 von der Rohdaten-Eingabe zu einem
-Koeffizienten-Eingabeformular, und die Schrittanzeige wird zu "Koeffizienten" / "Überprüfung" statt
+Die Auswahl dieses Modus tauscht Schritt 2 von der Rohdaten-Eingabe zu einem
+Modell-Eingabeformular, und die Schrittanzeige wird zu "Koeffizienten" / "Überprüfung" statt
 "Rohdaten" / "Analyse" umbenannt.
 
 ## 4.2 Assistent — Schritt 2 (Koeffizienten)
 
 Das Zertifikat gibt an: *Referenz ≈ 1,0025 × Messwert − 0,42 kPa, gültig 0–1000 kPa, erweiterte
-Unsicherheit ±1,2 kPa (k=2)*.
+Unsicherheit des Referenznormals ±0,5 kPa (k=2)*.
 
 | Feld | Wert |
 |---|---|
-| Polynomgrad | 1 |
+| Modelltyp | Polynom |
+| Polynomordnung | 1 |
 | Koeffizient (× x) | 1,0025 |
 | Koeffizient (Konstante) | −0,42 |
-| Gültiger Bereich Min | 0 |
-| Gültiger Bereich Max | 1000 |
-| Auf Zertifikat angegebene Unsicherheit | **aktiviert** |
-| Erweiterte Unsicherheit (±) | 1,2 |
-| Erweiterungsfaktor k | 2 |
+| Gültiger Bereich min. | 0 |
+| Gültiger Bereich max. | 1000 |
 
 Die Gleichungsvorschau zeigt: $f(x) = 1.0025x - 0.42\ \text{(kPa)}$.
 
 ## 4.3 Assistent — Schritt 3 (Überprüfung) und was gespeichert wird
 
-Es gibt keine Analyse durchzuführen, daher gibt Schritt 3 die Gleichung, den gültigen Bereich und
-die angegebene Unsicherheit zur abschließenden Prüfung vor dem Speichern zurück. Beim Speichern:
+Auch ohne Rohdaten sammelt Schritt 3 dieselben
+[Unsicherheitsbudget](../uncertainty-budget.mdx)-Eingaben, die auch eine Kalibrierung mit Rohdaten
+sammelt:
+
+| Feld | Wert |
+|---|---|
+| U des Referenznormals (manuell) | 0,5 |
+| k des Referenznormals | 2 |
+| Entscheidungsregel | Guard-Band-Annahme |
+
+Im Hintergrund wertet der Assistent zwei synthetische Nullfehler-Punkte am deklarierten gültigen
+Bereich (0 und 1000 kPa) über dieselbe Analyse-Pipeline aus, die auch Rohdaten verwenden, wobei die
+Anpassung übersprungen wird — dies kombiniert das obige Typ-B-Budget (hier nur den Term des
+Referenznormals) und wendet die Entscheidungsregel an, wobei das Modell exakt wie deklariert als
+vertrauenswürdig behandelt wird. Beim Speichern:
 
 - `poly_order = 1`, `poly_coefficients = [1.0025, -0.42]`, `range_min = 0`, `range_max = 1000`,
   `valid_range_min = 0`, `valid_range_max = 1000`.
-- `expanded_uncertainty = 1.2`, `coverage_factor = 2`,
-  `combined_uncertainty = 1.2 / 2 = 0.6`.
-- `uncertainty_budget = [{ source: "external_certificate_stated", value: 1.2, divisor: 2,
-  standard_uncertainty: 0.6, ... }]` — eine einzelne Zeile, nicht in Typ-A-/B-Teile zerlegt, da das
-  Zertifikat nur eine Gesamtzahl angibt.
-- `r_squared`, `rmse`, `standard_error`, `max_error`, `decision_rule` und
-  `conformity_statement` sind allesamt **null** — ohne Rohdaten gibt es keine Anpassung zu
-  bewerten und keinen ermittelten Fehler, der gegen eine Spezifikation geprüft werden könnte, daher
-  zeigt Open Gauge für diesen Datensatz kein Abzeichen KONFORM/NICHT KONFORM an (siehe
-  [Kalibrierungen nur mit Koeffizienten](../coefficients-only.mdx)).
+- `uncertainty_budget` enthält eine Typ-B-Zeile (`reference_standard`, Standardunsicherheit
+  `0.5 / 2 = 0.25` kPa) — die Typ-A-Zeile (`fit_residuals`) ist vorhanden, aber exakt `0`, da das
+  Modell wie deklariert als vertrauenswürdig behandelt wird.
+- `combined_uncertainty ≈ 0.25` kPa, `expanded_uncertainty ≈ 0.49` kPa (k≈1,96 bei 95 %
+  Konfidenz, Normalverteilung).
+- `r_squared`, `rmse`, `max_error` und `non_linearity` sind allesamt **null** — es gibt keine
+  echten Messdaten, aus denen sie abgeleitet werden könnten (siehe
+  [Alternative Dateneingabemodi für Kalibrierungen](../coefficients-only.mdx)).
+- `decision_rule = "guard_band_w_uncertainty"` und eine echte `conformity_statement`: Die
+  Akzeptanzzone wird durch die erweiterte Unsicherheit nach innen verkleinert
+  (`0.5 - 0.49 ≈ 0.01` kPa verbleibende Marge), sodass dieser Datensatz **KONFORM** ist — knapp,
+  was genau veranschaulicht, wofür Guard Banding da ist.
 
 ## Erwartete Ergebnisse
 
@@ -85,6 +99,6 @@ die angegebene Unsicherheit zur abschließenden Prüfung vor dem Speichern zurü
 |---|---|
 | Gleichung | $f(x) = 1.0025x - 0.42$ |
 | Gültiger Bereich | 0 – 1000 kPa |
-| Kombinierte Unsicherheit | 0,6 kPa |
-| Erweiterte Unsicherheit (±) | 1,2 kPa |
-| Konformitätsaussage | nicht angezeigt / nicht berechnet |
+| Kombinierte Unsicherheit | ≈0,25 kPa |
+| Erweiterte Unsicherheit (±) | ≈0,49 kPa |
+| Konformitätsaussage | KONFORM (mit Guard Band) |

@@ -184,8 +184,11 @@ export async function retireAsset(id: string, reason?: string): Promise<void> {
   });
 }
 
-export async function getCalibrationPoints(calId: string): Promise<CalibrationPoint[]> {
-  return apiFetch<CalibrationPoint[]>(`/api/v1/calibrations/${calId}/points`, {
+export async function getCalibrationPoints(
+  calId: string,
+  role: "primary" | "as_found" = "primary"
+): Promise<CalibrationPoint[]> {
+  return apiFetch<CalibrationPoint[]>(`/api/v1/calibrations/${calId}/points?role=${role}`, {
     headers: tokenHeader(),
   });
 }

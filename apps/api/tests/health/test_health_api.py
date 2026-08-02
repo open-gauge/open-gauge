@@ -280,6 +280,113 @@ class TestCurveComparison:
 
 
 # ---------------------------------------------------------------------------
+# Curve comparison — custom-formula calibrations (data_entry_mode=model_direct,
+# model_type=custom_formula). The comparison's cache fingerprint (ref_key/
+# cur_key in health/service.py's _cached_curve_comparison) must include
+# model_type/custom_formula, not just poly_coefficients — otherwise a
+# formula-only calibration would be reconstructed as an empty polynomial
+# model inside the cached comparison, silently evaluating to a flat/zero
+# curve instead of the actual formula.
+# ---------------------------------------------------------------------------
+
+def _create_custom_formula_calibration(
+    client: TestClient,
+    auth_headers: dict,
+    asset_id: str,
+    sensor_id: str,
+    calibration_date: str,
+    custom_formula: str,
+) -> dict:
+    payload = {
+        "asset_id": asset_id,
+        "calibration_date": calibration_date,
+        "due_date": "2030-01-01",
+        "performed_by_name": "Health Test Tech",
+        "sensor_id": sensor_id,
+        "calibration_type": "external_accredited_lab",
+        "data_entry_mode": "model_direct",
+        "model_type": "custom_formula",
+        "custom_formula": custom_formula,
+        "range_min": 0.0,
+        "range_max": 100.0,
+        "valid_range_min": 0.0,
+        "valid_range_max": 100.0,
+        "calibration_interval": 365,
+    }
+    r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+class TestCurveComparisonCustomFormula:
+    def test_custom_formula_evaluates_the_actual_formula_not_an_empty_polynomial(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        # f(x) = x + 5 -> a constant +5 offset from the reference calibration below.
+        c1 = _create_calibration(client, auth_headers, asset["id"], sensor_id, "2022-01-01", 0.0)
+        c2 = _create_custom_formula_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2023-01-01", "x + 5",
+        )
+
+        r = client.get(
+            f"/api/v1/assets/{asset['id']}/health/curve-comparison"
+            f"?reference_calibration_id={c1['id']}&current_calibration_id={c2['id']}",
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        # If the formula were mis-reconstructed as an empty polynomial model,
+        # y_current would come back all-zero (or the endpoint would error)
+        # instead of tracking y_reference + 5 across the whole range.
+        for y_ref, y_cur in zip(body["y_reference"], body["y_current"]):
+            assert y_cur == pytest.approx(y_ref + 5.0, abs=1e-6)
+        assert body["summary"]["offset"] == pytest.approx(5.0, abs=1e-6)
+
+    def test_two_different_custom_formulas_produce_different_curves(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        # Same valid range and calibration_date-independent fingerprint
+        # components as each other except the formula itself — this is the
+        # scenario that would collide under a cache key missing custom_formula.
+        sensor_id = _sensor_id(asset, "CH1")
+        c1 = _create_custom_formula_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2022-01-01", "x + 1",
+        )
+        c2 = _create_custom_formula_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2023-01-01", "x + 9",
+        )
+
+        r = client.get(
+            f"/api/v1/assets/{asset['id']}/health/curve-comparison"
+            f"?reference_calibration_id={c1['id']}&current_calibration_id={c2['id']}",
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["summary"]["offset"] == pytest.approx(8.0, abs=1e-6)
+
+    def test_polynomial_vs_custom_formula_mixed_comparison(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        poly_cal = _create_calibration(client, auth_headers, asset["id"], sensor_id, "2022-01-01", 0.0)
+        formula_cal = _create_custom_formula_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2023-01-01", "x * 2",
+        )
+
+        r = client.get(
+            f"/api/v1/assets/{asset['id']}/health/curve-comparison"
+            f"?reference_calibration_id={poly_cal['id']}&current_calibration_id={formula_cal['id']}",
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        for x, y_cur in zip(body["x"], body["y_current"]):
+            assert y_cur == pytest.approx(x * 2.0, abs=1e-6)
+
+
+# ---------------------------------------------------------------------------
 # GET /assets/{id}/health/repair-periods + after/before scoping
 # ---------------------------------------------------------------------------
 

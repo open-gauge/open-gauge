@@ -61,6 +61,7 @@ import {
 } from "@/lib/sensor-options";
 import { toSI, fromSI } from "@/lib/unit-conversion";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
+import { evaluateModel } from "@/lib/evaluate-model";
 import { ConfirmModal } from "@/components/confirm-modal";
 import {
   CheckIcon,
@@ -1408,11 +1409,19 @@ function formatCalEquation(coefficients: number[], degree: number): string {
   return "f(x) = " + (parts.join("") || "0");
 }
 
-function evalCalPoly(coefficients: number[], x: number): number {
-  let y = 0;
-  const deg = coefficients.length - 1;
-  for (let j = 0; j <= deg; j++) y += coefficients[j] * Math.pow(x, deg - j);
-  return y;
+// Whether a saved calibration has an actual model (fitted or declared) to
+// display an equation/curve for — false for reference_vs_indicated/
+// reference_vs_as_found_as_left, which have no transference function at all.
+function hasModel(cal: CalibrationRecord): boolean {
+  return (cal.poly_coefficients != null && cal.poly_coefficients.length > 0)
+    || (cal.model_type === "custom_formula" && !!cal.custom_formula);
+}
+
+function formatCalEquationForModel(cal: CalibrationRecord): string {
+  if (cal.model_type === "custom_formula" && cal.custom_formula) {
+    return `f(x) = ${cal.custom_formula}`;
+  }
+  return formatCalEquation(cal.poly_coefficients ?? [], cal.poly_order ?? 0);
 }
 
 function calResidualColor(residual: number, maxAbsResidual: number): string {
@@ -1436,7 +1445,7 @@ function CalibrationChart({
 
   useEffect(() => {
     const div = plotDivRef.current;
-    if (!div || points.length === 0 || !cal.poly_coefficients) return;
+    if (!div || points.length === 0 || !hasModel(cal)) return;
     let mounted = true;
 
     const maxAbs = Math.max(...points.map((p) => Math.abs(p.residual_abs ?? 0)), 1e-10);
@@ -1453,7 +1462,7 @@ function CalibrationChart({
 
     const curve = Array.from({ length: 81 }, (_, i) => {
       const x = mn + (i * (mx - mn)) / 80;
-      return { x, y: evalCalPoly(cal.poly_coefficients!, x) };
+      return { x, y: evaluateModel(cal.model_type ?? "polynomial", cal.poly_coefficients, cal.custom_formula, x) };
     });
 
     import("plotly.js-dist-min").then((mod) => {
@@ -1528,7 +1537,7 @@ function CalibrationChart({
     });
 
     return () => { mounted = false; };
-  }, [cal.poly_coefficients, points, measuredUnit, referenceUnit]);
+  }, [cal.poly_coefficients, cal.model_type, cal.custom_formula, points, measuredUnit, referenceUnit]);
 
   useEffect(() => {
     const div = plotDivRef.current;
@@ -1614,6 +1623,11 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
     : sourceCals;
 
   const selectedCal = filteredCals.find((c) => c.id === selectedCalId) ?? filteredCals[0] ?? null;
+  // A custom-formula model has no "coefficients" tab — fall back to
+  // "equation" if a previously-selected calibration left resultView stuck
+  // on "coefficients" (state isn't reset on selectedCal change).
+  const effectiveResultView: ResultView =
+    selectedCal?.model_type === "custom_formula" ? "equation" : resultView;
 
   function refetchVoided() {
     getAssetCalibrations(profile.id, true).then(setAllCals).catch(() => {});
@@ -1908,22 +1922,24 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 calibrationId={selectedCal.id}
                 assetTag={profile.asset_id}
                 calibrationVersion={selectedCal.calibration_version}
-                disabled={!selectedCal.poly_coefficients}
+                disabled={selectedCal.data_entry_mode === "raw_data" && !hasModel(selectedCal)}
               />
             </div>
           </div>
 
-          {/* Result view: Equation / Coefficients */}
-          {selectedCal.poly_coefficients && selectedCal.poly_order != null && (
+          {/* Result view: Equation / Coefficients — reference_vs_indicated and
+              reference_vs_as_found_as_left have no model at all (no
+              transference function), so this panel is skipped for those. */}
+          {hasModel(selectedCal) && (
             <div className="rounded-lg bg-og-surface-alt border border-og-border overflow-hidden">
               <div className="flex items-center px-3 pt-2 pb-0 border-b border-og-border gap-0.5">
-                {(["equation", "coefficients"] as const).map((v) => (
+                {(selectedCal.model_type === "custom_formula" ? (["equation"] as const) : (["equation", "coefficients"] as const)).map((v) => (
                   <button
                     key={v}
                     type="button"
                     onClick={() => setResultView(v)}
                     className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-t-md -mb-px capitalize
-                      ${resultView === v
+                      ${effectiveResultView === v
                         ? "bg-og-surface border border-og-border text-og-text"
                         : "text-gray-400 hover:text-og-text"
                       }`}
@@ -1933,11 +1949,11 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 ))}
               </div>
               <div className="px-4 py-3">
-                {resultView === "equation" && (
+                {effectiveResultView === "equation" && (
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
                       <span className="text-xs font-mono text-og-text">
-                        {formatCalEquation(selectedCal.poly_coefficients, selectedCal.poly_order)}
+                        {formatCalEquationForModel(selectedCal)}
                       </span>
                       {(measuredUnit || referenceUnit) && (
                         <span className="text-[10px] text-gray-400">
@@ -1948,7 +1964,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     <button
                       type="button"
                       onClick={() => {
-                        const text = `${formatCalEquation(selectedCal.poly_coefficients!, selectedCal.poly_order!)} (${measuredUnit} → ${referenceUnit})`;
+                        const text = `${formatCalEquationForModel(selectedCal)} (${measuredUnit} → ${referenceUnit})`;
                         navigator.clipboard.writeText(text).then(() => {
                           setCopiedKey("equation");
                           setTimeout(() => setCopiedKey(null), 1500);
@@ -1961,7 +1977,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     </button>
                   </div>
                 )}
-                {resultView === "coefficients" && (
+                {effectiveResultView === "coefficients" && selectedCal.poly_coefficients && selectedCal.poly_order != null && (
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     {selectedCal.poly_coefficients
                       .map((c, i) => ({ exp: selectedCal.poly_order! - i, val: c }))
@@ -1998,8 +2014,10 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             </div>
           )}
 
-          {/* Stats + chart/table */}
-          {selectedCal.poly_coefficients ? (
+          {/* Stats + chart/table — raw_data needs a real fitted model to have
+              anything to show; the other 3 modes always have *something*
+              (a declared model, or real fit-free residual statistics). */}
+          {(selectedCal.data_entry_mode !== "raw_data" || hasModel(selectedCal)) ? (
             <div className="flex gap-4 min-h-0">
               {/* Left: stats panel (40%) */}
               <div className="w-[38%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
@@ -2097,13 +2115,15 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   </div>
                 ) : rightView === "chart" ? (
                   <div className="flex-1 min-h-0 flex flex-col gap-3">
-                    <CalibrationChart
-                      className="flex-1 min-h-0"
-                      cal={selectedCal}
-                      points={points}
-                      measuredUnit={measuredUnit}
-                      referenceUnit={referenceUnit}
-                    />
+                    {hasModel(selectedCal) && (
+                      <CalibrationChart
+                        className="flex-1 min-h-0"
+                        cal={selectedCal}
+                        points={points}
+                        measuredUnit={measuredUnit}
+                        referenceUnit={referenceUnit}
+                      />
+                    )}
                     <ResidualsChart
                       className="flex-1 min-h-0"
                       points={points.map((p) => ({
@@ -2156,6 +2176,41 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             </div>
           ) : (
             <p className="text-sm text-gray-400">{t("noPolyModel")}</p>
+          )}
+
+          {/* As-found diagnostic panel — data_entry_mode=reference_vs_as_found_as_left
+              only. As-left (shown above, in the record's primary columns) is
+              this calibration's official result; as-found is stored verbatim
+              in as_found_summary purely for reference, never feeding
+              due-date/approval/Health. */}
+          {selectedCal.data_entry_mode === "reference_vs_as_found_as_left" && selectedCal.as_found_summary && (
+            <div className="rounded-xl border border-og-border bg-og-surface-alt p-4 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("asFoundSummaryTitle")}</p>
+              <p className="text-xs text-gray-400">{t("asFoundSummaryHint")}</p>
+              <div className="grid grid-cols-2 gap-x-6 pt-1">
+                <div>
+                  <StatRow label={t("validRange")} value={`${fmtNum(selectedCal.as_found_summary.valid_range_min)} – ${fmtNum(selectedCal.as_found_summary.valid_range_max)}${referenceUnit ? ` ${referenceUnit}` : ""}`} />
+                  <StatRow label={t("rSquared")} value={fmtNum(selectedCal.as_found_summary.r_squared, 6)} />
+                  <StatRow label={t("rmse")} value={`${fmtNum(selectedCal.as_found_summary.rmse)}${referenceUnit ? ` ${referenceUnit}` : ""}`} />
+                  <StatRow label={t("maxError")} value={`${fmtNum(selectedCal.as_found_summary.max_error)}${referenceUnit ? ` ${referenceUnit}` : ""}`} />
+                </div>
+                <div>
+                  <StatRow label={t("expanded")} value={`${fmtNum(roundToSigFigs(selectedCal.as_found_summary.expanded_uncertainty, 2))}${referenceUnit ? ` ${referenceUnit}` : ""}`} />
+                  {selectedCal.as_found_summary.conformity_statement?.specification && (
+                    <div className="flex items-center justify-between gap-2 py-1">
+                      <span className="text-xs text-gray-400">{t("statement")}</span>
+                      <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${
+                        selectedCal.as_found_summary.passed
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/50"
+                          : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:border-red-900/50"
+                      }`}>
+                        {selectedCal.as_found_summary.passed ? t("conforms") : t("doesNotConform")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Conditions & Notes */}

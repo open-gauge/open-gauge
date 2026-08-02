@@ -1,41 +1,86 @@
 ---
-title: Kalibrierungen nur mit Koeffizienten
-description: Erfassen eines externen Laborzertifikats, das das Kalibrierpolynom direkt angibt, ohne Rohdatenpunkte.
+title: Alternative Dateneingabemodi für Kalibrierungen
+description: Erfassen einer Kalibrierung, wenn die Daten nicht in der üblichen Form von Referenz-vs-Messsignal-Punkten vorliegen — ein vom Labor geliefertes Modell oder ein bereits umgerechneter Referenz-vs-Wert-Vergleich.
 ---
 
-Manche Sensoren — hauptsächlich solche, die an ein externes Labor geschickt wurden — kommen mit
-einem Kalibrierzertifikat zurück, das die Koeffizienten des Kalibrierpolynoms direkt angibt, ohne
-enthaltene rohe Referenz-/Messdatenpunkte. Für diese Fälle hat Open Gauge einen eigenen Weg, damit Sie
-nicht künstliche Datenpunkte erfinden müssen, nur um das Ergebnis zu erfassen.
+Standardmäßig sind die Rohdaten einer Kalibrierung ein Satz von (Referenz-, Mess-)Punktpaaren — der
+Messwert des Referenznormals gegenüber dem eigenen Ausgangssignal des Kanals —, die Open Gauge an
+eine Kurve anpasst. Manche Labore liefern Kalibrierergebnisse stattdessen in anderer Form. Der
+**Dateneingabemodus**-Selektor in Schritt 1 deckt drei Alternativen ab, neben den standardmäßigen
+**Rohdaten**:
 
-## Verwendung
+- **Modell direkt angegeben** — das Labor-/Herstellerzertifikat gibt das Kalibriermodell selbst an,
+  ganz ohne Rohdatenpunkte.
+- **Referenz vs. angezeigter Wert** — das Labor liefert den Messwert des Referenznormals und den
+  bereits in eine physikalische Größe umgerechneten Ausgang des Kanals, ohne bekannte
+  Übertragungsfunktion zwischen beiden. Nur verfügbar, wenn der Kalibrierzweck **Verifizierung**
+  ist.
+- **Referenz vs. wie vorgefunden/wie belassen** — dieselbe Art von
+  Referenz-vs-umgerechneter-Wert-Vergleich, zweimal erfasst: einmal vor einer Reparatur (wie
+  vorgefunden) und einmal danach (wie belassen). Nur verfügbar, wenn der Kalibrierzweck **Nach
+  Reparatur** ist.
 
-Bei einer **externen** Kalibrierung ersetzt das Aktivieren von **"Nur Koeffizienten (keine
-Rohdaten)"** in Schritt 1 den Rohdaten-Schritt des Assistenten durch ein manuelles
-Koeffizienten-Eingabeformular:
+## Modell direkt angegeben
 
-- Der **Polynomgrad** (1–5) und seine **Koeffizienten**, eingegeben in derselben Konvention
-  absteigender Potenzen, die auch die eigene Regressions-Engine von Open Gauge verwendet (höchster Grad
-  zuerst, konstanter Term zuletzt).
-- Der **gültige Bereich** (Min/Max), über den das Polynom gilt.
-- Optional **"Auf dem Zertifikat angegebene Unsicherheit"** — gibt das Zertifikat des Labors eine
-  erweiterte Unsicherheit und einen Erweiterungsfaktor an, geben Sie diese hier ein, um sie direkt
-  zu speichern (statt einen aus einer Anpassung abgeleiteten Wert zu erfinden), was eine einzelne
-  `external_certificate_stated`-Zeile im
-  [Unsicherheitsbudget](./uncertainty-budget.mdx#contributions) erzeugt.
+Verwenden Sie diesen Modus, wenn das Zertifikat das Kalibriermodell direkt angibt statt
+Rohdatenpunkte — üblich bei OEM-/Externes-akkreditiertes-Labor-/Kundenanlagen-Kalibrierungen.
+Schritt 2 wird zu einem Modell-Eingabeformular:
 
-## Was bewusst leer bleibt
+- **Modelltyp** — ein **Polynom** (Ordnung 1–5, Koeffizienten eingegeben in derselben Konvention
+  absteigender Potenzen, die auch die eigene Regressions-Engine von Open Gauge verwendet — höchster
+  Grad zuerst, konstanter Term zuletzt), oder eine **Benutzerdefinierte Formel**: ein Ausdruck mit
+  einer einzigen Variablen `x` (dem gemessenen/ausgegebenen Wert), z. B. `2.5 * x + 1.2`. Erlaubte
+  Syntax: `+ − * / ^ ( )` sowie die Funktionen `sqrt`, `exp`, `log`, `ln`, `sin`, `cos`, `tan`,
+  `abs`, `pow`. Eine benutzerdefinierte Formel ist vollständig auswertbar — sie fließt in das
+  Diagramm der angepassten Kurve der gespeicherten Kalibrierung und den Drift-/Kurvenvergleich des
+  [Reiters Zustand](../overview.mdx) genau wie ein Polynom ein, wird nur eben aus der Formel statt
+  aus Polynomkoeffizienten ausgewertet.
+- Der **gültige Bereich** (Min/Max), über den das Modell gilt.
 
-Da es keine Rohdaten gibt, berechnet (und zeigt) Open Gauge keine Anpassung — dieser Weg lässt
-bewusst **R², RMSE**, die Budgetzeile `fit_residuals` und, entscheidend, **die Entscheidungsregel
-und die Konformitätsaussage** leer.
+Schritt 3 sammelt dann dieselben [Unsicherheitsbudget](./uncertainty-budget.mdx)-Eingaben, die auch
+eine Kalibrierung mit Rohdaten sammelt (Unsicherheit des Referenznormals, Auflösung, nominale
+Sensorgenauigkeit, Verteilung/Konfidenz, [Entscheidungsregel](./decision-rules.mdx)) — da es keine
+Messdaten gibt, wird die Konformität bewertet, indem das Modell als wie-deklariert-vertrauenswürdig
+behandelt wird (ein ermittelter Fehler von genau null) und nur das kombinierte
+Unsicherheitsbudget an beiden Enden des deklarierten gültigen Bereichs mit der
+Toleranzspezifikation des Kanals verglichen wird.
 
-Eine Konformitätsaussage (Bestanden/Nicht bestanden) erfordert einen *ermittelten Fehler*, gegen
-den mit einer Spezifikation verglichen wird (GUM §6.3, ISO/IEC 17025 §7.8.6) — ein Datensatz mit nur
-Koeffizienten hat keinen ermittelten Fehler, nur die Kalibrierfunktion selbst. Open Gauge zeigt oder
-speichert daher für diese Datensätze kein erfundenes Abzeichen KONFORM/NICHT KONFORM. Benötigen Sie
-eine Konformitätsaussage, verwenden Sie stattdessen eine reguläre (nicht Nur-Koeffizienten-)
-Kalibrierung mit den tatsächlichen Rohdaten.
+## Referenz vs. angezeigter Wert
 
-Siehe [Beispiel 4](./examples/coefficients-only-certificate.mdx) für einen vollständig
-durchgerechneten Fall, einschließlich dessen, was gespeichert und angezeigt wird.
+Verwenden Sie diesen Modus, wenn ein Labor den Messwert des Referenznormals zusammen mit dem
+eigenen, bereits in dieselbe physikalische Größe umgerechneten Ausgang des Kanals liefert — die
+Übertragungsfunktion selbst (wie das eine zum anderen wird) ist jedoch nicht bekannt oder wurde
+nicht angegeben. Da es keine Funktion gibt, die angepasst werden könnte, kann Open Gauge für diese
+Kalibrierung weder eine angepasste Kurve noch eine Polynomgleichung erzeugen — aber jede Statistik,
+die nur ein Residuum benötigt (die direkte Differenz zwischen den beiden Werten), wird weiterhin
+genau wie gewohnt berechnet: R², RMSE, Max. Fehler, %FS-Fehler, Wiederholbarkeit, Hysterese, das
+vollständige Unsicherheitsbudget und eine echte Konformitätsaussage nach der Entscheidungsregel.
+Die Detailansicht der gespeicherten Kalibrierung zeigt diese Statistiken und ein
+Residuen-Diagramm anstelle des üblichen Diagramms der angepassten Kurve.
+
+## Referenz vs. wie vorgefunden/wie belassen
+
+Verwenden Sie diesen Modus für eine Nach-Reparatur-Kalibrierung, wenn das Labor zwei
+Referenz-vs-Wert-Vergleiche der oben beschriebenen Art liefert — einen vor der Reparatur
+aufgenommen (**wie vorgefunden**) und einen danach (**wie belassen**) — wiederum ohne bekannte
+Übertragungsfunktion. Schritt 2 wird zu zwei übereinander angeordneten Dateneingabetabellen, und
+Schritt 3 zeigt beide Ergebnisse nebeneinander.
+
+Das Ergebnis **wie belassen** ist das offizielle Ergebnis dieses Kalibrierdatensatzes: Es fließt in
+das nächste Fälligkeitsdatum, den Genehmigungsworkflow und die Historie im Reiter Zustand ein. Das
+Ergebnis **wie vorgefunden** wird ausschließlich als schreibgeschützter diagnostischer Kontext
+aufbewahrt — sichtbar in der Detailansicht der gespeicherten Kalibrierung, aber es wird nie für
+Fälligkeitsdatum- oder Driftberechnungen verwendet und muss selbst keiner Spezifikation entsprechen.
+
+## Was in jedem Fall gleich ist
+
+Unabhängig vom verwendeten Modus ist der resultierende Datensatz eine normale Kalibrierung — er
+erscheint in der Historie des Kanals, kann entwertet werden oder den Genehmigungsworkflow
+durchlaufen, und ermöglicht den Download eines Zertifikats. Das Zertifikat einer
+Modell-direkt-angegeben- oder Referenz-vs-angezeigter-Wert-Kalibrierung zeigt weiterhin jede
+Statistik, die Open Gauge dafür berechnen konnte; nur die spezifischen Zeilen, die wirklich nicht
+zutreffen (z. B. eine Gleichung der angepassten Kurve, wenn keine bekannte Übertragungsfunktion
+vorliegt), werden weggelassen statt erfunden.
+
+Siehe [Beispiel 4](./examples/coefficients-only-certificate.mdx) für einen durchgerechneten
+Modell-direkt-angegeben-Fall, einschließlich dessen, was gespeichert und angezeigt wird.

@@ -34,11 +34,13 @@ Starten Sie eine Kalibrierung vom Kanal einer Anlage aus. Der Assistent hat drei
    **Erfasst von** (eine Dropdown-Liste der Organisationsmitglieder der Anlage, standardmäßig Sie
    selbst), ein optionaler Prüfer **Geprüft von**, Kalibrierintervall, Umgebungsbedingungen und
    Notizen. Je nach gewählter Art/gewähltem Zweck erscheinen zusätzliche Felder — siehe unten.
-   Dieser Schritt hat auch ein Kontrollkästchen **"Nur Koeffizienten (keine Rohdaten)"** für extern
-   ausgestellte Zertifikate, die direkt ein Polynom angeben — siehe
-   [Kalibrierungen nur mit Koeffizienten](./coefficients-only.mdx).
-2. **Rohdaten** — geben Sie (Referenz-, Mess-)Punktpaare ein. Siehe
-   [Kurvenanpassung](./curve-fitting.mdx) dazu, was Open Gauge damit macht.
+   Dieser Schritt hat auch einen **Dateneingabemodus**-Selektor für Kalibrierungen, die nicht in
+   die übliche Rohdaten-Form passen — siehe
+   [Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx).
+2. **Rohdaten** — geben Sie (Referenz-, Mess-)Punktpaare ein (oder, je nach dem oben gewählten
+   Dateneingabemodus, ein direkt eingegebenes Modell oder einen
+   Referenz-vs-bereits-umgerechneter-Wert-Vergleich). Siehe [Kurvenanpassung](./curve-fitting.mdx)
+   dazu, was Open Gauge damit macht.
 3. **Analyse/Überprüfung** — die live berechnete Anpassung, das Unsicherheitsbudget und die
    Konformitätsaussage. Siehe [Das Unsicherheitsbudget](./uncertainty-budget.mdx) und
    [Entscheidungsregeln](./decision-rules.mdx).
@@ -74,8 +76,9 @@ das Feld **Kalibrierlabor** auflöst:
   gekennzeichnet sind. Kein Zertifikats-Upload.
 
 Für OEM, Externes akkreditiertes Labor und Kundenanlage kann die Rohdateneingabe vollständig
-übersprungen werden mit **"Nur Koeffizienten (keine Rohdaten)"**, wenn das Zertifikat direkt ein
-Polynom angibt.
+übersprungen werden, indem der **Dateneingabemodus** auf **Modell direkt bereitgestellt** gesetzt
+wird, wenn das Zertifikat das Kalibriermodell direkt angibt — siehe
+[Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx).
 
 ### Hochgeladene Zertifikate
 

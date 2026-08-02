@@ -1469,3 +1469,261 @@ class TestCertificateUpload:
         assert r.content == _VALID_PDF_BYTES
         assert 'filename="uploaded.pdf"' in r.headers["content-disposition"]
 
+
+# ---------------------------------------------------------------------------
+# Alternative data-entry modes (data_entry_mode) — model provided directly,
+# reference-vs-indicated, reference-vs-as-found/as-left
+# ---------------------------------------------------------------------------
+
+class TestDataEntryModeValidation:
+    def test_default_mode_is_raw_data(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        r = client.post("/api/v1/calibrations", json=_minimal_payload(asset["id"]), headers=auth_headers)
+        assert r.status_code == 201, r.text
+        assert r.json()["data_entry_mode"] == "raw_data"
+
+    def test_unknown_mode_rejected(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(asset["id"], data_entry_mode="not_a_real_mode"),
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    def test_unknown_model_type_rejected(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(asset["id"], model_type="quadratic_spline"),
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+
+class TestDataEntryModePurposePairing:
+    """reference_vs_indicated <-> verification, reference_vs_as_found_as_left
+    <-> after_repair — enforced by CalibrationCreate's model_validator."""
+
+    def test_reference_vs_indicated_requires_verification_purpose(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"], data_entry_mode="reference_vs_indicated", calibration_purpose="routine",
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    def test_reference_vs_indicated_accepted_with_verification_purpose(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"], data_entry_mode="reference_vs_indicated", calibration_purpose="verification",
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+
+    def test_as_found_as_left_requires_after_repair_purpose(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"], data_entry_mode="reference_vs_as_found_as_left", calibration_purpose="routine",
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    def test_as_found_as_left_accepted_with_after_repair_purpose(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"], data_entry_mode="reference_vs_as_found_as_left", calibration_purpose="after_repair",
+                repair_date="2025-02-15", repair_description="Replaced sensor element",
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+
+    def test_model_direct_has_no_purpose_restriction(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        for purpose in ("initial", "routine", "after_repair", "verification"):
+            payload = _minimal_payload(asset["id"], data_entry_mode="model_direct", calibration_purpose=purpose)
+            if purpose == "after_repair":
+                payload["repair_date"] = "2025-02-15"
+                payload["repair_description"] = "n/a"
+            r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+            assert r.status_code == 201, (purpose, r.text)
+
+
+class TestModelDirectRoundTrip:
+    def test_polynomial_model_direct_round_trip(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="model_direct",
+            model_type="polynomial",
+            poly_order=1,
+            poly_coefficients=[1.0025, -0.42],
+            range_min=0.0,
+            range_max=1000.0,
+            valid_range_min=0.0,
+            valid_range_max=1000.0,
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["data_entry_mode"] == "model_direct"
+        assert body["model_type"] == "polynomial"
+        assert body["poly_coefficients"] == [1.0025, -0.42]
+        assert body["custom_formula"] is None
+
+        # No raw data at all for this mode.
+        pts = client.get(f"/api/v1/calibrations/{body['id']}/points", headers=auth_headers).json()
+        assert pts == []
+
+    def test_custom_formula_round_trip(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="model_direct",
+            model_type="custom_formula",
+            custom_formula="2.5 * x + 1.2",
+            range_min=0.0,
+            range_max=100.0,
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["model_type"] == "custom_formula"
+        assert body["custom_formula"] == "2.5 * x + 1.2"
+
+    def test_invalid_custom_formula_rejected(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="model_direct",
+            model_type="custom_formula",
+            custom_formula="not_a_real_function(x)",
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 422, r.text
+
+
+class TestReferenceVsIndicatedRoundTrip:
+    def _points(self) -> list[dict]:
+        return [
+            {
+                "point_index": 0, "reference_value": 0.0, "measured_value": 0.05,
+                "calculated_value": 0.05, "residual_abs": -0.05, "residual_pct": -0.1,
+                "reference_unit": "°C", "measured_unit": "°C",
+            },
+            {
+                "point_index": 1, "reference_value": 50.0, "measured_value": 49.9,
+                "calculated_value": 49.9, "residual_abs": 0.1, "residual_pct": 0.2,
+                "reference_unit": "°C", "measured_unit": "°C",
+            },
+        ]
+
+    def test_round_trip_with_points_no_model(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="reference_vs_indicated",
+            calibration_purpose="verification",
+            points=self._points(),
+            r_squared=0.98,
+            rmse=0.07,
+            max_error=0.1,
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["data_entry_mode"] == "reference_vs_indicated"
+        # No transference function -> no model stored.
+        assert not body["poly_coefficients"]
+        assert body["poly_order"] is None
+        # But real fit-free statistics are still stored, same as raw_data.
+        assert body["r_squared"] == pytest.approx(0.98)
+
+        pts = client.get(f"/api/v1/calibrations/{body['id']}/points", headers=auth_headers).json()
+        assert len(pts) == 2
+        assert all(p["point_role"] == "primary" for p in pts)
+
+
+class TestReferenceVsAsFoundAsLeftRoundTrip:
+    def _points(self, offset: float) -> list[dict]:
+        return [
+            {
+                "point_index": 0, "reference_value": 0.0, "measured_value": offset,
+                "reference_unit": "°C", "measured_unit": "°C",
+            },
+            {
+                "point_index": 1, "reference_value": 50.0, "measured_value": 50.0 + offset,
+                "reference_unit": "°C", "measured_unit": "°C",
+            },
+        ]
+
+    def test_as_left_is_primary_and_as_found_is_diagnostic(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        as_found_summary = {
+            "poly_degree": None, "coefficients": [], "r_squared": 0.9, "rmse": 0.3,
+            "max_error": 0.5, "valid_range_min": 0.0, "valid_range_max": 50.0,
+            "passed": False, "conformity_statement": {"specification": None},
+            "uncertainty_budget": [], "combined_uncertainty": 0.1, "expanded_uncertainty": 0.2,
+            "points": [],
+        }
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="reference_vs_as_found_as_left",
+            calibration_purpose="after_repair",
+            repair_date="2025-02-15",
+            repair_description="Replaced sensor element",
+            points=self._points(offset=0.02),  # as-left: this record's primary result
+            as_found_points=self._points(offset=0.5),  # as-found: diagnostic only
+            as_found_summary=as_found_summary,
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["data_entry_mode"] == "reference_vs_as_found_as_left"
+        assert body["as_found_summary"]["max_error"] == pytest.approx(0.5)
+
+        primary_pts = client.get(f"/api/v1/calibrations/{body['id']}/points", headers=auth_headers).json()
+        assert len(primary_pts) == 2
+        assert all(p["point_role"] == "primary" for p in primary_pts)
+        assert primary_pts[0]["measured_value"] == pytest.approx(0.02)  # as-left values
+
+        as_found_pts = client.get(
+            f"/api/v1/calibrations/{body['id']}/points", params={"role": "as_found"}, headers=auth_headers,
+        ).json()
+        assert len(as_found_pts) == 2
+        assert all(p["point_role"] == "as_found" for p in as_found_pts)
+        assert as_found_pts[0]["measured_value"] == pytest.approx(0.5)  # as-found values, kept separate
+
+    def test_as_found_points_optional(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="reference_vs_as_found_as_left",
+            calibration_purpose="after_repair",
+            repair_date="2025-02-15",
+            repair_description="n/a",
+            points=self._points(offset=0.02),
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        as_found_pts = client.get(
+            f"/api/v1/calibrations/{r.json()['id']}/points", params={"role": "as_found"}, headers=auth_headers,
+        ).json()
+        assert as_found_pts == []
+

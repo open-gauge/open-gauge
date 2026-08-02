@@ -49,14 +49,18 @@ class UncertaintyContribution:
 
 @dataclass
 class AnalysisResult:
-    poly_degree: int
+    # None/[] when skip_fit=True (no transference function known — see run_analysis) —
+    # there is no fitted model to report a degree/coefficients for.
+    poly_degree: int | None
     coefficients: list[float]          # highest degree first (np.polyfit convention)
     r_squared: float
     rmse: float
     standard_error: float
     max_error: float
     full_scale_error_pct: float
-    non_linearity_pct: float
+    # None when skip_fit=True — non-linearity measures a fitted curve's own
+    # curvature, which is undefined (not zero) when there is no curve at all.
+    non_linearity_pct: float | None
     repeatability: float | None
     hysteresis: float | None
     combined_uncertainty: float
@@ -413,6 +417,7 @@ def run_analysis(
     reference_unit: str,
     measured_unit: str,
     poly_degree: int | None = None,
+    skip_fit: bool = False,
     distribution_type: Literal["normal", "t", "chi_squared"] = "normal",
     confidence_level: float = 95.0,
     channel_accuracy_value: float | None = None,
@@ -430,6 +435,25 @@ def run_analysis(
 
     reference_values / measured_values must be in SI units.
     poly_degree=None triggers automatic degree selection via AIC.
+
+    skip_fit=True is for "reference vs. an already-physical-quantity value with
+    no known transference function" (e.g. a lab's reference-vs-indicated or
+    as-found/as-left report) — measured_values are treated as directly
+    comparable to reference_values with no curve fit at all: residual =
+    measured - reference. R², RMSE, max_error, full_scale_error_pct,
+    repeatability, hysteresis, and the full uncertainty budget/conformity
+    check are all still computed (their formulas only need *a* residuals
+    array, fit-derived or not) — only poly_degree/coefficients/
+    poly_coefficients_covariance (nothing was fitted) and non_linearity_pct
+    (undefined without an actual curve) come back as None/empty.
+
+    Mechanism "model delivered directly" (data_entry_mode=model_direct, no
+    raw data at all) reuses this same skip_fit path by feeding two synthetic
+    zero-residual points (measured == reference) at the model's declared
+    valid_range_min/max: the Type A (fit-residual) budget term correctly
+    collapses to 0 (the model is trusted as declared), the Type B terms
+    combine normally from the caller-supplied budget inputs, and conformity
+    is assessed with max_error=0 against both range endpoints.
 
     There is no separate "coverage factor" input: the coverage factor k is
     always derived from confidence_level (and, for "t"/"chi_squared", the
@@ -459,19 +483,28 @@ def run_analysis(
     ref = np.array(reference_values, dtype=float)
     meas = np.array(measured_values, dtype=float)
 
-    # Select or use provided degree
-    if poly_degree is None:
-        degree = _select_degree(meas, ref)
+    if skip_fit:
+        # No transference function: "measured" is already directly comparable
+        # to "reference" (both in the same physical quantity) — the residual
+        # is the raw difference, no curve involved.
+        degree: int | None = None
+        coeffs, coeffs_cov = None, None
+        fitted = meas
+        k = 0  # zero fitted parameters consumed -> dof_a = n - k = n in the budget below
     else:
-        degree = max(1, min(poly_degree, 5))
+        # Select or use provided degree
+        if poly_degree is None:
+            degree = _select_degree(meas, ref)
+        else:
+            degree = max(1, min(poly_degree, 5))
 
-    # Calibration function: reference = f(measured) — maps instrument reading to true value
-    coeffs, coeffs_cov = _fit_with_covariance(meas, ref, degree)
-    fitted = np.polyval(coeffs, meas)
+        # Calibration function: reference = f(measured) — maps instrument reading to true value
+        coeffs, coeffs_cov = _fit_with_covariance(meas, ref, degree)
+        fitted = np.polyval(coeffs, meas)
+        k = degree + 1  # number of parameters
 
     residuals = ref - fitted
     n = len(ref)
-    k = degree + 1  # number of parameters
 
     # Core statistics
     ss_res = float(np.sum(residuals ** 2))
@@ -484,11 +517,14 @@ def run_analysis(
     span = float(np.max(ref) - np.min(ref))
     full_scale_error_pct = (max_error / span * 100.0) if span > 0 else 0.0
 
-    # Non-linearity: deviation of fitted curve from best-fit line
-    lin_coeffs = np.polyfit(meas, fitted, 1)
-    lin_fitted = np.polyval(lin_coeffs, meas)
-    nl_max = float(np.max(np.abs(fitted - lin_fitted)))
-    non_linearity_pct = (nl_max / span * 100.0) if span > 0 else 0.0
+    if skip_fit:
+        non_linearity_pct: float | None = None
+    else:
+        # Non-linearity: deviation of fitted curve from best-fit line
+        lin_coeffs = np.polyfit(meas, fitted, 1)
+        lin_fitted = np.polyval(lin_coeffs, meas)
+        nl_max = float(np.max(np.abs(fitted - lin_fitted)))
+        non_linearity_pct = (nl_max / span * 100.0) if span > 0 else 0.0
 
     # Hysteresis and repeatability
     hysteresis = _detect_hysteresis(ref, meas)
@@ -528,13 +564,13 @@ def run_analysis(
 
     return AnalysisResult(
         poly_degree=degree,
-        coefficients=coeffs.tolist(),
+        coefficients=coeffs.tolist() if coeffs is not None else [],
         r_squared=round(r_squared, 8),
         rmse=round(rmse, 8),
         standard_error=round(standard_error, 8),
         max_error=round(max_error, 8),
         full_scale_error_pct=round(full_scale_error_pct, 4),
-        non_linearity_pct=round(non_linearity_pct, 4),
+        non_linearity_pct=round(non_linearity_pct, 4) if non_linearity_pct is not None else None,
         repeatability=round(repeatability, 8) if repeatability is not None else None,
         hysteresis=round(hysteresis, 8) if hysteresis is not None else None,
         combined_uncertainty=round(combined_u, 8),

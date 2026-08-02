@@ -317,6 +317,12 @@ def _build_template_context(
     measured_unit = points[0].measured_unit if points else ""
 
     coefficient_rows, equation = _build_coefficient_rows(calibration.poly_coefficients)
+    # data_entry_mode=model_direct with model_type=custom_formula: there's no
+    # coefficient table to render (nothing was fitted, the formula was
+    # declared as-is) — show the formula text directly instead.
+    if calibration.model_type == "custom_formula" and calibration.custom_formula:
+        coefficient_rows = []
+        equation = f"y = {calibration.custom_formula}"
     asset_type_label = str(asset.asset_type.value).title() if asset.asset_type else "—"
 
     valid_range = None
@@ -382,6 +388,11 @@ def _build_template_context(
 
     conformity = _build_conformity(calibration)
     degree = len(calibration.poly_coefficients) - 1 if calibration.poly_coefficients else 0
+    function_formula = (
+        f"f(x) = {calibration.custom_formula}"
+        if calibration.model_type == "custom_formula" and calibration.custom_formula
+        else _build_function_formula(degree)
+    )
 
     return {
         "certificate_number": certificate_number,
@@ -411,7 +422,7 @@ def _build_template_context(
         "pressure": _fmt(calibration.pressure, 4) if calibration.pressure is not None else None,
         "coefficient_rows": coefficient_rows,
         "equation": equation,
-        "function_formula": _build_function_formula(degree),
+        "function_formula": function_formula,
         "stat_rows": _build_stat_rows(calibration),
         "results_summary": _build_results_summary(calibration, reference_unit),
         "error_summary": _build_error_summary(calibration, reference_unit),

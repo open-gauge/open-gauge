@@ -395,8 +395,8 @@ export function getCalibrationById(id: string): CalibrationRecord | undefined {
   return getState().calibrations.find((c) => c.id === id);
 }
 
-export function getCalibrationPoints(calId: string): CalibrationPoint[] {
-  return getState().calibrationPoints[calId] ?? [];
+export function getCalibrationPoints(calId: string, pointRole: "primary" | "as_found" = "primary"): CalibrationPoint[] {
+  return (getState().calibrationPoints[calId] ?? []).filter((p) => (p.point_role ?? "primary") === pointRole);
 }
 
 export function nextCalibrationVersion(assetId: string): number {

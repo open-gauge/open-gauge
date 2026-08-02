@@ -114,11 +114,15 @@ def reject_calibration(
 def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -> Calibration:
     """
     Atomically create a Calibration and all CalibrationData/CalibrationFrequencyPoint
-    rows in one transaction. Sets calibration_data_id to the first data point created
-    (if any). A calibration with a checked_by_user_id starts "pending_approval"
+    rows in one transaction. Sets calibration_data_id to the first *primary* data
+    point created (if any) — as_found_points (data_entry_mode=
+    reference_vs_as_found_as_left's diagnostic pre-repair dataset) are written with
+    point_role="as_found" and never become calibration_data_id, since as-left is
+    this record's primary/official result (see Calibration.as_found_summary).
+    A calibration with a checked_by_user_id starts "pending_approval"
     (is_active=False) instead of "valid" — it isn't used until the checker decides.
     """
-    data = body.model_dump(exclude={"points", "frequency_response_points"})
+    data = body.model_dump(exclude={"points", "frequency_response_points", "as_found_points"})
     cal_status = "pending_approval" if body.checked_by_user_id else "valid"
     cal = Calibration(created_by=created_by, status=cal_status, is_active=(cal_status == "valid"), **data)
     db.add(cal)
@@ -136,6 +140,12 @@ def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -
 
     if first_point_id is not None:
         cal.calibration_data_id = first_point_id
+
+    for pt in body.as_found_points:
+        pt_data = pt.model_dump()
+        pt_data["calibration_id"] = cal.id
+        pt_data["point_role"] = "as_found"
+        db.add(CalibrationData(**pt_data))
 
     for fp in body.frequency_response_points:
         fp_data = fp.model_dump()
@@ -155,10 +165,15 @@ def create(db: Session, created_by: uuid.UUID, **kwargs) -> Calibration:
     return cal
 
 
-def list_points(db: Session, calibration_id: uuid.UUID) -> list[CalibrationData]:
+def list_points(
+    db: Session, calibration_id: uuid.UUID, point_role: str = "primary"
+) -> list[CalibrationData]:
     return (
         db.query(CalibrationData)
-        .filter(CalibrationData.calibration_id == calibration_id)
+        .filter(
+            CalibrationData.calibration_id == calibration_id,
+            CalibrationData.point_role == point_role,
+        )
         .order_by(CalibrationData.point_index)
         .all()
     )

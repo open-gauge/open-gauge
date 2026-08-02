@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # "valid" (used for the channel's calibration), "pending_approval" (awaiting the
 # assigned checker's decision), "rejected" (decided against, terminal), "void"
@@ -21,6 +21,23 @@ CALIBRATION_TYPES = ("oem", "external_accredited_lab", "internal_lab", "customer
 # Why the calibration was performed.
 CALIBRATION_PURPOSES = ("initial", "routine", "after_repair", "verification")
 
+# How the data was entered — orthogonal to calibration_type/calibration_purpose above.
+# "raw_data": reference vs. raw output-signal points, fitted to a model (the original,
+# still-default flow). "model_direct": a lab-supplied model (coefficients or a custom
+# formula) with no raw data at all — the generalized successor of the old
+# "coefficients only" flow. "reference_vs_indicated": reference vs. an
+# already-physical-quantity value with no known transference function — only
+# calibration_purpose="verification". "reference_vs_as_found_as_left": same, but two
+# datasets around a repair — only calibration_purpose="after_repair"; the primary
+# points/stats on this record are the as-left side, as_found_summary below is
+# diagnostic-only.
+DATA_ENTRY_MODES = (
+    "raw_data", "model_direct", "reference_vs_indicated", "reference_vs_as_found_as_left",
+)
+
+# What poly_coefficients/custom_formula on a calibration represent.
+MODEL_TYPES = ("polynomial", "custom_formula")
+
 
 # ------------------------------------------------------------------ #
 # Analyze endpoint                                                    #
@@ -37,6 +54,11 @@ class AnalyzeRequest(BaseModel):
     measured_unit: str
     physical_quantity: str = ""
     poly_degree: int | None = None
+    # True for "reference_vs_indicated"/"reference_vs_as_found_as_left" —
+    # `measured` is already directly comparable to `reference` (no known
+    # transference function), so no curve is fitted at all; residual =
+    # measured - reference. See calibration_analysis.run_analysis.
+    skip_fit: bool = False
     distribution_type: str = "normal"
     confidence_level: float = 95.0
     channel_accuracy_value: float | None = None
@@ -73,14 +95,15 @@ class UncertaintyContributionOut(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
-    poly_degree: int
+    # None/[] when the request had skip_fit=True — no curve was fitted.
+    poly_degree: int | None
     coefficients: list[float]
     r_squared: float
     rmse: float
     standard_error: float
     max_error: float
     full_scale_error_pct: float
-    non_linearity_pct: float
+    non_linearity_pct: float | None
     repeatability: float | None
     hysteresis: float | None
     combined_uncertainty: float
@@ -111,6 +134,9 @@ class CalibrationPointInline(BaseModel):
     residual_pct: float | None = None
     reference_unit: str
     measured_unit: str
+    # "primary" (this record's official dataset) or "as_found" (the diagnostic
+    # pre-repair dataset of a reference_vs_as_found_as_left calibration).
+    point_role: str = "primary"
 
 
 class CalibrationPointResponse(BaseModel):
@@ -124,6 +150,7 @@ class CalibrationPointResponse(BaseModel):
     residual_pct: float | None
     reference_unit: str
     measured_unit: str
+    point_role: str = "primary"
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -157,6 +184,10 @@ class FrequencyResponsePointResponse(BaseModel):
 # ------------------------------------------------------------------ #
 
 class CalibrationCreate(BaseModel):
+    # model_type isn't a Pydantic "protected model_ namespace" field — it's
+    # our own data_entry_mode=model_direct concept — silence the warning.
+    model_config = {"protected_namespaces": ()}
+
     asset_id: uuid.UUID
     calibration_date: date
     due_date: date
@@ -173,6 +204,15 @@ class CalibrationCreate(BaseModel):
     calibration_purpose: str = "routine"
     calibration_interval: int | None = None
     tolerance_criteria: str | None = None
+
+    # How the data below was entered — see DATA_ENTRY_MODES.
+    data_entry_mode: str = "raw_data"
+    model_type: str = "polynomial"
+    custom_formula: str | None = None
+    # Diagnostic-only "as found" dataset for reference_vs_as_found_as_left —
+    # never feeds due-date/approval/Health-tab calculations, see as_found_summary.
+    as_found_points: list[CalibrationPointInline] = Field(default_factory=list)
+    as_found_summary: dict | None = None
 
     # Repair tracking — only meaningful when calibration_purpose == "after_repair"
     repair_date: date | None = None
@@ -199,6 +239,28 @@ class CalibrationCreate(BaseModel):
         if value not in CALIBRATION_PURPOSES:
             raise ValueError(f"Unsupported calibration_purpose: {value}")
         return value
+
+    @field_validator("data_entry_mode")
+    @classmethod
+    def validate_data_entry_mode(cls, value: str) -> str:
+        if value not in DATA_ENTRY_MODES:
+            raise ValueError(f"Unsupported data_entry_mode: {value}")
+        return value
+
+    @field_validator("model_type")
+    @classmethod
+    def validate_model_type(cls, value: str) -> str:
+        if value not in MODEL_TYPES:
+            raise ValueError(f"Unsupported model_type: {value}")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_data_entry_mode_purpose_pairing(self) -> "CalibrationCreate":
+        if self.data_entry_mode == "reference_vs_indicated" and self.calibration_purpose != "verification":
+            raise ValueError("data_entry_mode=reference_vs_indicated requires calibration_purpose=verification")
+        if self.data_entry_mode == "reference_vs_as_found_as_left" and self.calibration_purpose != "after_repair":
+            raise ValueError("data_entry_mode=reference_vs_as_found_as_left requires calibration_purpose=after_repair")
+        return self
 
     # Environmental conditions (canonical units: °C, %RH, Pa)
     temperature: float | None = None
@@ -305,6 +367,10 @@ class CalibrationResponse(BaseModel):
     repair_date: date | None = None
     repair_description: str | None = None
     calibration_organization_id: uuid.UUID | None = None
+    data_entry_mode: str = "raw_data"
+    model_type: str = "polynomial"
+    custom_formula: str | None = None
+    as_found_summary: Any | None = None
 
     # Traceability
     internal_reference_asset_id: uuid.UUID | None
@@ -375,4 +441,4 @@ class CalibrationResponse(BaseModel):
     decided_at: datetime | None = None
     decision_reason: str | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "protected_namespaces": ()}

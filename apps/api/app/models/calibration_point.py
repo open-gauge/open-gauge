@@ -24,6 +24,11 @@ class CalibrationData(Base):
     reference_unit: Mapped[str] = mapped_column(String(50), nullable=False)
     measured_unit: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # "primary" (the calibration's official dataset — raw_data, model_direct evaluation
+    # points if any, or the as-left side of a reference_vs_as_found_as_left record) or
+    # "as_found" (that mode's diagnostic pre-repair dataset). Every existing query/repo
+    # call defaults to "primary" so this is additive — see Calibration.data_entry_mode.
+    point_role: Mapped[str] = mapped_column(String(20), nullable=False, server_default="primary")
 
 
 # Backward-compat alias

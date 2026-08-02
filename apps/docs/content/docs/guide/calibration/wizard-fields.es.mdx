@@ -79,13 +79,19 @@ por el tipo declarado como por la firma del archivo) antes de aceptarlo. Si se p
 sirve en lugar del certificado generado por el sistema en todos los lugares donde se descargue el
 certificado de esta calibración.
 
-## Solo coeficientes (sin datos en bruto)
+## Modo de entrada de datos
 
-Marca esto cuando el certificado ya indica directamente los coeficientes del polinomio de
-calibración, sin ningún punto de dato de referencia/medido en bruto incluido — se salta por
-completo el ajuste de curvas y cambia el Paso 2 a la entrada manual de coeficientes. Consulta
-[Calibraciones de solo coeficientes](./coefficients-only.mdx) para el flujo completo de entrada
-manual.
+Cómo se entregaron los datos de esta calibración — **Datos en bruto** (referencia frente a señal
+de salida, el valor por defecto) se ajusta a una curva como de costumbre. **Modelo proporcionado
+directamente** es para un certificado que indica el propio modelo de calibración (un polinomio o
+una fórmula personalizada), sin ningún punto de dato en bruto — solo se ofrece para calibraciones
+OEM/Laboratorio externo acreditado/Activo del cliente. **Referencia frente a valor indicado** y
+**Referencia frente a valor tal como se encontró/tal como se dejó** son para laboratorios que
+entregan una comparación de magnitud física ya convertida sin función de transferencia conocida —
+se ofrecen solo cuando el Propósito de la calibración es Verificación o Después de reparación,
+respectivamente. Consulta
+[Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx) para el desglose
+completo de los cuatro modos.
 
 ## Activo de referencia
 

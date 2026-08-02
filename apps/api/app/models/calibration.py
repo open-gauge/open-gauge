@@ -40,6 +40,27 @@ class Calibration(Base):
     calibration_interval: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tolerance_criteria: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
+    # How the data was entered — orthogonal to calibration_type (who performed it) and
+    # calibration_purpose (why): "raw_data" (reference vs. raw output-signal points, fitted),
+    # "model_direct" (a lab-supplied model, no raw data — the generalized successor of the
+    # old "coefficients only" flow), "reference_vs_indicated" (reference vs. an
+    # already-physical-quantity value, no known transfer function — verification purpose
+    # only), "reference_vs_as_found_as_left" (same, but two datasets around a repair —
+    # after_repair purpose only; as-left is this record's primary result, as-found is
+    # diagnostic-only, see as_found_summary below).
+    data_entry_mode: Mapped[str] = mapped_column(String(30), nullable=False, server_default="raw_data")
+    # model_type describes the shape of poly_coefficients/custom_formula below:
+    # "polynomial" (poly_order/poly_coefficients, as always) or "custom_formula" (an
+    # arbitrary single-variable expression in custom_formula, x = the raw/measured input).
+    model_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="polynomial")
+    custom_formula: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Diagnostic-only summary for the "as found" side of a reference_vs_as_found_as_left
+    # calibration — an AnalyzeResponse-shaped blob (stats/uncertainty/conformity/points),
+    # client-computed and stored verbatim like every other analysis field on this model.
+    # Never feeds due-date/approval/Health-tab calculations — those all read the record's
+    # own primary columns (the as-left result).
+    as_found_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     # Repair tracking — only meaningful when calibration_purpose == "after_repair".
     repair_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     repair_description: Mapped[str | None] = mapped_column(Text, nullable=True)

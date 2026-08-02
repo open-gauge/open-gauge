@@ -4,13 +4,44 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.12.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.13.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.13.0
+
+### Added
+
+- **Alternative calibration data-entry modes.** A calibration's data can now be entered four
+  ways, selected on the wizard's Step 1 (**Data entry mode**): the existing **raw data**
+  (reference vs. output signal, fitted to a curve); **model provided directly** — a lab/
+  manufacturer certificate that states the model itself (a polynomial or a **custom formula** in
+  a single variable `x`), its valid range, and the same uncertainty-budget inputs raw data
+  collects, with conformity assessed by treating the model as trusted-as-declared; **reference vs.
+  indicated value** (verification only) — a lab-delivered reference/already-converted-value
+  comparison with no known transfer function, yielding statistics/uncertainty/conformity but no
+  fitted curve, rendered via a residuals-only chart; and **reference vs. as-found/as-left value**
+  (after repair only) — the same fit-free comparison recorded twice, before and after the repair,
+  with as-left driving the record's official result (due date, approval, Health tab) and as-found
+  kept as read-only diagnostic data.
+- **Custom formula models.** A `model_direct` calibration's model can be a polynomial or a
+  single-variable formula (`+ − * / ^ ( )`, `sqrt exp log ln sin cos tan abs pow`), fully evaluable
+  — it participates in the saved calibration's fitted-curve chart and the Health tab's drift/curve
+  comparison exactly like a polynomial, evaluated independently on each side via a shared,
+  restricted expression whitelist.
+
+### Changed
+
+- The Health tab's curve-comparison dropdowns now only offer calibrations that have an evaluable
+  model, and show an explanatory empty state instead of a generic error when a channel has fewer
+  than two.
+- Calibration certificates now render a custom formula's equation directly instead of a blank
+  coefficients table. A saved calibration's detail view gained a diagnostic "as-found" panel for
+  after-repair calibrations recorded via the new as-found/as-left mode.
 
 ## 3.12.0
 

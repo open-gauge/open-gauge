@@ -35,11 +35,13 @@ Démarrez une calibration depuis la voie d'un actif. L'assistant comporte trois 
    calibration, **Enregistré par** (une liste déroulante des membres de l'organisation de
    l'actif, vous par défaut), un réviseur optionnel **Vérifié par**, intervalle de calibration,
    conditions environnementales, et notes. Selon le type/objet choisi, des champs supplémentaires
-   apparaissent — voir ci-dessous. Cette étape possède également une case à cocher
-   **« Coefficients uniquement (sans données brutes) »** pour les certificats émis en externe qui
-   indiquent directement un polynôme — voir
-   [Calibrations à coefficients uniquement](./coefficients-only.mdx).
-2. **Données brutes** — saisissez les paires de points (référence, mesuré). Voir
+   apparaissent — voir ci-dessous. Cette étape possède également un sélecteur **Mode de saisie des
+   données** pour les calibrations qui ne correspondent pas à la forme habituelle des données
+   brutes — voir
+   [Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx).
+2. **Données brutes** — saisissez les paires de points (référence, mesuré) (ou, selon le mode de
+   saisie des données choisi ci-dessus, un modèle saisi directement, ou une comparaison
+   référence-par-rapport-à-une-valeur-déjà-convertie). Voir
    [Ajustement de courbe](./curve-fitting.mdx) pour savoir ce qu'Open Gauge en fait.
 3. **Analyse / révision** — l'ajustement calculé en direct, le budget d'incertitude, et la
    déclaration de conformité. Voir [Le budget d'incertitude](./uncertainty-budget.mdx) et
@@ -80,8 +82,9 @@ résout le champ **Laboratoire de calibration** :
   Aucun téléversement de certificat.
 
 Pour OEM, Laboratoire externe accrédité, et Actif d'un client, la saisie de données brutes peut
-être entièrement ignorée avec **« Coefficients uniquement (sans données brutes) »** lorsque le
-certificat indique directement un polynôme.
+être entièrement ignorée en réglant le **Mode de saisie des données** sur **Modèle fourni
+directement** lorsque le certificat indique directement le modèle de calibration — voir
+[Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx).
 
 ### Certificats téléversés
 

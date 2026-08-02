@@ -28,6 +28,7 @@ from ...schemas.calibration import (
 from ...services import calibration_notify
 from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
+from ...services.formula_eval import validate_formula
 from ...services.latex_service import LatexCompileError
 from ...services.pdf_signing_service import CertificateSigningError
 from ...services.storage import (
@@ -94,6 +95,7 @@ def analyze_calibration(
             reference_unit=body.reference_unit,
             measured_unit=body.measured_unit,
             poly_degree=body.poly_degree,
+            skip_fit=body.skip_fit,
             distribution_type=body.distribution_type,  # type: ignore[arg-type]
             confidence_level=body.confidence_level,
             channel_accuracy_value=body.channel_accuracy_value,
@@ -180,6 +182,12 @@ def create_calibration(
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
+    if body.model_type == "custom_formula" and body.custom_formula:
+        try:
+            validate_formula(body.custom_formula)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
     # Computed before the insert — MAX(existing versions) + 1 — so the new row
     # isn't counted against itself.
     next_version = cal_repo.get_next_version(db, body.asset_id, body.sensor_id)
@@ -238,13 +246,18 @@ def get_calibration(
 @router.get("/{cal_id}/points", response_model=list[CalibrationPointResponse])
 def list_points(
     cal_id: uuid.UUID,
+    role: str = "primary",
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[CalibrationPointResponse]:
+    """`role` selects between a calibration's primary dataset (default — the
+    official points for raw_data/model_direct, or the as-left side of a
+    reference_vs_as_found_as_left record) and "as_found" (that mode's
+    diagnostic pre-repair dataset)."""
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
-    return cal_repo.list_points(db, cal_id)
+    return cal_repo.list_points(db, cal_id, point_role=role)
 
 
 @router.get(

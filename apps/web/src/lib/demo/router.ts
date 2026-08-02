@@ -13,7 +13,7 @@
 import * as store from "./store";
 import { polyfit, polyval, generateXRange, runAnalysis, type AnalyzeCalibrationParams } from "./curve-fit";
 import type { AssetCreateBody, AssetProfile, AssetUpdateRequest, SensorChannelFull } from "@/types/asset";
-import type { AnalyzeRequest, CalibrationCreateBody, CalibrationRecord } from "@/types/calibration";
+import type { AnalyzeRequest, CalibrationCreateBody, CalibrationPointInline, CalibrationRecord } from "@/types/calibration";
 import type { CurveComparisonResponse } from "@/types/health";
 import type { Procedure } from "@/types/procedure";
 import type { StoredFile } from "@/types/stored_file";
@@ -447,7 +447,10 @@ route("GET", "/api/v1/calibrations/procedures", ({ qs }) =>
   store.listProceduresByQuantity(qs.get("physical_quantity") ?? undefined)
     .map((p) => ({ id: p.id, name: p.name, physical_quantity: p.physical_quantity })));
 
-route("GET", "/api/v1/calibrations/:id/points", ({ params }) => store.getCalibrationPoints(params[0]));
+route("GET", "/api/v1/calibrations/:id/points", ({ params, qs }) => {
+  const role = (qs.get("role") ?? "primary") as "primary" | "as_found";
+  return store.getCalibrationPoints(params[0], role);
+});
 
 route("GET", "/api/v1/calibrations/:id/certificate", ({ params }) => {
   const cal = store.getCalibrationById(params[0]);
@@ -469,6 +472,7 @@ route("POST", "/api/v1/calibrations/analyze", ({ body }): unknown => {
     referenceUnit: req.reference_unit,
     measuredUnit: req.measured_unit,
     polyDegree: req.poly_degree,
+    skipFit: req.skip_fit,
     distributionType: req.distribution_type,
     confidenceLevel: req.confidence_level,
     channelAccuracyValue: req.channel_accuracy_value,
@@ -549,6 +553,10 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     poly_coefficients_covariance: req.poly_coefficients_covariance ?? null,
     decision_rule: req.decision_rule ?? null,
     conformity_statement: req.conformity_statement ?? null,
+    data_entry_mode: req.data_entry_mode ?? "raw_data",
+    model_type: req.model_type ?? "polynomial",
+    custom_formula: req.custom_formula ?? null,
+    as_found_summary: req.as_found_summary ?? null,
     has_frequency_response: req.has_frequency_response ?? false,
     frequency_response_frequency_unit: req.frequency_response_frequency_unit ?? null,
     frequency_response_amplitude_type: req.frequency_response_amplitude_type ?? null,
@@ -564,7 +572,7 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     decision_reason: null,
   };
 
-  const points = (req.points ?? []).map((p, i) => ({
+  const toPointRow = (p: CalibrationPointInline, i: number) => ({
     id: store.genId(),
     calibration_id: record.id,
     point_index: p.point_index ?? i,
@@ -575,8 +583,13 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     residual_pct: p.residual_pct ?? null,
     reference_unit: p.reference_unit,
     measured_unit: p.measured_unit,
+    point_role: p.point_role ?? "primary",
     created_at: now,
-  }));
+  });
+  const points = [
+    ...(req.points ?? []).map(toPointRow),
+    ...(req.as_found_points ?? []).map((p, i) => ({ ...toPointRow(p, i), point_role: "as_found" as const })),
+  ];
 
   const created = store.addCalibration(record, points);
   store.appendAuditLog({

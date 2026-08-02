@@ -63,6 +63,23 @@ def evaluate_polynomial(coefficients: list[float], x_values: list[float]) -> lis
     return list(np.polyval(np.asarray(coefficients, dtype=float), np.asarray(x_values, dtype=float)))
 
 
+def evaluate_model(
+    model_type: str,
+    poly_coefficients: list[float] | None,
+    custom_formula: str | None,
+    x_values: list[float],
+) -> list[float]:
+    """Evaluate a calibration's model (polynomial or custom formula) at the
+    given x values — the single dispatch point every curve-evaluating caller
+    (drift evolution, curve comparison) should use instead of assuming
+    poly_coefficients/evaluate_polynomial directly, now that a calibration's
+    model can also be a custom formula (Calibration.model_type)."""
+    if model_type == "custom_formula" and custom_formula:
+        from ..services.formula_eval import evaluate_formula_array
+        return evaluate_formula_array(custom_formula, x_values)
+    return evaluate_polynomial(poly_coefficients or [], x_values)
+
+
 def generate_x_range(x_min: float, x_max: float, n_points: int = 200) -> list[float]:
     """Evenly spaced points across [x_min, x_max].
 

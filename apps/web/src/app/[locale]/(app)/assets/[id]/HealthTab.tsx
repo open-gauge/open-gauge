@@ -356,6 +356,14 @@ function CurveComparisonCard({
     return { data: traces, layout };
   }, [result, unit]);
 
+  if (options.length < 2) {
+    return (
+      <Card title={t("curveComparison")} tooltip={t("tips.curveComparison")} tooltipDocsHref={HEALTH_DOCS_LINKS.curve_comparison}>
+        <p className="text-sm text-gray-400 text-center py-4">{t("noComparableCalibrations")}</p>
+      </Card>
+    );
+  }
+
   return (
     <Card title={t("curveComparison")} tooltip={t("tips.curveComparison")} tooltipDocsHref={HEALTH_DOCS_LINKS.curve_comparison}>
       <div className="grid grid-cols-2 gap-4 mb-4">
