@@ -9,6 +9,22 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.10.0
+
+### Added
+
+- **Calibration approval workflow.** Every calibration now has a status — **valid**, **pending
+  approval**, **rejected**, or **void** — instead of just active/voided. Naming an optional
+  **Checked by** reviewer on the wizard's Step 1 (a new field alongside the renamed
+  **Registered by**, both now real dropdowns of the asset's organization members instead of a
+  self/free-text toggle) puts the new calibration into pending approval; only a valid calibration
+  counts for the channel's calibration, due-date calculations, and drift analysis — pending and
+  rejected are excluded exactly like voided always was. The assigned checker (or an admin
+  override) approves or rejects it from its row in the Calibration tab, with notifications
+  (in-app and email) to the checker on assignment and to the registrant on decision. Void remains
+  an always-available admin override reachable from any status. The calibration-visibility toggle
+  is renamed **"Show Valid Calibrations"**.
+
 ## 3.9.0
 
 ### Added

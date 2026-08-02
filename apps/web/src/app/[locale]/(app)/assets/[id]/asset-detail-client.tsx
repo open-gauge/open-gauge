@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
+  approveCalibration,
   deleteAssetFile,
   downloadCalibrationCertificateBlob,
   fetchAssetLabelBlob,
@@ -17,6 +18,7 @@ import {
   getCalibrationPoints,
   listCalibrationCertificateTemplates,
   listLocations,
+  rejectCalibration,
   restoreCalibration,
   retireAsset,
   updateAsset,
@@ -1377,6 +1379,13 @@ interface CalibrationTabProps {
   onCalibrationSaved: () => void;
   onCalibrationDeleted: () => void;
   isAdmin: boolean;
+  currentUserId: string;
+  /** Any role but Viewer may register a calibration. */
+  canRegisterCalibration: boolean;
+  /** From the page's ?cal=<id> query param (a checker-assigned/decision
+   * notification link) — pre-selects that calibration and reveals it even if
+   * hidden by the "Show Valid Calibrations" toggle. Null on a normal visit. */
+  deepLinkCalId: string | null;
   /** Wraps any action that would open the wizard so unsaved asset-edit changes
    * (if any) can be saved or discarded first — see guardBeforeLeavingEdit. */
   guardBeforeLeavingEdit: (action: () => void) => void;
@@ -1563,7 +1572,7 @@ function useCoeffDesc() {
 
 type ResultView = "equation" | "coefficients";
 
-function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrationDeleted, isAdmin, guardBeforeLeavingEdit }: CalibrationTabProps) {
+function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrationDeleted, isAdmin, currentUserId, canRegisterCalibration, deepLinkCalId, guardBeforeLeavingEdit }: CalibrationTabProps) {
   const tUncertaintySource = useTranslations("tokens.uncertaintySource");
   const tDecisionRule = useTranslations("tokens.decisionRule");
   const t = useTranslations("assets.calibration");
@@ -1592,6 +1601,10 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const [showVoided, setShowVoided] = useState(false);
   const [allCals, setAllCals] = useState<CalibrationRecord[] | null>(null);
   const [restoringCalId, setRestoringCalId] = useState<string | null>(null);
+  const [approvingCalId, setApprovingCalId] = useState<string | null>(null);
+  const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectingCalId, setRejectingCalId] = useState<string | null>(null);
 
   const sourceCals = showVoided && allCals ? allCals : calibrations;
   const filteredCals = hasChannelTabs && activeChannelId
@@ -1612,6 +1625,17 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
     setSelectedCalId(null);
     setPoints([]);
   }, [activeChannelId]);
+
+  // A checker-assigned/decision notification links here with ?cal=<id>, read
+  // once at the page level and passed down — see deepLinkCalId. Selecting it
+  // also forces showVoided so a pending/rejected row is visible even though
+  // it's hidden by default.
+  useEffect(() => {
+    if (!deepLinkCalId) return;
+    setSelectedCalId(deepLinkCalId);
+    setShowVoided(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkCalId]);
 
   useEffect(() => {
     if (!selectedCal) { setPoints([]); return; }
@@ -1665,6 +1689,34 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       // no-op — row stays as-is, admin can retry
     } finally {
       setRestoringCalId(null);
+    }
+  }
+
+  async function handleApproveCal(calId: string) {
+    setApprovingCalId(calId);
+    try {
+      await approveCalibration(calId);
+      onCalibrationDeleted();
+      if (showVoided) refetchVoided();
+    } catch {
+      // no-op — row stays as-is, checker/admin can retry
+    } finally {
+      setApprovingCalId(null);
+    }
+  }
+
+  async function handleRejectCal(calId: string) {
+    setRejectingCalId(calId);
+    try {
+      await rejectCalibration(calId, rejectReason.trim() || undefined);
+      setRejectConfirmId(null);
+      setRejectReason("");
+      onCalibrationDeleted();
+      if (showVoided) refetchVoided();
+    } catch {
+      // leave modal open so user sees error feedback via disabled state
+    } finally {
+      setRejectingCalId(null);
     }
   }
 
@@ -1745,47 +1797,74 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
         </div>
       );
     })()}
-    <div className="space-y-5">
-
-      {/* Top bar: channel tabs (left) + PDF + Add Calibration (right) */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        {hasChannelTabs ? (
-          <div className="flex gap-1 p-1 bg-og-surface-alt border border-og-border rounded-xl w-fit">
-            {channelIdsWithCals.map((chId) => {
-              const ch = profile.sensor_channels.find((c) => c.id === chId);
-              const label = ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId;
-              const isActive = activeChannelId === chId;
-              return (
-                <button
-                  key={chId}
-                  type="button"
-                  onClick={() => setActiveChannelId(chId)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    isActive
-                      ? "bg-og-surface text-og-text shadow-xs border border-og-border"
-                      : "text-gray-400 hover:text-og-text"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+    {rejectConfirmId && (() => {
+      const calToReject = filteredCals.find((c) => c.id === rejectConfirmId);
+      const isRejecting = !!rejectingCalId;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => { if (!isRejecting) { setRejectConfirmId(null); setRejectReason(""); } }}
+          />
+          <div className="relative bg-og-surface border border-og-border rounded-xl shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <XIcon size={16} className="text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-og-text">{t("rejectCalibration")}</h3>
+                {calToReject && (
+                  <p className="text-xs text-gray-400">
+                    {t("version")} {calToReject.calibration_version} · {fmtDate(calToReject.calibration_date)}
+                  </p>
+                )}
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t("rejectHint")}
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">{t("reasonOptional")}</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={2}
+                placeholder={t("rejectReasonPlaceholder")}
+                className="w-full px-3 py-2 text-sm border border-og-border-md bg-og-surface rounded-lg outline-hidden focus:border-og-accent focus:ring-2 focus:ring-og-accent/20 transition-all placeholder:text-gray-400 text-og-text"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setRejectConfirmId(null); setRejectReason(""); }}
+                disabled={isRejecting}
+                className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRejectCal(rejectConfirmId)}
+                disabled={isRejecting}
+                className="px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-60 flex items-center gap-1.5"
+              >
+                {isRejecting ? (
+                  <>
+                    <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t("rejecting")}
+                  </>
+                ) : t("rejectCalibration")}
+              </button>
+            </div>
           </div>
-        ) : <div />}
-
-        <button
-          type="button"
-          onClick={() => guardBeforeLeavingEdit(() => setWizardOpen(true))}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
-        >
-          <PlusIcon size={12} />
-          {t("addCalibration")}
-        </button>
-      </div>
-
+        </div>
+      );
+    })()}
+    <div className="flex gap-5 items-start">
+      <div className="flex-1 min-w-0 space-y-5">
       {selectedCal ? (
         <div className="bg-og-surface border border-og-border rounded-xl p-5 space-y-4">
-          {/* Header row — version / date / performed by (left) + certificate download (right) */}
+          {/* Header row — version / date / performed by (left) + approve/reject + certificate download (right) */}
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -1800,12 +1879,35 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 </p>
               )}
             </div>
-            <CertificateDownloadButton
-              calibrationId={selectedCal.id}
-              assetTag={profile.asset_id}
-              calibrationVersion={selectedCal.calibration_version}
-              disabled={!selectedCal.poly_coefficients}
-            />
+            <div className="flex items-center gap-2 shrink-0">
+              {selectedCal.status === "pending_approval" && (currentUserId === selectedCal.checked_by_user_id || isAdmin) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleApproveCal(selectedCal.id)}
+                    disabled={approvingCalId === selectedCal.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <CheckIcon size={12} />
+                    {t("approve")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRejectConfirmId(selectedCal.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-og-border-md text-gray-600 dark:text-gray-300 hover:bg-og-surface-alt text-xs font-medium rounded-lg transition-colors"
+                  >
+                    <XIcon size={12} />
+                    {t("reject")}
+                  </button>
+                </>
+              )}
+              <CertificateDownloadButton
+                calibrationId={selectedCal.id}
+                assetTag={profile.asset_id}
+                calibrationVersion={selectedCal.calibration_version}
+                disabled={!selectedCal.poly_coefficients}
+              />
+            </div>
           </div>
 
           {/* Result view: Equation / Coefficients */}
@@ -2158,30 +2260,58 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           <p className="text-sm text-gray-400">{hasChannelTabs ? t("noCalibrationsChannel") : t("noCalibrations")}</p>
         </div>
       )}
+      </div>
 
-      {/* Calibration history */}
-      {(filteredCals.length > 0 || showVoided) && (
-        <div className="bg-og-surface border border-og-border rounded-xl">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-og-border">
-            <p className="text-xs font-semibold text-og-text">{t("calibrationHistory")}</p>
-            <div className="flex items-center gap-3">
-              <p className="text-xs text-gray-400">{t("recordCount", { count: filteredCals.length })}</p>
-              {isAdmin && (
-                <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
-                  <ToggleSwitch checked={showVoided} onChange={setShowVoided} size="sm" />
-                  {t("showVoided")}
-                </label>
-              )}
-            </div>
+      {/* Calibration history — right-side navigator */}
+      <div className="w-80 shrink-0 flex flex-col bg-og-surface border border-og-border rounded-xl">
+        <div className="p-3 border-b border-og-border space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            {hasChannelTabs ? (
+              <select
+                value={activeChannelId ?? ""}
+                onChange={(e) => setActiveChannelId(e.target.value || null)}
+                className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-og-border-md bg-og-surface text-xs text-og-text focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
+              >
+                {channelIdsWithCals.map((chId) => {
+                  const ch = profile.sensor_channels.find((c) => c.id === chId);
+                  const label = ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId;
+                  return <option key={chId} value={chId}>{label}</option>;
+                })}
+              </select>
+            ) : (
+              <p className="text-xs font-semibold text-og-text">{t("calibrationHistory")}</p>
+            )}
+            {canRegisterCalibration && (
+              <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer shrink-0">
+                <ToggleSwitch checked={showVoided} onChange={setShowVoided} size="sm" />
+                {t("showValidOnly")}
+              </label>
+            )}
           </div>
-          <div className="divide-y divide-og-border">
+          {canRegisterCalibration && (
+            <button
+              type="button"
+              onClick={() => guardBeforeLeavingEdit(() => setWizardOpen(true))}
+              className="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+            >
+              <PlusIcon size={12} />
+              {t("addCalibration")}
+            </button>
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto divide-y divide-og-border">
+          {filteredCals.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-8 px-4">
+              {hasChannelTabs ? t("noCalibrationsChannel") : t("noCalibrations")}
+            </p>
+          )}
             {filteredCals.map((cal) => {
               const isSelected = cal.id === (selectedCal?.id ?? null);
               const isVoided = !cal.is_active;
               return (
                 <div
                   key={cal.id}
-                  className={`flex items-start gap-4 px-5 py-3 transition-colors
+                  className={`flex items-start gap-2 px-3 py-2.5 transition-colors
                     ${isVoided ? "opacity-60" : ""}
                     ${isSelected ? "bg-og-surface-alt" : "hover:bg-og-surface-alt/50"}`}
                 >
@@ -2189,49 +2319,50 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   <button
                     type="button"
                     onClick={() => setSelectedCalId(cal.id)}
-                    className="flex items-start gap-4 flex-1 min-w-0 text-left"
+                    className="flex items-start gap-2 flex-1 min-w-0 text-left"
                   >
-                    <div className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center mt-0.5
+                    <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mt-0.5
                       ${isSelected ? "border-og-accent text-og-accent" : "border-og-border bg-og-surface-alt text-gray-400"}`}>
-                      <span className="text-[10px] font-bold">v{cal.calibration_version}</span>
+                      <span className="text-[9px] font-bold">v{cal.calibration_version}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-og-text">{fmtDate(cal.calibration_date)}</span>
-                        {isVoided && (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-xs font-medium text-og-text">{fmtDate(cal.calibration_date)}</span>
+                        {cal.status === "void" && (
                           <span
-                            className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                            className="inline-flex items-center px-1 py-0.5 rounded-sm text-[9px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                             title={cal.void_reason ?? undefined}
                           >
                             {t("voided")}
                           </span>
                         )}
-                        {cal.r_squared != null && (
-                          <span className="text-[10px] font-mono text-gray-400">R²={fmtNum(cal.r_squared, 4)}</span>
+                        {cal.status === "pending_approval" && (
+                          <span className="inline-flex items-center px-1 py-0.5 rounded-sm text-[9px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            {t("statusPendingApproval")}
+                          </span>
                         )}
-                        {cal.poly_order != null && (
-                          <span className="text-[10px] text-gray-400">deg-{cal.poly_order}</span>
-                        )}
-                        {cal.external_lab_certificate_number && (
-                          <span className="text-[10px] text-gray-400">📄 {cal.external_lab_certificate_number}</span>
+                        {cal.status === "rejected" && (
+                          <span
+                            className="inline-flex items-center px-1 py-0.5 rounded-sm text-[9px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                            title={cal.decision_reason ?? undefined}
+                          >
+                            {t("statusRejected")}
+                          </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {cal.calibration_type === "external" ? t("external") : t("internal")}
-                        {" · "}{t("by", { name: cal.performed_by_name })}
-                        {cal.external_lab_name ? ` · ${cal.external_lab_name}` : ""}
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                        {t("by", { name: cal.performed_by_name })}
                       </p>
-                      {cal.notes && <p className="text-xs text-gray-500 mt-1 italic truncate">{cal.notes}</p>}
-                      {isVoided && cal.void_reason && (
-                        <p className="text-xs text-red-500 mt-1 italic truncate">{t("reason", { reason: cal.void_reason })}</p>
+                      {cal.due_date && (
+                        <p className="text-[10px] text-gray-400">{t("due")}: {fmtDate(cal.due_date)}</p>
+                      )}
+                      {cal.status === "void" && cal.void_reason && (
+                        <p className="text-[10px] text-red-500 mt-0.5 italic truncate">{t("reason", { reason: cal.void_reason })}</p>
+                      )}
+                      {cal.status === "rejected" && cal.decision_reason && (
+                        <p className="text-[10px] text-red-500 mt-0.5 italic truncate">{t("reason", { reason: cal.decision_reason })}</p>
                       )}
                     </div>
-                    {cal.due_date && (
-                      <div className="shrink-0 text-right hidden sm:block">
-                        <p className="text-[10px] text-gray-400">{t("due")}</p>
-                        <p className="text-xs text-og-text font-mono">{fmtDate(cal.due_date)}</p>
-                      </div>
-                    )}
                   </button>
 
                   {/* Admin void / restore */}
@@ -2260,9 +2391,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 </div>
               );
             })}
-          </div>
         </div>
-      )}
+      </div>
     </div>
     </>
   );
@@ -2700,10 +2830,10 @@ function CalibrationRingCard({
               )}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingBottom: "10px" }}>
-              <span className="text-xs font-bold tabular-nums leading-none" style={{ color: ringColor }}>
+              <span className="text-l font-bold tabular-nums leading-none" style={{ color: ringColor }}>
                 {days !== null ? String(days) : "—"}
               </span>
-              <span className="text-[9px] text-gray-400 mt-0.5 leading-none">{t("days")}</span>
+              <span className="text-xs text-gray-400 mt-0.5 leading-none">{t("days")}</span>
             </div>
           </div>
         </div>
@@ -2839,6 +2969,17 @@ export default function AssetDetailClient() {
   const canEdit = user.role !== "viewer";
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [deepLinkCalId, setDeepLinkCalId] = useState<string | null>(null);
+  // A checker-assigned/decision notification links here with ?cal=<id> —
+  // switch straight to the Calibration tab; CalibrationTab itself reads
+  // deepLinkCalId to select the row and reveal it if hidden by default.
+  useEffect(() => {
+    const calId = new URLSearchParams(window.location.search).get("cal");
+    if (calId) {
+      setDeepLinkCalId(calId);
+      setActiveTab("calibration");
+    }
+  }, []);
   const [profile, setProfile] = useState<AssetProfile | null>(null);
   const [calibrations, setCalibrations] = useState<CalibrationRecord[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
@@ -3377,6 +3518,9 @@ export default function AssetDetailClient() {
               onCalibrationSaved={handleCalibrationSaved}
               onCalibrationDeleted={handleCalibrationDeleted}
               isAdmin={isAdmin}
+              currentUserId={user.id}
+              canRegisterCalibration={user.role !== "viewer"}
+              deepLinkCalId={deepLinkCalId}
               guardBeforeLeavingEdit={guardBeforeLeavingEdit}
             />
           )}

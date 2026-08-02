@@ -30,8 +30,10 @@ guardas.
 Inicia una calibración desde el canal de un activo. El asistente tiene tres pasos:
 
 1. **Información general** — tipo de calibración (**interna**, contra un activo de referencia que posees, o
-   **externa**, de un laboratorio externo), fecha de calibración, quién la realizó, condiciones
-   ambientales, y (para calibraciones internas) el patrón de referencia usado y el procedimiento
+   **externa**, de un laboratorio externo), fecha de calibración, **Registrado por** (una lista
+   desplegable de los miembros de la organización del activo, con tu usuario como valor
+   predeterminado), un revisor opcional **Revisado por**, condiciones ambientales, y (para
+   calibraciones internas) el patrón de referencia usado y el procedimiento
    seguido. Este paso también tiene una casilla **"Solo coeficientes (sin datos en bruto)"** para
    certificados emitidos externamente que indican un polinomio directamente — consulta
    [Calibraciones de solo coeficientes](./coefficients-only.mdx).
@@ -75,22 +77,50 @@ ingresar antes igual obtiene el siguiente número disponible, no un número que 
 cronológicamente. Una versión, una vez asignada, es permanente — nunca se reutiliza (ni siquiera la de una
 anulada, ver abajo) y nunca se renumera.
 
+## Flujo de aprobación
+
+Cada calibración tiene un estado: **válida**, **pendiente de aprobación**, **rechazada**, o
+**anulada**. Solo las calibraciones **válidas** cuentan para la calibración del canal, los
+cálculos de fecha de vencimiento y el análisis de deriva — las otras tres quedan excluidas,
+exactamente como las anuladas siempre lo estuvieron.
+
+Nombrar un revisor en **Revisado por** en el Paso 1 pone la calibración en **pendiente de
+aprobación** en lugar de válida. El revisor recibe una notificación (en la aplicación y por
+correo electrónico si está configurado) y puede, desde la misma fila en la pestaña Calibración:
+
+- **Aprobar** — la calibración pasa a válida, y se notifica a quien la registró.
+- **Rechazar**, con un motivo opcional — la calibración pasa a rechazada, se notifica a quien la
+  registró, y esto es definitivo: una corrección significa registrar una nueva calibración, no
+  editar la anterior.
+
+Solo el revisor asignado, o una anulación de admin/superadmin, puede decidir sobre ella.
+
+Dejar **Revisado por** sin asignar omite el flujo de aprobación por completo — la calibración se
+crea como válida de inmediato, exactamente como antes.
+
+El interruptor **"Mostrar calibraciones válidas"** (solo administradores) controla si se muestran
+o no las calibraciones pendientes, rechazadas y anuladas — desactivado por defecto.
+
 ## Anular una calibración
 
 El historial de calibración nunca se destruye — no hay botón de eliminar, solo **anular**, restringido a
-`admin`/`superadmin`. Anular una entrada (desde el ícono de papelera en su fila en la pestaña Calibración):
+`admin`/`superadmin`. Anular puede aplicarse desde cualquier estado — válida, pendiente de
+aprobación o rechazada — como una anulación siempre disponible. Anular una entrada (desde el ícono de papelera en su fila en la pestaña Calibración):
 
 - La marca como inválida y, opcionalmente, registra por qué.
-- La oculta de la lista de historial de calibración y del resumen del activo por defecto (un administrador puede marcar
-  **Mostrar anuladas** para volver a verla).
+- La oculta de la lista de historial de calibración y del resumen del activo por defecto (un administrador puede activar
+  **Mostrar calibraciones válidas** para volver a verla, junto con cualquier entrada pendiente o rechazada).
 - La excluye de los cálculos de fecha de vencimiento/estado, de modo que una entrada inválida no pueda hacer que un
   activo parezca calibrado cuando no lo está.
 - La excluye del análisis de deriva/estabilidad de la pestaña Estado y de la lista desplegable de comparación de curvas.
 
 El registro, sus puntos de datos y su certificado se preservan todos intactos — anular solo cambia
 un indicador. Un administrador puede **restaurar** una calibración anulada en cualquier momento desde la misma fila, lo cual
-revierte todo lo anterior. Consulta [Calibraciones](/docs/api/calibrations) en la Referencia de la API para
-conocer los payloads exactos de `DELETE /calibrations/{id}` y `POST /calibrations/{id}/restore`.
+revierte todo lo anterior; restaurar siempre devuelve una calibración al estado **válida** — no
+intenta restaurar una calibración previamente rechazada de vuelta a rechazada o pendiente de
+aprobación. Consulta [Calibraciones](/docs/api/calibrations) en la Referencia de la API para
+conocer los payloads exactos de `DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`,
+`POST /calibrations/{id}/approve` y `POST /calibrations/{id}/reject`.
 
 Una exportación completa de activo (la acción Exportar en la página del activo) siempre incluye las calibraciones
 anuladas — es una copia de seguridad histórica completa, no una vista filtrada.

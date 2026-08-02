@@ -101,6 +101,50 @@ def render_calibration_reminder_email(asset_name: str, asset_id: str, due_date: 
     return subject, _wrap(body), text
 
 
+def render_calibration_checker_assigned_email(asset_name: str, asset_id: str, registrant_name: str, cal_url: str) -> tuple[str, str, str]:
+    subject = f"Calibration awaiting your approval: {asset_name} ({asset_id})"
+    body = f"""
+    <h1 style="font-size:18px;color:{_TEXT};margin:0 0 12px;">Calibration awaiting your approval</h1>
+    <p style="font-size:14px;color:{_TEXT};line-height:1.5;">
+      <strong>{registrant_name}</strong> registered a new calibration for <strong>{asset_name}</strong>
+      ({asset_id}) and named you as the checker. It won't be used until you approve or reject it.
+    </p>
+    <p style="margin:20px 0;">
+      <a href="{cal_url}" style="background:{_ACCENT};color:#fff;text-decoration:none;
+        padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;">Review calibration</a>
+    </p>
+    """
+    text = (
+        f"{registrant_name} registered a new calibration for {asset_name} ({asset_id}) and named "
+        f"you as the checker. It won't be used until you approve or reject it.\nReview it here: {cal_url}"
+    )
+    return subject, _wrap(body), text
+
+
+def render_calibration_decided_email(asset_name: str, asset_id: str, approved: bool, reason: str | None, cal_url: str) -> tuple[str, str, str]:
+    if approved:
+        subject = f"Calibration approved: {asset_name} ({asset_id})"
+        headline = "Calibration approved"
+        message = f"Your calibration for <strong>{asset_name}</strong> ({asset_id}) was approved and is now valid."
+    else:
+        subject = f"Calibration rejected: {asset_name} ({asset_id})"
+        headline = "Calibration rejected"
+        message = f"Your calibration for <strong>{asset_name}</strong> ({asset_id}) was rejected."
+        if reason:
+            message += f" Reason: {reason}"
+
+    body = f"""
+    <h1 style="font-size:18px;color:{_TEXT};margin:0 0 12px;">{headline}</h1>
+    <p style="font-size:14px;color:{_TEXT};line-height:1.5;">{message}</p>
+    <p style="margin:20px 0;">
+      <a href="{cal_url}" style="background:{_ACCENT};color:#fff;text-decoration:none;
+        padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;">View calibration</a>
+    </p>
+    """
+    text = f"{message.replace('<strong>', '').replace('</strong>', '')}\n{cal_url}"
+    return subject, _wrap(body), text
+
+
 def render_organization_join_request_email(org_name: str, requester_name: str, requester_email: str, org_url: str) -> tuple[str, str, str]:
     subject = f"{requester_name} requested to join {org_name}"
     body = f"""

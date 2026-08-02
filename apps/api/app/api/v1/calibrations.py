@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 
 from ...core.config import settings
 from ...core.database import get_db
-from ...dependencies.deps import get_current_user, require_admin
+from ...dependencies.deps import get_current_user, require_admin, require_not_viewer
+from ...models.calibration import Calibration
 from ...models.calibration_method import Procedure
-from ...models.user import User
+from ...models.user import User, UserRole
 from ...repositories import asset as asset_repo
 from ...repositories import audit_log as audit_log_repo
 from ...repositories import calibration as cal_repo
@@ -24,6 +25,7 @@ from ...schemas.calibration import (
     CalibrationResponse,
     FrequencyResponsePointResponse,
 )
+from ...services import calibration_notify
 from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
 from ...services.latex_service import LatexCompileError
@@ -33,6 +35,19 @@ from ...services.storage import delete_file, get_presigned_url, sha256_hex, uplo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/calibrations", tags=["Calibrations"])
+
+
+def _require_checker_or_admin(current_user: User, cal: Calibration) -> None:
+    """Only the specific checker assigned to this calibration may decide it —
+    or a global Admin/Super Admin, as an override. Resource-specific, so this
+    is a plain function called inline after `cal` is loaded, not a bare
+    Depends(...) (same reason organizations.py's _require_org_admin isn't one)."""
+    is_admin_override = current_user.role in (UserRole.admin, UserRole.superadmin)
+    if not is_admin_override and current_user.id != cal.checked_by_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the assigned checker can decide this calibration",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -146,11 +161,13 @@ def create_calibration(
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_viewer),
 ) -> CalibrationResponse:
     """Record a new calibration. calibration_version is assigned automatically as
     the next integer for this asset (or asset/sensor) — always increasing and
-    unique, regardless of calibration_date."""
+    unique, regardless of calibration_date. Any role but Viewer may record a
+    calibration — Technician, Admin, and Super Admin are all self-service here,
+    same as asset/organization creation."""
     asset = asset_repo.get_by_id(db, body.asset_id)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
@@ -183,12 +200,17 @@ def create_calibration(
         after_state={
             "calibration_version": cal.calibration_version,
             "calibration_type": cal.calibration_type,
+            "status": cal.status,
         },
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
 
     background_tasks.add_task(notification_svc.notify_new_calibration, cal.id, current_user.id)
+
+    if cal.checked_by_user_id:
+        calibration_notify.notify_checker_assigned(db, cal, asset, current_user)
+        background_tasks.add_task(calibration_notify.send_checker_assigned_email, cal.id)
 
     return cal
 
@@ -253,11 +275,12 @@ def void_calibration(
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
-    if not cal.is_active:
+    if cal.status == "void":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration is already voided")
 
     asset = asset_repo.get_by_id(db, cal.asset_id)
 
+    before_status, before_active = cal.status, cal.is_active
     cal_repo.void_calibration(db, cal, voided_by=current_user.id, reason=reason)
 
     audit_log_repo.create(
@@ -268,8 +291,8 @@ def void_calibration(
         entity_type="calibration",
         entity_id=cal_id,
         entity_asset_id=asset.asset_id if asset else None,
-        before_state={"is_active": True},
-        after_state={"is_active": False, "void_reason": reason},
+        before_state={"is_active": before_active, "status": before_status},
+        after_state={"is_active": False, "status": "void", "void_reason": reason},
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -286,7 +309,7 @@ def restore_calibration(
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
-    if cal.is_active:
+    if cal.status != "void":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration is not voided")
 
     asset = asset_repo.get_by_id(db, cal.asset_id)
@@ -301,11 +324,94 @@ def restore_calibration(
         entity_type="calibration",
         entity_id=cal_id,
         entity_asset_id=asset.asset_id if asset else None,
-        before_state={"is_active": False},
-        after_state={"is_active": True},
+        before_state={"is_active": False, "status": "void"},
+        after_state={"is_active": True, "status": "valid"},
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
+
+    return cal
+
+
+@router.post("/{cal_id}/approve", response_model=CalibrationResponse)
+def approve_calibration(
+    cal_id: uuid.UUID,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CalibrationResponse:
+    """The assigned checker (or an admin override) approves a pending calibration."""
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    _require_checker_or_admin(current_user, cal)
+    if cal.status != "pending_approval":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration is not pending approval")
+
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+
+    cal_repo.approve_calibration(db, cal, decided_by=current_user.id)
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="calibration.approved",
+        entity_type="calibration",
+        entity_id=cal_id,
+        entity_asset_id=asset.asset_id if asset else None,
+        before_state={"is_active": False, "status": "pending_approval"},
+        after_state={"is_active": True, "status": "valid"},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    if asset:
+        calibration_notify.notify_decision(db, cal, asset, approved=True, decided_by=current_user)
+        background_tasks.add_task(calibration_notify.send_decision_email, cal.id, True)
+
+    return cal
+
+
+@router.post("/{cal_id}/reject", response_model=CalibrationResponse)
+def reject_calibration(
+    cal_id: uuid.UUID,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    reason: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CalibrationResponse:
+    """The assigned checker (or an admin override) rejects a pending calibration."""
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    _require_checker_or_admin(current_user, cal)
+    if cal.status != "pending_approval":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration is not pending approval")
+
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+
+    cal_repo.reject_calibration(db, cal, decided_by=current_user.id, reason=reason)
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="calibration.rejected",
+        entity_type="calibration",
+        entity_id=cal_id,
+        entity_asset_id=asset.asset_id if asset else None,
+        before_state={"is_active": False, "status": "pending_approval"},
+        after_state={"is_active": False, "status": "rejected", "decision_reason": reason},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    if asset:
+        calibration_notify.notify_decision(db, cal, asset, approved=False, decided_by=current_user)
+        background_tasks.add_task(calibration_notify.send_decision_email, cal.id, False)
 
     return cal
 

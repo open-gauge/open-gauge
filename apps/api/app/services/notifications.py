@@ -25,17 +25,11 @@ from . import mail_templates
 logger = logging.getLogger(__name__)
 
 
-def org_member_users(
-    db, asset: Asset, calibration: Calibration, exclude_user_id: uuid.UUID | None
-) -> list[User]:
-    """Active Technician/Admin/Super Admin users who are active members of the
-    asset's organization (resolved the same way certificates are: the asset's
-    own organization_id, falling back to its location, then the performing
-    user's organization). Viewers are excluded — they can't act on a
-    calibration, so notifying them would be noise."""
-    organization = resolve_organization(db, asset, calibration)
-    if not organization:
-        return []
+def active_org_members(db, organization, exclude_user_id: uuid.UUID | None) -> list[User]:
+    """Active Technician/Admin/Super Admin users who are active members of
+    `organization`. Viewers are excluded — they can't act on a calibration, so
+    notifying them (or offering them as a Registered By/Checked By candidate)
+    would be noise."""
     query = (
         db.query(User)
         .join(OrganizationMember, OrganizationMember.user_id == User.id)
@@ -49,6 +43,20 @@ def org_member_users(
     if exclude_user_id:
         query = query.filter(User.id != exclude_user_id)
     return query.all()
+
+
+def org_member_users(
+    db, asset: Asset, calibration: Calibration | None, exclude_user_id: uuid.UUID | None
+) -> list[User]:
+    """Active Technician/Admin/Super Admin users who are active members of the
+    asset's organization (resolved the same way certificates are: the asset's
+    own organization_id, falling back to its location, then the performing
+    user's organization — the last fallback is skipped when `calibration` is
+    None, e.g. when resolving candidates before a calibration exists yet)."""
+    organization = resolve_organization(db, asset, calibration)
+    if not organization:
+        return []
+    return active_org_members(db, organization, exclude_user_id)
 
 
 def org_member_emails(

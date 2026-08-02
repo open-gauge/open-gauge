@@ -8,14 +8,15 @@ from sqlalchemy.orm import Session
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user, require_not_viewer
 from ...models.asset import AssetType
-from ...models.user import User
+from ...models.user import User, UserRole
 from ...models.calibration_method import Procedure
 from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import audit_log as audit_log_repo
+from ...repositories import organization as org_repo
 from ...repositories import stored_file as file_repo
 from ...schemas.asset import AssetBulkExportRequest, AssetCreate, AssetDuplicateRequest, AssetListItem, AssetProfileResponse, AssetResponse, AssetUpdate
-from ...schemas.calibration import CalibrationResponse
+from ...schemas.calibration import CalibrationResponse, CalibrationUserResponse
 from ...health import service as health_service
 from ...health.models import AssetHealthResponse, CurveComparisonResponse
 from ...schemas.sensor import SensorChannelResponse
@@ -27,6 +28,9 @@ from ...services import storage as storage_svc
 from ...services import asset_export as export_svc
 from ...services import asset_import as import_svc
 from ...services import audit_log_enrich
+from ...services import notifications as notification_svc
+from ...services import user_profile as user_profile_svc
+from ...services.certificate_service import resolve_organization
 from ...utils.audit_diff import snapshot
 
 router = APIRouter(prefix="/assets", tags=["Assets"])
@@ -347,6 +351,42 @@ def list_asset_calibrations(
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
     return cal_repo.list_by_asset(db, asset.id, skip=skip, limit=limit, include_voided=include_voided)
+
+
+@router.get("/{asset_ref}/calibration-users", response_model=list[CalibrationUserResponse])
+def list_calibration_users(
+    asset_ref: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[CalibrationUserResponse]:
+    """Candidate users for the calibration wizard's Registered By / Checked By
+    dropdowns: active Technician/Admin/Super Admin members of the asset's
+    resolved organization (falling back to the caller's own first
+    organization if the asset's can't be resolved, e.g. a brand-new asset
+    with no location yet). Viewers are excluded — they can't register or
+    check a calibration. The caller themselves is always included even if
+    organization resolution comes up empty (e.g. no organization at all
+    reachable) — the wizard's Registered By must always have at least one
+    selectable option, the person filling it in, or the feature is unusable."""
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    organization = resolve_organization(db, asset, None)
+    if not organization:
+        orgs = org_repo.list_user_organizations(db, current_user.id)
+        organization = orgs[0] if orgs else None
+
+    members = notification_svc.active_org_members(db, organization, exclude_user_id=None) if organization else []
+    if current_user.role != UserRole.viewer and not any(u.id == current_user.id for u in members):
+        members = [current_user, *members]
+
+    return [
+        CalibrationUserResponse(
+            id=u.id, name=u.name, email=u.email,
+            profile_picture_url=user_profile_svc.resolve_picture_url(db, u.profile_picture_id),
+        )
+        for u in members
+    ]
 
 
 @router.get("/{asset_ref}/health", response_model=AssetHealthResponse)

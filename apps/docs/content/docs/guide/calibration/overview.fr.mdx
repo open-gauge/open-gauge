@@ -33,8 +33,10 @@ Démarrez une calibration depuis la voie d'un actif. L'assistant comporte trois 
 
 1. **Informations générales** — type de calibration (**interne**, par rapport à un actif de
    référence que vous possédez, ou **externe**, depuis un laboratoire extérieur), date de
-   calibration, qui l'a effectuée, conditions environnementales, et (pour les calibrations
-   internes) l'étalon de référence utilisé et la procédure suivie. Cette étape possède également
+   calibration, **Enregistré par** (une liste déroulante des membres de l'organisation de
+   l'actif, vous par défaut), un réviseur optionnel **Vérifié par**, conditions
+   environnementales, et (pour les calibrations internes) l'étalon de référence utilisé et la
+   procédure suivie. Cette étape possède également
    une case à cocher **« Coefficients uniquement (sans données brutes) »** pour les certificats
    émis en externe qui indiquent directement un polynôme — voir
    [Calibrations à coefficients uniquement](./coefficients-only.mdx).
@@ -79,15 +81,42 @@ que vous avez oublié de saisir plus tôt reçoit tout de même le prochain num�
 numéro reflétant sa place chronologique. Une version, une fois attribuée, est permanente — elle
 n'est jamais réutilisée (même pas une version annulée, voir ci-dessous) ni renumérotée.
 
+## Flux d'approbation
+
+Chaque calibration a un statut : **valide**, **en attente d'approbation**, **rejetée**, ou
+**annulée**. Seules les calibrations **valides** comptent pour la calibration de la voie, les
+calculs de date d'échéance et l'analyse de dérive — les trois autres sont exclues, exactement
+comme les calibrations annulées l'ont toujours été.
+
+Désigner un réviseur dans **Vérifié par** à l'étape 1 place la calibration en **attente
+d'approbation** plutôt qu'en valide. Le vérificateur est notifié (dans l'application, et par
+e-mail si configuré) et peut, depuis la même ligne dans l'onglet Calibration :
+
+- **Approuver** — la calibration devient valide, et la personne qui l'a enregistrée est notifiée.
+- **Rejeter**, avec un motif optionnel — la calibration devient rejetée, la personne qui l'a
+  enregistrée est notifiée, et ceci est définitif : une correction implique d'enregistrer une
+  nouvelle calibration, pas de modifier l'ancienne.
+
+Seul le vérificateur assigné, ou une dérogation admin/superadmin, peut trancher.
+
+Laisser **Vérifié par** vide ignore complètement le flux d'approbation — la calibration est créée
+valide immédiatement, exactement comme avant.
+
+Le commutateur **« Afficher les calibrations valides »** (réservé aux administrateurs) contrôle si
+les calibrations en attente, rejetées et annulées sont affichées du tout — désactivé par défaut.
+
 ## Annuler une calibration
 
 L'historique de calibration n'est jamais détruit — il n'y a pas de bouton de suppression, seulement
-un **annuler**, réservé à `admin`/`superadmin`. Annuler une entrée (depuis l'icône de corbeille
+un **annuler**, réservé à `admin`/`superadmin`. Annuler est accessible depuis n'importe quel
+statut — valide, en attente d'approbation, ou rejetée — en tant que dérogation toujours
+disponible. Annuler une entrée (depuis l'icône de corbeille
 sur sa ligne dans l'onglet Calibration) :
 
 - La marque comme invalide et, optionnellement, enregistre pourquoi.
 - La masque de la liste d'historique de calibration et de l'aperçu de l'actif par défaut (un
-  administrateur peut cocher **Afficher les annulées** pour la revoir).
+  administrateur peut activer **Afficher les calibrations valides** pour la revoir, ainsi que
+  toute entrée en attente ou rejetée).
 - L'exclut des calculs de date d'échéance/statut, de sorte qu'une entrée invalide ne puisse pas
   faire paraître un actif calibré alors qu'il ne l'est pas.
 - L'exclut de l'analyse de dérive/stabilité de l'onglet Santé et de la liste déroulante de
@@ -95,9 +124,12 @@ sur sa ligne dans l'onglet Calibration) :
 
 L'enregistrement, ses points de données, et son certificat sont tous préservés intacts —
 annuler ne fait que basculer un indicateur. Un administrateur peut **restaurer** une calibration
-annulée à tout moment depuis la même ligne, ce qui inverse tout ce qui précède. Voir
+annulée à tout moment depuis la même ligne, ce qui inverse tout ce qui précède ; restaurer ramène
+toujours une calibration à l'état **valide** — cela ne tente pas de restaurer une calibration
+précédemment rejetée à l'état rejetée ou en attente d'approbation. Voir
 [Calibrations](/docs/api/calibrations) dans la référence API pour les charges utiles exactes de
-`DELETE /calibrations/{id}` et `POST /calibrations/{id}/restore`.
+`DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`, `POST /calibrations/{id}/approve`
+et `POST /calibrations/{id}/reject`.
 
 Un export complet d'actif (l'action Exporter sur la page de l'actif) inclut toujours les
 calibrations annulées — c'est une sauvegarde historique complète, pas une vue filtrée.

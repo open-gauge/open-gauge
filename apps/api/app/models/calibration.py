@@ -104,3 +104,18 @@ class Calibration(Base):
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     voided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     void_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Approval workflow. status is the single source of truth for a calibration's
+    # lifecycle state ("valid" | "pending_approval" | "rejected" | "void");
+    # is_active is kept in sync as (status == "valid") at every write site so the
+    # many existing is_active-based filters (due-date calc, dashboard, reminders)
+    # correctly treat a pending-approval or rejected calibration as "not current"
+    # with no changes of their own. checked_by_* mirrors performed_by_* (a
+    # denormalized snapshot of the assigned reviewer); decided_by/decided_at/
+    # decision_reason record who approved/rejected it and, for a rejection, why.
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="valid", server_default="valid")
+    checked_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    checked_by_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

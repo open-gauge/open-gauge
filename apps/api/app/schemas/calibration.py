@@ -4,6 +4,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+# "valid" (used for the channel's calibration), "pending_approval" (awaiting the
+# assigned checker's decision), "rejected" (decided against, terminal), "void"
+# (admin override, reachable from any status). Plain VARCHAR + app-level closed
+# list, matching every other calibration-level "enum" in this model.
+CALIBRATION_STATUSES = ("valid", "pending_approval", "rejected", "void")
+
 
 # ------------------------------------------------------------------ #
 # Analyze endpoint                                                    #
@@ -145,6 +151,8 @@ class CalibrationCreate(BaseModel):
     due_date: date
     performed_by_name: str = Field(min_length=1, max_length=255)
     performed_by_user_id: uuid.UUID | None = None
+    checked_by_user_id: uuid.UUID | None = None
+    checked_by_name: str | None = None
     external_lab_name: str | None = None
     notes: str | None = None
 
@@ -212,6 +220,19 @@ class CalibrationCreate(BaseModel):
     points: list[CalibrationPointInline] = Field(default_factory=list)
 
 
+class CalibrationUserResponse(BaseModel):
+    """A candidate for the calibration wizard's Registered By / Checked By
+    dropdowns — an active Technician/Admin/Super Admin member of the asset's
+    organization."""
+
+    id: uuid.UUID
+    name: str
+    email: str
+    profile_picture_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class CalibrationResponse(BaseModel):
     id: uuid.UUID
     asset_id: uuid.UUID
@@ -219,6 +240,8 @@ class CalibrationResponse(BaseModel):
     due_date: date
     performed_by_user_id: uuid.UUID | None
     performed_by_name: str
+    checked_by_user_id: uuid.UUID | None = None
+    checked_by_name: str | None = None
     external_lab_name: str | None
     notes: str | None
     calibration_file_id: uuid.UUID | None
@@ -291,5 +314,11 @@ class CalibrationResponse(BaseModel):
     voided_at: datetime | None = None
     voided_by: uuid.UUID | None = None
     void_reason: str | None = None
+
+    # Approval workflow
+    status: str = "valid"
+    decided_by: uuid.UUID | None = None
+    decided_at: datetime | None = None
+    decision_reason: str | None = None
 
     model_config = {"from_attributes": True}

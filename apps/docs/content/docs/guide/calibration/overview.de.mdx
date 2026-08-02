@@ -31,8 +31,9 @@ geschieht nur einmal, beim Speichern.
 Starten Sie eine Kalibrierung vom Kanal einer Anlage aus. Der Assistent hat drei Schritte:
 
 1. **Allgemeine Informationen** — Kalibrierart (**intern**, gegen eine Referenz-Anlage, die Ihnen
-   gehört, oder **extern**, von einem externen Labor), Kalibrierdatum, wer sie durchgeführt hat,
-   Umgebungsbedingungen und (für interne Kalibrierungen) das verwendete Referenznormal und das
+   gehört, oder **extern**, von einem externen Labor), Kalibrierdatum, **Registriert von** (ein
+   Dropdown der Organisationsmitglieder der Anlage, standardmäßig Sie selbst), ein optionaler
+   Prüfer **Geprüft von**, Umgebungsbedingungen und (für interne Kalibrierungen) das verwendete Referenznormal und das
    befolgte Verfahren. Dieser Schritt hat auch ein Kontrollkästchen **"Nur Koeffizienten (keine
    Rohdaten)"** für extern ausgestellte Zertifikate, die direkt ein Polynom angeben — siehe
    [Kalibrierungen nur mit Koeffizienten](./coefficients-only.mdx).
@@ -77,24 +78,54 @@ Nummer, nicht eine Nummer, die ihre chronologische Einordnung widerspiegelt. Ein
 Version ist dauerhaft — sie wird nie wiederverwendet (auch nicht die einer entwerteten Kalibrierung,
 siehe unten) und nie neu nummeriert.
 
+## Genehmigungsworkflow
+
+Jede Kalibrierung hat einen Status: **gültig**, **ausstehende Genehmigung**, **abgelehnt** oder
+**entwertet**. Nur **gültige** Kalibrierungen zählen für die Kalibrierung des Kanals,
+Fälligkeitsdatumsberechnungen und die Driftanalyse — die anderen drei werden ausgeschlossen,
+genau wie es bei entwerteten Kalibrierungen schon immer der Fall war.
+
+Wird in Schritt 1 ein Prüfer unter **Geprüft von** angegeben, wechselt die Kalibrierung in den
+Status **ausstehende Genehmigung** statt gültig. Der Prüfer wird benachrichtigt (in der App und
+per E-Mail, falls konfiguriert) und kann von derselben Zeile im Reiter Kalibrierung aus:
+
+- **Genehmigen** — die Kalibrierung wird gültig, und die registrierende Person wird
+  benachrichtigt.
+- **Ablehnen**, mit optionaler Begründung — die Kalibrierung wird abgelehnt, die registrierende
+  Person wird benachrichtigt, und dies ist endgültig: eine Korrektur bedeutet, eine neue
+  Kalibrierung zu registrieren, nicht die alte zu bearbeiten.
+
+Nur der zugewiesene Prüfer oder eine Admin-/Superadmin-Übersteuerung kann darüber entscheiden.
+
+Bleibt **Geprüft von** leer, wird der Workflow vollständig übersprungen — die Kalibrierung wird
+sofort als gültig erstellt, genau wie zuvor.
+
+Der Schalter **„Gültige Kalibrierungen anzeigen"** (nur für Admins) steuert, ob ausstehende,
+abgelehnte und entwertete Kalibrierungen überhaupt angezeigt werden — standardmäßig deaktiviert.
+
 ## Eine Kalibrierung entwerten
 
 Die Kalibrierhistorie wird nie zerstört — es gibt keine Löschen-Schaltfläche, nur **Entwerten**,
-beschränkt auf `admin`/`superadmin`. Das Entwerten eines Eintrags (über das Papierkorb-Symbol in
-seiner Zeile im Reiter Kalibrierung):
+beschränkt auf `admin`/`superadmin`. Entwerten ist von jedem Status aus erreichbar — gültig,
+ausstehende Genehmigung oder abgelehnt — als jederzeit verfügbare Übersteuerung. Das Entwerten
+eines Eintrags (über das Papierkorb-Symbol in seiner Zeile im Reiter Kalibrierung):
 
 - Markiert ihn als ungültig und hält optional fest, warum.
 - Blendet ihn standardmäßig aus der Liste der Kalibrierhistorie und der Anlagenübersicht aus (ein
-  Admin kann **Entwertete anzeigen** aktivieren, um ihn wieder zu sehen).
+  Admin kann **Gültige Kalibrierungen anzeigen** aktivieren, um ihn zusammen mit etwaigen
+  ausstehenden oder abgelehnten Einträgen wieder zu sehen).
 - Schließt ihn von Fälligkeitsdatum-/Statusberechnungen aus, sodass ein ungültiger Eintrag eine
   Anlage nicht als kalibriert erscheinen lassen kann, obwohl sie es nicht ist.
 - Schließt ihn von der Drift-/Stabilitätsanalyse im Reiter Zustand und dem Kurvenvergleichs-Dropdown aus.
 
 Der Datensatz, seine Datenpunkte und sein Zertifikat bleiben allesamt unverändert erhalten —
 das Entwerten schaltet nur ein Kennzeichen um. Ein Admin kann eine entwertete Kalibrierung jederzeit
-aus derselben Zeile **wiederherstellen**, was all das Obige rückgängig macht. Siehe
-[Kalibrierungen](/docs/api/calibrations) in der API-Referenz für die genauen Payloads von
-`DELETE /calibrations/{id}` und `POST /calibrations/{id}/restore`.
+aus derselben Zeile **wiederherstellen**, was all das Obige rückgängig macht; die
+Wiederherstellung setzt eine Kalibrierung stets auf den Status **gültig** zurück — sie versucht
+nicht, eine zuvor abgelehnte Kalibrierung wieder auf abgelehnt oder ausstehende Genehmigung
+zurückzusetzen. Siehe [Kalibrierungen](/docs/api/calibrations) in der API-Referenz für die genauen
+Payloads von `DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`,
+`POST /calibrations/{id}/approve` und `POST /calibrations/{id}/reject`.
 
 Ein vollständiger Anlagenexport (die Aktion Exportieren auf der Anlagenseite) enthält immer
 entwertete Kalibrierungen — es ist ein vollständiges historisches Backup, keine gefilterte Ansicht.

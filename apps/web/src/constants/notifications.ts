@@ -7,6 +7,8 @@
 export const NOTIFICATION_CATEGORIES = [
   "calibration_due",
   "calibration_created",
+  "calibration_checker_assigned",
+  "calibration_decided",
   "organization_join_request",
   "organization_join_decision",
 ] as const;

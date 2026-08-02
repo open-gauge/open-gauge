@@ -1,7 +1,7 @@
 import { apiBlob, apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetCreateBody, AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
-import type { CalibrationRecord, CalibrationPoint, FrequencyResponsePoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody } from "@/types/calibration";
+import type { CalibrationRecord, CalibrationPoint, FrequencyResponsePoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationUser } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 
@@ -223,6 +223,27 @@ export async function voidCalibration(calId: string, reason?: string): Promise<v
 export async function restoreCalibration(calId: string): Promise<CalibrationRecord> {
   return apiFetch<CalibrationRecord>(`/api/v1/calibrations/${calId}/restore`, {
     method: "POST",
+    headers: tokenHeader(),
+  });
+}
+
+export async function approveCalibration(calId: string): Promise<CalibrationRecord> {
+  return apiFetch<CalibrationRecord>(`/api/v1/calibrations/${calId}/approve`, {
+    method: "POST",
+    headers: tokenHeader(),
+  });
+}
+
+export async function rejectCalibration(calId: string, reason?: string): Promise<CalibrationRecord> {
+  const qs = reason ? `?${new URLSearchParams({ reason })}` : "";
+  return apiFetch<CalibrationRecord>(`/api/v1/calibrations/${calId}/reject${qs}`, {
+    method: "POST",
+    headers: tokenHeader(),
+  });
+}
+
+export async function listCalibrationUsers(assetId: string): Promise<CalibrationUser[]> {
+  return apiFetch<CalibrationUser[]>(`/api/v1/assets/${assetId}/calibration-users`, {
     headers: tokenHeader(),
   });
 }

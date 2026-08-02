@@ -30,9 +30,10 @@ save.
 Start a calibration from an asset's channel. The wizard has three steps:
 
 1. **General info** — calibration type (**internal**, against a reference asset you own, or
-   **external**, from an outside lab), calibration date, who performed it, environmental
-   conditions, and (for internal calibrations) the reference standard used and procedure
-   followed. This step also has a **"Coefficients only (no raw data)"** checkbox for
+   **external**, from an outside lab), calibration date, **Registered by** (a dropdown of the
+   asset's organization members, defaulting to you), an optional **Checked by** reviewer,
+   environmental conditions, and (for internal calibrations) the reference standard used and
+   procedure followed. This step also has a **"Coefficients only (no raw data)"** checkbox for
    externally-issued certificates that state a polynomial directly — see
    [Coefficients-only calibrations](./coefficients-only.mdx).
 2. **Raw data** — enter (reference, measured) point pairs. See
@@ -74,22 +75,52 @@ earlier still gets the next available number, not a number reflecting where it f
 chronologically. A version, once assigned, is permanent — it's never reused (not even a voided
 one, below) and never renumbered.
 
+## Approval workflow
+
+Every calibration has a **status**: **valid** (used for the channel's calibration, due-date
+calculations, and drift analysis), **pending approval**, **rejected**, or **void**. Only a
+**valid** calibration is used — the other three are all excluded from due-date/status
+calculations and Health tab drift analysis, the same way a voided one always has been.
+
+Naming a **Checked by** reviewer on Step 1 puts the new calibration into **pending approval**
+instead of valid. The checker gets a notification (in-app, and by email if configured) and, from
+the same row in the Calibration tab, can:
+
+- **Approve** it — the calibration becomes **valid**, and the person who registered it is
+  notified.
+- **Reject** it, with an optional reason — the calibration becomes **rejected**, and the
+  registrant is notified. A rejected calibration is terminal: correcting it means registering a
+  new calibration, not editing the old one, consistent with calibration history never being
+  changed in place.
+
+Only the assigned checker, or an `admin`/`superadmin` as an override, can approve or reject a
+given calibration. Leaving **Checked by** unset skips the workflow entirely — the calibration is
+created as **valid** immediately, exactly as before this feature existed.
+
+The **Show Valid Calibrations** toggle in the Calibration tab (admin-only) controls whether
+pending-approval, rejected, and voided calibrations are shown at all — off by default, so the
+history stays focused on what's actually in effect.
+
 ## Voiding a calibration
 
 Calibration history is never destroyed — there is no delete button, only **void**, restricted to
-`admin`/`superadmin`. Voiding an entry (from the trash icon on its row in the Calibration tab):
+`admin`/`superadmin`. Void is reachable from any status (valid, pending approval, or rejected) as
+an always-available override. Voiding an entry (from the trash icon on its row in the Calibration
+tab):
 
 - Marks it invalid and, optionally, records why.
-- Hides it from the calibration history list and asset overview by default (an admin can check
-  **Show voided** to see it again).
+- Hides it from the calibration history list and asset overview by default (an admin can turn on
+  **Show Valid Calibrations** to see it again, alongside any pending or rejected entries).
 - Excludes it from due-date/status calculations, so an invalid entry can't make an asset look
   calibrated when it isn't.
 - Excludes it from Health tab drift/stability analysis and the curve-comparison dropdown.
 
 The record, its data points, and its certificate are all preserved untouched — voiding only flips
-a flag. An admin can **restore** a voided calibration at any time from the same row, which
-reverses all of the above. See [Calibrations](/docs/api/calibrations) in the API Reference for
-the exact `DELETE /calibrations/{id}` and `POST /calibrations/{id}/restore` payloads.
+a flag. An admin can **restore** a voided calibration at any time from the same row, which always
+returns it to **valid** (it does not attempt to restore a previously-rejected calibration back to
+"rejected" or "pending approval"). See [Calibrations](/docs/api/calibrations) in the API
+Reference for the exact `DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`,
+`POST /calibrations/{id}/approve`, and `POST /calibrations/{id}/reject` payloads.
 
 A full asset export (the Export action on the asset page) always includes voided calibrations —
 it's a complete historical backup, not a filtered view.

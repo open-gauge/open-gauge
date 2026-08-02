@@ -602,10 +602,12 @@ def build_random_preview_context(num_points: int = 10) -> tuple[dict, dict[str, 
 # Organization / template resolution
 # ---------------------------------------------------------------------------
 
-def resolve_organization(db: Session, asset: "Asset", calibration: "Calibration") -> "Organization | None":
+def resolve_organization(db: Session, asset: "Asset", calibration: "Calibration | None") -> "Organization | None":
     """The asset's own organization_id (authoritative — set directly when the
     asset was created), falling back to its location's org, then the
-    performing user's first active organization membership."""
+    performing user's first active organization membership. The last fallback
+    is skipped when `calibration` is None (e.g. resolving candidates for a
+    calibration that doesn't exist yet)."""
     if asset.organization_id:
         org = db.query(Organization).filter(Organization.id == asset.organization_id).first()
         if org:
@@ -616,7 +618,7 @@ def resolve_organization(db: Session, asset: "Asset", calibration: "Calibration"
             org = db.query(Organization).filter(Organization.id == location.organization_id).first()
             if org:
                 return org
-    if calibration.performed_by_user_id:
+    if calibration and calibration.performed_by_user_id:
         orgs = org_repo.list_user_organizations(db, calibration.performed_by_user_id)
         if orgs:
             return orgs[0]

@@ -18,6 +18,8 @@ class NotificationCategory(str, enum.Enum):
 
     calibration_due = "calibration_due"
     calibration_created = "calibration_created"
+    calibration_checker_assigned = "calibration_checker_assigned"
+    calibration_decided = "calibration_decided"
     organization_join_request = "organization_join_request"
     organization_join_decision = "organization_join_decision"
 

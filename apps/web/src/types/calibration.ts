@@ -2,6 +2,8 @@ export type DistributionType = "normal" | "t" | "chi_squared";
 
 export type DecisionRule = "simple_acceptance" | "guard_band_w_uncertainty" | "shared_risk";
 
+export type CalibrationStatus = "valid" | "pending_approval" | "rejected" | "void";
+
 export interface ConformityStatement {
   decision_rule: string;
   specification: string | null;
@@ -17,6 +19,8 @@ export interface CalibrationRecord {
   due_date: string;
   performed_by_name: string;
   performed_by_user_id: string | null;
+  checked_by_user_id: string | null;
+  checked_by_name: string | null;
   external_lab_name: string | null;
   notes: string | null;
   calibration_file_id: string | null;
@@ -89,6 +93,19 @@ export interface CalibrationRecord {
   voided_at: string | null;
   voided_by: string | null;
   void_reason: string | null;
+
+  // Approval workflow
+  status: CalibrationStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_reason: string | null;
+}
+
+export interface CalibrationUser {
+  id: string;
+  name: string;
+  email: string;
+  profile_picture_url: string | null;
 }
 
 export interface CalibrationPoint {
@@ -206,6 +223,9 @@ export interface WizardStep1 {
   calibration_date: string;
   calibration_type: "internal" | "external";
   performed_by_name: string;
+  performed_by_user_id: string | null;
+  checked_by_user_id: string | null;
+  checked_by_name: string | null;
   calibration_interval: string;
   // external only
   external_lab_name: string;
@@ -255,6 +275,8 @@ export interface CalibrationCreateBody {
   due_date: string;
   performed_by_name: string;
   performed_by_user_id?: string | null;
+  checked_by_user_id?: string | null;
+  checked_by_name?: string | null;
   external_lab_name?: string | null;
   notes?: string | null;
 

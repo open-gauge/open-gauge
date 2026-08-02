@@ -417,6 +417,7 @@ export function addCalibration(record: CalibrationRecord, points: CalibrationPoi
 export function voidCalibration(id: string, reason?: string): CalibrationRecord | undefined {
   const cal = getState().calibrations.find((c) => c.id === id);
   if (!cal) return undefined;
+  cal.status = "void";
   cal.is_active = false;
   cal.voided_at = nowIso();
   cal.void_reason = reason ?? null;
@@ -426,9 +427,37 @@ export function voidCalibration(id: string, reason?: string): CalibrationRecord 
   return cal;
 }
 
+export function approveCalibration(id: string, decidedBy: string): CalibrationRecord | undefined {
+  const cal = getState().calibrations.find((c) => c.id === id);
+  if (!cal) return undefined;
+  cal.status = "valid";
+  cal.is_active = true;
+  cal.decided_by = decidedBy;
+  cal.decided_at = nowIso();
+  const asset = getState().assets.find((a) => a.id === cal.asset_id);
+  if (asset) recomputeAssetDerived(asset);
+  persist();
+  return cal;
+}
+
+export function rejectCalibration(id: string, decidedBy: string, reason?: string): CalibrationRecord | undefined {
+  const cal = getState().calibrations.find((c) => c.id === id);
+  if (!cal) return undefined;
+  cal.status = "rejected";
+  cal.is_active = false;
+  cal.decided_by = decidedBy;
+  cal.decided_at = nowIso();
+  cal.decision_reason = reason ?? null;
+  const asset = getState().assets.find((a) => a.id === cal.asset_id);
+  if (asset) recomputeAssetDerived(asset);
+  persist();
+  return cal;
+}
+
 export function restoreCalibration(id: string): CalibrationRecord | undefined {
   const cal = getState().calibrations.find((c) => c.id === id);
   if (!cal) return undefined;
+  cal.status = "valid";
   cal.is_active = true;
   cal.voided_at = null;
   cal.voided_by = null;
@@ -863,6 +892,16 @@ export function restoreOrganization(id: string, userId: string): Organization | 
 }
 
 // --- Members ---------------------------------------------------------------
+
+export function listCalibrationUsers(assetId: string): { id: string; name: string; email: string; profile_picture_url: string | null }[] {
+  const orgId = getAssetProfile(assetId)?.organization_id ?? null;
+  const memberIds = orgId
+    ? new Set(getState().organizationMembers.filter((m) => m.organization_id === orgId && m.active).map((m) => m.user_id))
+    : new Set(getState().users.map((u) => u.id));
+  return getState().users
+    .filter((u) => memberIds.has(u.id) && u.is_active && u.role !== "viewer")
+    .map((u) => ({ id: u.id, name: u.name, email: u.email, profile_picture_url: u.profile_picture_url ?? null }));
+}
 
 export function listOrgMembers(orgId: string): OrganizationMember[] {
   const usersById = new Map(getState().users.map((u) => [u.id, u]));

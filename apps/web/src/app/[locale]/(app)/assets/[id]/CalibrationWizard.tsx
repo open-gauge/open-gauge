@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { AssetProfile } from "@/types/asset";
 import type {
   AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody,
-  CalibrationPointInline, DecisionRule,
+  CalibrationPointInline, CalibrationUser, DecisionRule,
   DistributionType, FrequencyResponsePointInline, WizardRawPoint,
 } from "@/types/calibration";
-import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listProcedures } from "@/services/asset.service";
+import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listCalibrationUsers, listProcedures } from "@/services/asset.service";
 import { listCalibrationLabs } from "@/services/location.service";
 import { useTranslations } from "next-intl";
 import { COLORS } from "@/lib/tokens";
@@ -179,7 +179,9 @@ interface Step1State {
   calibration_date: string;
   calibration_type: "internal" | "external";
   performed_by_name: string;
-  performed_by_other: boolean;
+  performed_by_user_id: string | null;
+  checked_by_user_id: string | null;
+  checked_by_name: string | null;
   calibration_interval: string;
   external_lab_name: string;
   external_lab_certificate_number: string;
@@ -268,7 +270,9 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     calibration_date: todayIso(),
     calibration_type: "internal",
     performed_by_name: user.name,
-    performed_by_other: false,
+    performed_by_user_id: user.id,
+    checked_by_user_id: null,
+    checked_by_name: null,
     calibration_interval: "12",
     external_lab_name: "",
     external_lab_certificate_number: "",
@@ -291,6 +295,12 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   const [referenceAssets, setReferenceAssets] = useState<{ id: string; name: string; asset_id: string }[]>([]);
   const [calibrationMethods, setCalibrationMethods] = useState<{ id: string; name: string }[]>([]);
   const [calibrationLabs, setCalibrationLabs] = useState<{ id: string; name: string }[]>([]);
+
+  // Candidates for the Registered By / Checked By dropdowns (loaded once)
+  const [calibrationUsers, setCalibrationUsers] = useState<CalibrationUser[]>([]);
+  useEffect(() => {
+    listCalibrationUsers(assetId).then(setCalibrationUsers).catch(() => {});
+  }, [assetId]);
 
   // Step 2: raw data
   const [inputMode, setInputMode] = useState<"manual" | "csv">("manual");
@@ -399,7 +409,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   }
 
   const step1Valid =
-    step1.performed_by_name.trim() !== "" &&
+    step1.performed_by_user_id !== null &&
     step1.sensor_id !== "" &&
     step1.calibration_interval.trim() !== "" &&
     !isNaN(parseInt(step1.calibration_interval)) &&
@@ -810,11 +820,9 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         calibration_date: step1.calibration_date,
         due_date: dueDate.toISOString().slice(0, 10),
         performed_by_name: step1.performed_by_name,
-        // Only tie the calibration to a real user account when "current user" is
-        // selected (not "Other…") — an external/free-text performer isn't a system
-        // user, so there's no signature to look up for them. This is what lets the
-        // certificate's signature-lookup (by performed_by_user_id) find anything.
-        performed_by_user_id: step1.performed_by_other ? null : user.id,
+        performed_by_user_id: step1.performed_by_user_id,
+        checked_by_user_id: step1.checked_by_user_id,
+        checked_by_name: step1.checked_by_name,
         calibration_type: step1.calibration_type,
         external_lab_name: step1.external_lab_name || null,
         external_lab_certificate_number: step1.external_lab_certificate_number || null,
@@ -891,6 +899,8 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               onChange={setStep1}
               profile={profile}
               currentUserName={user.name}
+              currentUserId={user.id}
+              calibrationUsers={calibrationUsers}
               referenceAssets={referenceAssets}
               calibrationMethods={calibrationMethods}
               calibrationLabs={calibrationLabs}
@@ -1070,13 +1080,15 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
 // ---------------------------------------------------------------------------
 
 function Step1({
-  state, onChange, profile, currentUserName, referenceAssets, calibrationMethods,
+  state, onChange, profile, currentUserName, currentUserId, calibrationUsers, referenceAssets, calibrationMethods,
   calibrationLabs, onReferenceUnitChange, onMeasuredUnitChange,
 }: {
   state: Step1State;
   onChange: (s: Step1State) => void;
   profile: AssetProfile;
   currentUserName: string;
+  currentUserId: string;
+  calibrationUsers: CalibrationUser[];
   referenceAssets: { id: string; name: string; asset_id: string }[];
   calibrationMethods: { id: string; name: string }[];
   calibrationLabs: { id: string; name: string }[];
@@ -1121,45 +1133,40 @@ function Step1({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* Performed by: dropdown with current user + Other */}
-        <div className="flex flex-col gap-1">
-          <WLabel text={t("performedBy")} required />
-          {!state.performed_by_other ? (
-            <select
-              value={state.performed_by_name || currentUserName}
-              onChange={(e) => {
-                if (e.target.value === "__other__") {
-                  onChange({ ...state, performed_by_other: true, performed_by_name: "" });
-                } else {
-                  onChange({ ...state, performed_by_name: e.target.value });
-                }
-              }}
-              className={`${IB} ${IB_OK}`}
-            >
-              <option value={currentUserName}>{currentUserName}</option>
-              <option value="__other__">{t("other")}</option>
-            </select>
-          ) : (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={state.performed_by_name}
-                onChange={(e) => onChange({ ...state, performed_by_name: e.target.value })}
-                placeholder={t("nameOrOrganization")}
-                className={`${IB} ${IB_OK} flex-1`}
-                autoFocus
-              />
-              <button
-                type="button"
-                title={t("useMyName")}
-                onClick={() => onChange({ ...state, performed_by_other: false, performed_by_name: currentUserName })}
-                className="shrink-0 text-gray-400 hover:text-og-text text-lg leading-none px-1"
-              >
-                ×
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Registered by: dropdown of the asset's org members, defaults to current user */}
+        <WSelect
+          label={t("registeredBy")}
+          value={state.performed_by_user_id ?? ""}
+          onChange={(v) => {
+            const selected = calibrationUsers.find((u) => u.id === v);
+            onChange({
+              ...state,
+              performed_by_user_id: v || null,
+              performed_by_name: selected?.name ?? "",
+              // The registrant can't also be their own checker.
+              checked_by_user_id: state.checked_by_user_id === v ? null : state.checked_by_user_id,
+              checked_by_name: state.checked_by_user_id === v ? null : state.checked_by_name,
+            });
+          }}
+          options={calibrationUsers.map((u) => ({ value: u.id, label: u.id === currentUserId ? currentUserName : u.name }))}
+          required
+        />
+        {/* Checked by: optional — same candidate list, minus whoever is Registered By */}
+        <WSelect
+          label={t("checkedBy")}
+          value={state.checked_by_user_id ?? ""}
+          onChange={(v) => {
+            const selected = calibrationUsers.find((u) => u.id === v);
+            onChange({ ...state, checked_by_user_id: v || null, checked_by_name: selected?.name ?? null });
+          }}
+          options={calibrationUsers
+            .filter((u) => u.id !== state.performed_by_user_id)
+            .map((u) => ({ value: u.id, label: u.id === currentUserId ? currentUserName : u.name }))}
+          placeholder={t("checkedByNone")}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <WInput
           label={t("calibrationIntervalMonths")}
           type="number"

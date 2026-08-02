@@ -4,8 +4,10 @@ Tests for calibration records.
 Covers: create calibration, list calibrations for asset, calibration date
 ordering (most recent first), analyze endpoint (ephemeral), atomic create
 with embedded polynomial/regression fields + points, GET /{id}/points,
-authentication guards, version auto-increment/renumbering, and the
-void/restore soft-delete flow.
+authentication guards, version auto-increment/renumbering, the void/restore
+soft-delete flow, the approve/reject approval workflow (checker assignment,
+checker-or-admin authorization, status transitions, notifications), and
+GET /assets/{id}/calibration-users.
 """
 import uuid
 
@@ -30,6 +32,24 @@ def _viewer_headers(db: Session) -> dict:
     db.add(viewer)
     db.flush()
     return {"Authorization": f"Bearer {create_access_token({'sub': str(viewer.id)})}"}
+
+
+def _make_user(db: Session, role: UserRole = UserRole.technician, name: str = "Test User") -> User:
+    user = User(
+        id=uuid.uuid4(),
+        email=f"user_{uuid.uuid4().hex[:8]}@opengauge.test",
+        name=name,
+        hashed_password=hash_password("Testpass123!"),
+        role=role,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
+def _headers_for(user: User) -> dict:
+    return {"Authorization": f"Bearer {create_access_token({'sub': str(user.id)})}"}
 
 
 # ---------------------------------------------------------------------------
@@ -961,4 +981,247 @@ class TestDownloadCertificateWithTemplate:
         cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
         r = client.get(f"/api/v1/calibrations/{cal['id']}/certificate/download")
         assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Calibration approval workflow: POST /calibrations/{id}/approve, /reject
+# ---------------------------------------------------------------------------
+
+def _payload_with_checker(asset_id: str, checker: User) -> dict:
+    return {
+        "asset_id": asset_id,
+        "calibration_date": "2024-03-15",
+        "due_date": "2025-03-15",
+        "performed_by_name": "Lab Tech A",
+        "checked_by_user_id": str(checker.id),
+        "checked_by_name": checker.name,
+        "notes": "Annual calibration",
+    }
+
+
+class TestCalibrationApproval:
+    def test_naming_a_checker_starts_pending_approval(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        assert cal["status"] == "pending_approval"
+        assert cal["is_active"] is False
+        assert cal["checked_by_user_id"] == str(checker.id)
+
+    def test_no_checker_is_valid_immediately(
+        self, client: TestClient, auth_headers: dict, asset: dict, calibration: dict
+    ) -> None:
+        assert calibration["status"] == "valid"
+        assert calibration["is_active"] is True
+        assert calibration["checked_by_user_id"] is None
+
+    def test_checker_can_approve(self, client: TestClient, auth_headers: dict, db: Session, asset: dict) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/approve", headers=_headers_for(checker))
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["status"] == "valid"
+        assert body["is_active"] is True
+        assert body["decided_by"] == str(checker.id)
+        assert body["decided_at"] is not None
+
+    def test_checker_can_reject_with_reason(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        r = client.post(
+            f"/api/v1/calibrations/{cal['id']}/reject",
+            params={"reason": "reference standard uncertainty not documented"},
+            headers=_headers_for(checker),
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["status"] == "rejected"
+        assert body["is_active"] is False
+        assert body["decision_reason"] == "reference standard uncertainty not documented"
+
+    def test_checker_can_reject_without_reason(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/reject", headers=_headers_for(checker))
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "rejected"
+
+    def test_non_checker_non_admin_cannot_approve(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        outsider = _make_user(db, UserRole.technician, "Outsider")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/approve", headers=_headers_for(outsider))
+        assert r.status_code == 403
+
+    def test_non_checker_non_admin_cannot_reject(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        outsider = _make_user(db, UserRole.technician, "Outsider")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/reject", headers=_headers_for(outsider))
+        assert r.status_code == 403
+
+    def test_global_admin_override_can_approve(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        # auth_headers's user is a global admin but not the assigned checker.
+        checker = _make_user(db, UserRole.technician, "Checker")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/approve", headers=auth_headers)
+        assert r.status_code == 200, r.text
+
+    def test_approve_on_non_pending_calibration_is_rejected(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.post(f"/api/v1/calibrations/{calibration['id']}/approve", headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_reject_on_non_pending_calibration_is_rejected(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.post(f"/api/v1/calibrations/{calibration['id']}/reject", headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_unknown_calibration_returns_404_on_approve(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.post(f"/api/v1/calibrations/{uuid.uuid4()}/approve", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_requires_authentication(self, client: TestClient, calibration: dict) -> None:
+        r = client.post(f"/api/v1/calibrations/{calibration['id']}/approve")
+        assert r.status_code == 403  # HTTPBearer returns 403 when missing
+
+    def test_void_works_on_pending_approval_calibration(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        """Regression: a pending-approval calibration is already is_active=False,
+        so voiding it must not incorrectly 400 as "already voided" — the
+        precondition must check status == "void" specifically, not is_active."""
+        checker = _make_user(db, UserRole.technician, "Checker")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        r = client.delete(f"/api/v1/calibrations/{cal['id']}", headers=auth_headers)
+        assert r.status_code == 204
+        after = client.get(f"/api/v1/calibrations/{cal['id']}", headers=auth_headers).json()
+        assert after["status"] == "void"
+        assert after["is_active"] is False
+
+    def test_restore_after_void_returns_to_valid_not_pending(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        """Restore always returns to "valid" — it does not attempt to resurrect
+        a pending-approval or rejected calibration back to its prior state."""
+        checker = _make_user(db, UserRole.technician, "Checker")
+        cal = client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        ).json()
+        client.delete(f"/api/v1/calibrations/{cal['id']}", headers=auth_headers)
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/restore", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.json()["status"] == "valid"
+        assert r.json()["is_active"] is True
+
+    def test_checker_assigned_notification_created(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict
+    ) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        client.post(
+            "/api/v1/calibrations", json=_payload_with_checker(asset["id"], checker), headers=auth_headers
+        )
+        notifications = client.get("/api/v1/notifications", headers=_headers_for(checker)).json()
+        assert any(n["type"] == "calibration.checker_assigned" for n in notifications)
+
+    def test_decision_notification_created_for_registrant(
+        self, client: TestClient, auth_headers: dict, db: Session, asset: dict, test_user: User
+    ) -> None:
+        checker = _make_user(db, UserRole.technician, "Checker")
+        payload = _payload_with_checker(asset["id"], checker)
+        payload["performed_by_user_id"] = str(test_user.id)
+        cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers).json()
+        client.post(f"/api/v1/calibrations/{cal['id']}/approve", headers=_headers_for(checker))
+        notifications = client.get("/api/v1/notifications", headers=auth_headers).json()
+        assert any(n["type"] == "calibration.approved" for n in notifications)
+
+
+# ---------------------------------------------------------------------------
+# GET /assets/{id}/calibration-users
+# ---------------------------------------------------------------------------
+
+class TestCalibrationUsers:
+    def test_returns_active_org_members(
+        self, client: TestClient, auth_headers: dict, db: Session, test_user: User
+    ) -> None:
+        org = client.post("/api/v1/organizations", json={"name": "Cal Users Org"}, headers=auth_headers).json()
+        technician = _make_user(db, UserRole.technician, "Technician Member")
+        from app.repositories import organization as org_repo
+        from app.models.organization_member import OrgRole
+        org_repo.upsert_membership(db, uuid.UUID(org["id"]), technician.id, role=OrgRole.member)
+
+        asset_payload = {
+            "asset_id": make_asset_id(),
+            "asset_type": "sensor",
+            "name": "Org Asset",
+            "manufacturer": "Fluke",
+            "model": "724",
+            "organization_id": org["id"],
+            "sensor_channels": [{"channel_id": "CH1", "physical_quantity": "temperature", "unit": "°C"}],
+        }
+        asset = client.post("/api/v1/assets", json=asset_payload, headers=auth_headers).json()
+
+        r = client.get(f"/api/v1/assets/{asset['id']}/calibration-users", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        ids = [u["id"] for u in r.json()]
+        assert str(technician.id) in ids
+
+    def test_excludes_viewers(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        org = client.post("/api/v1/organizations", json={"name": "Cal Users Org 2"}, headers=auth_headers).json()
+        viewer = _make_user(db, UserRole.viewer, "Viewer Member")
+        from app.repositories import organization as org_repo
+        from app.models.organization_member import OrgRole
+        org_repo.upsert_membership(db, uuid.UUID(org["id"]), viewer.id, role=OrgRole.member)
+
+        asset_payload = {
+            "asset_id": make_asset_id(),
+            "asset_type": "sensor",
+            "name": "Org Asset 2",
+            "manufacturer": "Fluke",
+            "model": "724",
+            "organization_id": org["id"],
+            "sensor_channels": [{"channel_id": "CH1", "physical_quantity": "temperature", "unit": "°C"}],
+        }
+        asset = client.post("/api/v1/assets", json=asset_payload, headers=auth_headers).json()
+
+        r = client.get(f"/api/v1/assets/{asset['id']}/calibration-users", headers=auth_headers)
+        assert r.status_code == 200
+        ids = [u["id"] for u in r.json()]
+        assert str(viewer.id) not in ids
+
+    def test_unknown_asset_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.get(f"/api/v1/assets/{uuid.uuid4()}/calibration-users", headers=auth_headers)
+        assert r.status_code == 404
 

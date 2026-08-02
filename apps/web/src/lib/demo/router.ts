@@ -490,6 +490,8 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     due_date: req.due_date,
     performed_by_name: req.performed_by_name,
     performed_by_user_id: req.performed_by_user_id ?? store.getDemoUser().id,
+    checked_by_user_id: req.checked_by_user_id ?? null,
+    checked_by_name: req.checked_by_name ?? null,
     external_lab_name: req.external_lab_name ?? null,
     notes: req.notes ?? null,
     calibration_file_id: null,
@@ -538,10 +540,14 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     frequency_response_amplitude_type: req.frequency_response_amplitude_type ?? null,
     frequency_response_amplitude_unit: req.frequency_response_amplitude_unit ?? null,
     frequency_response_phase_unit: req.frequency_response_phase_unit ?? null,
-    is_active: true,
+    is_active: !req.checked_by_user_id,
     voided_at: null,
     voided_by: null,
     void_reason: null,
+    status: req.checked_by_user_id ? "pending_approval" : "valid",
+    decided_by: null,
+    decided_at: null,
+    decision_reason: null,
   };
 
   const points = (req.points ?? []).map((p, i) => ({
@@ -586,6 +592,30 @@ route("POST", "/api/v1/calibrations/:id/restore", ({ params }) => {
   if (!cal) throw new NotFoundError("calibration not found");
   store.appendAuditLog({
     action: "calibration.restored",
+    entityType: "calibration",
+    entityId: cal.id,
+    entityAssetId: cal.asset_id,
+  });
+  return cal;
+});
+
+route("POST", "/api/v1/calibrations/:id/approve", ({ params }) => {
+  const cal = store.approveCalibration(params[0], store.getDemoUser().id);
+  if (!cal) throw new NotFoundError("calibration not found");
+  store.appendAuditLog({
+    action: "calibration.approved",
+    entityType: "calibration",
+    entityId: cal.id,
+    entityAssetId: cal.asset_id,
+  });
+  return cal;
+});
+
+route("POST", "/api/v1/calibrations/:id/reject", ({ params, qs }) => {
+  const cal = store.rejectCalibration(params[0], store.getDemoUser().id, qs.get("reason") ?? undefined);
+  if (!cal) throw new NotFoundError("calibration not found");
+  store.appendAuditLog({
+    action: "calibration.rejected",
     entityType: "calibration",
     entityId: cal.id,
     entityAssetId: cal.asset_id,
@@ -733,6 +763,12 @@ route("GET", "/api/v1/assets/:id/calibrations", ({ params, qs }) => {
   const asset = store.getAssetProfile(params[0]);
   if (!asset) throw new NotFoundError("asset not found");
   return store.listCalibrationsForAsset(asset.id, bool(qs.get("include_voided")) ?? false);
+});
+
+route("GET", "/api/v1/assets/:id/calibration-users", ({ params }) => {
+  const asset = store.getAssetProfile(params[0]);
+  if (!asset) throw new NotFoundError("asset not found");
+  return store.listCalibrationUsers(asset.id);
 });
 
 route("GET", "/api/v1/assets/:id/audit-logs", ({ params }) => {

@@ -60,7 +60,9 @@ def void_calibration(
     db: Session, cal: Calibration, voided_by: uuid.UUID, reason: str | None = None
 ) -> Calibration:
     """Mark a calibration invalid. The record, its data points, and its
-    certificate are all preserved — only its validity flag changes."""
+    certificate are all preserved — only its validity flag changes. Reachable
+    from any status (an admin override that always wins)."""
+    cal.status = "void"
     cal.is_active = False
     cal.voided_at = datetime.now(timezone.utc)
     cal.voided_by = voided_by
@@ -71,7 +73,10 @@ def void_calibration(
 
 
 def restore_calibration(db: Session, cal: Calibration) -> Calibration:
-    """Reinstate a previously voided calibration."""
+    """Reinstate a previously voided calibration. Always restores to "valid" —
+    it does not attempt to resurrect a rejected calibration back to
+    "rejected"; that's out of scope (a corrected calibration is a new row)."""
+    cal.status = "valid"
     cal.is_active = True
     cal.voided_at = None
     cal.voided_by = None
@@ -81,14 +86,41 @@ def restore_calibration(db: Session, cal: Calibration) -> Calibration:
     return cal
 
 
+def approve_calibration(db: Session, cal: Calibration, decided_by: uuid.UUID) -> Calibration:
+    """The assigned checker (or an admin override) approves a pending calibration."""
+    cal.status = "valid"
+    cal.is_active = True
+    cal.decided_by = decided_by
+    cal.decided_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(cal)
+    return cal
+
+
+def reject_calibration(
+    db: Session, cal: Calibration, decided_by: uuid.UUID, reason: str | None = None
+) -> Calibration:
+    """The assigned checker (or an admin override) rejects a pending calibration."""
+    cal.status = "rejected"
+    cal.is_active = False
+    cal.decided_by = decided_by
+    cal.decided_at = datetime.now(timezone.utc)
+    cal.decision_reason = reason
+    db.commit()
+    db.refresh(cal)
+    return cal
+
+
 def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -> Calibration:
     """
     Atomically create a Calibration and all CalibrationData/CalibrationFrequencyPoint
     rows in one transaction. Sets calibration_data_id to the first data point created
-    (if any).
+    (if any). A calibration with a checked_by_user_id starts "pending_approval"
+    (is_active=False) instead of "valid" — it isn't used until the checker decides.
     """
     data = body.model_dump(exclude={"points", "frequency_response_points"})
-    cal = Calibration(created_by=created_by, **data)
+    cal_status = "pending_approval" if body.checked_by_user_id else "valid"
+    cal = Calibration(created_by=created_by, status=cal_status, is_active=(cal_status == "valid"), **data)
     db.add(cal)
     db.flush()
 
