@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { AssetProfile } from "@/types/asset";
 import type {
-  AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody,
-  CalibrationPointInline, CalibrationUser, DecisionRule,
+  AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationLabCandidate,
+  CalibrationPointInline, CalibrationPurpose, CalibrationRecord, CalibrationType, CalibrationUser, DecisionRule,
   DistributionType, FrequencyResponsePointInline, WizardRawPoint,
 } from "@/types/calibration";
-import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listCalibrationUsers, listProcedures } from "@/services/asset.service";
+import { analyzeCalibration, createCalibration, getAssetCalibrations, listAssets, listCalibrationUsers, listProcedures, uploadCalibrationCertificate } from "@/services/asset.service";
 import { listCalibrationLabs } from "@/services/location.service";
+import { listCalibrationLabCandidates } from "@/services/organization.service";
 import { useTranslations } from "next-intl";
 import { COLORS } from "@/lib/tokens";
 import { translateDynamic } from "@/lib/translate-dynamic";
@@ -177,7 +178,8 @@ function formatEquation(coefficients: number[], degree: number): string {
 interface Step1State {
   sensor_id: string;
   calibration_date: string;
-  calibration_type: "internal" | "external";
+  calibration_type: CalibrationType;
+  calibration_purpose: CalibrationPurpose;
   performed_by_name: string;
   performed_by_user_id: string | null;
   checked_by_user_id: string | null;
@@ -185,10 +187,14 @@ interface Step1State {
   calibration_interval: string;
   external_lab_name: string;
   external_lab_certificate_number: string;
+  calibration_organization_id: string;
+  certificate_file: File | null;
   coefficients_only: boolean;
   internal_procedure_id: string;
   internal_reference_asset_id: string;
   calibration_location_id: string;
+  repair_date: string;
+  repair_description: string;
   temperature_value: string;
   temperature_unit: string;
   pressure_value: string;
@@ -255,20 +261,24 @@ interface ManualCoeffState {
 interface CalibrationWizardProps {
   assetId: string;
   profile: AssetProfile;
+  calibrations: CalibrationRecord[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function CalibrationWizard({ assetId, profile, onClose, onSaved }: CalibrationWizardProps) {
+export function CalibrationWizard({ assetId, profile, calibrations, onClose, onSaved }: CalibrationWizardProps) {
   const t = useTranslations("assets.wizard");
   const tDecisionRule = useTranslations("tokens.decisionRule");
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
+  const initialSensorId = profile.sensor_channels[0]?.id ?? "";
   const [step1, setStep1] = useState<Step1State>({
-    sensor_id: profile.sensor_channels[0]?.id ?? "",
+    sensor_id: initialSensorId,
     calibration_date: todayIso(),
-    calibration_type: "internal",
+    calibration_type: "internal_lab",
+    // Smart default: this is the channel's first calibration if none exist yet.
+    calibration_purpose: calibrations.some((c) => c.sensor_id === initialSensorId) ? "routine" : "initial",
     performed_by_name: user.name,
     performed_by_user_id: user.id,
     checked_by_user_id: null,
@@ -276,10 +286,14 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     calibration_interval: "12",
     external_lab_name: "",
     external_lab_certificate_number: "",
+    calibration_organization_id: "",
+    certificate_file: null,
     coefficients_only: false,
     internal_procedure_id: "",
     internal_reference_asset_id: "",
     calibration_location_id: "",
+    repair_date: "",
+    repair_description: "",
     temperature_value: "",
     temperature_unit: "°C",
     pressure_value: "",
@@ -295,6 +309,20 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   const [referenceAssets, setReferenceAssets] = useState<{ id: string; name: string; asset_id: string }[]>([]);
   const [calibrationMethods, setCalibrationMethods] = useState<{ id: string; name: string }[]>([]);
   const [calibrationLabs, setCalibrationLabs] = useState<{ id: string; name: string }[]>([]);
+
+  // External organization candidates for the Calibration Lab picker — refetched
+  // whenever calibration_type switches between provider/customer, since they're
+  // two different org_type filters on the same minimal endpoint.
+  const [labCandidates, setLabCandidates] = useState<CalibrationLabCandidate[]>([]);
+  useEffect(() => {
+    if (step1.calibration_type === "external_accredited_lab") {
+      listCalibrationLabCandidates("provider").then(setLabCandidates).catch(() => setLabCandidates([]));
+    } else if (step1.calibration_type === "customer_asset") {
+      listCalibrationLabCandidates("customer").then(setLabCandidates).catch(() => setLabCandidates([]));
+    } else {
+      setLabCandidates([]);
+    }
+  }, [step1.calibration_type]);
 
   // Candidates for the Registered By / Checked By dropdowns (loaded once)
   const [calibrationUsers, setCalibrationUsers] = useState<CalibrationUser[]>([]);
@@ -413,6 +441,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     step1.sensor_id !== "" &&
     step1.calibration_interval.trim() !== "" &&
     !isNaN(parseInt(step1.calibration_interval)) &&
+    (step1.calibration_purpose !== "after_repair" || step1.repair_date.trim() !== "") &&
     isNumOrEmpty(step1.temperature_value) &&
     isNumOrEmpty(step1.pressure_value) &&
     isNumOrEmpty(step1.humidity_value);
@@ -453,6 +482,16 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
     return sensorNominalUncertaintyManual.trim() !== "" && !isNaN(v) ? v : null;
   })();
 
+  // OEM calibrations snapshot the asset's manufacturer as the (read-only)
+  // calibration lab — keep external_lab_name in sync whenever the type
+  // switches to/from "oem", since it's the column this snapshot is stored in.
+  useEffect(() => {
+    if (step1.calibration_type === "oem") {
+      setStep1((s) => ({ ...s, external_lab_name: profile.manufacturer }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step1.calibration_type]);
+
   // Load reference assets and calibration labs on mount
   useEffect(() => {
     listAssets({ limit: 200, is_active: true })
@@ -483,7 +522,7 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
   // (GUM Annex A.2.1(c): traceability requires each link's own uncertainty).
   useEffect(() => {
     const refId = step1.internal_reference_asset_id;
-    if (step1.calibration_type !== "internal" || !refId) {
+    if (step1.calibration_type !== "internal_lab" || !refId) {
       setReferenceStandardAuto(null);
       return;
     }
@@ -824,11 +863,15 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         checked_by_user_id: step1.checked_by_user_id,
         checked_by_name: step1.checked_by_name,
         calibration_type: step1.calibration_type,
+        calibration_purpose: step1.calibration_purpose,
         external_lab_name: step1.external_lab_name || null,
         external_lab_certificate_number: step1.external_lab_certificate_number || null,
+        calibration_organization_id: step1.calibration_organization_id || null,
         internal_procedure_id: step1.internal_procedure_id || null,
         internal_reference_asset_id: step1.internal_reference_asset_id || null,
         calibration_location_id: step1.calibration_location_id || null,
+        repair_date: step1.calibration_purpose === "after_repair" ? (step1.repair_date || null) : null,
+        repair_description: step1.calibration_purpose === "after_repair" ? (step1.repair_description || null) : null,
         calibration_interval: parseInt(step1.calibration_interval) || null,
         temperature: temperatureCelsius,
         humidity: humVal,
@@ -844,7 +887,16 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
         points,
       };
 
-      await createCalibration(body);
+      const created = await createCalibration(body);
+      if (step1.certificate_file) {
+        try {
+          await uploadCalibrationCertificate(created.id, step1.certificate_file);
+        } catch {
+          // Best-effort: the calibration record itself is already saved (immutable
+          // history) — the user can't retry the upload from here, but the record
+          // isn't rolled back for a failed attachment.
+        }
+      }
       setConfirmOpen(false);
       onSaved();
     } catch (e: unknown) {
@@ -898,12 +950,14 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
               state={step1}
               onChange={setStep1}
               profile={profile}
+              calibrations={calibrations}
               currentUserName={user.name}
               currentUserId={user.id}
               calibrationUsers={calibrationUsers}
               referenceAssets={referenceAssets}
               calibrationMethods={calibrationMethods}
               calibrationLabs={calibrationLabs}
+              labCandidates={labCandidates}
               onReferenceUnitChange={setReferenceUnit}
               onMeasuredUnitChange={setMeasuredUnit}
             />
@@ -1080,18 +1134,20 @@ export function CalibrationWizard({ assetId, profile, onClose, onSaved }: Calibr
 // ---------------------------------------------------------------------------
 
 function Step1({
-  state, onChange, profile, currentUserName, currentUserId, calibrationUsers, referenceAssets, calibrationMethods,
-  calibrationLabs, onReferenceUnitChange, onMeasuredUnitChange,
+  state, onChange, profile, calibrations, currentUserName, currentUserId, calibrationUsers, referenceAssets, calibrationMethods,
+  calibrationLabs, labCandidates, onReferenceUnitChange, onMeasuredUnitChange,
 }: {
   state: Step1State;
   onChange: (s: Step1State) => void;
   profile: AssetProfile;
+  calibrations: CalibrationRecord[];
   currentUserName: string;
   currentUserId: string;
   calibrationUsers: CalibrationUser[];
   referenceAssets: { id: string; name: string; asset_id: string }[];
   calibrationMethods: { id: string; name: string }[];
   calibrationLabs: { id: string; name: string }[];
+  labCandidates: CalibrationLabCandidate[];
   onReferenceUnitChange: (u: string) => void;
   onMeasuredUnitChange: (u: string) => void;
 }) {
@@ -1099,8 +1155,38 @@ function Step1({
   const tQuantity = useTranslations("tokens.physicalQuantity");
   const set = (key: keyof Step1State) => (value: string | boolean) =>
     onChange({ ...state, [key]: value });
+  const [certificateError, setCertificateError] = useState<string | null>(null);
 
   const selectedChannel = profile.sensor_channels.find((c) => c.id === state.sensor_id);
+
+  const CALIBRATION_TYPE_OPTIONS: { value: CalibrationType; label: string }[] = [
+    { value: "oem", label: t("calibrationTypeOem") },
+    { value: "external_accredited_lab", label: t("calibrationTypeExternalAccreditedLab") },
+    { value: "internal_lab", label: t("calibrationTypeInternalLab") },
+    { value: "customer_asset", label: t("calibrationTypeCustomerAsset") },
+  ];
+  const CALIBRATION_PURPOSE_OPTIONS: { value: CalibrationPurpose; label: string }[] = [
+    { value: "initial", label: t("purposeInitial") },
+    { value: "routine", label: t("purposeRoutine") },
+    { value: "after_repair", label: t("purposeAfterRepair") },
+    { value: "verification", label: t("purposeVerification") },
+  ];
+  const showsCertificateUpload = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab";
+  const showsCoefficientsOnly = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab" || state.calibration_type === "customer_asset";
+
+  function handleCertificateFile(file: File | null) {
+    if (!file) {
+      setCertificateError(null);
+      onChange({ ...state, certificate_file: null });
+      return;
+    }
+    if (file.type !== "application/pdf") {
+      setCertificateError(t("certificateMustBePdf"));
+      return;
+    }
+    setCertificateError(null);
+    onChange({ ...state, certificate_file: file });
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -1112,7 +1198,11 @@ function Step1({
             value={state.sensor_id}
             onChange={(v) => {
               const ch = profile.sensor_channels.find((c) => c.id === v);
-              onChange({ ...state, sensor_id: v });
+              onChange({
+                ...state,
+                sensor_id: v,
+                calibration_purpose: calibrations.some((c) => c.sensor_id === v) ? "routine" : "initial",
+              });
               onReferenceUnitChange(ch?.unit ?? "");
               onMeasuredUnitChange(ch?.output_signal_unit ?? ch?.unit ?? "");
             }}
@@ -1177,25 +1267,51 @@ function Step1({
         />
       </div>
 
-      {/* Calibration type + lab */}
+      {/* Calibration type + purpose */}
       <div className="grid grid-cols-2 gap-4">
         <WSelect
           label={t("calibrationType")}
           value={state.calibration_type}
-          onChange={set("calibration_type") as (v: string) => void}
-          options={[
-            { value: "external", label: t("external") },
-            { value: "internal", label: t("internal") },
-          ]}
+          onChange={(v) => onChange({ ...state, calibration_type: v as CalibrationType })}
+          options={CALIBRATION_TYPE_OPTIONS}
           required
         />
         <WSelect
-          label={t("calibrationLab")}
-          value={state.calibration_location_id}
-          onChange={set("calibration_location_id") as (v: string) => void}
-          options={calibrationLabs.map((l) => ({ value: l.id, label: l.name }))}
-          placeholder={calibrationLabs.length === 0 ? t("noLabsConfigured") : t("selectLab")}
+          label={t("calibrationPurpose")}
+          value={state.calibration_purpose}
+          onChange={(v) => onChange({ ...state, calibration_purpose: v as CalibrationPurpose })}
+          options={CALIBRATION_PURPOSE_OPTIONS}
+          required
         />
+      </div>
+
+      {/* Calibration lab — field behavior switches on calibration_type */}
+      <div className="grid grid-cols-2 gap-4">
+        {state.calibration_type === "oem" && (
+          <WInput label={t("calibrationLab")} value={state.external_lab_name} onChange={() => {}} readOnly />
+        )}
+        {(state.calibration_type === "external_accredited_lab" || state.calibration_type === "customer_asset") && (
+          <WSelect
+            label={t("calibrationLab")}
+            value={state.calibration_organization_id}
+            onChange={set("calibration_organization_id") as (v: string) => void}
+            options={labCandidates.map((o) => ({ value: o.id, label: o.name }))}
+            placeholder={
+              labCandidates.length === 0
+                ? (state.calibration_type === "customer_asset" ? t("noCustomersConfigured") : t("noProvidersConfigured"))
+                : t("selectLab")
+            }
+          />
+        )}
+        {state.calibration_type === "internal_lab" && (
+          <WSelect
+            label={t("calibrationLab")}
+            value={state.calibration_location_id}
+            onChange={set("calibration_location_id") as (v: string) => void}
+            options={calibrationLabs.map((l) => ({ value: l.id, label: l.name }))}
+            placeholder={calibrationLabs.length === 0 ? t("noLabsConfigured") : t("selectLab")}
+          />
+        )}
       </div>
 
       {/* Frequency response (orthogonal to calibration type / coefficients-only) */}
@@ -1207,13 +1323,31 @@ function Step1({
         />
       </div>
 
-      {/* External fields */}
-      {state.calibration_type === "external" && (
+      {/* OEM / External Accredited Lab / Customer's Asset fields */}
+      {showsCoefficientsOnly && (
         <div className="space-y-4 pl-4 border-l-2 border-og-border">
-          <div className="grid grid-cols-2 gap-4">
-            <WInput label={t("calibrationProvider")} value={state.external_lab_name} onChange={set("external_lab_name") as (v: string) => void} />
-            <WInput label={t("certificateNumber")} value={state.external_lab_certificate_number} onChange={set("external_lab_certificate_number") as (v: string) => void} />
-          </div>
+          {showsCertificateUpload && (
+            <div className="flex flex-col gap-1">
+              <WLabel text={t("calibrationCertificate")} />
+              {state.certificate_file ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-og-text truncate">{state.certificate_file.name}</span>
+                  <button type="button" onClick={() => handleCertificateFile(null)} className="text-gray-400 hover:text-og-text">
+                    <XIcon size={13} />
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => handleCertificateFile(e.target.files?.[0] ?? null)}
+                  className="text-sm text-og-text file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-og-surface-alt file:text-og-text hover:file:bg-og-border-md cursor-pointer"
+                />
+              )}
+              {certificateError && <p className="text-xs text-red-500 mt-0.5">{certificateError}</p>}
+              <p className="text-xs text-gray-400">{t("uploadCertificateHint")}</p>
+            </div>
+          )}
           <div className="flex items-center pt-1">
             <WCheckbox
               label={t("coefficientsOnlyLabel")}
@@ -1224,8 +1358,8 @@ function Step1({
         </div>
       )}
 
-      {/* Internal fields */}
-      {state.calibration_type === "internal" && (
+      {/* Internal Lab fields */}
+      {state.calibration_type === "internal_lab" && (
         <div className="space-y-4 pl-4 border-l-2 border-og-border">
           <div className="grid grid-cols-2 gap-4">
             <WSelect
@@ -1242,6 +1376,33 @@ function Step1({
               options={calibrationMethods.map((m) => ({ value: m.id, label: m.name }))}
               placeholder={t("selectMethod")}
             />
+          </div>
+        </div>
+      )}
+
+      {/* After Repair fields */}
+      {state.calibration_purpose === "after_repair" && (
+        <div className="space-y-4 pl-4 border-l-2 border-og-border">
+          <div className="grid grid-cols-2 gap-4">
+            <WInput
+              label={t("repairDate")}
+              type="date"
+              value={state.repair_date}
+              onChange={set("repair_date") as (v: string) => void}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <WLabel text={t("repairDescription")} />
+            <textarea
+              value={state.repair_description}
+              onChange={(e) => set("repair_description")(e.target.value.slice(0, 500))}
+              rows={3}
+              maxLength={500}
+              placeholder={t("repairDescriptionPlaceholder")}
+              className={`${IB} ${IB_OK} resize-none`}
+            />
+            <p className="text-xs text-gray-400 text-right">{t("charactersRemaining", { count: 500 - state.repair_description.length })}</p>
           </div>
         </div>
       )}

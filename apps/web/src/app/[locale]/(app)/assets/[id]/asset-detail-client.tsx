@@ -1729,6 +1729,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       <CalibrationWizard
         assetId={profile.id}
         profile={profile}
+        calibrations={calibrations}
         onClose={() => setWizardOpen(false)}
         onSaved={() => { setWizardOpen(false); onCalibrationSaved(); }}
       />
@@ -2518,15 +2519,19 @@ function CertificateDownloadButton({
 // Files tab
 // ---------------------------------------------------------------------------
 
+const CALIBRATION_CERTIFICATE_ENTITY_TYPES = new Set(["calibration_certificate", "calibration_uploaded_certificate"]);
+
 function FilesTab({
   files,
   isEditing,
   assetId,
+  calibrations,
   onFilesChange,
 }: {
   files: StoredFile[];
   isEditing: boolean;
   assetId: string;
+  calibrations: CalibrationRecord[];
   onFilesChange: (files: StoredFile[]) => void;
 }) {
   const t = useTranslations("assets.files");
@@ -2628,6 +2633,8 @@ function FilesTab({
           {files.map((f) => {
             const isImage = f.content_type.startsWith("image/");
             const type = fileIcon(f.content_type);
+            const isCalCert = CALIBRATION_CERTIFICATE_ENTITY_TYPES.has(f.entity_type);
+            const certCal = isCalCert ? calibrations.find((c) => c.id === f.entity_id) : undefined;
             return (
               <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg border border-og-border hover:border-og-border-md hover:bg-og-surface-alt transition-colors">
                 {/* Thumbnail or type badge */}
@@ -2654,7 +2661,14 @@ function FilesTab({
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-og-text truncate">{f.original_filename}</p>
-                  <p className="text-xs text-gray-400">{fmtBytes(f.size_bytes)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-gray-400">{fmtBytes(f.size_bytes)}</p>
+                    {isCalCert && (
+                      <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-og-accent/10 text-og-accent">
+                        {t("calibrationCertificateBadge", { version: certCal?.calibration_version ?? "?" })}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {f.url && (
@@ -2669,7 +2683,7 @@ function FilesTab({
                   </a>
                 )}
 
-                {isEditing && (
+                {isEditing && !isCalCert && (
                   <button
                     type="button"
                     onClick={() => handleDelete(f.id)}
@@ -3529,6 +3543,7 @@ export default function AssetDetailClient() {
               files={files}
               isEditing={isEditing}
               assetId={id}
+              calibrations={calibrations}
               onFilesChange={setFiles}
             />
           )}

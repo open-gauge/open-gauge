@@ -2,13 +2,24 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # "valid" (used for the channel's calibration), "pending_approval" (awaiting the
 # assigned checker's decision), "rejected" (decided against, terminal), "void"
 # (admin override, reachable from any status). Plain VARCHAR + app-level closed
 # list, matching every other calibration-level "enum" in this model.
 CALIBRATION_STATUSES = ("valid", "pending_approval", "rejected", "void")
+
+# Who performed the calibration. "oem" = the sensor's manufacturer (calibration lab
+# is a read-only snapshot of the asset's manufacturer, not a real org/location).
+# "external_accredited_lab" = an external organization typed as a provider.
+# "internal_lab" = performed in-house (calibration_location_id, the existing
+# Location-based "calibration lab" dropdown). "customer_asset" = an external
+# organization typed as a customer (we performed it for them).
+CALIBRATION_TYPES = ("oem", "external_accredited_lab", "internal_lab", "customer_asset")
+
+# Why the calibration was performed.
+CALIBRATION_PURPOSES = ("initial", "routine", "after_repair", "verification")
 
 
 # ------------------------------------------------------------------ #
@@ -158,16 +169,36 @@ class CalibrationCreate(BaseModel):
 
     # Metadata
     sensor_id: uuid.UUID | None = None
-    calibration_type: str = "external"
+    calibration_type: str = "external_accredited_lab"
+    calibration_purpose: str = "routine"
     calibration_interval: int | None = None
     tolerance_criteria: str | None = None
+
+    # Repair tracking — only meaningful when calibration_purpose == "after_repair"
+    repair_date: date | None = None
+    repair_description: str | None = Field(None, max_length=500)
 
     # Traceability
     internal_reference_asset_id: uuid.UUID | None = None
     internal_procedure_id: uuid.UUID | None = None
     external_lab_certificate_number: str | None = None
+    calibration_organization_id: uuid.UUID | None = None
     daq_id: uuid.UUID | None = None
     calibration_location_id: uuid.UUID | None = None
+
+    @field_validator("calibration_type")
+    @classmethod
+    def validate_calibration_type(cls, value: str) -> str:
+        if value not in CALIBRATION_TYPES:
+            raise ValueError(f"Unsupported calibration_type: {value}")
+        return value
+
+    @field_validator("calibration_purpose")
+    @classmethod
+    def validate_calibration_purpose(cls, value: str) -> str:
+        if value not in CALIBRATION_PURPOSES:
+            raise ValueError(f"Unsupported calibration_purpose: {value}")
+        return value
 
     # Environmental conditions (canonical units: °C, %RH, Pa)
     temperature: float | None = None
@@ -233,6 +264,18 @@ class CalibrationUserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CalibrationLabCandidateResponse(BaseModel):
+    """A minimal external-organization candidate for the wizard's Calibration Lab
+    picker (External Accredited Lab / Customer's Asset types) — deliberately just
+    id+name, not the full organization profile (which stays Admin/Super-Admin-only;
+    see GET /organizations/calibration-lab-candidates)."""
+
+    id: uuid.UUID
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 class CalibrationResponse(BaseModel):
     id: uuid.UUID
     asset_id: uuid.UUID
@@ -245,15 +288,20 @@ class CalibrationResponse(BaseModel):
     external_lab_name: str | None
     notes: str | None
     calibration_file_id: uuid.UUID | None
+    uploaded_certificate_file_id: uuid.UUID | None = None
     created_by: uuid.UUID
     created_at: datetime
 
     # Metadata
     sensor_id: uuid.UUID | None
     calibration_type: str
+    calibration_purpose: str = "routine"
     calibration_version: int
     calibration_interval: int | None
     tolerance_criteria: str | None
+    repair_date: date | None = None
+    repair_description: str | None = None
+    calibration_organization_id: uuid.UUID | None = None
 
     # Traceability
     internal_reference_asset_id: uuid.UUID | None

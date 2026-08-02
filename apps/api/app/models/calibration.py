@@ -20,20 +20,39 @@ class Calibration(Base):
     external_lab_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     calibration_file_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
+    # A user-uploaded certificate PDF (OEM/External Accredited Lab types), distinct
+    # from calibration_file_id (the system-generated one) — kept as a separate column
+    # so certificate (re)generation never clobbers an uploaded file. Takes priority
+    # over calibration_file_id wherever a certificate is served/downloaded.
+    uploaded_certificate_file_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    # Calibration metadata
+    # Calibration metadata. calibration_type describes who performed the calibration
+    # ("oem" | "external_accredited_lab" | "internal_lab" | "customer_asset");
+    # calibration_purpose describes why ("initial" | "routine" | "after_repair" |
+    # "verification"). Both plain VARCHAR + Pydantic-layer validation, matching the
+    # rest of this model's "enum-like" columns.
     sensor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("sensors.id"), nullable=True)
-    calibration_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="external")
+    calibration_type: Mapped[str] = mapped_column(String(30), nullable=False, server_default="external_accredited_lab")
+    calibration_purpose: Mapped[str] = mapped_column(String(20), nullable=False, default="routine", server_default="routine")
     calibration_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     calibration_interval: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tolerance_criteria: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Repair tracking — only meaningful when calibration_purpose == "after_repair".
+    repair_date: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    repair_description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Traceability
     internal_reference_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True)
     internal_procedure_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("procedures.id"), nullable=True)
     external_lab_certificate_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # The organization that performed the calibration, for "external_accredited_lab"
+    # (a provider) or "customer_asset" (a customer) — see Organization.org_type.
+    # Not used for "oem" (a text snapshot in external_lab_name) or "internal_lab"
+    # (calibration_location_id below).
+    calibration_organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     daq_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("daq.id"), nullable=True)
     calibration_data_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("calibration_data.id"), nullable=True)
     calibration_location_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True)

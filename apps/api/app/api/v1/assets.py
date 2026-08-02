@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user, require_not_viewer
 from ...models.asset import AssetType
+from ...models.calibration import Calibration
+from ...models.stored_file import StoredFile
 from ...models.user import User, UserRole
 from ...models.calibration_method import Procedure
 from ...repositories import asset as asset_repo
@@ -393,13 +395,48 @@ def list_calibration_users(
 def get_asset_health(
     asset_ref: str,
     sensor_id: uuid.UUID | None = None,
+    after: date | None = None,
+    before: date | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> AssetHealthResponse:
+    """`after`/`before` scope the calibration history used for drift/stability
+    to a date window — powers the Health tab's before/after-repair comparison
+    (see GET /{asset_ref}/health/repair-periods for the period boundaries)."""
     asset = asset_repo.get_by_ref(db, asset_ref)
     if not asset:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return health_service.get_asset_health(db, asset.id, sensor_id)
+    return health_service.get_asset_health(db, asset.id, sensor_id, after, before)
+
+
+@router.get("/{asset_ref}/health/repair-periods")
+def get_asset_health_repair_periods(
+    asset_ref: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[dict]:
+    """Repair-boundary periods for the Health tab's before/after-repair
+    dropdown, derived from this asset's non-voided "after_repair" purpose
+    calibrations that have a repair_date set, oldest first. Always includes a
+    trailing "Currently" entry (after = the last repair date, or null if
+    there have been no repairs at all)."""
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    repair_dates = sorted({
+        c.repair_date
+        for c in cal_repo.list_by_asset(db, asset.id, skip=0, limit=1000)
+        if c.calibration_purpose == "after_repair" and c.repair_date is not None
+    })
+
+    periods: list[dict] = []
+    prev: date | None = None
+    for d in repair_dates:
+        periods.append({"label": f"Before Repair {d.isoformat()}", "after": prev, "before": d.isoformat()})
+        prev = d
+    periods.append({"label": "Currently", "after": prev.isoformat() if prev else None, "before": None})
+    return periods
 
 
 @router.get("/{asset_ref}/health/curve-comparison", response_model=CurveComparisonResponse)
@@ -460,7 +497,21 @@ def list_asset_files(
     # managed from the Image section, not the general Files list. See asset_export.py's
     # equivalent filter.
     files = [f for f in file_repo.list_by_entity(db, asset.id) if f.entity_type == "asset"]
-    return _enrich_files(files)
+    # Calibration certificates (system-generated or user-uploaded) are tagged with
+    # entity_id=<calibration id>, not the asset's own id, so they need a join through
+    # this asset's calibrations rather than list_by_entity(asset.id). Shown here for
+    # visibility per AGENTS.md traceability, but never deletable from this endpoint —
+    # delete_asset_file's entity_id == asset.id check already excludes them naturally.
+    cert_files = (
+        db.query(StoredFile)
+        .join(Calibration, StoredFile.entity_id == Calibration.id)
+        .filter(
+            Calibration.asset_id == asset.id,
+            StoredFile.entity_type.in_(["calibration_certificate", "calibration_uploaded_certificate"]),
+        )
+        .all()
+    )
+    return _enrich_files(files + cert_files)
 
 
 @router.post("/{asset_ref}/files", response_model=StoredFileResponse, status_code=status.HTTP_201_CREATED)

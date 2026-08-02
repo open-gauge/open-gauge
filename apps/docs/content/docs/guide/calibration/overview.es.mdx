@@ -29,12 +29,11 @@ guardas.
 
 Inicia una calibración desde el canal de un activo. El asistente tiene tres pasos:
 
-1. **Información general** — tipo de calibración (**interna**, contra un activo de referencia que posees, o
-   **externa**, de un laboratorio externo), fecha de calibración, **Registrado por** (una lista
-   desplegable de los miembros de la organización del activo, con tu usuario como valor
-   predeterminado), un revisor opcional **Revisado por**, condiciones ambientales, y (para
-   calibraciones internas) el patrón de referencia usado y el procedimiento
-   seguido. Este paso también tiene una casilla **"Solo coeficientes (sin datos en bruto)"** para
+1. **Información general** — tipo y propósito de la calibración (ver abajo), fecha de calibración,
+   **Registrado por** (una lista desplegable con los miembros de la organización del activo, con tu
+   nombre por defecto), un revisor opcional **Verificado por**, intervalo de calibración,
+   condiciones ambientales, y notas. Según el tipo/propósito elegido, aparecen campos adicionales —
+   ver abajo. Este paso también tiene una casilla **"Solo coeficientes (sin datos en bruto)"** para
    certificados emitidos externamente que indican un polinomio directamente — consulta
    [Calibraciones de solo coeficientes](./coefficients-only.mdx).
 2. **Datos en bruto** — ingresa pares de puntos (referencia, medido). Consulta
@@ -48,18 +47,70 @@ registro real e importante. Si el resultado no cumple con la especificación del
 de guardado muestra una advertencia explícita nombrando la especificación y la regla de decisión, y el
 botón de guardar cambia su etiqueta a **"Guardar de todos modos."**
 
-## Calibraciones internas frente a externas
+## Tipo de calibración
 
-- **Interna** — realizada internamente, contra uno de tus propios activos marcado como
-  [patrón de referencia](../sensors/adding-a-sensor.mdx#calibration-role). Cuando eliges un
-  activo de referencia, Open Gauge obtiene automáticamente la incertidumbre expandida de la calibración
-  más reciente de ese activo y la incorpora al presupuesto de incertidumbre de esta calibración como una
-  contribución `reference_standard` — consulta
-  [El presupuesto de incertidumbre](./uncertainty-budget.mdx#contributions).
-- **Externa** — realizada por un laboratorio de calibración externo. Registras el nombre del
-  laboratorio y el número de certificado; si el certificado del laboratorio indica un polinomio
-  directamente en lugar de datos en bruto, usa la ruta de solo coeficientes en lugar de volver a
-  derivar un ajuste desde cero.
+El **Tipo de calibración** describe *quién realizó la calibración*, y determina a qué se resuelve el
+campo **Laboratorio de calibración**:
+
+- **OEM** — realizada por el fabricante del sensor. El laboratorio de calibración es una instantánea
+  de solo lectura del fabricante del activo en el momento de guardar (no editable por el usuario).
+  Está disponible la carga de un **Certificado de calibración** (solo PDF).
+- **Laboratorio externo acreditado** — realizada por un laboratorio externo acreditado. El
+  laboratorio de calibración es una lista desplegable de tus
+  [organizaciones externas](../organizations/index.mdx#internal-vs-external-organizations)
+  marcadas como proveedoras. Está disponible la carga de un **Certificado de calibración** (solo PDF).
+- **Laboratorio interno (propio)** — realizada por tu propia organización, contra uno de tus propios
+  activos marcado como [patrón de referencia](../sensors/adding-a-sensor.mdx#calibration-role). El
+  laboratorio de calibración es una lista desplegable de las ubicaciones de tu organización marcadas
+  como laboratorios de calibración. Cuando eliges un activo de referencia, Open Gauge obtiene
+  automáticamente la incertidumbre expandida de la calibración más reciente de ese activo y la
+  incorpora al presupuesto de incertidumbre de esta calibración como una contribución
+  `reference_standard` — consulta
+  [El presupuesto de incertidumbre](./uncertainty-budget.mdx#contributions). No hay carga de
+  certificado — el certificado generado por el sistema es el único, ya que es tu propia medición.
+- **Activo de cliente** — el activo pertenece a un cliente, calibrado en su nombre. El laboratorio de
+  calibración es una lista desplegable de tus organizaciones externas marcadas como clientes. No hay
+  carga de certificado.
+
+Para OEM, Laboratorio externo acreditado, y Activo de cliente, la entrada de datos en bruto puede
+omitirse por completo con **"Solo coeficientes (sin datos en bruto)"** cuando el certificado indica
+un polinomio directamente.
+
+### Certificados subidos
+
+Cuando se sube un certificado PDF (solo OEM / Laboratorio externo acreditado), Open Gauge valida que
+realmente sea un PDF (tipo de contenido y firma del archivo) antes de aceptarlo. Una vez subido,
+**tiene prioridad** sobre el certificado generado por el sistema en todos los lugares donde se
+descarga el certificado de una calibración — el generado por el sistema se sigue produciendo y
+almacenando, pero se sirve el subido en su lugar mientras exista. El certificado subido también
+aparece en la pestaña **Archivos** del activo, etiquetado con una insignia de "Certificado de
+calibración"; se puede descargar desde ahí pero no eliminar — la única forma de retirarlo es anular
+la calibración misma, en consonancia con que el historial de calibración nunca se edita en el mismo
+lugar.
+
+## Propósito de la calibración
+
+El **Propósito de la calibración** registra *por qué* se realizó la calibración:
+
+- **Inicial** — la primera calibración del activo/canal. Seleccionado por defecto cuando no existe
+  una calibración previa para el canal; puedes cambiarlo si es necesario.
+- **Rutinaria** — una recalibración periódica. El valor por defecto una vez que existe al menos una
+  calibración previa.
+- **Después de reparación** — tras una reparación. Revela una **Fecha de reparación** (selector de
+  fecha) y una **Descripción de la reparación** (hasta 500 caracteres). Ver abajo cómo esto afecta la
+  pestaña Estado.
+- **Verificación** — una calibración realizada para verificar la conformidad continua, sin
+  necesariamente reiniciar el contador del intervalo como lo haría una recalibración rutinaria.
+
+### Comparación de deriva antes/después de reparación
+
+Registrar una calibración de **Después de reparación** con una fecha de reparación marca un límite en
+el historial de calibración del canal. La pestaña Estado gana una lista desplegable de periodo —
+**"Antes de la reparación `{fecha}`"** para cada reparación registrada, además de **"Actualmente"** (el
+periodo desde la reparación más reciente, seleccionado por defecto) — que te permite comparar
+métricas de deriva, estabilidad y predicción entre eventos de reparación en lugar de mirar siempre el
+historial completo sin interrupciones, lo cual de otro modo mezclaría el comportamiento previo y
+posterior a la reparación en una sola tendencia engañosa.
 
 ## Dónde terminan los resultados
 
@@ -79,33 +130,38 @@ anulada, ver abajo) y nunca se renumera.
 
 ## Flujo de aprobación
 
-Cada calibración tiene un estado: **válida**, **pendiente de aprobación**, **rechazada**, o
-**anulada**. Solo las calibraciones **válidas** cuentan para la calibración del canal, los
-cálculos de fecha de vencimiento y el análisis de deriva — las otras tres quedan excluidas,
-exactamente como las anuladas siempre lo estuvieron.
+Cada calibración tiene un **estado**: **válida** (usada para la calibración del canal, los cálculos
+de fecha de vencimiento, y el análisis de deriva), **pendiente de aprobación**, **rechazada**, o
+**anulada**. Solo una calibración **válida** se utiliza — las otras tres quedan excluidas de los
+cálculos de fecha de vencimiento/estado y del análisis de deriva de la pestaña Estado, de la misma
+manera que una anulada siempre lo ha estado.
 
-Nombrar un revisor en **Revisado por** en el Paso 1 pone la calibración en **pendiente de
-aprobación** en lugar de válida. El revisor recibe una notificación (en la aplicación y por
-correo electrónico si está configurado) y puede, desde la misma fila en la pestaña Calibración:
+Asignar un revisor en **Verificado por** en el Paso 1 pone la nueva calibración en **pendiente de
+aprobación** en lugar de válida. El verificador recibe una notificación (dentro de la aplicación, y
+por correo electrónico si está configurado) y, desde la misma fila en la pestaña Calibración, puede:
 
-- **Aprobar** — la calibración pasa a válida, y se notifica a quien la registró.
-- **Rechazar**, con un motivo opcional — la calibración pasa a rechazada, se notifica a quien la
-  registró, y esto es definitivo: una corrección significa registrar una nueva calibración, no
-  editar la anterior.
+- **Aprobarla** — la calibración pasa a **válida**, y se notifica a la persona que la registró.
+- **Rechazarla**, con un motivo opcional — la calibración pasa a **rechazada**, y se notifica al
+  registrante. Una calibración rechazada es terminal: corregirla implica registrar una nueva
+  calibración, no editar la anterior, en consonancia con que el historial de calibración nunca se
+  modifica en el mismo lugar.
 
-Solo el revisor asignado, o una anulación de admin/superadmin, puede decidir sobre ella.
+Solo el verificador asignado, o un `admin`/`superadmin` como anulación, puede aprobar o rechazar una
+calibración dada. Dejar **Verificado por** sin asignar omite el flujo de aprobación por completo — la
+calibración se crea como **válida** de inmediato, exactamente como antes de que existiera esta
+función.
 
-Dejar **Revisado por** sin asignar omite el flujo de aprobación por completo — la calibración se
-crea como válida de inmediato, exactamente como antes.
-
-El interruptor **"Mostrar calibraciones válidas"** (solo administradores) controla si se muestran
-o no las calibraciones pendientes, rechazadas y anuladas — desactivado por defecto.
+El interruptor **Mostrar calibraciones válidas** en la pestaña Calibración (cualquier rol excepto
+Visor) controla si las calibraciones pendientes de aprobación, rechazadas y anuladas se muestran o
+no — desactivado por defecto, para que el historial se mantenga enfocado en lo que realmente está
+vigente.
 
 ## Anular una calibración
 
 El historial de calibración nunca se destruye — no hay botón de eliminar, solo **anular**, restringido a
-`admin`/`superadmin`. Anular puede aplicarse desde cualquier estado — válida, pendiente de
-aprobación o rechazada — como una anulación siempre disponible. Anular una entrada (desde el ícono de papelera en su fila en la pestaña Calibración):
+`admin`/`superadmin`. Anular es alcanzable desde cualquier estado (válida, pendiente de aprobación, o
+rechazada) como anulación siempre disponible. Anular una entrada (desde el ícono de papelera en su
+fila en la pestaña Calibración):
 
 - La marca como inválida y, opcionalmente, registra por qué.
 - La oculta de la lista de historial de calibración y del resumen del activo por defecto (un administrador puede activar
@@ -116,11 +172,11 @@ aprobación o rechazada — como una anulación siempre disponible. Anular una e
 
 El registro, sus puntos de datos y su certificado se preservan todos intactos — anular solo cambia
 un indicador. Un administrador puede **restaurar** una calibración anulada en cualquier momento desde la misma fila, lo cual
-revierte todo lo anterior; restaurar siempre devuelve una calibración al estado **válida** — no
-intenta restaurar una calibración previamente rechazada de vuelta a rechazada o pendiente de
-aprobación. Consulta [Calibraciones](/docs/api/calibrations) en la Referencia de la API para
-conocer los payloads exactos de `DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`,
-`POST /calibrations/{id}/approve` y `POST /calibrations/{id}/reject`.
+siempre la devuelve a **válida** (no intenta restaurar una calibración previamente rechazada de vuelta
+a "rechazada" o "pendiente de aprobación"). Consulta [Calibraciones](/docs/api/calibrations) en la
+Referencia de la API para conocer los payloads exactos de `DELETE /calibrations/{id}`,
+`POST /calibrations/{id}/restore`, `POST /calibrations/{id}/approve`, y
+`POST /calibrations/{id}/reject`.
 
 Una exportación completa de activo (la acción Exportar en la página del activo) siempre incluye las calibraciones
 anuladas — es una copia de seguridad histórica completa, no una vista filtrada.

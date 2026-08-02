@@ -185,11 +185,21 @@ def get_asset_calibration_health_score(db: Session, asset_pk: uuid.UUID) -> floa
 
 
 def get_asset_health(
-    db: Session, asset_pk: uuid.UUID, sensor_id: uuid.UUID | None
+    db: Session, asset_pk: uuid.UUID, sensor_id: uuid.UUID | None,
+    after=None, before=None,
 ) -> AssetHealthResponse:
+    """`after`/`before` (dates, both optional) scope the calibration history to a
+    window — used for the Health tab's before/after-repair comparison. Since
+    `baseline` below is simply "the first calibration in the filtered set,"
+    filtering here is sufficient to make a repair-period comparison work
+    correctly with no changes to calculations.py/scoring.py/prediction.py."""
     cals = cal_repo.list_by_asset(db, asset_pk, skip=0, limit=1000)
     if sensor_id is not None:
         cals = [c for c in cals if c.sensor_id == sensor_id]
+    if after is not None:
+        cals = [c for c in cals if c.calibration_date >= after]
+    if before is not None:
+        cals = [c for c in cals if c.calibration_date < before]
 
     # Repository returns newest-first; health calculations expect chronological order.
     chronological = list(reversed(cals))

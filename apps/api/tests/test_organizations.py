@@ -868,3 +868,85 @@ class TestExternalOrganizations:
         response = client.delete(f"/api/v1/organizations/{org['id']}", headers=_headers_for(technician))
         # Same 404-before-403 shape as update, above.
         assert response.status_code == 404
+
+
+class TestCalibrationLabCandidates:
+    """GET /organizations/calibration-lab-candidates — a deliberately minimal
+    (id+name only) picker endpoint for the calibration wizard's "External
+    Accredited Lab" / "Customer's Asset" type, open to any non-Viewer even
+    though the full external-org listing/detail endpoints stay Admin-only."""
+
+    def _external_org(self, client: TestClient, headers: dict, org_type: str = "provider", **extra) -> dict:
+        return _create_org(client, headers, org_category="external", org_type=org_type, **extra)
+
+    def test_technician_gets_populated_provider_list(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        provider = self._external_org(client, auth_headers, org_type="provider", vat_number="VAT-SECRET")
+        technician = _make_user(db, UserRole.technician)
+        r = client.get(
+            "/api/v1/organizations/calibration-lab-candidates",
+            params={"org_type": "provider"},
+            headers=_headers_for(technician),
+        )
+        assert r.status_code == 200, r.text
+        ids = [o["id"] for o in r.json()]
+        assert provider["id"] in ids
+
+    def test_response_excludes_private_fields(
+        self, client: TestClient, auth_headers: dict, db: Session
+    ) -> None:
+        self._external_org(client, auth_headers, org_type="provider", vat_number="VAT-SECRET")
+        technician = _make_user(db, UserRole.technician)
+        r = client.get(
+            "/api/v1/organizations/calibration-lab-candidates",
+            params={"org_type": "provider"},
+            headers=_headers_for(technician),
+        )
+        for candidate in r.json():
+            assert set(candidate.keys()) == {"id", "name"}
+
+    def test_filters_by_org_type(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        provider = self._external_org(client, auth_headers, org_type="provider")
+        customer = self._external_org(client, auth_headers, org_type="customer")
+        technician = _make_user(db, UserRole.technician)
+        customers = client.get(
+            "/api/v1/organizations/calibration-lab-candidates",
+            params={"org_type": "customer"},
+            headers=_headers_for(technician),
+        ).json()
+        ids = [o["id"] for o in customers]
+        assert customer["id"] in ids
+        assert provider["id"] not in ids
+
+    def test_internal_orgs_excluded(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        internal = _create_org(client, auth_headers, "Internal Org")
+        technician = _make_user(db, UserRole.technician)
+        providers = client.get(
+            "/api/v1/organizations/calibration-lab-candidates",
+            params={"org_type": "provider"},
+            headers=_headers_for(technician),
+        ).json()
+        assert internal["id"] not in [o["id"] for o in providers]
+
+    def test_viewer_forbidden(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        self._external_org(client, auth_headers, org_type="provider")
+        viewer = _make_user(db, UserRole.viewer)
+        r = client.get(
+            "/api/v1/organizations/calibration-lab-candidates",
+            params={"org_type": "provider"},
+            headers=_headers_for(viewer),
+        )
+        assert r.status_code == 403
+
+    def test_requires_authentication(self, client: TestClient) -> None:
+        r = client.get("/api/v1/organizations/calibration-lab-candidates", params={"org_type": "provider"})
+        assert r.status_code == 403
+
+    def test_invalid_org_type_rejected(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.get(
+            "/api/v1/organizations/calibration-lab-candidates",
+            params={"org_type": "bogus"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422

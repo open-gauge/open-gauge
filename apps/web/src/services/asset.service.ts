@@ -212,6 +212,14 @@ export async function createCalibration(body: CalibrationCreateBody): Promise<Ca
   });
 }
 
+export async function uploadCalibrationCertificate(calId: string, file: File): Promise<CalibrationRecord> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<CalibrationRecord>(`/api/v1/calibrations/${calId}/certificate/upload`, form, {
+    headers: tokenHeader(),
+  });
+}
+
 export async function voidCalibration(calId: string, reason?: string): Promise<void> {
   const qs = reason ? `?${new URLSearchParams({ reason })}` : "";
   await apiFetch<void>(`/api/v1/calibrations/${calId}${qs}`, {

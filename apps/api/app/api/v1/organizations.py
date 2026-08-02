@@ -16,6 +16,7 @@ from ...repositories import organization as org_repo
 from ...repositories import organization_join_request as join_repo
 from ...repositories import organization_signing_key as org_signing_key_repo
 from ...repositories import stored_file as file_repo
+from ...schemas.calibration import CalibrationLabCandidateResponse
 from ...schemas.organization import (
     AddMembersRequest,
     EligibleUserResponse,
@@ -158,6 +159,32 @@ def _build_org_response(db: Session, org: Organization, current_user: User) -> O
         if loc:
             data.location_name = loc.name
     return data
+
+
+@router.get("/calibration-lab-candidates", response_model=list[CalibrationLabCandidateResponse])
+def list_calibration_lab_candidates(
+    org_type: Literal["provider", "customer"],
+    db: Session = Depends(get_db),
+    _: User = Depends(require_not_viewer),
+) -> list[CalibrationLabCandidateResponse]:
+    """Minimal id+name list of active external organizations of the given
+    type, for the calibration wizard's Calibration Lab picker (External
+    Accredited Lab / Customer's Asset types). Deliberately open to any
+    non-Viewer and deliberately minimal — the full organization profile
+    (contact, address, VAT) stays Admin/Super-Admin-only via the main
+    GET /organizations listing; this endpoint exists so that restriction
+    doesn't block a Technician from picking a lab/customer in the wizard."""
+    orgs = (
+        db.query(Organization)
+        .filter(
+            Organization.org_category == "external",
+            Organization.org_type == org_type,
+            Organization.is_active.is_(True),
+        )
+        .order_by(Organization.name)
+        .all()
+    )
+    return [CalibrationLabCandidateResponse(id=o.id, name=o.name) for o in orgs]
 
 
 @router.get("", response_model=list[OrganizationListItem])

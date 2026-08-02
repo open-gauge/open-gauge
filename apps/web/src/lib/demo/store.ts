@@ -468,6 +468,14 @@ export function restoreCalibration(id: string): CalibrationRecord | undefined {
   return cal;
 }
 
+export function setUploadedCertificate(calId: string, fileId: string): CalibrationRecord | undefined {
+  const cal = getState().calibrations.find((c) => c.id === calId);
+  if (!cal) return undefined;
+  cal.uploaded_certificate_file_id = fileId;
+  persist();
+  return cal;
+}
+
 // ---------------------------------------------------------------------------
 // Locations
 // ---------------------------------------------------------------------------
@@ -565,6 +573,10 @@ export function deleteProcedure(id: string): void {
 
 export function listFilesForEntity(entityType: string, entityId: string): StoredFile[] {
   return getState().storedFiles.filter((f) => f.entity_type === entityType && f.entity_id === entityId);
+}
+
+export function getStoredFile(id: string): StoredFile | undefined {
+  return getState().storedFiles.find((f) => f.id === id);
 }
 
 export function addStoredFile(file: StoredFile): StoredFile {
@@ -776,6 +788,17 @@ export function listOrganizations(
   if (orgCategory) orgs = orgs.filter((o) => o.org_category === orgCategory);
   if (orgType) orgs = orgs.filter((o) => o.org_type === orgType);
   return orgs.map((o) => buildOrgListItem(o, userId));
+}
+
+/** Minimal {id, name} picker for the calibration wizard's Calibration Lab
+ * field (External Accredited Lab / Customer's Asset types) — deliberately
+ * open to any non-Viewer, unlike listOrganizations' admin-only external-org
+ * gating, since the full org profile stays admin-only but this picker must
+ * still work for Technicians recording a calibration. */
+export function listCalibrationLabCandidates(orgType: "provider" | "customer"): { id: string; name: string }[] {
+  return getState()
+    .organizations.filter((o) => o.is_active && o.org_category === "external" && o.org_type === orgType)
+    .map((o) => ({ id: o.id, name: o.name }));
 }
 
 export function listUserOrganizations(userId: string): OrganizationListItem[] {

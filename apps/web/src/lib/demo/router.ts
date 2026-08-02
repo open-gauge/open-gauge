@@ -219,6 +219,12 @@ route("GET", "/api/v1/organizations", ({ qs }) =>
 route("POST", "/api/v1/organizations", ({ body }) =>
   store.createOrganization(body as OrganizationCreateInput, store.getDemoUser().id));
 
+// Must be registered before the dynamic "/:id" route below, same ordering
+// requirement as the real backend (a static path segment of the same length
+// would otherwise be swallowed by the ":id" capture).
+route("GET", "/api/v1/organizations/calibration-lab-candidates", ({ qs }) =>
+  store.listCalibrationLabCandidates((qs.get("org_type") as "provider" | "customer" | null) ?? "provider"));
+
 route("GET", "/api/v1/organizations/:id", ({ params }) => {
   const org = store.getOrganization(params[0], store.getDemoUser().id);
   if (!org) throw new NotFoundError("organization not found");
@@ -495,16 +501,21 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     external_lab_name: req.external_lab_name ?? null,
     notes: req.notes ?? null,
     calibration_file_id: null,
+    uploaded_certificate_file_id: null,
     created_by: store.getDemoUser().id,
     created_at: now,
     sensor_id: req.sensor_id ?? null,
     calibration_type: req.calibration_type,
+    calibration_purpose: req.calibration_purpose ?? "routine",
     calibration_version: version,
     calibration_interval: req.calibration_interval ?? null,
     tolerance_criteria: req.tolerance_criteria ?? null,
+    repair_date: req.repair_date ?? null,
+    repair_description: req.repair_description ?? null,
     internal_reference_asset_id: req.internal_reference_asset_id ?? null,
     internal_procedure_id: req.internal_procedure_id ?? null,
     external_lab_certificate_number: req.external_lab_certificate_number ?? null,
+    calibration_organization_id: req.calibration_organization_id ?? null,
     daq_id: req.daq_id ?? null,
     calibration_data_id: null,
     calibration_location_id: req.calibration_location_id ?? null,
@@ -780,10 +791,21 @@ route("GET", "/api/v1/assets/:id/audit-logs", ({ params }) => {
 route("GET", "/api/v1/assets/:id/files", ({ params }) => {
   const asset = store.getAssetProfile(params[0]);
   if (!asset) throw new NotFoundError("asset not found");
-  return store.listFilesForEntity("asset", asset.id);
+  // Calibration certificates (system-generated or uploaded) are tagged with
+  // entity_id=<calibration id>, not the asset's own id — included here for
+  // Files-tab visibility, but that mismatch is exactly what keeps them out
+  // of reach of the delete route below.
+  const certFiles = store.listCalibrationsForAsset(asset.id, false).flatMap((cal) => [
+    ...store.listFilesForEntity("calibration_certificate", cal.id),
+    ...store.listFilesForEntity("calibration_uploaded_certificate", cal.id),
+  ]);
+  return [...store.listFilesForEntity("asset", asset.id), ...certFiles];
 });
 
 route("DELETE", "/api/v1/assets/:id/files/:fileId", ({ params }) => {
+  const asset = store.getAssetProfile(params[0]);
+  const file = store.getStoredFile(params[1]);
+  if (!asset || !file || file.entity_id !== asset.id) throw new NotFoundError("file not found");
   store.deleteStoredFile(params[1]);
   return undefined;
 });
@@ -897,7 +919,29 @@ route("GET", "/api/v1/assets/:id/health", ({ params }) => {
   if (!asset) throw new NotFoundError("asset not found");
   const snapshot = store.getHealthSnapshot(asset.id);
   if (!snapshot) throw new NotFoundError("no health snapshot for asset");
+  // Precomputed at fixture-generation time (see getHealthSnapshot) — the
+  // demo doesn't re-derive drift/stability live, so after/before scoping
+  // (real-backend-only) is a no-op here; the repair-period dropdown still
+  // works (below), it just always compares against the same full snapshot.
   return snapshot;
+});
+
+route("GET", "/api/v1/assets/:id/health/repair-periods", ({ params }) => {
+  const asset = store.getAssetProfile(params[0]);
+  if (!asset) throw new NotFoundError("asset not found");
+  const repairDates = Array.from(new Set(
+    store.listCalibrationsForAsset(asset.id, false)
+      .filter((c) => c.calibration_purpose === "after_repair" && c.repair_date)
+      .map((c) => c.repair_date as string)
+  )).sort();
+  const periods: { label: string; after: string | null; before: string | null }[] = [];
+  let prev: string | null = null;
+  for (const d of repairDates) {
+    periods.push({ label: `Before Repair ${d}`, after: prev, before: d });
+    prev = d;
+  }
+  periods.push({ label: "Currently", after: prev, before: null });
+  return periods;
 });
 
 route("GET", "/api/v1/assets/:id/health/curve-comparison", ({ params, qs }): CurveComparisonResponse => {
@@ -1167,6 +1211,17 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
     };
     store.setUserSignature(userId, sig);
     return sig as unknown as T;
+  }
+
+  // /api/v1/calibrations/:id/certificate/upload
+  m = /^\/api\/v1\/calibrations\/([^/]+)\/certificate\/upload$/.exec(req.pathname);
+  if (m) {
+    const cal = store.getCalibrationById(m[1]);
+    if (!cal) throw new Error("calibration not found");
+    if (file.type !== "application/pdf") throw new Error("File must be a PDF");
+    const stored = store.addStoredFile(makeStoredFile("calibration_uploaded_certificate", cal.id));
+    const updated = store.setUploadedCertificate(cal.id, stored.id);
+    return updated as unknown as T;
   }
 
   // /api/v1/procedures/:id/files

@@ -4,6 +4,10 @@ export type DecisionRule = "simple_acceptance" | "guard_band_w_uncertainty" | "s
 
 export type CalibrationStatus = "valid" | "pending_approval" | "rejected" | "void";
 
+export type CalibrationType = "oem" | "external_accredited_lab" | "internal_lab" | "customer_asset";
+
+export type CalibrationPurpose = "initial" | "routine" | "after_repair" | "verification";
+
 export interface ConformityStatement {
   decision_rule: string;
   specification: string | null;
@@ -24,20 +28,27 @@ export interface CalibrationRecord {
   external_lab_name: string | null;
   notes: string | null;
   calibration_file_id: string | null;
+  uploaded_certificate_file_id: string | null;
   created_by: string;
   created_at: string;
 
   // Metadata
   sensor_id: string | null;
-  calibration_type: string;
+  calibration_type: CalibrationType;
+  calibration_purpose: CalibrationPurpose;
   calibration_version: number;
   calibration_interval: number | null;
   tolerance_criteria: string | null;
+
+  // Repair tracking — only meaningful when calibration_purpose === "after_repair"
+  repair_date: string | null;
+  repair_description: string | null;
 
   // Traceability
   internal_reference_asset_id: string | null;
   internal_procedure_id: string | null;
   external_lab_certificate_number: string | null;
+  calibration_organization_id: string | null;
   daq_id: string | null;
   calibration_data_id: string | null;
   calibration_location_id: string | null;
@@ -106,6 +117,19 @@ export interface CalibrationUser {
   name: string;
   email: string;
   profile_picture_url: string | null;
+}
+
+/** Minimal external-org candidate for the Calibration Lab picker (External
+ * Accredited Lab / Customer's Asset types) — id+name only. */
+export interface CalibrationLabCandidate {
+  id: string;
+  name: string;
+}
+
+export interface RepairPeriod {
+  label: string;
+  after: string | null;
+  before: string | null;
 }
 
 export interface CalibrationPoint {
@@ -281,14 +305,20 @@ export interface CalibrationCreateBody {
   notes?: string | null;
 
   // Metadata
-  calibration_type: string;
+  calibration_type: CalibrationType;
+  calibration_purpose?: CalibrationPurpose;
   calibration_interval?: number | null;
   tolerance_criteria?: string | null;
+
+  // Repair tracking — only meaningful when calibration_purpose === "after_repair"
+  repair_date?: string | null;
+  repair_description?: string | null;
 
   // Traceability
   internal_reference_asset_id?: string | null;
   internal_procedure_id?: string | null;
   external_lab_certificate_number?: string | null;
+  calibration_organization_id?: string | null;
   daq_id?: string | null;
   calibration_location_id?: string | null;
 

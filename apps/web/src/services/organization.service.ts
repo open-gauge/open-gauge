@@ -13,6 +13,7 @@ import type {
   OrgType,
   SigningCertificate,
 } from "@/types/organization";
+import type { CalibrationLabCandidate } from "@/types/calibration";
 
 function tokenHeader(): Record<string, string> {
   const token = getToken();
@@ -23,6 +24,12 @@ function tokenHeader(): Record<string, string> {
 export interface ListOrganizationsParams {
   org_category?: OrgCategory;
   org_type?: OrgType;
+}
+
+export async function listCalibrationLabCandidates(orgType: OrgType): Promise<CalibrationLabCandidate[]> {
+  return apiFetch<CalibrationLabCandidate[]>(`/api/v1/organizations/calibration-lab-candidates?org_type=${orgType}`, {
+    headers: tokenHeader(),
+  });
 }
 
 export async function listOrganizations(params?: ListOrganizationsParams): Promise<OrganizationListItem[]> {

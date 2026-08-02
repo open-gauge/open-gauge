@@ -178,3 +178,19 @@ def validate_image_upload(content_type: str | None, size: int) -> str:
     if size > MAX_IMAGE_SIZE_BYTES:
         raise ValueError("Image must be smaller than 5MB")
     return ct
+
+
+MAX_CERTIFICATE_SIZE_BYTES = 20 * 1024 * 1024
+
+
+def validate_pdf_upload(content_type: str | None, data: bytes) -> str:
+    """Validate an uploaded calibration certificate. Checked two ways —
+    declared content-type and the actual PDF magic bytes — since a browser's
+    reported content-type can't be trusted alone. Returns the content type or
+    raises ValueError."""
+    ct = content_type or ""
+    if ct != "application/pdf" or not data.startswith(b"%PDF"):
+        raise ValueError("File must be a PDF")
+    if len(data) > MAX_CERTIFICATE_SIZE_BYTES:
+        raise ValueError("Certificate must be smaller than 20MB")
+    return ct

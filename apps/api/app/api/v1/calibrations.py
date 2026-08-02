@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -30,7 +30,15 @@ from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
 from ...services.latex_service import LatexCompileError
 from ...services.pdf_signing_service import CertificateSigningError
-from ...services.storage import delete_file, get_presigned_url, sha256_hex, upload_file
+from ...services.storage import (
+    delete_file,
+    download_file,
+    get_presigned_url,
+    sha256_hex,
+    unique_object_name,
+    upload_file,
+    validate_pdf_upload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -416,16 +424,73 @@ def reject_calibration(
     return cal
 
 
+@router.post("/{cal_id}/certificate/upload", response_model=CalibrationResponse)
+async def upload_certificate(
+    cal_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> CalibrationResponse:
+    """Attach a user-supplied certificate PDF (OEM / External Accredited Lab
+    types) — stored separately from the system-generated certificate
+    (calibration_file_id) and takes priority over it wherever a certificate is
+    served. PDF-only, validated by both declared content-type and magic bytes."""
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+    asset = asset_repo.get_by_id(db, cal.asset_id)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    data = await file.read()
+    try:
+        content_type = validate_pdf_upload(file.content_type, data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    checksum = sha256_hex(data)
+    object_path = unique_object_name(f"calibration-certificates/{asset.asset_id}/{cal.id}", file.filename or "certificate.pdf")
+    bucket, path, size = upload_file(data, content_type, object_path)
+
+    file_rec = sf_repo.create(
+        db,
+        original_filename=file.filename or "certificate.pdf",
+        storage_path=path,
+        bucket=bucket,
+        content_type=content_type,
+        size_bytes=size,
+        checksum_sha256=checksum,
+        entity_type="calibration_uploaded_certificate",
+        entity_id=cal.id,
+        uploaded_by=current_user.id,
+    )
+    cal.uploaded_certificate_file_id = file_rec.id
+    db.commit()
+    db.refresh(cal)
+    return cal
+
+
 @router.get("/{cal_id}/certificate")
 def get_certificate(
     cal_id: uuid.UUID,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> JSONResponse:
-    """Return a 1-hour presigned download URL for the calibration certificate PDF."""
+    """Return a 1-hour presigned download URL for the calibration certificate PDF.
+    An uploaded certificate (OEM / External Accredited Lab types) always takes
+    priority over the system-generated one when both exist."""
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+
+    if cal.uploaded_certificate_file_id:
+        file_rec = sf_repo.get_by_id(db, cal.uploaded_certificate_file_id)
+        if not file_rec:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate file record not found")
+        url = get_presigned_url(file_rec.storage_path, file_rec.bucket)
+        if not url:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage unavailable")
+        return JSONResponse({"url": url, "filename": file_rec.original_filename})
 
     if not cal.calibration_file_id:
         # Certificate hasn't been generated yet — attempt on-demand generation
@@ -490,11 +555,27 @@ def download_certificate(
     calibration_file_id — it's always a fresh, ad-hoc render (needed since a
     one-off "try this template" download must not overwrite the canonical
     stored certificate), so it's a little slower but always reflects the
-    chosen template exactly.
+    chosen template exactly. An uploaded certificate (OEM / External Accredited
+    Lab types) always takes priority — it's streamed back as-is, no template
+    picker applies to a file we didn't generate.
     """
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+
+    if cal.uploaded_certificate_file_id:
+        file_rec = sf_repo.get_by_id(db, cal.uploaded_certificate_file_id)
+        if not file_rec:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate file record not found")
+        data = download_file(file_rec.storage_path, file_rec.bucket)
+        if data is None:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage unavailable")
+        return Response(
+            content=data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{file_rec.original_filename}"'},
+        )
+
     if not cal.poly_coefficients:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration has no results yet")
 

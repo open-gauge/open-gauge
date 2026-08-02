@@ -277,3 +277,139 @@ class TestCurveComparison:
             headers=auth_headers,
         )
         assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# GET /assets/{id}/health/repair-periods + after/before scoping
+# ---------------------------------------------------------------------------
+
+def _create_after_repair_calibration(
+    client: TestClient,
+    auth_headers: dict,
+    asset_id: str,
+    sensor_id: str,
+    calibration_date: str,
+    repair_date: str,
+    drift_offset: float,
+) -> dict:
+    payload = {
+        "asset_id": asset_id,
+        "calibration_date": calibration_date,
+        "due_date": "2030-01-01",
+        "performed_by_name": "Health Test Tech",
+        "sensor_id": sensor_id,
+        "calibration_purpose": "after_repair",
+        "repair_date": repair_date,
+        "repair_description": "Replaced sensing element",
+        "poly_order": 1,
+        "poly_coefficients": [1.0, drift_offset],
+        "range_min": 0.0,
+        "range_max": 100.0,
+        "valid_range_min": 0.0,
+        "valid_range_max": 100.0,
+        "r_squared": 0.999,
+        "rmse": 0.05,
+        "max_error": 0.1,
+        "expanded_uncertainty": 0.2,
+        "calibration_interval": 365,
+    }
+    r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+class TestRepairPeriods:
+    def test_no_repairs_returns_only_currently(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        _create_calibration(client, auth_headers, asset["id"], sensor_id, "2023-01-01", 0.0)
+        r = client.get(f"/api/v1/assets/{asset['id']}/health/repair-periods", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        periods = r.json()
+        assert len(periods) == 1
+        assert periods[0]["label"] == "Currently"
+        assert periods[0]["after"] is None
+        assert periods[0]["before"] is None
+
+    def test_one_repair_returns_two_periods(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        _create_calibration(client, auth_headers, asset["id"], sensor_id, "2023-01-01", 0.0)
+        _create_after_repair_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2024-01-01", "2024-01-01", 0.5
+        )
+        r = client.get(f"/api/v1/assets/{asset['id']}/health/repair-periods", headers=auth_headers)
+        periods = r.json()
+        assert len(periods) == 2
+        assert periods[0]["before"] == "2024-01-01"
+        assert periods[0]["after"] is None
+        assert periods[1]["label"] == "Currently"
+        assert periods[1]["after"] == "2024-01-01"
+        assert periods[1]["before"] is None
+
+    def test_two_repairs_returns_three_periods(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        _create_calibration(client, auth_headers, asset["id"], sensor_id, "2023-01-01", 0.0)
+        _create_after_repair_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2024-01-01", "2024-01-01", 0.5
+        )
+        _create_after_repair_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2025-01-01", "2025-01-01", 1.0
+        )
+        r = client.get(f"/api/v1/assets/{asset['id']}/health/repair-periods", headers=auth_headers)
+        periods = r.json()
+        assert len(periods) == 3
+        assert [p["before"] for p in periods] == ["2024-01-01", "2025-01-01", None]
+        assert [p["after"] for p in periods] == [None, "2024-01-01", "2025-01-01"]
+
+    def test_unknown_asset_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.get(f"/api/v1/assets/{uuid.uuid4()}/health/repair-periods", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_requires_authentication(self, client: TestClient, asset: dict) -> None:
+        r = client.get(f"/api/v1/assets/{asset['id']}/health/repair-periods")
+        assert r.status_code == 403
+
+
+class TestHealthAfterBeforeScoping:
+    def test_after_repair_rescopes_baseline(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        """Before the repair the channel drifted by 1.0; after, it's flat at
+        1.0 offset. Scoping to the post-repair period should show ~0 drift
+        instead of the full, repair-mixed 1.0 drift."""
+        sensor_id = _sensor_id(asset, "CH1")
+        _create_calibration(client, auth_headers, asset["id"], sensor_id, "2022-01-01", 0.0)
+        _create_after_repair_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2023-01-01", "2023-01-01", 1.0
+        )
+        _create_calibration(client, auth_headers, asset["id"], sensor_id, "2024-01-01", 1.0)
+
+        full = client.get(
+            f"/api/v1/assets/{asset['id']}/health?sensor_id={sensor_id}", headers=auth_headers
+        ).json()
+        scoped = client.get(
+            f"/api/v1/assets/{asset['id']}/health?sensor_id={sensor_id}&after=2023-01-01",
+            headers=auth_headers,
+        ).json()
+        assert full["calibration_count"] == 3
+        assert scoped["calibration_count"] == 2
+        assert scoped["overview"]["average_drift_rate"] == pytest.approx(0.0, abs=1e-6)
+
+    def test_before_excludes_calibrations_at_or_after_boundary(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        sensor_id = _sensor_id(asset, "CH1")
+        _create_calibration(client, auth_headers, asset["id"], sensor_id, "2022-01-01", 0.0)
+        _create_after_repair_calibration(
+            client, auth_headers, asset["id"], sensor_id, "2023-01-01", "2023-01-01", 1.0
+        )
+        r = client.get(
+            f"/api/v1/assets/{asset['id']}/health?sensor_id={sensor_id}&before=2023-01-01",
+            headers=auth_headers,
+        )
+        assert r.json()["calibration_count"] == 1

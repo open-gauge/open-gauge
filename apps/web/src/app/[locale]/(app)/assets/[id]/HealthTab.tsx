@@ -14,7 +14,8 @@ import type {
   PredictionOut,
   RadarAxis,
 } from "@/types/health";
-import { getAssetHealth, getCurveComparison } from "@/services/health.service";
+import type { RepairPeriod } from "@/types/calibration";
+import { getAssetHealth, getCurveComparison, listRepairPeriods } from "@/services/health.service";
 import { COLORS, HEALTH_METRIC_COLOR } from "@/lib/tokens";
 import { Tooltip } from "@/components/tooltip";
 import { CURVE_METRIC_DOCS_LINKS, DETAILED_METRIC_DOCS_LINKS, HEALTH_DOCS_LINKS } from "@/lib/docs-links";
@@ -593,33 +594,69 @@ export function HealthTab({ assetId, profile }: { assetId: string; profile: Asse
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Before/after-repair comparison — the dropdown always defaults to the last
+  // ("Currently") period; it's only shown when there's at least one repair on
+  // record, since with none it would just be a single, always-selected option.
+  const [repairPeriods, setRepairPeriods] = useState<RepairPeriod[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<RepairPeriod | null>(null);
+  const [periodsLoaded, setPeriodsLoaded] = useState(false);
+
   useEffect(() => {
+    setPeriodsLoaded(false);
+    listRepairPeriods(assetId)
+      .then((periods) => {
+        setRepairPeriods(periods);
+        setSelectedPeriod(periods[periods.length - 1] ?? null);
+      })
+      .catch(() => setRepairPeriods([]))
+      .finally(() => setPeriodsLoaded(true));
+  }, [assetId]);
+
+  useEffect(() => {
+    if (!periodsLoaded) return;
     setLoading(true);
     setError(null);
-    getAssetHealth(assetId, activeChannelId)
+    getAssetHealth(assetId, activeChannelId, selectedPeriod?.after, selectedPeriod?.before)
       .then(setHealth)
       .catch((e) => setError(e instanceof Error ? e.message : t("errorLoadHealthData")))
       .finally(() => setLoading(false));
-  }, [assetId, activeChannelId]);
+  }, [assetId, activeChannelId, selectedPeriod, periodsLoaded]);
 
   return (
     <div className="space-y-5">
-      {hasChannelTabs && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {channels.map((ch) => (
-            <button
-              key={ch.id}
-              type="button"
-              onClick={() => setActiveChannelId(ch.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                activeChannelId === ch.id
-                  ? "bg-og-accent/10 border-og-accent text-og-accent"
-                  : "border-og-border-md text-gray-500 hover:bg-og-surface-alt"
-              }`}
+      {(hasChannelTabs || repairPeriods.length > 1) && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          {hasChannelTabs ? (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {channels.map((ch) => (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => setActiveChannelId(ch.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    activeChannelId === ch.id
+                      ? "bg-og-accent/10 border-og-accent text-og-accent"
+                      : "border-og-border-md text-gray-500 hover:bg-og-surface-alt"
+                  }`}
+                >
+                  {ch.channel_id}
+                </button>
+              ))}
+            </div>
+          ) : <div />}
+          {repairPeriods.length > 1 && (
+            <select
+              value={repairPeriods.findIndex((p) => p === selectedPeriod)}
+              onChange={(e) => setSelectedPeriod(repairPeriods[parseInt(e.target.value)] ?? null)}
+              className="px-3 py-1.5 rounded-lg border border-og-border-md text-xs text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
             >
-              {ch.channel_id}
-            </button>
-          ))}
+              {repairPeriods.map((p, i) => (
+                <option key={i} value={i}>
+                  {p.before ? t("beforeRepair", { date: fmtDate(p.before) }) : t("currentlyPeriod")}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
 

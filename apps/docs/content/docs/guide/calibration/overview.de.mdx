@@ -30,12 +30,12 @@ geschieht nur einmal, beim Speichern.
 
 Starten Sie eine Kalibrierung vom Kanal einer Anlage aus. Der Assistent hat drei Schritte:
 
-1. **Allgemeine Informationen** — Kalibrierart (**intern**, gegen eine Referenz-Anlage, die Ihnen
-   gehört, oder **extern**, von einem externen Labor), Kalibrierdatum, **Registriert von** (ein
-   Dropdown der Organisationsmitglieder der Anlage, standardmäßig Sie selbst), ein optionaler
-   Prüfer **Geprüft von**, Umgebungsbedingungen und (für interne Kalibrierungen) das verwendete Referenznormal und das
-   befolgte Verfahren. Dieser Schritt hat auch ein Kontrollkästchen **"Nur Koeffizienten (keine
-   Rohdaten)"** für extern ausgestellte Zertifikate, die direkt ein Polynom angeben — siehe
+1. **Allgemeine Informationen** — Kalibrierart und -zweck (siehe unten), Kalibrierdatum,
+   **Erfasst von** (eine Dropdown-Liste der Organisationsmitglieder der Anlage, standardmäßig Sie
+   selbst), ein optionaler Prüfer **Geprüft von**, Kalibrierintervall, Umgebungsbedingungen und
+   Notizen. Je nach gewählter Art/gewähltem Zweck erscheinen zusätzliche Felder — siehe unten.
+   Dieser Schritt hat auch ein Kontrollkästchen **"Nur Koeffizienten (keine Rohdaten)"** für extern
+   ausgestellte Zertifikate, die direkt ein Polynom angeben — siehe
    [Kalibrierungen nur mit Koeffizienten](./coefficients-only.mdx).
 2. **Rohdaten** — geben Sie (Referenz-, Mess-)Punktpaare ein. Siehe
    [Kurvenanpassung](./curve-fitting.mdx) dazu, was Open Gauge damit macht.
@@ -49,17 +49,70 @@ nicht der Spezifikation des Kanals, zeigt die Speicherbestätigung eine explizit
 der Spezifikation und Entscheidungsregel, und die Speichern-Schaltfläche wird zu
 **"Trotzdem speichern"** umbenannt.
 
-## Interne vs. externe Kalibrierungen
+## Kalibrierart
 
-- **Intern** — im eigenen Haus durchgeführt, gegen eine der eigenen Anlagen, die als
-  [Referenznormal](../sensors/adding-a-sensor.mdx#calibration-role) gekennzeichnet ist. Wenn Sie
-  eine Referenz-Anlage auswählen, ruft Open Gauge automatisch die erweiterte Unsicherheit der letzten
-  Kalibrierung dieser Anlage ab und rechnet sie als `reference_standard`-Beitrag in das
-  Unsicherheitsbudget dieser Kalibrierung ein — siehe
-  [Das Unsicherheitsbudget](./uncertainty-budget.mdx#contributions).
-- **Extern** — von einem externen Kalibrierlabor durchgeführt. Sie erfassen den Namen des Labors
-  und die Zertifikatsnummer; gibt das Zertifikat des Labors direkt ein Polynom an statt Rohdaten,
-  verwenden Sie den Nur-Koeffizienten-Weg, statt eine Anpassung von Grund auf neu abzuleiten.
+Die **Kalibrierart** beschreibt, *wer die Kalibrierung durchgeführt hat*, und bestimmt, worauf sich
+das Feld **Kalibrierlabor** auflöst:
+
+- **OEM** — durchgeführt vom Hersteller des Sensors. Das Kalibrierlabor ist eine schreibgeschützte
+  Momentaufnahme des Herstellers der Anlage zum Zeitpunkt des Speicherns (nicht vom Benutzer
+  bearbeitbar). Ein Upload des **Kalibrierzertifikats** ist verfügbar (nur PDF).
+- **Externes akkreditiertes Labor** — durchgeführt von einem externen, akkreditierten Labor. Das
+  Kalibrierlabor ist eine Dropdown-Liste Ihrer
+  [externen Organisationen](../organizations/index.mdx#internal-vs-external-organizations), die als
+  Anbieter gekennzeichnet sind. Ein Upload des **Kalibrierzertifikats** ist verfügbar (nur PDF).
+- **Internes Labor (im eigenen Haus)** — durchgeführt von Ihrer eigenen Organisation, gegen eine
+  Ihrer eigenen Anlagen, die als [Referenznormal](../sensors/adding-a-sensor.mdx#calibration-role)
+  gekennzeichnet ist. Das Kalibrierlabor ist eine Dropdown-Liste der Standorte Ihrer Organisation,
+  die als Kalibrierlabore gekennzeichnet sind. Wenn Sie eine Referenz-Anlage auswählen, ruft Open
+  Gauge automatisch die erweiterte Unsicherheit der letzten Kalibrierung dieser Anlage ab und
+  rechnet sie als `reference_standard`-Beitrag in das Unsicherheitsbudget dieser Kalibrierung ein —
+  siehe [Das Unsicherheitsbudget](./uncertainty-budget.mdx#contributions). Kein Zertifikats-Upload
+  — das systemgenerierte Zertifikat ist das einzige, da es sich um Ihre eigene Messung handelt.
+- **Kundenanlage** — die Anlage gehört einem Kunden und wird in dessen Auftrag kalibriert. Das
+  Kalibrierlabor ist eine Dropdown-Liste Ihrer externen Organisationen, die als Kunden
+  gekennzeichnet sind. Kein Zertifikats-Upload.
+
+Für OEM, Externes akkreditiertes Labor und Kundenanlage kann die Rohdateneingabe vollständig
+übersprungen werden mit **"Nur Koeffizienten (keine Rohdaten)"**, wenn das Zertifikat direkt ein
+Polynom angibt.
+
+### Hochgeladene Zertifikate
+
+Wenn ein PDF-Zertifikat hochgeladen wird (nur OEM / Externes akkreditiertes Labor), überprüft Open
+Gauge, dass es sich tatsächlich um ein PDF handelt (Content-Type und Dateisignatur), bevor es
+akzeptiert wird. Nach dem Hochladen hat es überall dort, wo das Zertifikat einer Kalibrierung
+heruntergeladen wird, **Vorrang** vor dem systemgenerierten Zertifikat — das systemgenerierte wird
+weiterhin erzeugt und gespeichert, aber solange das hochgeladene existiert, wird stattdessen dieses
+ausgeliefert. Das hochgeladene Zertifikat erscheint außerdem im Reiter **Dateien** der Anlage,
+gekennzeichnet mit einem Abzeichen "Kalibrierzertifikat"; es kann von dort heruntergeladen, aber
+nicht gelöscht werden — die einzige Möglichkeit, es zurückzuziehen, besteht darin, die Kalibrierung
+selbst zu entwerten, im Einklang damit, dass die Kalibrierhistorie nie nachträglich bearbeitet wird.
+
+## Kalibrierzweck
+
+Der **Kalibrierzweck** hält fest, *warum* die Kalibrierung durchgeführt wurde:
+
+- **Erstkalibrierung** — die erste Kalibrierung der Anlage/des Kanals. Standardmäßig ausgewählt,
+  wenn noch keine vorherige Kalibrierung für den Kanal existiert; Sie können sie bei Bedarf ändern.
+- **Routine** — eine periodische Rekalibrierung. Der Standard, sobald mindestens eine vorherige
+  Kalibrierung existiert.
+- **Nach Reparatur** — im Anschluss an eine Reparatur. Zeigt ein **Reparaturdatum**
+  (Datumsauswahl) und eine **Reparaturbeschreibung** (bis zu 500 Zeichen). Siehe unten, wie sich
+  dies auf den Reiter Zustand auswirkt.
+- **Verifizierung** — eine Kalibrierung, die durchgeführt wird, um die fortlaufende Konformität zu
+  überprüfen, ohne notwendigerweise die Intervalluhr zurückzusetzen, wie es eine routinemäßige
+  Rekalibrierung tun würde.
+
+### Driftvergleich vor/nach Reparatur
+
+Das Erfassen einer **Nach-Reparatur**-Kalibrierung mit einem Reparaturdatum markiert eine Grenze in
+der Kalibrierhistorie des Kanals. Der Reiter Zustand erhält ein Zeitraum-Dropdown —
+**"Vor Reparatur `{Datum}`"** für jede erfasste Reparatur, plus **"Aktuell"** (der Zeitraum seit der
+letzten Reparatur, standardmäßig ausgewählt) — mit dem Sie Drift-, Stabilitäts- und
+Vorhersagemetriken über Reparaturereignisse hinweg vergleichen können, statt immer auf die
+vollständige ununterbrochene Historie zu blicken, die sonst das Verhalten vor und nach der
+Reparatur zu einem einzigen irreführenden Trend vermischen würde.
 
 ## Wo Ergebnisse landen
 
@@ -80,35 +133,39 @@ siehe unten) und nie neu nummeriert.
 
 ## Genehmigungsworkflow
 
-Jede Kalibrierung hat einen Status: **gültig**, **ausstehende Genehmigung**, **abgelehnt** oder
-**entwertet**. Nur **gültige** Kalibrierungen zählen für die Kalibrierung des Kanals,
-Fälligkeitsdatumsberechnungen und die Driftanalyse — die anderen drei werden ausgeschlossen,
-genau wie es bei entwerteten Kalibrierungen schon immer der Fall war.
+Jede Kalibrierung hat einen **Status**: **gültig** (verwendet für die Kalibrierung des Kanals,
+Fälligkeitsdatum-Berechnungen und die Driftanalyse), **Genehmigung ausstehend**, **abgelehnt**, oder
+**entwertet**. Nur eine **gültige** Kalibrierung wird verwendet — die anderen drei sind alle von
+Fälligkeitsdatum-/Statusberechnungen und der Drift-Analyse im Reiter Zustand ausgeschlossen, ebenso
+wie es bei einer entwerteten schon immer der Fall war.
 
-Wird in Schritt 1 ein Prüfer unter **Geprüft von** angegeben, wechselt die Kalibrierung in den
-Status **ausstehende Genehmigung** statt gültig. Der Prüfer wird benachrichtigt (in der App und
-per E-Mail, falls konfiguriert) und kann von derselben Zeile im Reiter Kalibrierung aus:
+Die Benennung eines Prüfers unter **Geprüft von** in Schritt 1 versetzt die neue Kalibrierung in den
+Status **Genehmigung ausstehend** statt gültig. Der Prüfer erhält eine Benachrichtigung (in der App
+und per E-Mail, falls konfiguriert) und kann von derselben Zeile im Reiter Kalibrierung aus:
 
-- **Genehmigen** — die Kalibrierung wird gültig, und die registrierende Person wird
+- Sie **genehmigen** — die Kalibrierung wird **gültig**, und die Person, die sie erfasst hat, wird
   benachrichtigt.
-- **Ablehnen**, mit optionaler Begründung — die Kalibrierung wird abgelehnt, die registrierende
-  Person wird benachrichtigt, und dies ist endgültig: eine Korrektur bedeutet, eine neue
-  Kalibrierung zu registrieren, nicht die alte zu bearbeiten.
+- Sie **ablehnen**, mit einem optionalen Grund — die Kalibrierung wird **abgelehnt**, und die
+  erfassende Person wird benachrichtigt. Eine abgelehnte Kalibrierung ist endgültig: Ihre Korrektur
+  bedeutet, eine neue Kalibrierung zu erfassen, nicht die alte zu bearbeiten, im Einklang damit,
+  dass die Kalibrierhistorie nie nachträglich geändert wird.
 
-Nur der zugewiesene Prüfer oder eine Admin-/Superadmin-Übersteuerung kann darüber entscheiden.
+Nur der zugewiesene Prüfer oder ein `admin`/`superadmin` als Override können eine gegebene
+Kalibrierung genehmigen oder ablehnen. Wird **Geprüft von** nicht gesetzt, wird der Workflow
+vollständig übersprungen — die Kalibrierung wird sofort als **gültig** angelegt, genau wie vor
+Einführung dieser Funktion.
 
-Bleibt **Geprüft von** leer, wird der Workflow vollständig übersprungen — die Kalibrierung wird
-sofort als gültig erstellt, genau wie zuvor.
-
-Der Schalter **„Gültige Kalibrierungen anzeigen"** (nur für Admins) steuert, ob ausstehende,
-abgelehnte und entwertete Kalibrierungen überhaupt angezeigt werden — standardmäßig deaktiviert.
+Der Schalter **Gültige Kalibrierungen anzeigen** im Reiter Kalibrierung (jede Rolle außer Viewer)
+steuert, ob Kalibrierungen mit ausstehender Genehmigung, abgelehnte und entwertete Kalibrierungen
+überhaupt angezeigt werden — standardmäßig aus, sodass die Historie auf das fokussiert bleibt, was
+tatsächlich in Kraft ist.
 
 ## Eine Kalibrierung entwerten
 
 Die Kalibrierhistorie wird nie zerstört — es gibt keine Löschen-Schaltfläche, nur **Entwerten**,
-beschränkt auf `admin`/`superadmin`. Entwerten ist von jedem Status aus erreichbar — gültig,
-ausstehende Genehmigung oder abgelehnt — als jederzeit verfügbare Übersteuerung. Das Entwerten
-eines Eintrags (über das Papierkorb-Symbol in seiner Zeile im Reiter Kalibrierung):
+beschränkt auf `admin`/`superadmin`. Das Entwerten ist von jedem Status aus erreichbar (gültig,
+Genehmigung ausstehend oder abgelehnt) als jederzeit verfügbarer Override. Das Entwerten eines
+Eintrags (über das Papierkorb-Symbol in seiner Zeile im Reiter Kalibrierung):
 
 - Markiert ihn als ungültig und hält optional fest, warum.
 - Blendet ihn standardmäßig aus der Liste der Kalibrierhistorie und der Anlagenübersicht aus (ein
@@ -120,11 +177,10 @@ eines Eintrags (über das Papierkorb-Symbol in seiner Zeile im Reiter Kalibrieru
 
 Der Datensatz, seine Datenpunkte und sein Zertifikat bleiben allesamt unverändert erhalten —
 das Entwerten schaltet nur ein Kennzeichen um. Ein Admin kann eine entwertete Kalibrierung jederzeit
-aus derselben Zeile **wiederherstellen**, was all das Obige rückgängig macht; die
-Wiederherstellung setzt eine Kalibrierung stets auf den Status **gültig** zurück — sie versucht
-nicht, eine zuvor abgelehnte Kalibrierung wieder auf abgelehnt oder ausstehende Genehmigung
-zurückzusetzen. Siehe [Kalibrierungen](/docs/api/calibrations) in der API-Referenz für die genauen
-Payloads von `DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`,
+aus derselben Zeile **wiederherstellen**, was sie stets wieder auf **gültig** setzt (es wird nicht
+versucht, eine zuvor abgelehnte Kalibrierung zurück auf "abgelehnt" oder "Genehmigung ausstehend" zu
+setzen). Siehe [Kalibrierungen](/docs/api/calibrations) in der API-Referenz für die genauen Payloads
+von `DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`,
 `POST /calibrations/{id}/approve` und `POST /calibrations/{id}/reject`.
 
 Ein vollständiger Anlagenexport (die Aktion Exportieren auf der Anlagenseite) enthält immer

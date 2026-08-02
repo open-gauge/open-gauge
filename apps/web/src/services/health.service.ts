@@ -1,6 +1,7 @@
 import { apiFetch, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetHealthResponse, CurveComparisonResponse } from "@/types/health";
+import type { RepairPeriod } from "@/types/calibration";
 
 function tokenHeader(): Record<string, string> {
   const token = getToken();
@@ -10,10 +11,22 @@ function tokenHeader(): Record<string, string> {
 
 export async function getAssetHealth(
   assetId: string,
-  sensorId?: string | null
+  sensorId?: string | null,
+  after?: string | null,
+  before?: string | null,
 ): Promise<AssetHealthResponse> {
-  const qs = sensorId ? `?sensor_id=${sensorId}` : "";
-  return apiFetch<AssetHealthResponse>(`/api/v1/assets/${assetId}/health${qs}`, {
+  const qs = new URLSearchParams();
+  if (sensorId) qs.set("sensor_id", sensorId);
+  if (after) qs.set("after", after);
+  if (before) qs.set("before", before);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<AssetHealthResponse>(`/api/v1/assets/${assetId}/health${suffix}`, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function listRepairPeriods(assetId: string): Promise<RepairPeriod[]> {
+  return apiFetch<RepairPeriod[]>(`/api/v1/assets/${assetId}/health/repair-periods`, {
     headers: tokenHeader(),
   });
 }

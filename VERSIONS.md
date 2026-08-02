@@ -9,6 +9,23 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.11.0
+
+### Added
+
+- **Calibration type and purpose.** Every calibration now records a **type** — **OEM**,
+  **External Accredited Lab**, **Internal Lab (In-house)**, or **Customer's Asset** — which drives
+  what the **Calibration lab** field resolves to (a read-only manufacturer snapshot, a picker over
+  external organizations marked as providers/customers, or the existing internal-location picker,
+  respectively) and, for OEM/External Accredited Lab, unlocks an optional PDF **Calibration
+  certificate** upload (validated by content type and file signature) that takes priority over the
+  system-generated certificate everywhere it's downloaded, and appears — badged, non-deletable —
+  in the asset's Files tab. Every calibration also records a **purpose** — **Initial** (defaulted
+  automatically for a channel's first calibration), **Routine**, **After Repair**, or
+  **Verification**. Recording an After Repair calibration captures a repair date/description and
+  adds a before/after-repair period dropdown to the Health tab, so drift and stability metrics can
+  be compared across a repair instead of always spanning the full, repair-mixed history.
+
 ## 3.10.0
 
 ### Added

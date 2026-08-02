@@ -546,6 +546,41 @@ class TestAssetFiles:
         )
         assert response.status_code == 404
 
+    def test_calibration_certificate_appears_in_files_and_is_not_deletable(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        """Calibration certificates (system-generated or uploaded) are tagged
+        with entity_id=<calibration id>, not the asset's own id — they show up
+        in the Files list for traceability, but can't be deleted from here
+        (only voided via the calibration itself)."""
+        asset_id = created_asset["id"]
+        cal = client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset_id,
+                "calibration_date": "2025-04-01",
+                "due_date": "2026-04-01",
+                "performed_by_name": "Tech",
+            },
+            headers=auth_headers,
+        ).json()
+        client.post(
+            f"/api/v1/calibrations/{cal['id']}/certificate/upload",
+            files={"file": ("cert.pdf", b"%PDF-1.4\nfake", "application/pdf")},
+            headers=auth_headers,
+        )
+
+        files_resp = client.get(f"/api/v1/assets/{asset_id}/files", headers=auth_headers)
+        assert files_resp.status_code == 200, files_resp.text
+        files = files_resp.json()
+        cert_file = next((f for f in files if f["original_filename"] == "cert.pdf"), None)
+        assert cert_file is not None
+
+        delete_resp = client.delete(
+            f"/api/v1/assets/{asset_id}/files/{cert_file['id']}", headers=auth_headers
+        )
+        assert delete_resp.status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # Viewer role: read-only

@@ -31,14 +31,13 @@ persistée ne se produit qu'une fois, lors de l'enregistrement.
 
 Démarrez une calibration depuis la voie d'un actif. L'assistant comporte trois étapes :
 
-1. **Informations générales** — type de calibration (**interne**, par rapport à un actif de
-   référence que vous possédez, ou **externe**, depuis un laboratoire extérieur), date de
+1. **Informations générales** — type et objet de la calibration (voir ci-dessous), date de
    calibration, **Enregistré par** (une liste déroulante des membres de l'organisation de
-   l'actif, vous par défaut), un réviseur optionnel **Vérifié par**, conditions
-   environnementales, et (pour les calibrations internes) l'étalon de référence utilisé et la
-   procédure suivie. Cette étape possède également
-   une case à cocher **« Coefficients uniquement (sans données brutes) »** pour les certificats
-   émis en externe qui indiquent directement un polynôme — voir
+   l'actif, vous par défaut), un réviseur optionnel **Vérifié par**, intervalle de calibration,
+   conditions environnementales, et notes. Selon le type/objet choisi, des champs supplémentaires
+   apparaissent — voir ci-dessous. Cette étape possède également une case à cocher
+   **« Coefficients uniquement (sans données brutes) »** pour les certificats émis en externe qui
+   indiquent directement un polynôme — voir
    [Calibrations à coefficients uniquement](./coefficients-only.mdx).
 2. **Données brutes** — saisissez les paires de points (référence, mesuré). Voir
    [Ajustement de courbe](./curve-fitting.mdx) pour savoir ce qu'Open Gauge en fait.
@@ -52,18 +51,74 @@ spécification de la voie, la confirmation d'enregistrement affiche un avertisse
 nommant la spécification et la règle de décision, et le bouton d'enregistrement se relibelle en
 **« Enregistrer quand même »**.
 
-## Calibrations internes contre externes
+## Type de calibration
 
-- **Interne** — effectuée en interne, par rapport à l'un de vos propres actifs marqué comme
-  [étalon de référence](../sensors/adding-a-sensor.mdx#calibration-role). Lorsque vous choisissez
-  un actif de référence, Open Gauge récupère automatiquement l'incertitude élargie de la
-  calibration la plus récente de cet actif et l'intègre au budget d'incertitude de cette
-  calibration comme contribution `reference_standard` — voir
-  [Le budget d'incertitude](./uncertainty-budget.mdx#contributions).
-- **Externe** — effectuée par un laboratoire de calibration extérieur. Vous enregistrez le nom
-  du laboratoire et le numéro de certificat ; si le certificat du laboratoire indique
-  directement un polynôme plutôt que des données brutes, utilisez le parcours à coefficients
-  uniquement plutôt que de redériver un ajustement à partir de zéro.
+Le **Type de calibration** décrit *qui a effectué la calibration*, et détermine ce à quoi se
+résout le champ **Laboratoire de calibration** :
+
+- **OEM** — effectuée par le fabricant du capteur. Le laboratoire de calibration est un
+  instantané en lecture seule du fabricant de l'actif au moment de l'enregistrement (non
+  modifiable par l'utilisateur). Un téléversement de **certificat de calibration** est disponible
+  (PDF uniquement).
+- **Laboratoire externe accrédité** — effectuée par un laboratoire externe accrédité. Le
+  laboratoire de calibration est une liste déroulante de vos
+  [organisations externes](../organizations/index.mdx#internal-vs-external-organizations)
+  marquées comme fournisseurs. Un téléversement de **certificat de calibration** est disponible
+  (PDF uniquement).
+- **Laboratoire interne (en interne)** — effectuée par votre propre organisation, par rapport à
+  l'un de vos propres actifs marqué comme
+  [étalon de référence](../sensors/adding-a-sensor.mdx#calibration-role). Le laboratoire de
+  calibration est une liste déroulante des emplacements de votre organisation marqués comme
+  laboratoires de calibration. Lorsque vous choisissez un actif de référence, Open Gauge récupère
+  automatiquement l'incertitude élargie de la calibration la plus récente de cet actif et
+  l'intègre au budget d'incertitude de cette calibration comme contribution `reference_standard`
+  — voir [Le budget d'incertitude](./uncertainty-budget.mdx#contributions). Aucun téléversement
+  de certificat — le certificat généré par le système est le seul, puisqu'il s'agit de votre
+  propre mesure.
+- **Actif d'un client** — l'actif appartient à un client, calibré pour son compte. Le laboratoire
+  de calibration est une liste déroulante de vos organisations externes marquées comme clients.
+  Aucun téléversement de certificat.
+
+Pour OEM, Laboratoire externe accrédité, et Actif d'un client, la saisie de données brutes peut
+être entièrement ignorée avec **« Coefficients uniquement (sans données brutes) »** lorsque le
+certificat indique directement un polynôme.
+
+### Certificats téléversés
+
+Lorsqu'un certificat PDF est téléversé (OEM / Laboratoire externe accrédité uniquement), Open
+Gauge vérifie qu'il s'agit bien d'un PDF (type de contenu et signature de fichier) avant de
+l'accepter. Une fois téléversé, il **prend priorité** sur le certificat généré par le système
+partout où le certificat d'une calibration est téléchargé — celui généré par le système est
+toujours produit et stocké, mais celui téléversé est servi à la place tant qu'il existe. Le
+certificat téléversé apparaît également dans l'onglet **Fichiers** de l'actif, marqué d'un badge
+« Certificat de calibration » ; il peut être téléchargé depuis là mais pas supprimé — la seule
+façon de le retirer est d'annuler la calibration elle-même, conformément au fait que l'historique
+de calibration n'est jamais modifié sur place.
+
+## Objet de la calibration
+
+L'**Objet de la calibration** enregistre *pourquoi* la calibration a été effectuée :
+
+- **Initiale** — la première calibration de l'actif/voie. Sélectionné par défaut lorsqu'aucune
+  calibration antérieure n'existe pour la voie ; vous pouvez le changer si nécessaire.
+- **Routine** — une recalibration périodique. La valeur par défaut dès qu'il existe au moins une
+  calibration antérieure.
+- **Après réparation** — suite à une réparation. Révèle une **Date de réparation** (sélecteur de
+  date) et une **Description de la réparation** (jusqu'à 500 caractères). Voir ci-dessous comment
+  cela affecte l'onglet Santé.
+- **Vérification** — une calibration effectuée pour vérifier la conformité continue, sans
+  nécessairement réinitialiser l'horloge de l'intervalle comme le ferait une recalibration de
+  routine.
+
+### Comparaison de la dérive avant/après réparation
+
+Enregistrer une calibration **Après réparation** avec une date de réparation marque une frontière
+dans l'historique de calibration de la voie. L'onglet Santé gagne une liste déroulante de
+période — **« Avant réparation `{date}` »** pour chaque réparation enregistrée, plus
+**« Actuellement »** (la période depuis la réparation la plus récente, sélectionnée par défaut) —
+vous permettant de comparer la dérive, la stabilité, et les métriques de prédiction entre les
+événements de réparation au lieu de toujours regarder l'historique complet ininterrompu, ce qui
+mélangerait autrement le comportement avant et après réparation en une seule tendance trompeuse.
 
 ## Où se trouvent les résultats
 
@@ -83,35 +138,39 @@ n'est jamais réutilisée (même pas une version annulée, voir ci-dessous) ni r
 
 ## Flux d'approbation
 
-Chaque calibration a un statut : **valide**, **en attente d'approbation**, **rejetée**, ou
-**annulée**. Seules les calibrations **valides** comptent pour la calibration de la voie, les
-calculs de date d'échéance et l'analyse de dérive — les trois autres sont exclues, exactement
-comme les calibrations annulées l'ont toujours été.
+Chaque calibration a un **statut** : **valide** (utilisé pour la calibration de la voie, les
+calculs de date d'échéance, et l'analyse de dérive), **en attente d'approbation**, **rejetée**, ou
+**annulée**. Seule une calibration **valide** est utilisée — les trois autres sont toutes exclues
+des calculs de date d'échéance/statut et de l'analyse de dérive de l'onglet Santé, de la même
+manière qu'une annulée l'a toujours été.
 
-Désigner un réviseur dans **Vérifié par** à l'étape 1 place la calibration en **attente
-d'approbation** plutôt qu'en valide. Le vérificateur est notifié (dans l'application, et par
-e-mail si configuré) et peut, depuis la même ligne dans l'onglet Calibration :
+Nommer un réviseur **Vérifié par** à l'étape 1 place la nouvelle calibration en **attente
+d'approbation** au lieu de valide. Le vérificateur reçoit une notification (dans l'application, et
+par e-mail si configuré) et, depuis la même ligne dans l'onglet Calibration, peut :
 
-- **Approuver** — la calibration devient valide, et la personne qui l'a enregistrée est notifiée.
-- **Rejeter**, avec un motif optionnel — la calibration devient rejetée, la personne qui l'a
-  enregistrée est notifiée, et ceci est définitif : une correction implique d'enregistrer une
-  nouvelle calibration, pas de modifier l'ancienne.
+- **L'approuver** — la calibration devient **valide**, et la personne qui l'a enregistrée est
+  notifiée.
+- **La rejeter**, avec une raison optionnelle — la calibration devient **rejetée**, et la personne
+  qui l'a enregistrée est notifiée. Une calibration rejetée est terminale : la corriger signifie
+  enregistrer une nouvelle calibration, pas modifier l'ancienne, conformément au fait que
+  l'historique de calibration n'est jamais modifié sur place.
 
-Seul le vérificateur assigné, ou une dérogation admin/superadmin, peut trancher.
+Seul le vérificateur assigné, ou un `admin`/`superadmin` en tant que dérogation, peut approuver ou
+rejeter une calibration donnée. Laisser **Vérifié par** non renseigné ignore entièrement le flux
+d'approbation — la calibration est créée comme **valide** immédiatement, exactement comme avant
+l'existence de cette fonctionnalité.
 
-Laisser **Vérifié par** vide ignore complètement le flux d'approbation — la calibration est créée
-valide immédiatement, exactement comme avant.
-
-Le commutateur **« Afficher les calibrations valides »** (réservé aux administrateurs) contrôle si
-les calibrations en attente, rejetées et annulées sont affichées du tout — désactivé par défaut.
+Le commutateur **Afficher les calibrations valides** dans l'onglet Calibration (tout rôle sauf
+Lecteur) contrôle si les calibrations en attente d'approbation, rejetées, et annulées sont
+affichées ou non — désactivé par défaut, afin que l'historique reste concentré sur ce qui est
+réellement en vigueur.
 
 ## Annuler une calibration
 
 L'historique de calibration n'est jamais détruit — il n'y a pas de bouton de suppression, seulement
-un **annuler**, réservé à `admin`/`superadmin`. Annuler est accessible depuis n'importe quel
-statut — valide, en attente d'approbation, ou rejetée — en tant que dérogation toujours
-disponible. Annuler une entrée (depuis l'icône de corbeille
-sur sa ligne dans l'onglet Calibration) :
+un **annuler**, réservé à `admin`/`superadmin`. L'annulation est accessible depuis n'importe quel
+statut (valide, en attente d'approbation, ou rejetée) en tant que dérogation toujours disponible.
+Annuler une entrée (depuis l'icône de corbeille sur sa ligne dans l'onglet Calibration) :
 
 - La marque comme invalide et, optionnellement, enregistre pourquoi.
 - La masque de la liste d'historique de calibration et de l'aperçu de l'actif par défaut (un
@@ -124,12 +183,11 @@ sur sa ligne dans l'onglet Calibration) :
 
 L'enregistrement, ses points de données, et son certificat sont tous préservés intacts —
 annuler ne fait que basculer un indicateur. Un administrateur peut **restaurer** une calibration
-annulée à tout moment depuis la même ligne, ce qui inverse tout ce qui précède ; restaurer ramène
-toujours une calibration à l'état **valide** — cela ne tente pas de restaurer une calibration
-précédemment rejetée à l'état rejetée ou en attente d'approbation. Voir
-[Calibrations](/docs/api/calibrations) dans la référence API pour les charges utiles exactes de
-`DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`, `POST /calibrations/{id}/approve`
-et `POST /calibrations/{id}/reject`.
+annulée à tout moment depuis la même ligne, ce qui la ramène toujours à **valide** (cela ne tente
+pas de restaurer une calibration précédemment rejetée vers « rejetée » ou « en attente
+d'approbation »). Voir [Calibrations](/docs/api/calibrations) dans la référence API pour les
+charges utiles exactes de `DELETE /calibrations/{id}`, `POST /calibrations/{id}/restore`,
+`POST /calibrations/{id}/approve`, et `POST /calibrations/{id}/reject`.
 
 Un export complet d'actif (l'action Exporter sur la page de l'actif) inclut toujours les
 calibrations annulées — c'est une sauvegarde historique complète, pas une vue filtrée.

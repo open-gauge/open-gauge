@@ -29,13 +29,12 @@ save.
 
 Start a calibration from an asset's channel. The wizard has three steps:
 
-1. **General info** — calibration type (**internal**, against a reference asset you own, or
-   **external**, from an outside lab), calibration date, **Registered by** (a dropdown of the
-   asset's organization members, defaulting to you), an optional **Checked by** reviewer,
-   environmental conditions, and (for internal calibrations) the reference standard used and
-   procedure followed. This step also has a **"Coefficients only (no raw data)"** checkbox for
-   externally-issued certificates that state a polynomial directly — see
-   [Coefficients-only calibrations](./coefficients-only.mdx).
+1. **General info** — calibration type and purpose (below), calibration date, **Registered by**
+   (a dropdown of the asset's organization members, defaulting to you), an optional
+   **Checked by** reviewer, calibration interval, environmental conditions, and notes. Depending
+   on the type/purpose chosen, additional fields appear — see below. This step also has a
+   **"Coefficients only (no raw data)"** checkbox for externally-issued certificates that state a
+   polynomial directly — see [Coefficients-only calibrations](./coefficients-only.mdx).
 2. **Raw data** — enter (reference, measured) point pairs. See
    [Curve fitting](./curve-fitting.mdx) for what Open Gauge does with them.
 3. **Analysis / review** — the live-computed fit, uncertainty budget, and conformity
@@ -47,17 +46,62 @@ important, real record. If the result doesn't conform to the channel's spec, the
 confirmation shows an explicit warning naming the specification and decision rule, and the
 save button relabels to **"Save anyway."**
 
-## Internal vs. external calibrations
+## Calibration type
 
-- **Internal** — performed in-house, against one of your own assets flagged as a
-  [reference standard](../sensors/adding-a-sensor.mdx#calibration-role). When you pick a
-  reference asset, Open Gauge automatically fetches that asset's own most recent calibration's
-  expanded uncertainty and folds it into this calibration's uncertainty budget as a
+The **Calibration type** describes *who performed the calibration*, and determines what the
+**Calibration lab** field resolves to:
+
+- **OEM** — performed by the sensor's manufacturer. Calibration lab is a read-only snapshot of
+  the asset's manufacturer at the time of saving (not user-editable). A **Calibration
+  certificate** upload is available (PDF only).
+- **External Accredited Lab** — performed by an outside, accredited lab. Calibration lab is a
+  dropdown of your [external organizations](../organizations/index.mdx#internal-vs-external-organizations)
+  marked as providers. A **Calibration certificate** upload is available (PDF only).
+- **Internal Lab (In-house)** — performed by your own organization, against one of your own
+  assets flagged as a [reference standard](../sensors/adding-a-sensor.mdx#calibration-role).
+  Calibration lab is a dropdown of your organization's locations marked as calibration labs. When
+  you pick a reference asset, Open Gauge automatically fetches that asset's own most recent
+  calibration's expanded uncertainty and folds it into this calibration's uncertainty budget as a
   `reference_standard` contribution — see
-  [The uncertainty budget](./uncertainty-budget.mdx#contributions).
-- **External** — performed by an outside calibration lab. You record the lab's name and
-  certificate number; if the lab's certificate states a polynomial directly rather than raw
-  data, use the coefficients-only path instead of re-deriving a fit from scratch.
+  [The uncertainty budget](./uncertainty-budget.mdx#contributions). No certificate upload — the
+  system-generated certificate is the only one, since it's your own measurement.
+- **Customer's Asset** — the asset belongs to a customer, calibrated on their behalf. Calibration
+  lab is a dropdown of your external organizations marked as customers. No certificate upload.
+
+For OEM, External Accredited Lab, and Customer's Asset, raw data entry can be skipped entirely
+with **"Coefficients only (no raw data)"** when the certificate states a polynomial directly.
+
+### Uploaded certificates
+
+When a PDF certificate is uploaded (OEM / External Accredited Lab only), Open Gauge validates
+that it's actually a PDF (content type and file signature) before accepting it. Once uploaded, it
+**takes priority** over the system-generated certificate everywhere a calibration's certificate is
+downloaded — the system-generated one is still produced and stored, but the uploaded one is served
+instead as long as it exists. The uploaded certificate also appears in the asset's **Files** tab,
+tagged with a "Calibration Certificate" badge; it can be downloaded from there but not deleted —
+the only way to retire it is to void the calibration itself, consistent with calibration history
+never being edited in place.
+
+## Calibration purpose
+
+The **Calibration purpose** records *why* the calibration was performed:
+
+- **Initial** — the asset/channel's first calibration. Selected by default when no prior
+  calibration exists for the channel; you can change it if needed.
+- **Routine** — a periodic recalibration. The default once at least one prior calibration exists.
+- **After Repair** — following a repair. Reveals a **Repair date** (date picker) and **Repair
+  description** (up to 500 characters). See below for how this affects the Health tab.
+- **Verification** — a calibration performed to verify continued conformity, without necessarily
+  resetting the interval clock the way a routine recalibration would.
+
+### Before/after-repair drift comparison
+
+Recording an **After Repair** calibration with a repair date marks a boundary in the channel's
+calibration history. The Health tab gains a period dropdown — **"Before Repair `{date}`"** for each
+recorded repair, plus **"Currently"** (the period since the most recent repair, selected by
+default) — letting you compare drift, stability, and prediction metrics across repair events
+instead of always looking at the full unbroken history, which would otherwise mix pre- and
+post-repair behavior into a single misleading trend.
 
 ## Where results end up
 
@@ -97,9 +141,9 @@ Only the assigned checker, or an `admin`/`superadmin` as an override, can approv
 given calibration. Leaving **Checked by** unset skips the workflow entirely — the calibration is
 created as **valid** immediately, exactly as before this feature existed.
 
-The **Show Valid Calibrations** toggle in the Calibration tab (admin-only) controls whether
-pending-approval, rejected, and voided calibrations are shown at all — off by default, so the
-history stays focused on what's actually in effect.
+The **Show Valid Calibrations** toggle in the Calibration tab (any role except Viewer) controls
+whether pending-approval, rejected, and voided calibrations are shown at all — off by default, so
+the history stays focused on what's actually in effect.
 
 ## Voiding a calibration
 

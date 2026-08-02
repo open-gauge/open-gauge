@@ -106,7 +106,7 @@ class TestCreateCalibration:
         body = r.json()
         assert body["asset_id"] == asset["id"]
         assert body["performed_by_name"] == "Technician B"
-        assert body["calibration_type"] == "external"
+        assert body["calibration_type"] == "external_accredited_lab"
 
     def test_create_calibration_with_notes(
         self, client: TestClient, auth_headers: dict, asset: dict
@@ -268,7 +268,7 @@ def _atomic_payload(asset_id: str, sensor_id: str | None = None) -> dict:
         "calibration_date": "2025-01-15",
         "due_date": "2026-01-15",
         "performed_by_name": "Lab Auto",
-        "calibration_type": "external",
+        "calibration_type": "external_accredited_lab",
         "external_lab_name": "ACME Calibration",
         "external_lab_certificate_number": "CERT-2025-001",
         "calibration_interval": 12,
@@ -340,7 +340,7 @@ class TestAtomicCalibrationCreate:
         body = r.json()
         assert body["asset_id"] == asset["id"]
         assert body["external_lab_certificate_number"] == "CERT-2025-001"
-        assert body["calibration_type"] == "external"
+        assert body["calibration_type"] == "external_accredited_lab"
 
     def test_environmental_values_stored(
         self, client: TestClient, auth_headers: dict, asset: dict
@@ -402,7 +402,7 @@ class TestAtomicCalibrationCreate:
             "calibration_date": "2025-02-01",
             "due_date": "2026-02-01",
             "performed_by_name": "Minimal Lab",
-            "calibration_type": "external",
+            "calibration_type": "external_accredited_lab",
             "calibration_version": 1,
         }
         r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
@@ -1224,4 +1224,242 @@ class TestCalibrationUsers:
     def test_unknown_asset_returns_404(self, client: TestClient, auth_headers: dict) -> None:
         r = client.get(f"/api/v1/assets/{uuid.uuid4()}/calibration-users", headers=auth_headers)
         assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Calibration type & purpose (4-value classification, calibration lab
+# resolution, repair tracking, uploaded certificates)
+# ---------------------------------------------------------------------------
+
+def _minimal_payload(asset_id: str, **overrides) -> dict:
+    payload = {
+        "asset_id": asset_id,
+        "calibration_date": "2025-03-01",
+        "due_date": "2026-03-01",
+        "performed_by_name": "Tech",
+    }
+    payload.update(overrides)
+    return payload
+
+
+class TestCalibrationTypeValidation:
+    def test_default_type_is_valid(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        r = client.post("/api/v1/calibrations", json=_minimal_payload(asset["id"]), headers=auth_headers)
+        assert r.status_code == 201, r.text
+        assert r.json()["calibration_type"] == "external_accredited_lab"
+
+    @pytest.mark.parametrize(
+        "calibration_type", ["oem", "external_accredited_lab", "internal_lab", "customer_asset"]
+    )
+    def test_all_four_types_accepted(
+        self, client: TestClient, auth_headers: dict, asset: dict, calibration_type: str
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(asset["id"], calibration_type=calibration_type),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["calibration_type"] == calibration_type
+
+    def test_legacy_values_rejected(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        for legacy in ("internal", "external", "bogus"):
+            r = client.post(
+                "/api/v1/calibrations",
+                json=_minimal_payload(asset["id"], calibration_type=legacy),
+                headers=auth_headers,
+            )
+            assert r.status_code == 422, legacy
+
+
+class TestCalibrationPurposeValidation:
+    def test_default_purpose_is_routine(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        r = client.post("/api/v1/calibrations", json=_minimal_payload(asset["id"]), headers=auth_headers)
+        assert r.status_code == 201, r.text
+        assert r.json()["calibration_purpose"] == "routine"
+
+    @pytest.mark.parametrize("purpose", ["initial", "routine", "after_repair", "verification"])
+    def test_all_four_purposes_accepted(
+        self, client: TestClient, auth_headers: dict, asset: dict, purpose: str
+    ) -> None:
+        payload = _minimal_payload(asset["id"], calibration_purpose=purpose)
+        if purpose == "after_repair":
+            payload["repair_date"] = "2025-02-15"
+            payload["repair_description"] = "Replaced diaphragm"
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["calibration_purpose"] == purpose
+        if purpose == "after_repair":
+            assert body["repair_date"] == "2025-02-15"
+            assert body["repair_description"] == "Replaced diaphragm"
+
+    def test_invalid_purpose_rejected(self, client: TestClient, auth_headers: dict, asset: dict) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(asset["id"], calibration_purpose="bogus"),
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    def test_repair_description_over_500_chars_rejected(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"],
+                calibration_purpose="after_repair",
+                repair_date="2025-02-15",
+                repair_description="x" * 501,
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+
+class TestCalibrationLabResolution:
+    def test_oem_type_accepts_manufacturer_snapshot_in_external_lab_name(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        # The wizard snapshots profile.manufacturer into external_lab_name for
+        # OEM calibrations; the backend just stores whatever string is sent.
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(asset["id"], calibration_type="oem", external_lab_name=asset["manufacturer"]),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["external_lab_name"] == asset["manufacturer"]
+
+    def test_external_accredited_lab_stores_organization_id(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        org = client.post(
+            "/api/v1/organizations",
+            json={"name": "Accredited Co", "org_category": "external", "org_type": "provider"},
+            headers=auth_headers,
+        ).json()
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"], calibration_type="external_accredited_lab", calibration_organization_id=org["id"]
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["calibration_organization_id"] == org["id"]
+
+    def test_customer_asset_stores_organization_id(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        org = client.post(
+            "/api/v1/organizations",
+            json={"name": "Customer Co", "org_category": "external", "org_type": "customer"},
+            headers=auth_headers,
+        ).json()
+        r = client.post(
+            "/api/v1/calibrations",
+            json=_minimal_payload(
+                asset["id"], calibration_type="customer_asset", calibration_organization_id=org["id"]
+            ),
+            headers=auth_headers,
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["calibration_organization_id"] == org["id"]
+
+
+# ---------------------------------------------------------------------------
+# POST /calibrations/{id}/certificate/upload — PDF-only, takes priority over
+# the system-generated certificate everywhere it's served.
+# ---------------------------------------------------------------------------
+
+_VALID_PDF_BYTES = b"%PDF-1.4\n%fake-but-valid-magic-bytes\n"
+
+
+class TestCertificateUpload:
+    def test_valid_pdf_upload_sets_uploaded_certificate_file_id(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.post(
+            f"/api/v1/calibrations/{calibration['id']}/certificate/upload",
+            files={"file": ("cert.pdf", _VALID_PDF_BYTES, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["uploaded_certificate_file_id"] is not None
+
+    def test_wrong_content_type_rejected(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.post(
+            f"/api/v1/calibrations/{calibration['id']}/certificate/upload",
+            files={"file": ("cert.pdf", _VALID_PDF_BYTES, "image/png")},
+            headers=auth_headers,
+        )
+        assert r.status_code == 400
+
+    def test_pdf_content_type_but_bad_magic_bytes_rejected(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        r = client.post(
+            f"/api/v1/calibrations/{calibration['id']}/certificate/upload",
+            files={"file": ("cert.pdf", b"not-actually-a-pdf", "application/pdf")},
+            headers=auth_headers,
+        )
+        assert r.status_code == 400
+
+    def test_unknown_calibration_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.post(
+            f"/api/v1/calibrations/{uuid.uuid4()}/certificate/upload",
+            files={"file": ("cert.pdf", _VALID_PDF_BYTES, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert r.status_code == 404
+
+    def test_viewer_forbidden(self, client: TestClient, db: Session, calibration: dict) -> None:
+        r = client.post(
+            f"/api/v1/calibrations/{calibration['id']}/certificate/upload",
+            files={"file": ("cert.pdf", _VALID_PDF_BYTES, "application/pdf")},
+            headers=_viewer_headers(db),
+        )
+        assert r.status_code == 403
+
+    def test_requires_authentication(self, client: TestClient, calibration: dict) -> None:
+        r = client.post(
+            f"/api/v1/calibrations/{calibration['id']}/certificate/upload",
+            files={"file": ("cert.pdf", _VALID_PDF_BYTES, "application/pdf")},
+        )
+        assert r.status_code == 403
+
+    def test_uploaded_certificate_takes_priority_on_get(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
+        # System-generated certificate exists (best-effort at create time).
+        before = client.get(f"/api/v1/calibrations/{cal['id']}/certificate", headers=auth_headers)
+        assert before.status_code == 200
+
+        client.post(
+            f"/api/v1/calibrations/{cal['id']}/certificate/upload",
+            files={"file": ("uploaded.pdf", _VALID_PDF_BYTES, "application/pdf")},
+            headers=auth_headers,
+        )
+        after = client.get(f"/api/v1/calibrations/{cal['id']}/certificate", headers=auth_headers)
+        assert after.status_code == 200, after.text
+        assert after.json()["filename"] == "uploaded.pdf"
+
+    def test_uploaded_certificate_takes_priority_on_download(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        cal = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]), headers=auth_headers).json()
+        client.post(
+            f"/api/v1/calibrations/{cal['id']}/certificate/upload",
+            files={"file": ("uploaded.pdf", _VALID_PDF_BYTES, "application/pdf")},
+            headers=auth_headers,
+        )
+        r = client.get(f"/api/v1/calibrations/{cal['id']}/certificate/download", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.content == _VALID_PDF_BYTES
+        assert 'filename="uploaded.pdf"' in r.headers["content-disposition"]
 
