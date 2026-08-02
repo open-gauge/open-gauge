@@ -45,6 +45,8 @@ const AUDIT_FIELD_VALUE_NAMESPACE: Record<string, string> = {
   mounting_type: "mountingType",
   hazardous_area_rating: "hazardousArea",
   location_type: "locationType",
+  org_category: "orgCategory",
+  org_type: "orgType",
 };
 
 /**

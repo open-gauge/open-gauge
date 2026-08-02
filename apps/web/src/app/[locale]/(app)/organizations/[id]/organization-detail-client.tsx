@@ -15,6 +15,7 @@ import {
   GlobeIcon,
   LockIcon,
   MailIcon,
+  MapPinIcon,
   PhoneIcon,
   PlusIcon,
   ShieldCheckIcon,
@@ -53,13 +54,40 @@ import type {
   Organization,
   OrganizationJoinRequest,
   OrganizationMember,
+  OrgCategory,
   OrgRole,
+  OrgType,
   SigningCertificate,
 } from "@/types/organization";
 import type { LocationOption } from "@/types/asset";
 
 const IB = "w-full px-3 py-2 rounded-lg border text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 transition-colors placeholder:text-gray-400";
 const IB_OK = "border-og-border-md focus:border-og-accent focus:ring-og-accent/20";
+
+function SegmentedToggle<T extends string>({ value, onChange, options }: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  return (
+    <div className="flex gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
+            value === opt.value
+              ? "border-og-accent bg-og-accent/10 text-og-accent"
+              : "border-og-border-md text-gray-400 hover:bg-og-surface-alt"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function InfoRow({ label, icon, value }: { label: string; icon?: React.ReactNode; value: React.ReactNode }) {
   return (
@@ -90,6 +118,16 @@ interface EditForm {
   phone: string;
   location_id: string;
   private: boolean;
+  org_category: OrgCategory;
+  org_type: OrgType;
+  contact_email: string;
+  contact_phone: string;
+  vat_number: string;
+  address_street: string;
+  address_city: string;
+  address_state: string;
+  address_postal_code: string;
+  address_country: string;
 }
 
 function toForm(org: Organization): EditForm {
@@ -102,6 +140,16 @@ function toForm(org: Organization): EditForm {
     phone: org.phone ?? "",
     location_id: org.location_id ?? "",
     private: org.private,
+    org_category: org.org_category,
+    org_type: org.org_type ?? "provider",
+    contact_email: org.contact_email ?? "",
+    contact_phone: org.contact_phone ?? "",
+    vat_number: org.vat_number ?? "",
+    address_street: org.address_street ?? "",
+    address_city: org.address_city ?? "",
+    address_state: org.address_state ?? "",
+    address_postal_code: org.address_postal_code ?? "",
+    address_country: org.address_country ?? "",
   };
 }
 
@@ -228,10 +276,13 @@ function AddMemberModal({ orgId, onClose, onAdded }: { orgId: string; onClose: (
 export default function OrganizationDetailClient() {
   const t = useTranslations("organizations.detail");
   const tOrgRole = useTranslations("tokens.orgRole");
+  const tOrgCategory = useTranslations("tokens.orgCategory");
+  const tOrgType = useTranslations("tokens.orgType");
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
   const isSuperAdmin = user.role === "superadmin";
+  const isGlobalAdmin = user.role === "admin" || user.role === "superadmin";
 
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -309,6 +360,18 @@ export default function OrganizationDetailClient() {
         phone: form.phone.trim() || undefined,
         location_id: form.location_id || null,
         private: form.private,
+        ...(isGlobalAdmin && {
+          org_category: form.org_category,
+          org_type: form.org_category === "external" ? form.org_type : undefined,
+          contact_email: form.contact_email.trim() || undefined,
+          contact_phone: form.contact_phone.trim() || undefined,
+          vat_number: form.vat_number.trim() || undefined,
+          address_street: form.address_street.trim() || undefined,
+          address_city: form.address_city.trim() || undefined,
+          address_state: form.address_state.trim() || undefined,
+          address_postal_code: form.address_postal_code.trim() || undefined,
+          address_country: form.address_country.trim() || undefined,
+        }),
       });
       setOrg(updated);
       setEditing(false);
@@ -395,7 +458,8 @@ export default function OrganizationDetailClient() {
     }
   }
 
-  const showJoinLeave = !!org && !isSuperAdmin;
+  const canManageOrg = !!org && (org.org_category === "external" ? isGlobalAdmin : org.can_manage);
+  const showJoinLeave = !!org && !isSuperAdmin && org.org_category === "internal";
 
   return (
     <div className="p-6 space-y-5">
@@ -427,7 +491,7 @@ export default function OrganizationDetailClient() {
             <ImageUploadField
               imageUrl={org.logo_url}
               alt={org.name}
-              editable={editing && org.can_manage}
+              editable={editing && canManageOrg && org.org_category === "internal"}
               uploading={logoUploading}
               onUpload={handleLogoChange}
               onRemove={handleLogoRemove}
@@ -451,12 +515,18 @@ export default function OrganizationDetailClient() {
                     <LockIcon size={12} /> {t("private")}
                   </span>
                 )}
+                {org.org_category === "external" && (
+                  <span className="px-2 py-0.5 text-[10px] font-medium text-gray-400 border border-og-border-md rounded-full">
+                    {tOrgCategory("external")}
+                    {org.org_type && ` · ${tOrgType(org.org_type)}`}
+                  </span>
+                )}
               </div>
               {org.full_name && <p className="text-sm text-gray-400">{org.full_name}</p>}
             </div>
             {!editing && (
               <div className="flex items-center gap-2">
-                {org.can_manage && (
+                {canManageOrg && (
                   <button
                     type="button"
                     onClick={startEdit}
@@ -508,16 +578,30 @@ export default function OrganizationDetailClient() {
 
           {actionError && <p className="text-xs text-red-500">{actionError}</p>}
 
-          {/* Private + non-member gate */}
-          {org.private && !org.is_member ? (
+          {/* Private + non-member gate (internal orgs only — an external org's
+              is_member is always False, so this must not fire for those) */}
+          {org.org_category === "internal" && org.private && !org.is_member ? (
             <div className="bg-og-surface rounded-xl border border-og-border shadow-xs px-5 py-10 flex flex-col items-center gap-3 text-center">
               <LockIcon size={24} className="text-gray-300" />
               <p className="text-sm text-gray-400">{t("privateGateMessage")}</p>
             </div>
           ) : (
             <>
-              {org.can_manage && editing && (
+              {canManageOrg && editing && (
                 <div className="bg-og-surface rounded-xl border border-og-border shadow-xs p-4 space-y-3">
+                  {isGlobalAdmin && (
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-400">{t("category")}</label>
+                      <SegmentedToggle
+                        value={form?.org_category ?? "internal"}
+                        onChange={(v) => setForm((f) => f && { ...f, org_category: v })}
+                        options={[
+                          { value: "internal", label: t("categoryInternal") },
+                          { value: "external", label: t("categoryExternal") },
+                        ]}
+                      />
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs text-gray-400">{t("name")} <span className="text-red-400">*</span></label>
@@ -555,6 +639,57 @@ export default function OrganizationDetailClient() {
                     <ToggleSwitch checked={form?.private ?? false} onChange={(v) => setForm((f) => f && { ...f, private: v })} />
                     {t("privateToggle")}
                   </label>
+                  {isGlobalAdmin && form?.org_category === "external" && (
+                    <div className="space-y-3 pt-2 border-t border-og-border">
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-400">{t("orgType")}</label>
+                        <SegmentedToggle
+                          value={form.org_type}
+                          onChange={(v) => setForm((f) => f && { ...f, org_type: v })}
+                          options={[
+                            { value: "provider", label: t("orgTypeProvider") },
+                            { value: "customer", label: t("orgTypeCustomer") },
+                          ]}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-400">{t("contactEmail")}</label>
+                          <input value={form.contact_email} onChange={(e) => setForm((f) => f && { ...f, contact_email: e.target.value })} className={`${IB} ${IB_OK}`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-400">{t("contactPhone")}</label>
+                          <input value={form.contact_phone} onChange={(e) => setForm((f) => f && { ...f, contact_phone: e.target.value })} className={`${IB} ${IB_OK}`} />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-400">{t("vatNumber")}</label>
+                        <input value={form.vat_number} onChange={(e) => setForm((f) => f && { ...f, vat_number: e.target.value })} className={`${IB} ${IB_OK}`} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-xs text-gray-400">{t("addressStreet")}</label>
+                          <input value={form.address_street} onChange={(e) => setForm((f) => f && { ...f, address_street: e.target.value })} className={`${IB} ${IB_OK}`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-400">{t("addressCity")}</label>
+                          <input value={form.address_city} onChange={(e) => setForm((f) => f && { ...f, address_city: e.target.value })} className={`${IB} ${IB_OK}`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-400">{t("addressState")}</label>
+                          <input value={form.address_state} onChange={(e) => setForm((f) => f && { ...f, address_state: e.target.value })} className={`${IB} ${IB_OK}`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-400">{t("addressPostalCode")}</label>
+                          <input value={form.address_postal_code} onChange={(e) => setForm((f) => f && { ...f, address_postal_code: e.target.value })} className={`${IB} ${IB_OK}`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-400">{t("addressCountry")}</label>
+                          <input value={form.address_country} onChange={(e) => setForm((f) => f && { ...f, address_country: e.target.value })} className={`${IB} ${IB_OK}`} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -569,6 +704,16 @@ export default function OrganizationDetailClient() {
                   {org.location_name && <InfoRow label={t("location")} value={org.location_name} />}
                   {org.email && <InfoRow label={t("email")} icon={<MailIcon size={12} />} value={<a href={`mailto:${org.email}`} className="text-og-accent hover:underline">{org.email}</a>} />}
                   {org.phone && <InfoRow label={t("phone")} icon={<PhoneIcon size={12} />} value={org.phone} />}
+                  {org.contact_email && <InfoRow label={t("contactEmail")} icon={<MailIcon size={12} />} value={<a href={`mailto:${org.contact_email}`} className="text-og-accent hover:underline">{org.contact_email}</a>} />}
+                  {org.contact_phone && <InfoRow label={t("contactPhone")} icon={<PhoneIcon size={12} />} value={org.contact_phone} />}
+                  {org.vat_number && <InfoRow label={t("vatNumber")} value={org.vat_number} />}
+                  {(org.address_street || org.address_city || org.address_state || org.address_postal_code || org.address_country) && (
+                    <InfoRow
+                      label={t("address")}
+                      icon={<MapPinIcon size={12} />}
+                      value={[org.address_street, org.address_city, org.address_state, org.address_postal_code, org.address_country].filter(Boolean).join(", ")}
+                    />
+                  )}
                   {org.asset_count !== null && (
                     <InfoRow label={t("assets")} value={
                       <Link href={`/assets?organization_id=${org.id}&organization_name=${encodeURIComponent(org.name)}`} className="text-og-accent hover:underline">
@@ -685,7 +830,7 @@ export default function OrganizationDetailClient() {
               )}
 
               {/* Danger zone */}
-              {editing && org.can_manage && (
+              {editing && canManageOrg && (
                 <div className="bg-og-surface rounded-xl border border-red-200 dark:border-red-900/50 shadow-xs">
                   <div className="px-4 py-3 border-b border-red-100 dark:border-red-900/40">
                     <p className="text-xs font-semibold text-red-600 dark:text-red-400">{t("dangerZone")}</p>

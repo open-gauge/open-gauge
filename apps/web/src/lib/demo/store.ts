@@ -58,6 +58,16 @@ interface StoredOrganization {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  org_category: "internal" | "external";
+  org_type: "provider" | "customer" | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  vat_number: string | null;
+  address_street: string | null;
+  address_city: string | null;
+  address_state: string | null;
+  address_postal_code: string | null;
+  address_country: string | null;
 }
 
 interface StoredOrgMember {
@@ -649,12 +659,19 @@ function buildOrgListItem(org: StoredOrganization, userId: string): Organization
   return {
     id: org.id, name: org.name, private: org.private, logo_url: org.private ? null : orgLogoUrl(org),
     is_active: org.is_active,
+    org_category: org.org_category,
+    org_type: org.org_type,
     is_member: member,
     my_role: membership && membership.active ? membership.role : null,
     is_last_admin: isLastAdmin(org, userId),
     has_pending_join_request: !member && hasPendingJoinRequest(org.id, userId),
     member_count: member ? countMembersForOrg(org.id) : null,
   };
+}
+
+function isDemoGlobalAdmin(userId: string): boolean {
+  const user = getState().users.find((u) => u.id === userId);
+  return user?.role === "admin" || user?.role === "superadmin";
 }
 
 // Demo mode has no presigned-URL storage backend — the "logo_url" is just
@@ -673,14 +690,19 @@ function buildOrgResponse(org: StoredOrganization, userId: string): Organization
   const base: Organization = {
     id: org.id, name: org.name, private: org.private, is_active: org.is_active,
     created_at: org.created_at, updated_at: org.updated_at,
+    org_category: org.org_category,
     full_name: null, description: null, website: null, location_id: null, location_name: null,
     email: null, phone: null, logo_file_id: null, logo_url: null,
     asset_count: null, member_count: null,
+    org_type: null, contact_email: null, contact_phone: null, vat_number: null,
+    address_street: null, address_city: null, address_state: null, address_postal_code: null, address_country: null,
     is_member: member, my_role: myRole, can_manage: canManage,
     is_last_admin: isLastAdmin(org, userId),
     has_pending_join_request: !member && hasPendingJoinRequest(org.id, userId),
   };
-  if (org.private && !member) return base;
+  // Private redaction only applies to internal (joinable) orgs — an external
+  // org's is_member is always false, so this must not fire for those.
+  if (org.private && org.org_category === "internal" && !member) return base;
 
   return {
     ...base,
@@ -695,12 +717,35 @@ function buildOrgResponse(org: StoredOrganization, userId: string): Organization
     logo_url: orgLogoUrl(org),
     asset_count: countAssetsForOrg(org.id),
     member_count: countMembersForOrg(org.id),
+    org_type: org.org_type,
+    contact_email: org.contact_email,
+    contact_phone: org.contact_phone,
+    vat_number: org.vat_number,
+    address_street: org.address_street,
+    address_city: org.address_city,
+    address_state: org.address_state,
+    address_postal_code: org.address_postal_code,
+    address_country: org.address_country,
   };
 }
 
-export function listOrganizations(userId: string = getDemoUser().id): OrganizationListItem[] {
+export interface ListOrganizationsFilter {
+  org_category?: "internal" | "external";
+  org_type?: "provider" | "customer";
+}
+
+export function listOrganizations(
+  userId: string = getDemoUser().id, filter: ListOrganizationsFilter = {}
+): OrganizationListItem[] {
   const user = getState().users.find((u) => u.id === userId);
-  const orgs = user?.role === "superadmin" ? getState().organizations : getState().organizations.filter((o) => o.is_active);
+  let orgs = user?.role === "superadmin" ? getState().organizations : getState().organizations.filter((o) => o.is_active);
+  // External organizations are only ever visible to a global Admin/Super
+  // Admin — a non-admin's category filter is silently forced to internal,
+  // same as the real backend, rather than erroring.
+  const orgCategory = isDemoGlobalAdmin(userId) ? filter.org_category : "internal";
+  const orgType = isDemoGlobalAdmin(userId) ? filter.org_type : undefined;
+  if (orgCategory) orgs = orgs.filter((o) => o.org_category === orgCategory);
+  if (orgType) orgs = orgs.filter((o) => o.org_type === orgType);
   return orgs.map((o) => buildOrgListItem(o, userId));
 }
 
@@ -720,6 +765,7 @@ export function getOrganization(id: string, userId: string): Organization | unde
   if (!org) return undefined;
   const user = getState().users.find((u) => u.id === userId);
   if (!org.is_active && user?.role !== "superadmin") return undefined;
+  if (org.org_category === "external" && !isDemoGlobalAdmin(userId)) return undefined;
   return buildOrgResponse(org, userId);
 }
 
@@ -732,10 +778,21 @@ export interface OrganizationCreateInput {
   email?: string | null;
   phone?: string | null;
   private?: boolean;
+  org_category?: "internal" | "external";
+  org_type?: "provider" | "customer" | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  vat_number?: string | null;
+  address_street?: string | null;
+  address_city?: string | null;
+  address_state?: string | null;
+  address_postal_code?: string | null;
+  address_country?: string | null;
 }
 
 export function createOrganization(input: OrganizationCreateInput, creatorId: string): Organization {
   const now = nowIso();
+  const orgCategory = input.org_category ?? "internal";
   const org: StoredOrganization = {
     id: genId(),
     name: input.name,
@@ -750,11 +807,23 @@ export function createOrganization(input: OrganizationCreateInput, creatorId: st
     is_active: true,
     created_at: now,
     updated_at: now,
+    org_category: orgCategory,
+    org_type: orgCategory === "external" ? (input.org_type ?? null) : null,
+    contact_email: input.contact_email ?? null,
+    contact_phone: input.contact_phone ?? null,
+    vat_number: input.vat_number ?? null,
+    address_street: input.address_street ?? null,
+    address_city: input.address_city ?? null,
+    address_state: input.address_state ?? null,
+    address_postal_code: input.address_postal_code ?? null,
+    address_country: input.address_country ?? null,
   };
   getState().organizations.push(org);
-  getState().organizationMembers.push({
-    id: genId(), organization_id: org.id, user_id: creatorId, role: "admin", active: true, created_at: now, updated_at: now,
-  });
+  if (orgCategory === "internal") {
+    getState().organizationMembers.push({
+      id: genId(), organization_id: org.id, user_id: creatorId, role: "admin", active: true, created_at: now, updated_at: now,
+    });
+  }
   persist();
   return buildOrgResponse(org, creatorId);
 }

@@ -17,6 +17,31 @@ An organization has: **name**, an optional **full legal name**, **description**,
 **location** (its primary/HQ location, picked from the location tree — see
 [Locations](../locations/index.mdx)), **email**, **phone**, a **logo**, and a **private** flag.
 
+## Internal vs. external organizations
+
+Every organization has a **category**: **Internal** (the default — everything described above, a
+self-service workspace with members) or **External** — a directory entry for an organization
+outside Open Gauge that has a calibration relationship with it, further typed as one of:
+
+- **Provider** — supplies calibration services to an internal organization (an OEM or an
+  independent accredited calibration lab).
+- **Customer** — receives calibration services from an internal organization.
+
+An external organization carries its own profile instead of a member roster: a **contact
+email/phone** (distinct from the organization's general email/phone above), a **structured
+address** (street, city, state/province, postal code, country — independent of the location tree
+used for asset locations), and a **VAT number**. It has no members and isn't joinable.
+
+**Only Admin and Super Admin** (the global RBAC role — see
+[Authentication](../self-hosting/authentication.mdx#roles-rbac)) can see, create, edit, or
+deactivate external organizations. Every other role — including a `member`/`admin` of an internal
+organization — never sees an external organization anywhere: not in the **Organizations** list, and
+not by navigating directly to its page (which 404s, the same way a deactivated organization does).
+
+The **Organizations** list gains an **Internal / External / Both** filter for Admin and Super
+Admin. Selecting External reveals a second filter — **Provider / Customer / Both** — to narrow the
+directory further. Every other role sees the list exactly as before, with no filter controls.
+
 ## Membership and organization roles
 
 A user can be a member of any number of organizations, with a role scoped to *that* organization
@@ -77,6 +102,9 @@ role.
   "Delete organization" in that org's Danger zone once it's deactivated. Restoring only makes the
   organization active and visible again — it doesn't reactivate any memberships that were cleared
   on deactivation; re-add members via **Add member** afterward.
+- **External organizations** (see [above](#internal-vs-external-organizations)) are visible only
+  to Admin and Super Admin, regardless of the `private` flag — every other role never sees one, the
+  same treatment a deactivated organization gets for everyone but Super Admin.
 
 ## Join requests
 

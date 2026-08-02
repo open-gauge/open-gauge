@@ -1,9 +1,16 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..models.organization_member import OrgRole
+
+# "internal" is the existing self-service, joinable workspace. "external" is an
+# admin-managed directory entry for an organization outside the system, further
+# typed as one of ORG_TYPES. Plain VARCHAR + Pydantic validation (not a Postgres
+# ENUM), mirroring the `language` field precedent in schemas/user.py.
+ORG_CATEGORIES = ("internal", "external")
+ORG_TYPES = ("provider", "customer")
 
 
 class OrganizationCreate(BaseModel):
@@ -16,6 +23,37 @@ class OrganizationCreate(BaseModel):
     phone: str | None = None
     private: bool = False
 
+    org_category: str = "internal"
+    org_type: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    vat_number: str | None = None
+    address_street: str | None = None
+    address_city: str | None = None
+    address_state: str | None = None
+    address_postal_code: str | None = None
+    address_country: str | None = None
+
+    @field_validator("org_category")
+    @classmethod
+    def validate_org_category(cls, value: str) -> str:
+        if value not in ORG_CATEGORIES:
+            raise ValueError(f"Unsupported org_category: {value}")
+        return value
+
+    @field_validator("org_type")
+    @classmethod
+    def validate_org_type(cls, value: str | None) -> str | None:
+        if value is not None and value not in ORG_TYPES:
+            raise ValueError(f"Unsupported org_type: {value}")
+        return value
+
+    @model_validator(mode="after")
+    def require_org_type_when_external(self) -> "OrganizationCreate":
+        if self.org_category == "external" and self.org_type is None:
+            raise ValueError("org_type is required when org_category is 'external'")
+        return self
+
 
 class OrganizationUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
@@ -27,6 +65,31 @@ class OrganizationUpdate(BaseModel):
     phone: str | None = None
     private: bool | None = None
     is_active: bool | None = None
+
+    org_category: str | None = None
+    org_type: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    vat_number: str | None = None
+    address_street: str | None = None
+    address_city: str | None = None
+    address_state: str | None = None
+    address_postal_code: str | None = None
+    address_country: str | None = None
+
+    @field_validator("org_category")
+    @classmethod
+    def validate_org_category(cls, value: str | None) -> str | None:
+        if value is not None and value not in ORG_CATEGORIES:
+            raise ValueError(f"Unsupported org_category: {value}")
+        return value
+
+    @field_validator("org_type")
+    @classmethod
+    def validate_org_type(cls, value: str | None) -> str | None:
+        if value is not None and value not in ORG_TYPES:
+            raise ValueError(f"Unsupported org_type: {value}")
+        return value
 
 
 class OrganizationListItem(BaseModel):
@@ -42,6 +105,9 @@ class OrganizationListItem(BaseModel):
     private: bool
     logo_url: str | None = None
     is_active: bool = True
+
+    org_category: str = "internal"
+    org_type: str | None = None
 
     is_member: bool = False
     my_role: OrgRole | None = None
@@ -59,6 +125,7 @@ class OrganizationResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    org_category: str = "internal"
 
     # Public fields — populated for any org the viewer can see the page for
     # (non-private, or private-and-a-member/superadmin). None otherwise.
@@ -73,6 +140,15 @@ class OrganizationResponse(BaseModel):
     logo_url: str | None = None
     asset_count: int | None = None
     member_count: int | None = None
+    org_type: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    vat_number: str | None = None
+    address_street: str | None = None
+    address_city: str | None = None
+    address_state: str | None = None
+    address_postal_code: str | None = None
+    address_country: str | None = None
 
     # Viewer-relative fields — always populated
     is_member: bool = False

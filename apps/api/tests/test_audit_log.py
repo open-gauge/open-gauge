@@ -335,6 +335,49 @@ class TestOrganizationUpdateAuditLog:
         assert entry["before_state"]["name"] == org["name"]
         assert entry["after_state"]["name"] == "Renamed Org"
 
+    def test_update_external_organization_records_contact_and_vat_values(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        org = client.post(
+            "/api/v1/organizations",
+            json={
+                "name": f"Org {uuid.uuid4().hex[:8]}",
+                "org_category": "external",
+                "org_type": "provider",
+            },
+            headers=auth_headers,
+        ).json()
+        r = client.put(
+            f"/api/v1/organizations/{org['id']}",
+            json={"contact_email": "ops@acme.test", "vat_number": "VAT123"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        logs = _audit_logs_for(client, auth_headers, "organization", org["id"])
+        entry = next(l for l in logs if l["action"] == "organization.updated")
+        assert entry["after_state"]["contact_email"] == "ops@acme.test"
+        assert entry["after_state"]["vat_number"] == "VAT123"
+
+    def test_flip_org_category_records_raw_enum_values(self, client: TestClient, auth_headers: dict) -> None:
+        """The raw before/after strings (not field names) must be captured so
+        the frontend's AUDIT_FIELD_VALUE_NAMESPACE translation has something
+        to translate."""
+        org = client.post(
+            "/api/v1/organizations", json={"name": f"Org {uuid.uuid4().hex[:8]}"}, headers=auth_headers
+        ).json()
+        assert org["org_category"] == "internal"
+        r = client.put(
+            f"/api/v1/organizations/{org['id']}",
+            json={"org_category": "external", "org_type": "provider"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        logs = _audit_logs_for(client, auth_headers, "organization", org["id"])
+        entry = next(l for l in logs if l["action"] == "organization.updated")
+        assert entry["before_state"]["org_category"] == "internal"
+        assert entry["after_state"]["org_category"] == "external"
+        assert entry["after_state"]["org_type"] == "provider"
+
 
 class TestProcedureUpdateAuditLog:
     def test_update_procedure_records_real_before_after_values(

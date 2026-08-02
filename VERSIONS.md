@@ -9,6 +9,22 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.9.0
+
+### Added
+
+- **Internal vs. external organizations.** Every organization now has a category — **Internal**
+  (the existing self-service, joinable workspace, unchanged) or **External**, a directory entry
+  for an organization outside the system with a calibration relationship to it, typed as a
+  **Provider** (an OEM or accredited lab supplying calibration services) or a **Customer**
+  (receiving them). External organizations carry a contact email/phone (distinct from the
+  organization's general email/phone), a structured address (street/city/state/postal
+  code/country, independent of the location tree used for asset locations), and a VAT number, and
+  have no members. Seeing, creating, editing, and deactivating an external organization is
+  restricted to Admin and Super Admin — every other role never sees one, including by direct URL.
+  The Organizations list gained an Internal/External/Both filter (Admin/Super Admin only), and a
+  further Provider/Customer/Both filter when External is selected.
+
 ## 3.8.0
 
 ### Added

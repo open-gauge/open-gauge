@@ -8,7 +8,9 @@ import type {
   OrganizationListItem,
   OrganizationMember,
   OrganizationUpdateBody,
+  OrgCategory,
   OrgRole,
+  OrgType,
   SigningCertificate,
 } from "@/types/organization";
 
@@ -18,8 +20,16 @@ function tokenHeader(): Record<string, string> {
   return authHeader(token);
 }
 
-export async function listOrganizations(): Promise<OrganizationListItem[]> {
-  return apiFetch<OrganizationListItem[]>("/api/v1/organizations?limit=200", { headers: tokenHeader() });
+export interface ListOrganizationsParams {
+  org_category?: OrgCategory;
+  org_type?: OrgType;
+}
+
+export async function listOrganizations(params?: ListOrganizationsParams): Promise<OrganizationListItem[]> {
+  const qs = new URLSearchParams({ limit: "200" });
+  if (params?.org_category) qs.set("org_category", params.org_category);
+  if (params?.org_type) qs.set("org_type", params.org_type);
+  return apiFetch<OrganizationListItem[]>(`/api/v1/organizations?${qs.toString()}`, { headers: tokenHeader() });
 }
 
 export async function listMyOrganizations(): Promise<OrganizationListItem[]> {

@@ -211,7 +211,10 @@ route("POST", "/api/v1/admin/email-settings/test", () => undefined);
 route("GET", "/api/v1/organizations", ({ qs }) =>
   qs.get("mine") === "true"
     ? store.listUserOrganizations(store.getDemoUser().id)
-    : store.listOrganizations(store.getDemoUser().id));
+    : store.listOrganizations(store.getDemoUser().id, {
+        org_category: (qs.get("org_category") as "internal" | "external" | null) ?? undefined,
+        org_type: (qs.get("org_type") as "provider" | "customer" | null) ?? undefined,
+      }));
 
 route("POST", "/api/v1/organizations", ({ body }) =>
   store.createOrganization(body as OrganizationCreateInput, store.getDemoUser().id));

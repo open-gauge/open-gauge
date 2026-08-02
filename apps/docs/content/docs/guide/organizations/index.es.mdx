@@ -17,6 +17,35 @@ Una organización tiene: **nombre**, un **nombre legal completo** opcional, **de
 **ubicación** (su ubicación principal/sede, elegida del árbol de ubicaciones — consulta
 [Ubicaciones](../locations/index.mdx)), **correo electrónico**, **teléfono**, un **logotipo**, y un indicador de **privada**.
 
+## Organizaciones internas y externas
+
+Toda organización tiene una **categoría**: **Interna** (la predeterminada — todo lo descrito
+arriba, un espacio de trabajo de autoservicio con miembros) o **Externa** — una entrada de
+directorio para una organización fuera de Open Gauge que mantiene una relación de calibración con
+ella, tipificada además como una de:
+
+- **Proveedor** — suministra servicios de calibración a una organización interna (un OEM o un
+  laboratorio de calibración acreditado independiente).
+- **Cliente** — recibe servicios de calibración de una organización interna.
+
+Una organización externa tiene su propio perfil en lugar de una lista de miembros: un **correo de
+contacto** y un **teléfono de contacto** (distintos del correo/teléfono general de la organización
+mencionado arriba), una **dirección estructurada** (calle, ciudad, estado/provincia, código
+postal, país — independiente del árbol de ubicaciones usado para las ubicaciones de los activos),
+y un **número de IVA**. No tiene miembros ni admite solicitudes de ingreso.
+
+**Solo Admin y Super Admin** (el rol RBAC global — consulta
+[Autenticación](../self-hosting/authentication.mdx#roles-rbac)) pueden ver, crear, editar o
+desactivar organizaciones externas. Cualquier otro rol — incluido un `member`/`admin` de una
+organización interna — nunca ve una organización externa en ningún lugar: ni en la lista de
+**Organizaciones**, ni navegando directamente a su página (que devuelve 404, de la misma manera
+que lo hace una organización desactivada).
+
+La lista de **Organizaciones** gana un filtro **Interna / Externa / Ambas** para Admin y Super
+Admin. Seleccionar Externa revela un segundo filtro — **Proveedor / Cliente / Ambos** — para
+acotar aún más el directorio. Cualquier otro rol ve la lista exactamente igual que antes, sin
+controles de filtro.
+
 ## Membresía y roles de organización
 
 Un usuario puede ser miembro de cualquier número de organizaciones, con un rol delimitado a *esa* organización
@@ -77,6 +106,10 @@ múltiple de todo usuario que no sea ya miembro activo — los usuarios seleccio
   "Eliminar organización" en la Zona de peligro de esa organización una vez que está desactivada. Restaurar solo hace que la
   organización vuelva a estar activa y visible — no reactiva ninguna membresía que se haya borrado
   al desactivarla; vuelve a agregar miembros mediante **Agregar miembro** después.
+- Las **organizaciones externas** (consulta [arriba](#organizaciones-internas-y-externas)) son
+  visibles solo para Admin y Super Admin, sin importar el valor de `private` — ningún otro rol ve
+  alguna, el mismo tratamiento que recibe una organización desactivada para todos excepto Super
+  Admin.
 
 ## Solicitudes de ingreso
 

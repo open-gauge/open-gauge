@@ -20,6 +20,35 @@ Une organisation possède : un **nom**, une **raison sociale complète** optionn
 choisi dans l'arborescence des emplacements — voir [Emplacements](../locations/index.mdx)), un
 **e-mail**, un **téléphone**, un **logo**, et un indicateur **privé**.
 
+## Organisations internes et externes
+
+Chaque organisation possède une **catégorie** : **Interne** (par défaut — tout ce qui est décrit
+ci-dessus, un espace de travail en libre-service avec des membres) ou **Externe** — une entrée
+d'annuaire pour une organisation extérieure à Open Gauge entretenant une relation de calibration
+avec elle, typée en outre comme l'un des types suivants :
+
+- **Fournisseur** — fournit des services de calibration à une organisation interne (un OEM ou un
+  laboratoire de calibration accrédité indépendant).
+- **Client** — reçoit des services de calibration d'une organisation interne.
+
+Une organisation externe possède son propre profil au lieu d'une liste de membres : un **e-mail de
+contact** et un **téléphone de contact** (distincts de l'e-mail/téléphone général de
+l'organisation mentionné ci-dessus), une **adresse structurée** (rue, ville, état/province, code
+postal, pays — indépendante de l'arborescence des emplacements utilisée pour les emplacements des
+actifs), et un **numéro de TVA**. Elle n'a aucun membre et ne peut pas être rejointe.
+
+**Seuls Admin et Super Admin** (le rôle RBAC global — voir
+[Authentification](../self-hosting/authentication.mdx#roles-rbac)) peuvent voir, créer, modifier
+ou désactiver des organisations externes. Tout autre rôle — y compris un `member`/`admin` d'une
+organisation interne — ne voit jamais une organisation externe nulle part : ni dans la liste
+**Organisations**, ni en accédant directement à sa page (qui renvoie une erreur 404, de la même
+façon qu'une organisation désactivée).
+
+La liste **Organisations** gagne un filtre **Interne / Externe / Les deux** pour Admin et Super
+Admin. Sélectionner Externe révèle un second filtre — **Fournisseur / Client / Les deux** — pour
+affiner davantage l'annuaire. Tout autre rôle voit la liste exactement comme avant, sans contrôles
+de filtre.
+
 ## Appartenance et rôles d'organisation
 
 Un utilisateur peut être membre d'un nombre quelconque d'organisations, avec un rôle limité à
@@ -89,6 +118,10 @@ qui ne sont pas déjà membres actifs — les utilisateurs sélectionnés sont a
   cette organisation une fois qu'elle est désactivée. Restaurer rend simplement l'organisation à
   nouveau active et visible — cela ne réactive aucune des appartenances qui ont été effacées lors
   de la désactivation ; réajoutez les membres via **Ajouter un membre** par la suite.
+- Les **organisations externes** (voir [ci-dessus](#organisations-internes-et-externes)) ne sont
+  visibles que par Admin et Super Admin, quel que soit l'indicateur `private` — aucun autre rôle
+  n'en voit une, le même traitement que celui réservé à une organisation désactivée pour tout le
+  monde sauf le Super Admin.
 
 ## Demandes d'adhésion
 

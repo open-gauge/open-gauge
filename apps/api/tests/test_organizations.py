@@ -5,7 +5,9 @@ delete endpoints.
 Covers: self-service creation (creator becomes admin), org-admin-only
 mutation gating (not global-role gating — only Super Admin overrides),
 private-organization redaction, member role changes / removal with
-last-admin guards, and logo upload (happy path + replace + reject non-image).
+last-admin guards, logo upload (happy path + replace + reject non-image), and
+external organizations (org_category="external") — global-Admin-only
+creation/visibility/mutation, since they have no membership concept.
 """
 import uuid
 
@@ -661,3 +663,208 @@ class TestSigningCertificate:
         org = _create_org(client, auth_headers)
         resp = client.get(f"/api/v1/organizations/{org['id']}/signing-certificate")
         assert resp.status_code == 403
+
+
+class TestExternalOrganizations:
+    """External organizations (org_category="external") are an admin-managed
+    directory entry with no members — every mutation and visibility check
+    routes through the global Admin/Super Admin role, not the per-org
+    `_require_org_admin` check used for internal (self-service) orgs."""
+
+    def _external_org(self, client: TestClient, headers: dict, org_type: str = "provider", **extra) -> dict:
+        return _create_org(
+            client, headers, org_category="external", org_type=org_type, **extra
+        )
+
+    # -- Create ---------------------------------------------------------
+
+    def test_admin_can_create_external_provider(self, client: TestClient, auth_headers: dict) -> None:
+        org = self._external_org(client, auth_headers, org_type="provider", vat_number="VAT123")
+        assert org["org_category"] == "external"
+        assert org["org_type"] == "provider"
+        assert org["vat_number"] == "VAT123"
+        assert org["is_member"] is False
+        assert org["can_manage"] is False
+
+    def test_superadmin_can_create_external_customer(self, client: TestClient, db: Session) -> None:
+        superadmin = _make_user(db, UserRole.superadmin)
+        org = self._external_org(client, _headers_for(superadmin), org_type="customer")
+        assert org["org_category"] == "external"
+        assert org["org_type"] == "customer"
+
+    def test_technician_cannot_create_external(self, client: TestClient, db: Session) -> None:
+        technician = _make_user(db, UserRole.technician)
+        response = client.post(
+            "/api/v1/organizations",
+            json={"name": "Nope", "org_category": "external", "org_type": "provider"},
+            headers=_headers_for(technician),
+        )
+        assert response.status_code == 403
+
+    def test_org_type_required_when_external(self, client: TestClient, auth_headers: dict) -> None:
+        response = client.post(
+            "/api/v1/organizations",
+            json={"name": "Missing type", "org_category": "external"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    def test_invalid_org_category_rejected(self, client: TestClient, auth_headers: dict) -> None:
+        response = client.post(
+            "/api/v1/organizations", json={"name": "Bad", "org_category": "bogus"}, headers=auth_headers
+        )
+        assert response.status_code == 422
+
+    def test_invalid_org_type_rejected(self, client: TestClient, auth_headers: dict) -> None:
+        response = client.post(
+            "/api/v1/organizations",
+            json={"name": "Bad", "org_category": "external", "org_type": "bogus"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    def test_internal_creation_unaffected(self, client: TestClient, db: Session) -> None:
+        """Regression: plain internal creation (the default) still works
+        exactly as before — non-viewer self-service, auto-joins as admin."""
+        technician = _make_user(db, UserRole.technician)
+        org = _create_org(client, _headers_for(technician), "Technician's Org")
+        assert org["org_category"] == "internal"
+        assert org["my_role"] == "admin"
+        assert org["can_manage"] is True
+
+    # -- List -------------------------------------------------------------
+
+    def test_external_org_excluded_from_list_for_non_admin(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = self._external_org(client, auth_headers)
+        technician = _make_user(db, UserRole.technician)
+        listed = client.get("/api/v1/organizations", headers=_headers_for(technician)).json()
+        assert org["id"] not in [o["id"] for o in listed]
+
+    def test_org_category_filter_ignored_for_non_admin(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = self._external_org(client, auth_headers)
+        technician = _make_user(db, UserRole.technician)
+        listed = client.get(
+            "/api/v1/organizations", params={"org_category": "external"}, headers=_headers_for(technician)
+        ).json()
+        assert org["id"] not in [o["id"] for o in listed]
+
+    def test_external_org_visible_in_list_for_admin_with_filter(self, client: TestClient, auth_headers: dict) -> None:
+        provider = self._external_org(client, auth_headers, org_type="provider")
+        customer = self._external_org(client, auth_headers, org_type="customer")
+        internal = _create_org(client, auth_headers)
+
+        only_external = client.get(
+            "/api/v1/organizations", params={"org_category": "external"}, headers=auth_headers
+        ).json()
+        ids = [o["id"] for o in only_external]
+        assert provider["id"] in ids and customer["id"] in ids and internal["id"] not in ids
+
+        only_providers = client.get(
+            "/api/v1/organizations",
+            params={"org_category": "external", "org_type": "provider"},
+            headers=auth_headers,
+        ).json()
+        ids = [o["id"] for o in only_providers]
+        assert provider["id"] in ids and customer["id"] not in ids
+
+    # -- Detail -------------------------------------------------------------
+
+    def test_external_org_404_for_non_admin_detail(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = self._external_org(client, auth_headers)
+        technician = _make_user(db, UserRole.technician)
+        response = client.get(f"/api/v1/organizations/{org['id']}", headers=_headers_for(technician))
+        assert response.status_code == 404
+
+    def test_external_org_visible_for_admin_detail(self, client: TestClient, auth_headers: dict) -> None:
+        org = self._external_org(
+            client, auth_headers, org_type="provider", contact_email="ops@acme.test", address_city="Springfield",
+        )
+        response = client.get(f"/api/v1/organizations/{org['id']}", headers=auth_headers)
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["contact_email"] == "ops@acme.test"
+        assert body["address_city"] == "Springfield"
+
+    # -- Update -------------------------------------------------------------
+
+    def test_admin_can_update_external_org(self, client: TestClient, auth_headers: dict) -> None:
+        org = self._external_org(client, auth_headers)
+        response = client.put(
+            f"/api/v1/organizations/{org['id']}",
+            json={"contact_email": "new@acme.test", "address_city": "Newtown"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["contact_email"] == "new@acme.test"
+        assert response.json()["address_city"] == "Newtown"
+
+    def test_technician_cannot_update_external_org(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = self._external_org(client, auth_headers)
+        technician = _make_user(db, UserRole.technician)
+        response = client.put(
+            f"/api/v1/organizations/{org['id']}", json={"contact_email": "x@x.test"}, headers=_headers_for(technician)
+        )
+        # No membership exists for an external org, so this 404s via the same
+        # visibility guard as the detail endpoint, before any 403 branch runs.
+        assert response.status_code == 404
+
+    def test_org_admin_cannot_flip_own_internal_org_to_external(
+        self, client: TestClient, db: Session
+    ) -> None:
+        technician = _make_user(db, UserRole.technician)
+        headers = _headers_for(technician)
+        org = _create_org(client, headers, "Technician's Org")
+        response = client.put(
+            f"/api/v1/organizations/{org['id']}",
+            json={"org_category": "external", "org_type": "provider"},
+            headers=headers,
+        )
+        assert response.status_code == 403
+
+    def test_org_admin_cannot_set_vat_on_own_internal_org(self, client: TestClient, db: Session) -> None:
+        technician = _make_user(db, UserRole.technician)
+        headers = _headers_for(technician)
+        org = _create_org(client, headers, "Technician's Org")
+        response = client.put(
+            f"/api/v1/organizations/{org['id']}", json={"vat_number": "SNEAKY"}, headers=headers
+        )
+        assert response.status_code == 403
+
+    def test_org_admin_can_still_update_ordinary_fields_on_internal_org(
+        self, client: TestClient, db: Session
+    ) -> None:
+        technician = _make_user(db, UserRole.technician)
+        headers = _headers_for(technician)
+        org = _create_org(client, headers, "Technician's Org")
+        response = client.put(
+            f"/api/v1/organizations/{org['id']}", json={"description": "updated"}, headers=headers
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["description"] == "updated"
+
+    def test_global_admin_can_flip_internal_org_to_external(self, client: TestClient, auth_headers: dict) -> None:
+        # auth_headers's user is UserRole.admin (global) AND, as the creator,
+        # this org's own per-org admin — both gates are satisfied.
+        org = _create_org(client, auth_headers, "Flip Me")
+        response = client.put(
+            f"/api/v1/organizations/{org['id']}",
+            json={"org_category": "external", "org_type": "provider"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["org_category"] == "external"
+        assert response.json()["org_type"] == "provider"
+
+    # -- Deactivate -------------------------------------------------------------
+
+    def test_admin_can_deactivate_external_org(self, client: TestClient, auth_headers: dict) -> None:
+        org = self._external_org(client, auth_headers)
+        response = client.delete(f"/api/v1/organizations/{org['id']}", headers=auth_headers)
+        assert response.status_code == 204
+
+    def test_technician_cannot_deactivate_external_org(self, client: TestClient, auth_headers: dict, db: Session) -> None:
+        org = self._external_org(client, auth_headers)
+        technician = _make_user(db, UserRole.technician)
+        response = client.delete(f"/api/v1/organizations/{org['id']}", headers=_headers_for(technician))
+        # Same 404-before-403 shape as update, above.
+        assert response.status_code == 404

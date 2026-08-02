@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
@@ -38,9 +39,14 @@ router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
 def _get_org_or_404(db: Session, org_id: uuid.UUID, current_user: User) -> Organization:
     """A deactivated (deleted) organization is invisible to everyone except
-    Super Admin, who can still reach it directly (e.g. from an old link)."""
+    Super Admin, who can still reach it directly (e.g. from an old link).
+    An external organization (admin-managed directory entry, no members) is
+    likewise invisible to everyone but a global Admin/Super Admin — 404, not
+    403, so its existence isn't leaked to other roles."""
     org = org_repo.get_by_id(db, org_id)
     if not org or (not org.is_active and current_user.role != UserRole.superadmin):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+    if org.org_category == "external" and not _is_global_admin(current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
     return org
 
@@ -48,6 +54,28 @@ def _get_org_or_404(db: Session, org_id: uuid.UUID, current_user: User) -> Organ
 def _require_org_admin(db: Session, current_user: User, org: Organization) -> None:
     if not org_perm.is_org_admin(db, current_user, org):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization admin only")
+
+
+def _is_global_admin(user: User) -> bool:
+    return user.role in (UserRole.admin, UserRole.superadmin)
+
+
+# Fields that only make sense for an external organization (admin-managed
+# directory entry) — touching any of these, or org_category itself, always
+# requires a global Admin/Super Admin, even when editing an org the caller is
+# otherwise a per-org admin of.
+_GLOBAL_ADMIN_ONLY_FIELDS = frozenset({
+    "org_category",
+    "org_type",
+    "contact_email",
+    "contact_phone",
+    "vat_number",
+    "address_street",
+    "address_city",
+    "address_state",
+    "address_postal_code",
+    "address_country",
+})
 
 
 def _member_response(db: Session, membership) -> OrganizationMemberResponse | None:
@@ -92,10 +120,15 @@ def _build_org_response(db: Session, org: Organization, current_user: User) -> O
     data = OrganizationResponse(
         id=org.id, name=org.name, private=org.private, is_active=org.is_active,
         created_at=org.created_at, updated_at=org.updated_at,
+        org_category=org.org_category,
         **viewer,
     )
 
-    if org.private and not viewer["is_member"]:
+    # Private redaction only applies to internal (joinable) orgs — an external
+    # org's viewer-relative is_member is always False (no membership concept),
+    # so without this guard a private external org would hide its own profile
+    # from the admins meant to manage it.
+    if org.private and org.org_category == "internal" and not viewer["is_member"]:
         return data
 
     data.full_name = org.full_name
@@ -107,6 +140,15 @@ def _build_org_response(db: Session, org: Organization, current_user: User) -> O
     data.logo_file_id = org.logo_file_id
     data.asset_count = org_repo.count_assets(db, org.id)
     data.member_count = org_repo.count_members(db, org.id)
+    data.org_type = org.org_type
+    data.contact_email = org.contact_email
+    data.contact_phone = org.contact_phone
+    data.vat_number = org.vat_number
+    data.address_street = org.address_street
+    data.address_city = org.address_city
+    data.address_state = org.address_state
+    data.address_postal_code = org.address_postal_code
+    data.address_country = org.address_country
     if org.logo_file_id:
         f = file_repo.get_by_id(db, org.logo_file_id)
         if f:
@@ -123,6 +165,8 @@ def list_organizations(
     skip: int = 0,
     limit: int = 50,
     mine: bool = False,
+    org_category: Literal["internal", "external"] | None = None,
+    org_type: Literal["provider", "customer"] | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[OrganizationListItem]:
@@ -131,12 +175,22 @@ def list_organizations(
     `mine=true` scopes the list to the caller's own active memberships (e.g.
     the organization picker on asset creation). Super Admin additionally sees
     deactivated organizations — the only way to reach one, since it's
-    invisible to everyone else."""
+    invisible to everyone else. `org_category`/`org_type` filter the list;
+    external organizations are only ever visible to a global Admin/Super
+    Admin, so a non-admin's request is silently forced to internal-only
+    regardless of what it asks for — same style as the is_active forcing
+    below, never a 403."""
+    if not _is_global_admin(current_user):
+        org_category = "internal"
+        org_type = None
     if mine:
         orgs = org_repo.list_user_organizations(db, current_user.id)
     else:
         is_active_filter = None if current_user.role == UserRole.superadmin else True
-        orgs = org_repo.list_organizations(db, skip=skip, limit=limit, is_active=is_active_filter)
+        orgs = org_repo.list_organizations(
+            db, skip=skip, limit=limit, is_active=is_active_filter,
+            org_category=org_category, org_type=org_type,
+        )
     result = []
     for o in orgs:
         item = OrganizationListItem.model_validate(o)
@@ -146,6 +200,8 @@ def list_organizations(
         item.is_last_admin = viewer["is_last_admin"]
         item.has_pending_join_request = viewer["has_pending_join_request"]
         item.member_count = org_repo.count_members(db, o.id) if viewer["is_member"] else None
+        item.org_category = o.org_category
+        item.org_type = o.org_type
         if o.logo_file_id and not o.private:
             f = file_repo.get_by_id(db, o.logo_file_id)
             if f:
@@ -160,11 +216,14 @@ def create_organization(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> OrganizationResponse:
-    """Any authenticated non-Viewer may create an organization — org creation is
-    a self-service action independent of the global RBAC role otherwise,
-    mirroring Gogs/GitHub, but Viewer is excluded like every other org
-    management action. The creator automatically becomes that org's first
-    admin member."""
+    """Any authenticated non-Viewer may create an *internal* organization —
+    org creation is a self-service action independent of the global RBAC role
+    otherwise, mirroring Gogs/GitHub, but Viewer is excluded like every other
+    org management action. The creator automatically becomes that org's first
+    admin member. Creating an *external* organization (an admin-managed
+    directory entry, no members) requires a global Admin/Super Admin."""
+    if body.org_category == "external" and not _is_global_admin(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     org = org_repo.create(
         db,
         name=body.name,
@@ -175,8 +234,19 @@ def create_organization(
         email=body.email,
         phone=body.phone,
         private=body.private,
+        org_category=body.org_category,
+        org_type=body.org_type,
+        contact_email=body.contact_email,
+        contact_phone=body.contact_phone,
+        vat_number=body.vat_number,
+        address_street=body.address_street,
+        address_city=body.address_city,
+        address_state=body.address_state,
+        address_postal_code=body.address_postal_code,
+        address_country=body.address_country,
     )
-    org_repo.upsert_membership(db, org.id, current_user.id, role=OrgRole.admin)
+    if body.org_category == "internal":
+        org_repo.upsert_membership(db, org.id, current_user.id, role=OrgRole.admin)
     audit_log_repo.create(
         db, actor_id=current_user.id, actor_email=current_user.email,
         action="organization.created", entity_type="organization", entity_id=org.id,
@@ -225,8 +295,17 @@ def update_organization(
     current_user: User = Depends(get_current_user),
 ) -> OrganizationResponse:
     org = _get_org_or_404(db, org_id, current_user)
-    _require_org_admin(db, current_user, org)
     update_data = body.model_dump(exclude_none=True)
+    is_global_admin = _is_global_admin(current_user)
+
+    if org.org_category == "external":
+        if not is_global_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    else:
+        _require_org_admin(db, current_user, org)
+        if _GLOBAL_ADMIN_ONLY_FIELDS & update_data.keys() and not is_global_admin:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+
     before = snapshot(org, update_data.keys())
     org = org_repo.update(db, org, **update_data)
     after = snapshot(org, update_data.keys())
@@ -335,7 +414,11 @@ def deactivate_organization(
     current_user: User = Depends(get_current_user),
 ) -> None:
     org = _get_org_or_404(db, org_id, current_user)
-    _require_org_admin(db, current_user, org)
+    if org.org_category == "external":
+        if not _is_global_admin(current_user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    else:
+        _require_org_admin(db, current_user, org)
     db.query(OrganizationMember).filter(
         OrganizationMember.organization_id == org.id, OrganizationMember.active.is_(True)
     ).update({"active": False})

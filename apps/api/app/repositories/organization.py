@@ -13,10 +13,21 @@ def get_by_id(db: Session, org_id: uuid.UUID) -> Organization | None:
     return db.query(Organization).filter(Organization.id == org_id).first()
 
 
-def list_organizations(db: Session, skip: int = 0, limit: int = 50, is_active: bool | None = None) -> list[Organization]:
+def list_organizations(
+    db: Session,
+    skip: int = 0,
+    limit: int = 50,
+    is_active: bool | None = None,
+    org_category: str | None = None,
+    org_type: str | None = None,
+) -> list[Organization]:
     q = db.query(Organization)
     if is_active is not None:
         q = q.filter(Organization.is_active == is_active)
+    if org_category is not None:
+        q = q.filter(Organization.org_category == org_category)
+    if org_type is not None:
+        q = q.filter(Organization.org_type == org_type)
     return q.order_by(Organization.name).offset(skip).limit(limit).all()
 
 
@@ -30,6 +41,16 @@ def create(
     email: str | None = None,
     phone: str | None = None,
     private: bool = False,
+    org_category: str = "internal",
+    org_type: str | None = None,
+    contact_email: str | None = None,
+    contact_phone: str | None = None,
+    vat_number: str | None = None,
+    address_street: str | None = None,
+    address_city: str | None = None,
+    address_state: str | None = None,
+    address_postal_code: str | None = None,
+    address_country: str | None = None,
 ) -> Organization:
     org = Organization(
         name=name,
@@ -40,6 +61,16 @@ def create(
         email=email,
         phone=phone,
         private=private,
+        org_category=org_category,
+        org_type=org_type,
+        contact_email=contact_email,
+        contact_phone=contact_phone,
+        vat_number=vat_number,
+        address_street=address_street,
+        address_city=address_city,
+        address_state=address_state,
+        address_postal_code=address_postal_code,
+        address_country=address_country,
     )
     db.add(org)
     db.commit()

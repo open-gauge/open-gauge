@@ -19,6 +19,36 @@ Eine Organisation hat: **Name**, einen optionalen **vollständigen Rechtsnamen**
 siehe [Standorte](../locations/index.mdx)), **E-Mail**, **Telefon**, ein **Logo** und ein
 **Privat**-Kennzeichen.
 
+## Interne und externe Organisationen
+
+Jede Organisation hat eine **Kategorie**: **Intern** (die Standardeinstellung — alles oben
+Beschriebene, ein Self-Service-Arbeitsbereich mit Mitgliedern) oder **Extern** — ein
+Verzeichniseintrag für eine Organisation außerhalb von Open Gauge, die eine Kalibrierbeziehung zu
+ihr hat, weiter typisiert als eine der folgenden:
+
+- **Anbieter** — liefert Kalibrierdienstleistungen an eine interne Organisation (ein OEM oder ein
+  unabhängiges akkreditiertes Kalibrierlabor).
+- **Kunde** — erhält Kalibrierdienstleistungen von einer internen Organisation.
+
+Eine externe Organisation führt ein eigenes Profil anstelle einer Mitgliederliste: eine
+**Kontakt-E-Mail** und ein **Kontakttelefon** (getrennt von der oben genannten allgemeinen
+E-Mail/Telefonnummer der Organisation), eine **strukturierte Adresse** (Straße, Stadt,
+Bundesland/Provinz, Postleitzahl, Land — unabhängig vom Standortbaum, der für Anlagenstandorte
+verwendet wird), und eine **USt-IdNr.**. Sie hat keine Mitglieder und kann nicht beigetreten
+werden.
+
+**Nur Admin und Super Admin** (die globale RBAC-Rolle — siehe
+[Authentifizierung](../self-hosting/authentication.mdx#roles-rbac)) können externe Organisationen
+sehen, erstellen, bearbeiten oder deaktivieren. Jede andere Rolle — einschließlich eines
+`member`/`admin` einer internen Organisation — sieht eine externe Organisation nirgends: weder in
+der Liste **Organisationen**, noch durch direktes Navigieren zu ihrer Seite (die einen 404-Fehler
+liefert, ebenso wie bei einer deaktivierten Organisation).
+
+Die Liste **Organisationen** erhält für Admin und Super Admin einen Filter **Intern / Extern /
+Beide**. Die Auswahl von Extern zeigt einen zweiten Filter — **Anbieter / Kunde / Beide** — um das
+Verzeichnis weiter einzugrenzen. Jede andere Rolle sieht die Liste genau wie zuvor, ohne
+Filtersteuerelemente.
+
 ## Mitgliedschaft und Organisationsrollen
 
 Ein Benutzer kann Mitglied einer beliebigen Anzahl von Organisationen sein, mit einer Rolle, die nur
@@ -86,6 +116,9 @@ der noch kein aktives Mitglied ist — ausgewählte Benutzer werden mit der Roll
   dieser Organisation ersetzt, sobald sie deaktiviert ist. Das Wiederherstellen macht die
   Organisation nur wieder aktiv und sichtbar — es reaktiviert keine Mitgliedschaften, die bei der
   Deaktivierung gelöscht wurden; fügen Sie Mitglieder danach über **Mitglied hinzufügen** erneut hinzu.
+- **Externe Organisationen** (siehe [oben](#interne-und-externe-organisationen)) sind unabhängig
+  vom `private`-Kennzeichen nur für Admin und Super Admin sichtbar — jede andere Rolle sieht nie
+  eine, dieselbe Behandlung, die eine deaktivierte Organisation für alle außer Super Admin erhält.
 
 ## Beitrittsanfragen
 

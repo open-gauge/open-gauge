@@ -19,6 +19,19 @@ class Organization(Base):
     location_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # "internal" (self-service, joinable workspace) or "external" (admin-managed directory
+    # entry with no members). org_type ("provider"/"customer") is only meaningful when
+    # org_category is "external". See AGENTS.md-aligned precedent in schemas/organization.py.
+    org_category: Mapped[str] = mapped_column(String(20), nullable=False, default="internal", server_default="internal")
+    org_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    vat_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    address_street: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_city: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_state: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    address_country: Mapped[str | None] = mapped_column(String(100), nullable=True)
     private: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     logo_file_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
