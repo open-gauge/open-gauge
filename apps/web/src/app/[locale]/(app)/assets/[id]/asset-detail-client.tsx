@@ -56,6 +56,7 @@ import {
 } from "@/lib/sensor-options";
 import { toSI, fromSI } from "@/lib/unit-conversion";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
+import { ConfirmModal } from "@/components/confirm-modal";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -1374,6 +1375,9 @@ interface CalibrationTabProps {
   onCalibrationSaved: () => void;
   onCalibrationDeleted: () => void;
   isAdmin: boolean;
+  /** Wraps any action that would open the wizard so unsaved asset-edit changes
+   * (if any) can be saved or discarded first — see guardBeforeLeavingEdit. */
+  guardBeforeLeavingEdit: (action: () => void) => void;
 }
 
 // Format polynomial equation — coefficients are highest-degree first (numpy convention)
@@ -1557,7 +1561,7 @@ function useCoeffDesc() {
 
 type ResultView = "equation" | "coefficients";
 
-function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrationDeleted, isAdmin }: CalibrationTabProps) {
+function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrationDeleted, isAdmin, guardBeforeLeavingEdit }: CalibrationTabProps) {
   const tUncertaintySource = useTranslations("tokens.uncertaintySource");
   const tDecisionRule = useTranslations("tokens.decisionRule");
   const t = useTranslations("assets.calibration");
@@ -1756,7 +1760,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 
         <button
           type="button"
-          onClick={() => setWizardOpen(true)}
+          onClick={() => guardBeforeLeavingEdit(() => setWizardOpen(true))}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
         >
           <PlusIcon size={12} />
@@ -2780,6 +2784,27 @@ export default function AssetDetailClient() {
   // Asset picture
   const [pictureUploading, setPictureUploading] = useState(false);
 
+  // Unsaved-changes guard: snapshot the form at edit-start so any action that
+  // would otherwise discard in-progress edits (e.g. opening the calibration
+  // wizard) can offer to save first instead of silently losing them.
+  const originalFormRef = useRef<EditFormState | null>(null);
+  const pendingActionRef = useRef<(() => void) | null>(null);
+  const [guardOpen, setGuardOpen] = useState(false);
+
+  function isFormDirty(): boolean {
+    return isEditing && editForm != null &&
+      JSON.stringify(editForm) !== JSON.stringify(originalFormRef.current);
+  }
+
+  function guardBeforeLeavingEdit(action: () => void) {
+    if (isFormDirty()) {
+      pendingActionRef.current = action;
+      setGuardOpen(true);
+    } else {
+      action();
+    }
+  }
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -2803,7 +2828,9 @@ export default function AssetDetailClient() {
 
   function handleStartEdit() {
     if (!profile) return;
-    setEditForm(profileToForm(profile));
+    const initial = profileToForm(profile);
+    setEditForm(initial);
+    originalFormRef.current = initial;
     setEditErrors({});
     setSaveError(null);
     setIsEditing(true);
@@ -2964,6 +2991,27 @@ export default function AssetDetailClient() {
           assetName={profile.name}
           onRetire={handleRetire}
           onClose={() => setRetireModalOpen(false)}
+        />
+      )}
+
+      {guardOpen && (
+        <ConfirmModal
+          title={t("unsavedChangesTitle")}
+          message={t("unsavedChangesMessage")}
+          confirmLabel={t("saveAndContinue")}
+          cancelLabel={t("discardAndContinue")}
+          onConfirm={async () => { await handleSave(); }}
+          onClose={() => {
+            // Fires both after a successful onConfirm (Save) and on a raw Cancel
+            // click — handleSave() already sets isEditing=false when it succeeds,
+            // so only discard here if we're still mid-edit (i.e. Cancel was clicked
+            // directly, not routed through a successful save).
+            setGuardOpen(false);
+            const action = pendingActionRef.current;
+            pendingActionRef.current = null;
+            if (isEditing) handleCancelEdit();
+            if (action) action();
+          }}
         />
       )}
 
@@ -3251,6 +3299,7 @@ export default function AssetDetailClient() {
               onCalibrationSaved={handleCalibrationSaved}
               onCalibrationDeleted={handleCalibrationDeleted}
               isAdmin={isAdmin}
+              guardBeforeLeavingEdit={guardBeforeLeavingEdit}
             />
           )}
           {activeTab === "files" && (

@@ -182,6 +182,10 @@
     "calibrationRole": "Marca este canal como patrón de referencia, para poder seleccionarlo como referencia de trazabilidad al calibrar otros activos."
   },
   "detail": {
+    "unsavedChangesTitle": "Cambios sin guardar",
+    "unsavedChangesMessage": "Tiene cambios sin guardar en este activo. ¿Desea guardarlos antes de continuar, o descartarlos?",
+    "saveAndContinue": "Guardar y continuar",
+    "discardAndContinue": "Descartar y continuar",
     "general": "General",
     "assetId": "ID de activo",
     "assetIdPlaceholder": "p. ej. OG-00001",

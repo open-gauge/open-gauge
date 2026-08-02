@@ -182,6 +182,10 @@
     "calibrationRole": "Marks this channel as a reference standard, so it can be selected as the traceability reference when calibrating other assets."
   },
   "detail": {
+    "unsavedChangesTitle": "Unsaved changes",
+    "unsavedChangesMessage": "You have unsaved changes to this asset. Save them before continuing, or discard them?",
+    "saveAndContinue": "Save and continue",
+    "discardAndContinue": "Discard and continue",
     "general": "General",
     "assetId": "Asset ID",
     "assetIdPlaceholder": "e.g. OG-00001",

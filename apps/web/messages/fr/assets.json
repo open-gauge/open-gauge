@@ -182,6 +182,10 @@
     "calibrationRole": "Marque cette voie comme étalon de référence, sélectionnable comme référence de traçabilité lors de la calibration d'autres actifs."
   },
   "detail": {
+    "unsavedChangesTitle": "Modifications non enregistrées",
+    "unsavedChangesMessage": "Vous avez des modifications non enregistrées sur cet actif. Voulez-vous les enregistrer avant de continuer, ou les abandonner ?",
+    "saveAndContinue": "Enregistrer et continuer",
+    "discardAndContinue": "Abandonner et continuer",
     "general": "Général",
     "assetId": "ID de l'actif",
     "assetIdPlaceholder": "ex. OG-00001",

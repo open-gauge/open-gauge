@@ -9,6 +9,16 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 3.7.0
+
+### Added
+
+- **Unsaved-changes guard on the asset detail page.** Opening the calibration wizard while the
+  asset is in edit mode with unsaved changes now shows a confirmation dialog offering to save
+  those changes first or discard them, instead of silently losing them. Built on the shared
+  `ConfirmModal` component; the guard (`guardBeforeLeavingEdit`) is written to be reusable for
+  any future action that would otherwise discard an in-progress asset edit.
+
 ## 3.6.1
 
 ### Changed

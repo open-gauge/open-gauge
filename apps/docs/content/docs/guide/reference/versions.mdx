@@ -4,13 +4,23 @@ description: Release history — what changed in each version of Open Gauge, and
 ---
 
 Open Gauge tracks one version number across the frontend and backend. It's displayed at the
-bottom-left of the sidebar (`v3.6.1 · self-hosted`) and in the OpenAPI schema. This page mirrors
+bottom-left of the sidebar (`v3.7.0 · self-hosted`) and in the OpenAPI schema. This page mirrors
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) at the repo root.
 
 History below 1.0.0 is retrofitted from the git commit log, numbered by semantic-versioning
 impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point it became a
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
+
+## 3.7.0
+
+### Added
+
+- **Unsaved-changes guard on the asset detail page.** Opening the calibration wizard while the
+  asset is in edit mode with unsaved changes now shows a confirmation dialog offering to save
+  those changes first or discard them, instead of silently losing them. Built on the shared
+  `ConfirmModal` component; the guard (`guardBeforeLeavingEdit`) is written to be reusable for
+  any future action that would otherwise discard an in-progress asset edit.
 
 ## 3.6.1
 

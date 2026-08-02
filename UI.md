@@ -250,9 +250,6 @@ instead of a raw `<input type="checkbox">`:
 - A pill-shaped track that smoothly transitions color (`bg-og-accent` when on, `bg-gray-300`/
   `dark:bg-gray-600` when off) and slides a white thumb across, both via
   `transition-colors`/`transition-transform duration-200`.
-- Shows an "On"/"Off" text label next to the control by default (`showLabel`) — the control itself
-  is `role="switch"`/`aria-checked`, so the label is a redundant-but-required visual affordance per
-  spec, not the accessible name.
 - Pass `showLabel={false}` in dense per-row contexts (a multi-select list, a settings grid with its
   own column headers) where an "On"/"Off" label on every row would be noise — the switch itself
   still replaces the checkbox either way.

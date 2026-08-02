@@ -182,6 +182,10 @@
     "calibrationRole": "Markiert diesen Kanal als Referenznormal, sodass er bei der Kalibrierung anderer Anlagen als Rückführbarkeitsreferenz ausgewählt werden kann."
   },
   "detail": {
+    "unsavedChangesTitle": "Nicht gespeicherte Änderungen",
+    "unsavedChangesMessage": "Sie haben nicht gespeicherte Änderungen an dieser Anlage. Möchten Sie sie vor dem Fortfahren speichern oder verwerfen?",
+    "saveAndContinue": "Speichern und fortfahren",
+    "discardAndContinue": "Verwerfen und fortfahren",
     "general": "Allgemein",
     "assetId": "Anlagen-ID",
     "assetIdPlaceholder": "z. B. OG-00001",
