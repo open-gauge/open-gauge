@@ -4,7 +4,7 @@ description: Historial de versiones — qué cambió en cada versión de Open Ga
 ---
 
 Open Gauge lleva un único número de versión en todo el frontend y el backend. Se muestra en la
-parte inferior izquierda de la barra lateral (`v3.15.0 · self-hosted`) y en el esquema OpenAPI. Esta
+parte inferior izquierda de la barra lateral (`v4.0.0 · self-hosted`) y en el esquema OpenAPI. Esta
 página refleja [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) en
 la raíz del repositorio.
 
@@ -13,6 +13,32 @@ según el impacto de versionado semántico (`0.x` mientras el producto estaba en
 lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto documentado, con
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
+
+## 4.0.0
+
+### Cambiado
+
+- **Cambio disruptivo: la respuesta en frecuencia ahora es un 4.º mecanismo de entrada de
+  calibración, no un paso separado del asistente.** La implementación original (un paso extra
+  opcional activado por una casilla del Paso 1, respaldada por una tabla
+  `calibration_frequency_points` y 5 columnas en `calibrations`) se ha revertido por completo y
+  reimplementado como un `data_entry_mode` propio, seleccionado desde el propio desplegable de
+  método de entrada de datos del Paso 2 junto a Referencia frente a Medido/Indicado y Modelo,
+  disponible para cualquier Propósito de calibración. Se introduce un barrido de puntos
+  frecuencia/referencia/medido (+ desfase opcional); el Paso 3 muestra un único panel de
+  sensibilidad — se elige una frecuencia de referencia y Open Gauge calcula ahí la relación de
+  sensibilidad (medido/referencia), expresando cada otro punto como una desviación % respecto a
+  ella — con un gráfico de sensibilidad frente a frecuencia (siempre) y uno de fase frente a
+  frecuencia (solo con el desfase activado), reemplazando por completo la pila de paneles
+  Método/Incertidumbre/Conformidad y el gráfico de doble eje de la función eliminada: este modo no
+  tiene ajuste de curva, presupuesto de incertidumbre ni comprobación de conformidad. Se
+  representa internamente como un modelo de orden polinómico 1 sin desfase (solo ganancia), la
+  misma convención que usa cualquier otro modo. El antiguo endpoint
+  `GET /calibrations/{id}/frequency-points` y su tabla/columnas de respaldo han desaparecido
+  (migración `035`); el nuevo endpoint `GET /calibrations/{id}/frequency-response-points` y la
+  tabla `calibration_frequency_response_points` los sustituyen (migración `036`). Cualquier
+  cliente que dependa de la forma antigua debe migrar. Consulta la nueva página
+  [Respuesta en frecuencia](../calibration/frequency-response.mdx).
 
 ## 3.15.0
 

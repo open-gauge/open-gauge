@@ -1,69 +1,81 @@
 ---
 title: Réponse en fréquence
-description: Enregistrer un balayage optionnel d'amplitude/phase en fonction de la fréquence en plus d'une calibration, et le consulter plus tard.
+description: Calibration des capteurs qui délivrent un signal dans le domaine fréquentiel — accéléromètres, microphones et similaires — sous forme d'un balayage de sensibilité plutôt que d'une courbe ajustée.
 ---
 
-Pour les capteurs AC/dynamiques — transducteurs de pression, accéléromètres, microphones — une
-caractérisation complète nécessite souvent plus que la courbe statique référence/mesuré que
-capture le reste de l'assistant : un balayage de **réponse en fréquence** montrant comment la
-réponse en amplitude et/ou en phase du capteur varie avec la fréquence du signal (une
-caractérisation classique de type diagramme de Bode). Open Gauge permet d'enregistrer cela en
-complément optionnel de toute calibration.
+Certains capteurs n'ont pas de relation référence-par-rapport-à-mesuré unique comme un capteur de
+pression ou de température — la sortie d'un accéléromètre ou d'un microphone dépend de la
+*fréquence* à laquelle il est excité, en plus de l'amplitude. **Réponse en fréquence** est la
+quatrième **Méthode de saisie des données** de l'étape 2, aux côtés de
+[Référence par rapport à Mesuré, Référence par rapport à Indiqué et Modèle](./coefficients-only.fr.mdx) :
+au lieu d'ajuster une courbe, vous réglez une plateforme et le capteur ensemble à plusieurs
+fréquences et vous enregistrez l'amplitude de sortie de l'étalon de référence et du capteur à
+chacune d'elles. Elle est proposée pour tout **Objectif de calibration**, y compris Après
+réparation — il n'y a pas de scission telles-que-trouvées/telles-que-laissées pour ce mode.
 
-## Activation
+## Saisie du balayage (Étape 2) [#sweep-entry]
 
-Cochez **« Ajouter la réponse en fréquence »** à l'étape 1 de l'assistant de calibration. Cela
-insère une nouvelle étape entre l'étape de données brutes et l'étape d'analyse, divisée en une
-zone de saisie de données (à gauche) et un graphique en direct (à droite) qui se met à jour au
-fur et à mesure que vous tapez — il n'y a pas d'aller-retour serveur pour ce graphique, car un
-balayage en fréquence n'est ni ajusté ni analysé comme l'est la courbe référence/mesuré, il est
-simplement tracé directement.
+Choisir **Réponse en fréquence** remplace le tableau de points habituel par une ligne de
+paramètres et un tableau de balayage :
 
-## Les champs de l'étape
+- **Unité de fréquence** — Hz, kHz, MHz ou GHz, appliquée à chaque ligne.
+- **Unité de référence** — l'unité de grandeur physique de l'étalon de référence (p. ex. g, Pa),
+  issue de la grandeur physique de la voie.
+- **Unité mesurée** — l'unité de sortie propre du capteur (p. ex. mV, V), issue du type de signal
+  de sortie de la voie.
+- **Type d'amplitude** — dB, RMS, Crête à crête ou Crête, appliqué à la fois à l'amplitude de
+  référence et à l'amplitude mesurée à chaque fréquence (les deux doivent être lues de la même
+  manière pour que le rapport de sensibilité ci-dessous ait un sens).
+- **Inclure le déphasage** — désactivé par défaut. Une fois activé, une colonne Déphasage
+  supplémentaire apparaît dans le tableau et une unité angulaire (° ou rad) devient sélectionnable
+  — utilisez-le si votre installation de référence/mesure vous donne aussi la différence de phase
+  entre la référence et la sortie du capteur à chaque fréquence.
 
-- **Fréquence** — toujours saisie, avec un menu déroulant d'unité (Hz, kHz, MHz, GHz).
-- **Amplitude** — un interrupteur pour l'inclure. Lorsqu'il est activé, choisissez un **type
-  d'amplitude** (dB, RMS, Crête à crête, ou Crête) et, pour tout ce qui n'est pas dB, une **unité
-  physique** issue de la propre liste d'unités du canal du capteur (les mêmes unités que celles
-  utilisées par les menus déroulants référence/mesuré de l'assistant).
-- **Phase** — un interrupteur pour l'inclure, avec un menu déroulant d'unité (degrés ou radians).
+En dessous, le même tableau de saisie manuelle ou d'import CSV que tous les autres modes, avec une
+ligne par point de fréquence : **Fréquence**, **Référence**, **Mesuré** et **Déphasage** (affiché
+uniquement si activé). Au moins 2 lignes sont requises. Un import CSV attend une ligne d'en-tête
+avec des colonnes nommées `Frequency`, `Reference`, `Measured` et, en option, `Offset`.
 
-Vous pouvez activer l'amplitude, la phase, ou les deux — le tableau de données et le graphique
-s'adaptent pour n'afficher que les colonnes/tracés correspondant à ce qui est actif. Saisissez
-les points manuellement (ajoutez/supprimez des lignes librement) ou importez un CSV — une ligne
-d'en-tête est requise, avec une colonne contenant « frequency » (obligatoire) et, lorsqu'elles
-sont actives, « amplitude » et/ou « phase » (correspondance par sous-chaîne insensible à la
-casse, donc « Freq (Hz) » ou « Amplitude (dB) » fonctionnent tous les deux).
+## Modèle de sensibilité (Étape 3) [#sensitivity]
 
-## Le graphique
+Il n'y a aucune courbe à ajuster ici — l'étape 3 affiche un seul panneau à la place de la pile
+habituelle Méthode/[Incertitude](./uncertainty-budget.fr.mdx)/[Conformité](./decision-rules.fr.mdx) :
 
-- La fréquence est toujours l'axe des x. Le graphique bascule automatiquement vers un axe des x
-  **logarithmique** lorsque le balayage couvre au moins une décade (`max/min ≥ 10`) — la
-  convention standard une fois qu'un balayage couvre une plage suffisamment large — et reste
-  linéaire dans le cas contraire.
-- Avec seulement l'amplitude ou seulement la phase active, c'est un graphique en courbes à un
-  seul axe, points reliés par des lignes, survolables pour obtenir les valeurs exactes.
-- Avec les deux actives, le graphique se divise en une **disposition empilée de type Bode** :
-  le tracé de l'amplitude en haut, le tracé de la phase directement en dessous, partageant un
-  seul axe de fréquence — non superposés, car l'amplitude et la phase ont des échelles très
-  différentes.
+- **Fréquence de référence** [#baseline-frequency] — une liste déroulante listant chaque
+  fréquence saisie à l'étape 2. Choisissez celle par rapport à laquelle la sortie de votre capteur
+  est habituellement spécifiée (souvent la fréquence nominale du capteur, p. ex. 100 Hz pour de
+  nombreux accéléromètres).
+- **Sensibilité** — le rapport entre les amplitudes mesurée et de référence *à la fréquence de
+  référence* (mesuré ÷ référence), en unité de sortie par unité de grandeur physique (p. ex.
+  mV/g). C'est le résultat enregistré de la calibration.
 
-Le même composant de graphique (et la même logique d'échelle logarithmique/disposition) est
-utilisé aussi bien dans l'étape d'édition en direct de l'assistant que lors de la consultation
-d'une calibration enregistrée, de sorte que ce que vous voyez pendant la saisie des données est
-exactement ce que vous verrez ensuite.
+La sensibilité de chaque autre fréquence est exprimée comme un **écart en %** par rapport à la
+fréquence de référence : pour un point de sensibilité *s* et une sensibilité de référence *g*,
+écart = (*s* − *g*) / *g* × 100. L'écart du point de référence lui-même est toujours exactement 0.
 
-## Stockage
+Deux graphiques, tous deux avec des marqueurs ronds reliés par des lignes, un axe des x qui passe
+automatiquement à une échelle logarithmique lorsque le balayage couvre une décennie ou plus
+(linéaire sinon), et des infobulles au survol :
 
-Comme les propres points de données bruts de la calibration, les valeurs de
-fréquence/amplitude/phase sont stockées **exactement telles que saisies** — dans les unités que
-vous avez choisies pour le balayage — sans conversion en SI. Les unités choisies et le type
-d'amplitude font partie de ce qui est enregistré, ce n'est pas un choix d'affichage accessoire.
+- **Sensibilité en fonction de la fréquence** — toujours affiché. Survoler un point affiche sa
+  fréquence, sa sensibilité et son écart en % par rapport à la fréquence de référence.
+- **Phase en fonction de la fréquence** — affiché uniquement lorsque **Inclure le déphasage** est
+  activé, empilé sous le graphique de sensibilité. Seuls les points avec un déphasage saisi sont
+  tracés.
 
-## Consultation ultérieure
+Comme ce mode n'a ni budget d'incertitude ni règle de décision, une calibration de Réponse en
+fréquence n'est jamais marquée comme non conforme — il n'y a aucune spécification à laquelle la
+comparer. L'enregistrement passe toujours par le
+[flux d'approbation](./overview.fr.mdx#approval-workflow) habituel si un réviseur **Vérifié par**
+a été assigné, et télécharge un certificat comme toute autre calibration.
 
-Une fois qu'une calibration avec des données de réponse en fréquence est enregistrée, sa vue
-détaillée sur la page de l'actif affiche un panneau **« Réponse en fréquence »** (à côté du
-panneau existant « Conditions et notes ») avec le graphique interactif et le tableau de données
-complet côte à côte — le zoom, le déplacement et le survol fonctionnent tous de la même manière
-là qu'à dans l'assistant.
+## Représentation interne
+
+Open Gauge stocke le modèle de chaque calibration de la même manière quel que soit le mode, donc
+un résultat de Réponse en fréquence est représenté en interne comme un polynôme d'ordre 1 sans
+décalage — un gain pur : `poly_order = 1`, `poly_coefficients = [gain, 0]` (degré le plus élevé en
+premier, la même convention que tout autre modèle ajusté utilise). Aucune régression n'est
+réellement exécutée ; l'« ajustement » est simplement le propre rapport mesuré/référence de la
+fréquence de référence. Le balayage complet — l'amplitude de référence/mesurée de chaque
+fréquence, le déphasage optionnel et la sensibilité/l'écart calculés — est stocké séparément, une
+ligne par point, et c'est ce qui alimente les deux graphiques ci-dessus.

@@ -17,6 +17,9 @@
  * elimination, normal/t/chi-squared quantile approximations) is hand-rolled.
  */
 import type {
+  AnalyzeFrequencyResponsePointIn,
+  AnalyzeFrequencyResponsePointOut,
+  AnalyzeFrequencyResponseResponse,
   AnalyzePointIn,
   AnalyzePointOut,
   AnalyzeResponse,
@@ -592,6 +595,54 @@ export function runAnalysis(params: AnalyzeCalibrationParams): AnalyzeResponse {
     uncertainty_budget: budget,
     effective_degrees_of_freedom: dofEff,
     poly_coefficients_covariance: covariance,
+    points: outPoints,
+  };
+}
+
+/**
+ * Sensitivity analysis for data_entry_mode="frequency_response" — a faithful,
+ * dependency-free port of
+ * `apps/api/app/services/frequency_response_analysis.py`
+ * (`compute_sensitivity_sweep`). No fitting: sensitivity_i =
+ * measured_i/reference_i for every point, gain is the baseline point's own
+ * sensitivity (its deviation_pct is exactly 0 by construction).
+ */
+export function computeSensitivitySweep(
+  points: AnalyzeFrequencyResponsePointIn[],
+  baselineSweepIndex: number
+): AnalyzeFrequencyResponseResponse {
+  if (points.length < 2) throw new Error("A frequency response sweep needs at least 2 points");
+  if (points.some((p) => p.reference_value === 0)) {
+    throw new Error("reference_value cannot be zero — sensitivity is measured/reference");
+  }
+  const baseline = points.find((p) => p.sweep_index === baselineSweepIndex);
+  if (!baseline) {
+    throw new Error(`baseline_sweep_index ${baselineSweepIndex} is not among the sweep's points`);
+  }
+
+  const gain = baseline.measured_value / baseline.reference_value;
+  if (gain === 0) {
+    throw new Error("Baseline sensitivity is zero — cannot express other points as a % deviation from it");
+  }
+
+  const referenceValues = points.map((p) => p.reference_value);
+  const outPoints: AnalyzeFrequencyResponsePointOut[] = points.map((p) => {
+    const sensitivity = p.measured_value / p.reference_value;
+    return {
+      sweep_index: p.sweep_index,
+      frequency_value: p.frequency_value,
+      reference_value: p.reference_value,
+      measured_value: p.measured_value,
+      sensitivity_value: sensitivity,
+      deviation_pct: ((sensitivity - gain) / gain) * 100,
+    };
+  });
+
+  return {
+    gain,
+    poly_coefficients: [gain, 0],
+    range_min: Math.min(...referenceValues),
+    range_max: Math.max(...referenceValues),
     points: outPoints,
   };
 }

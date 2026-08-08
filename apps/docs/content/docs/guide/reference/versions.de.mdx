@@ -4,7 +4,7 @@ description: Release-Historie — was sich in jeder Version von Open Gauge geän
 ---
 
 Open Gauge verfolgt eine einzige Versionsnummer über Frontend und Backend hinweg. Sie wird unten
-links in der Seitenleiste angezeigt (`v3.15.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
+links in der Seitenleiste angezeigt (`v4.0.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
 spiegelt [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) im
 Repository-Root wider.
 
@@ -14,6 +14,33 @@ Veröffentlichung/instabil war, `1.0.0` ab dem Punkt, an dem es zu einem dokumen
 lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern die kleineren
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
+
+## 4.0.0
+
+### Geändert
+
+- **Breaking: Frequenzgang ist jetzt ein 4. Kalibrier-Eingabemechanismus, kein separater
+  Assistentenschritt mehr.** Die ursprüngliche Implementierung (ein optionaler zusätzlicher
+  Schritt, aktiviert über ein Kontrollkästchen in Schritt 1, gestützt auf eine Tabelle
+  `calibration_frequency_points` und 5 Spalten auf `calibrations`) wurde vollständig
+  zurückgenommen und als echter `data_entry_mode` neu implementiert, ausgewählt über das eigene
+  Dropdown für die Dateneingabemethode in Schritt 2, neben Referenz vs. Gemessen/Angezeigt und
+  Modell, verfügbar für jeden Kalibrierzweck. Es wird ein Sweep aus Frequenz-/Referenz-/
+  Messwertpunkten (+ optionaler Phasenversatz) eingegeben; Schritt 3 zeigt ein einzelnes
+  Empfindlichkeitspanel — man wählt eine Referenzfrequenz, und Open Gauge berechnet dort das
+  Empfindlichkeitsverhältnis (gemessen/Referenz), wobei jeder andere Punkt als %-Abweichung davon
+  ausgedrückt wird — mit einem Empfindlichkeits-vs-Frequenz-Diagramm (immer) und einem
+  Phasen-vs-Frequenz-Diagramm (nur bei aktiviertem Versatz), was den Verfahren-/Unsicherheits-/
+  Konformitäts-Panelstapel und das Zweiachsen-Diagramm der entfernten Funktion vollständig ersetzt:
+  Dieser Modus hat weder Kurvenanpassung noch Unsicherheitsbudget noch Konformitätsprüfung. Intern
+  dargestellt als Modell mit Polynomgrad 1 ohne Versatz (nur Verstärkung), dieselbe Konvention, die
+  jeder andere Modus verwendet. Der alte Endpunkt
+  `GET /calibrations/{id}/frequency-points` und seine zugrunde liegende Tabelle/Spalten sind
+  verschwunden (Migration `035`); der neue Endpunkt
+  `GET /calibrations/{id}/frequency-response-points` und die Tabelle
+  `calibration_frequency_response_points` ersetzen sie (Migration `036`). Jeder Client, der sich
+  auf die alte Form verlässt, muss migrieren. Siehe die neue Seite
+  [Frequenzgang](../calibration/frequency-response.mdx).
 
 ## 3.15.0
 

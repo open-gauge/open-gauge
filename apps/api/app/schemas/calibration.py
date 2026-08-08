@@ -30,9 +30,14 @@ CALIBRATION_PURPOSES = ("initial", "routine", "after_repair", "verification")
 # calibration_purpose="verification". "reference_vs_as_found_as_left": same, but two
 # datasets around a repair — only calibration_purpose="after_repair"; the primary
 # points/stats on this record are the as-left side, as_found_summary below is
-# diagnostic-only.
+# diagnostic-only. "frequency_response": a sweep of (frequency, reference, measured[,
+# offset]) points, for sensors that deliver a signal in the frequency domain
+# (accelerometers, microphones, etc) — see frequency_response_points below and the
+# frequency_response_* settings fields; open to any calibration_purpose, like
+# reference_vs_indicated.
 DATA_ENTRY_MODES = (
     "raw_data", "model_direct", "reference_vs_indicated", "reference_vs_as_found_as_left",
+    "frequency_response",
 )
 
 # What poly_coefficients/custom_formula on a calibration represent. "lookup_table"
@@ -152,6 +157,39 @@ class AnalyzeResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
+# Analyze-frequency-response endpoint (ephemeral)                    #
+# ------------------------------------------------------------------ #
+
+class AnalyzeFrequencyResponsePointIn(BaseModel):
+    sweep_index: int
+    frequency_value: float
+    reference_value: float
+    measured_value: float
+
+
+class AnalyzeFrequencyResponseRequest(BaseModel):
+    points: list[AnalyzeFrequencyResponsePointIn] = Field(min_length=2)
+    baseline_sweep_index: int
+
+
+class AnalyzeFrequencyResponsePointOut(BaseModel):
+    sweep_index: int
+    frequency_value: float
+    reference_value: float
+    measured_value: float
+    sensitivity_value: float
+    deviation_pct: float
+
+
+class AnalyzeFrequencyResponseResponse(BaseModel):
+    gain: float
+    poly_coefficients: list[float]
+    range_min: float
+    range_max: float
+    points: list[AnalyzeFrequencyResponsePointOut]
+
+
+# ------------------------------------------------------------------ #
 # Calibration data points                                            #
 # ------------------------------------------------------------------ #
 
@@ -187,14 +225,20 @@ class CalibrationPointResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
-# Frequency-response sweep points                                    #
+# Frequency response sweep points (data_entry_mode=frequency_response) #
 # ------------------------------------------------------------------ #
 
 class FrequencyResponsePointInline(BaseModel):
     sweep_index: int
     frequency_value: float
-    amplitude_value: float | None = None
-    phase_value: float | None = None
+    reference_value: float
+    measured_value: float
+    offset_value: float | None = None
+    reference_unit: str
+    measured_unit: str
+    # sensitivity_value/deviation_pct are server-computed (see
+    # services/frequency_response_analysis.py) — never trusted from the client,
+    # so they aren't accepted here.
 
 
 class FrequencyResponsePointResponse(BaseModel):
@@ -202,8 +246,13 @@ class FrequencyResponsePointResponse(BaseModel):
     calibration_id: uuid.UUID
     sweep_index: int
     frequency_value: float
-    amplitude_value: float | None
-    phase_value: float | None
+    reference_value: float
+    measured_value: float
+    offset_value: float | None
+    reference_unit: str
+    measured_unit: str
+    sensitivity_value: float | None
+    deviation_pct: float | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -311,6 +360,15 @@ class CalibrationCreate(BaseModel):
     range_min: float | None = None
     range_max: float | None = None
 
+    # data_entry_mode=frequency_response sweep settings + points — see
+    # Calibration.frequency_response_* and FrequencyResponsePointInline.
+    frequency_response_frequency_unit: str | None = None
+    frequency_response_amplitude_type: str | None = None
+    frequency_response_offset_enabled: bool = False
+    frequency_response_offset_unit: str | None = None
+    frequency_response_baseline_sweep_index: int | None = None
+    frequency_response_points: list[FrequencyResponsePointInline] = Field(default_factory=list)
+
     # Regression statistics
     r_squared: float | None = None
     rmse: float | None = None
@@ -338,14 +396,6 @@ class CalibrationCreate(BaseModel):
     # Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
     decision_rule: str | None = None
     conformity_statement: dict | None = None
-
-    # Frequency response sweep (optional)
-    has_frequency_response: bool = False
-    frequency_response_frequency_unit: str | None = None
-    frequency_response_amplitude_type: str | None = None
-    frequency_response_amplitude_unit: str | None = None
-    frequency_response_phase_unit: str | None = None
-    frequency_response_points: list[FrequencyResponsePointInline] = Field(default_factory=list)
 
     # Embedded data points
     points: list[CalibrationPointInline] = Field(default_factory=list)
@@ -429,6 +479,16 @@ class CalibrationResponse(BaseModel):
     range_min: float | None
     range_max: float | None
 
+    # data_entry_mode=frequency_response sweep settings — see
+    # Calibration.frequency_response_*. Points are fetched separately via
+    # GET /calibrations/{id}/frequency-response-points, like every other
+    # points collection on this resource.
+    frequency_response_frequency_unit: str | None = None
+    frequency_response_amplitude_type: str | None = None
+    frequency_response_offset_enabled: bool = False
+    frequency_response_offset_unit: str | None = None
+    frequency_response_baseline_sweep_index: int | None = None
+
     # Regression statistics
     r_squared: float | None
     rmse: float | None
@@ -456,13 +516,6 @@ class CalibrationResponse(BaseModel):
     # Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
     decision_rule: str | None = None
     conformity_statement: Any | None = None
-
-    # Frequency response sweep (optional)
-    has_frequency_response: bool = False
-    frequency_response_frequency_unit: str | None = None
-    frequency_response_amplitude_type: str | None = None
-    frequency_response_amplitude_unit: str | None = None
-    frequency_response_phase_unit: str | None = None
 
     # Soft-void state
     is_active: bool = True

@@ -36,8 +36,11 @@ Start a calibration from an asset's channel. The wizard has three steps:
 2. **Input data** — starts with a method picker: **Reference vs Measured** (the default —
    (reference, measured) point pairs against the channel's raw output signal, fitted to a curve),
    **Reference vs Indicated** (reference vs. an already-converted physical-quantity reading, no
-   curve fit), or **Model (transfer function)** (a lab-stated model, no raw data points at all —
-   not offered when Calibration purpose is After Repair). See
+   curve fit), **Model (transfer function)** (a lab-stated model, no raw data points at all —
+   not offered when Calibration purpose is After Repair), or **Frequency response** (a sweep of
+   frequency/reference/measured points for sensors that deliver a signal in the frequency domain —
+   offered for any purpose, including After Repair — see
+   [Frequency response](./frequency-response.mdx)). See
    [Alternative calibration data-entry modes](./coefficients-only.mdx) for the full breakdown,
    including how After Repair automatically splits Reference vs Measured/Indicated into
    as-found/as-left data. See [Curve fitting](./curve-fitting.mdx) for what Open Gauge does with
@@ -72,9 +75,11 @@ flowchart TD
     Picker1 --> RVM["Reference vs Measured"]
     Picker1 --> RVI["Reference vs Indicated"]
     Picker1 --> Model["Model (transfer function)<br/>only if type = OEM / Ext. Lab / Customer's Asset"]
+    Picker1 --> FreqResp["Frequency response"]
 
     Picker2 --> RVMAfter["Reference vs Measured"]
     Picker2 --> RVIAfter["Reference vs Indicated"]
+    Picker2 --> FreqRespAfter["Frequency response"]
 
     RVM --> RVMEntry["Enter (reference, measured) points<br/>choose Polynomial Fit / Lookup Table / Custom Formula"]
     RVMEntry --> RVMOut(["Outcome: fitted equation,<br/>R² / RMSE / max error,<br/>uncertainty budget, conformity"])
@@ -90,10 +95,16 @@ flowchart TD
     AfalEntry --> AfalCalc["Step 3: one shared Uncertainty +<br/>conformity-criteria panel;<br/>Reference vs Measured fits each side<br/>independently, Reference vs Indicated<br/>compares residuals on each side"]
     AfalCalc --> AfalOut(["Outcome: As-Left = official result<br/>(due date, approval, Health tab) —<br/>As-Found = read-only diagnostic only"])
 
+    FreqResp --> FreqEntry["Enter a frequency/reference/measured<br/>sweep (+ optional phase offset)"]
+    FreqRespAfter --> FreqEntry
+    FreqEntry --> FreqCalc["Step 3: pick a baseline frequency —<br/>sensitivity = measured/reference at it"]
+    FreqCalc --> FreqOut(["Outcome: sensitivity value,<br/>sensitivity/phase-vs-frequency charts —<br/>no uncertainty budget, no conformity"])
+
     RVMOut --> Save["Confirm & Save"]
     RVIOut --> Save
     ModelOut --> Save
     AfalOut --> Save
+    FreqOut --> Save
 ```
 
 Every path converges on the same [approval workflow](#approval-workflow) and
@@ -101,9 +112,11 @@ Every path converges on the same [approval workflow](#approval-workflow) and
 exactly the same way as a passing one, and every path produces a normal calibration record with a
 certificate. What differs between paths is only *what could be computed*: Reference vs Indicated
 and Model never produce a fitted-curve equation (there's no known transfer function to fit),
-and After Repair's as-found side never feeds the due date or Health tab, no matter which base
-method it started from. See [Alternative calibration data-entry modes](./coefficients-only.mdx)
-for the full field-by-field breakdown of every branch above.
+After Repair's as-found side never feeds the due date or Health tab no matter which base method it
+started from, and Frequency response has no uncertainty budget or conformity check at all — its
+result is a sensitivity ratio, not a pass/fail statement. See
+[Alternative calibration data-entry modes](./coefficients-only.mdx) for the full field-by-field
+breakdown of every branch above.
 
 ## Calibration type [#calibration-type]
 

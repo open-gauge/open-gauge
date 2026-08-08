@@ -11,9 +11,16 @@
  * existing endpoint and all UI keeps working with no other change.
  */
 import * as store from "./store";
-import { polyfit, polyval, generateXRange, runAnalysis, type AnalyzeCalibrationParams } from "./curve-fit";
+import { polyfit, polyval, generateXRange, runAnalysis, computeSensitivitySweep, type AnalyzeCalibrationParams } from "./curve-fit";
 import type { AssetCreateBody, AssetProfile, AssetUpdateRequest, SensorChannelFull } from "@/types/asset";
-import type { AnalyzeRequest, CalibrationCreateBody, CalibrationPointInline, CalibrationRecord } from "@/types/calibration";
+import type {
+  AnalyzeFrequencyResponseRequest,
+  AnalyzeRequest,
+  CalibrationCreateBody,
+  CalibrationPointInline,
+  CalibrationRecord,
+  FrequencyResponsePoint,
+} from "@/types/calibration";
 import type { CurveComparisonResponse } from "@/types/health";
 import type { Procedure } from "@/types/procedure";
 import type { StoredFile } from "@/types/stored_file";
@@ -452,6 +459,9 @@ route("GET", "/api/v1/calibrations/:id/points", ({ params, qs }) => {
   return store.getCalibrationPoints(params[0], role);
 });
 
+route("GET", "/api/v1/calibrations/:id/frequency-response-points", ({ params }) =>
+  store.getCalibrationFrequencyResponsePoints(params[0]));
+
 route("GET", "/api/v1/calibrations/:id/certificate", ({ params }) => {
   const cal = store.getCalibrationById(params[0]);
   const filename = `CERT-DEMO-${(cal?.id ?? params[0]).slice(0, 8)}.txt`;
@@ -486,6 +496,11 @@ route("POST", "/api/v1/calibrations/analyze", ({ body }): unknown => {
     includeSensorNominalUncertainty: req.include_sensor_nominal_uncertainty,
   };
   return runAnalysis(params);
+});
+
+route("POST", "/api/v1/calibrations/analyze-frequency-response", ({ body }): unknown => {
+  const req = body as AnalyzeFrequencyResponseRequest;
+  return computeSensitivitySweep(req.points, req.baseline_sweep_index);
 });
 
 route("POST", "/api/v1/calibrations", ({ body }) => {
@@ -533,6 +548,11 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     poly_coefficients: req.poly_coefficients ?? null,
     range_min: req.range_min ?? null,
     range_max: req.range_max ?? null,
+    frequency_response_frequency_unit: req.frequency_response_frequency_unit ?? null,
+    frequency_response_amplitude_type: req.frequency_response_amplitude_type ?? null,
+    frequency_response_offset_enabled: req.frequency_response_offset_enabled ?? false,
+    frequency_response_offset_unit: req.frequency_response_offset_unit ?? null,
+    frequency_response_baseline_sweep_index: req.frequency_response_baseline_sweep_index ?? null,
     r_squared: req.r_squared ?? null,
     rmse: req.rmse ?? null,
     standard_error: req.standard_error ?? null,
@@ -557,11 +577,6 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     model_type: req.model_type ?? "polynomial",
     custom_formula: req.custom_formula ?? null,
     as_found_summary: req.as_found_summary ?? null,
-    has_frequency_response: req.has_frequency_response ?? false,
-    frequency_response_frequency_unit: req.frequency_response_frequency_unit ?? null,
-    frequency_response_amplitude_type: req.frequency_response_amplitude_type ?? null,
-    frequency_response_amplitude_unit: req.frequency_response_amplitude_unit ?? null,
-    frequency_response_phase_unit: req.frequency_response_phase_unit ?? null,
     is_active: !req.checked_by_user_id,
     voided_at: null,
     voided_by: null,
@@ -591,7 +606,45 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     ...(req.as_found_points ?? []).map((p, i) => ({ ...toPointRow(p, i), point_role: "as_found" as const })),
   ];
 
-  const created = store.addCalibration(record, points);
+  let freqPoints: FrequencyResponsePoint[] = [];
+  if (req.frequency_response_points?.length) {
+    // Sensitivity/deviation are computed server-side — never trusted from the
+    // client — same as every other mode's runAnalysis-derived fields.
+    const result = computeSensitivitySweep(
+      req.frequency_response_points.map((p) => ({
+        sweep_index: p.sweep_index,
+        frequency_value: p.frequency_value,
+        reference_value: p.reference_value,
+        measured_value: p.measured_value,
+      })),
+      req.frequency_response_baseline_sweep_index ?? 0
+    );
+    record.poly_order = 1;
+    record.poly_coefficients = result.poly_coefficients;
+    record.range_min = result.range_min;
+    record.range_max = result.range_max;
+
+    const bySweepIndex = new Map(req.frequency_response_points.map((p) => [p.sweep_index, p]));
+    freqPoints = result.points.map((computed) => {
+      const src = bySweepIndex.get(computed.sweep_index)!;
+      return {
+        id: store.genId(),
+        calibration_id: record.id,
+        sweep_index: computed.sweep_index,
+        frequency_value: computed.frequency_value,
+        reference_value: computed.reference_value,
+        measured_value: computed.measured_value,
+        offset_value: src.offset_value ?? null,
+        reference_unit: src.reference_unit,
+        measured_unit: src.measured_unit,
+        sensitivity_value: computed.sensitivity_value,
+        deviation_pct: computed.deviation_pct,
+        created_at: now,
+      };
+    });
+  }
+
+  const created = store.addCalibration(record, points, freqPoints);
   store.appendAuditLog({
     action: "calibration.recorded",
     entityType: "calibration",

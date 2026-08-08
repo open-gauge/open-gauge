@@ -37,9 +37,11 @@ Starten Sie eine Kalibrierung vom Kanal einer Anlage aus. Der Assistent hat drei
 2. **Eingabedaten** — beginnt mit einem Methoden-Selektor: **Referenz vs. Gemessen** (Standard —
    (Referenz-, Mess-)Punktpaare gegenüber dem rohen Ausgangssignal des Kanals, an eine Kurve
    angepasst), **Referenz vs. Angezeigt** (Referenz gegenüber einem bereits umgerechneten
-   physikalischen Messwert, ohne Kurvenanpassung), oder **Modell (Übertragungsfunktion)** (ein vom
+   physikalischen Messwert, ohne Kurvenanpassung), **Modell (Übertragungsfunktion)** (ein vom
    Labor angegebenes Modell, ganz ohne Rohdatenpunkte — nicht verfügbar, wenn der Kalibrierzweck
-   Nach Reparatur ist). Siehe
+   Nach Reparatur ist), oder **Frequenzgang** (ein Sweep aus Frequenz-/Referenz-/Messwertpunkten
+   für Sensoren, die ein Signal im Frequenzbereich liefern — verfügbar für jeden Zweck,
+   einschließlich Nach Reparatur — siehe [Frequenzgang](./frequency-response.mdx)). Siehe
    [Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx) für die vollständige
    Aufschlüsselung, einschließlich wie Nach Reparatur Referenz vs. Gemessen/Angezeigt automatisch
    in Wie-vorgefunden-/Wie-belassen-Daten aufteilt. Siehe
@@ -75,9 +77,11 @@ flowchart TD
     Picker1 --> RVM["Referenz vs. Gemessen"]
     Picker1 --> RVI["Referenz vs. Angezeigt"]
     Picker1 --> Model["Modell (Übertragungsfunktion)<br/>nur wenn Art = OEM / Ext. Labor / Kundenanlage"]
+    Picker1 --> FreqResp["Frequenzgang"]
 
     Picker2 --> RVMAfter["Referenz vs. Gemessen"]
     Picker2 --> RVIAfter["Referenz vs. Angezeigt"]
+    Picker2 --> FreqRespAfter["Frequenzgang"]
 
     RVM --> RVMEntry["(Referenz-, Mess-)Punkte eingeben<br/>Polynomanpassung / Nachschlagetabelle / Benutzerdefinierte Formel wählen"]
     RVMEntry --> RVMOut(["Ergebnis: angepasste Gleichung,<br/>R² / RMSE / Maximalfehler,<br/>Unsicherheitsbudget, Konformität"])
@@ -93,10 +97,16 @@ flowchart TD
     AfalEntry --> AfalCalc["Schritt 3: ein gemeinsames Panel für<br/>Unsicherheit + Konformitätskriterium;<br/>Referenz vs. Gemessen passt jede Seite<br/>unabhängig an, Referenz vs. Angezeigt<br/>vergleicht Residuen auf jeder Seite"]
     AfalCalc --> AfalOut(["Ergebnis: Wie belassen = offizielles<br/>Ergebnis (Fälligkeitsdatum, Genehmigung,<br/>Reiter Zustand) — Wie vorgefunden =<br/>nur schreibgeschützte Diagnose"])
 
+    FreqResp --> FreqEntry["Frequenz-/Referenz-/Messwert-Sweep<br/>eingeben (+ optionaler Phasenversatz)"]
+    FreqRespAfter --> FreqEntry
+    FreqEntry --> FreqCalc["Schritt 3: Referenzfrequenz wählen —<br/>Empfindlichkeit = gemessen/Referenz<br/>bei dieser Frequenz"]
+    FreqCalc --> FreqOut(["Ergebnis: Empfindlichkeitswert,<br/>Empfindlichkeits-/Phasen-vs.-Frequenz-<br/>Diagramme — kein Unsicherheitsbudget,<br/>keine Konformität"])
+
     RVMOut --> Save["Bestätigen & speichern"]
     RVIOut --> Save
     ModelOut --> Save
     AfalOut --> Save
+    FreqOut --> Save
 ```
 
 Alle Pfade laufen beim Speichern im selben [Genehmigungsablauf](#approval-workflow) und derselben
@@ -104,9 +114,11 @@ Alle Pfade laufen beim Speichern im selben [Genehmigungsablauf](#approval-workfl
 Ergebnis wird genauso gespeichert wie ein konformes, und jeder Pfad erzeugt einen normalen
 Kalibrierdatensatz mit Zertifikat. Was sich zwischen den Pfaden unterscheidet, ist nur, *was
 berechnet werden konnte*: Referenz vs. Angezeigt und Modell erzeugen nie eine angepasste
-Kurvengleichung (es gibt keine bekannte Übertragungsfunktion, die angepasst werden könnte), und
-die Wie-vorgefunden-Seite von Nach Reparatur fließt nie in das Fälligkeitsdatum oder den Reiter
-Zustand ein, unabhängig davon, von welcher Basismethode aus gestartet wurde. Siehe
+Kurvengleichung (es gibt keine bekannte Übertragungsfunktion, die angepasst werden könnte), die
+Wie-vorgefunden-Seite von Nach Reparatur fließt nie in das Fälligkeitsdatum oder den Reiter Zustand
+ein, unabhängig davon, von welcher Basismethode aus gestartet wurde, und Frequenzgang hat weder
+Unsicherheitsbudget noch Konformitätsprüfung — sein Ergebnis ist ein Empfindlichkeitsverhältnis,
+keine Bestanden/Nicht-bestanden-Aussage. Siehe
 [Alternative Dateneingabemodi für Kalibrierungen](./coefficients-only.mdx) für die vollständige
 feldweise Aufschlüsselung jedes Zweigs oben.
 

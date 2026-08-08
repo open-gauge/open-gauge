@@ -11,14 +11,16 @@ export type CalibrationPurpose = "initial" | "routine" | "after_repair" | "verif
 /** How the data was entered — orthogonal to CalibrationType (who performed it)
  * and CalibrationPurpose (why). "reference_vs_as_found_as_left" only pairs
  * with purpose "after_repair"; "model_direct" never pairs with "after_repair"
- * (backend-enforced, see AGENTS.md's calibration philosophy). This is the
+ * (backend-enforced, see AGENTS.md's calibration philosophy). "frequency_response"
+ * is open to any purpose, like "reference_vs_indicated". This is the
  * wire-level value the backend stores — the wizard's own Step 2 selection is
  * InputMethod below, which derives this value together with the purpose. */
 export type DataEntryMode =
   | "raw_data"
   | "model_direct"
   | "reference_vs_indicated"
-  | "reference_vs_as_found_as_left";
+  | "reference_vs_as_found_as_left"
+  | "frequency_response";
 
 /** The wizard's own Step 2 "Input data" method choice — distinct from
  * DataEntryMode above, picked via a dropdown at the top of Step 2 (always
@@ -26,7 +28,11 @@ export type DataEntryMode =
  * selectable method here; it's an automatic consequence of picking
  * "reference_vs_measured" or "reference_vs_indicated" together with
  * purpose="after_repair" (see deriveDataEntryMode in CalibrationWizard.tsx). */
-export type InputMethod = "reference_vs_measured" | "reference_vs_indicated" | "model_direct";
+export type InputMethod =
+  | "reference_vs_measured"
+  | "reference_vs_indicated"
+  | "model_direct"
+  | "frequency_response";
 
 /** What poly_coefficients/custom_formula on a calibration represent.
  * "lookup_table" has neither — the model is the calibration's own primary
@@ -114,6 +120,15 @@ export interface CalibrationRecord {
   range_min: number | null;
   range_max: number | null;
 
+  // data_entry_mode="frequency_response" sweep settings — points are fetched
+  // separately via getCalibrationFrequencyResponsePoints, like every other
+  // points collection on this resource.
+  frequency_response_frequency_unit: string | null;
+  frequency_response_amplitude_type: string | null;
+  frequency_response_offset_enabled: boolean;
+  frequency_response_offset_unit: string | null;
+  frequency_response_baseline_sweep_index: number | null;
+
   // Regression statistics
   r_squared: number | null;
   rmse: number | null;
@@ -141,13 +156,6 @@ export interface CalibrationRecord {
   // Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
   decision_rule: string | null;
   conformity_statement: ConformityStatement | null;
-
-  // Frequency response sweep (optional)
-  has_frequency_response: boolean;
-  frequency_response_frequency_unit: string | null;
-  frequency_response_amplitude_type: string | null;
-  frequency_response_amplitude_unit: string | null;
-  frequency_response_phase_unit: string | null;
 
   // Soft-void state
   is_active: boolean;
@@ -197,6 +205,24 @@ export interface CalibrationPoint {
   created_at: string;
 }
 
+/** One point of a data_entry_mode="frequency_response" sweep, as returned by
+ * GET /calibrations/{id}/frequency-response-points. sensitivity_value/
+ * deviation_pct are always server-computed. */
+export interface FrequencyResponsePoint {
+  id: string;
+  calibration_id: string;
+  sweep_index: number;
+  frequency_value: number;
+  reference_value: number;
+  measured_value: number;
+  offset_value: number | null;
+  reference_unit: string;
+  measured_unit: string;
+  sensitivity_value: number | null;
+  deviation_pct: number | null;
+  created_at: string;
+}
+
 /** Minimal shape the shared ResidualsChart component needs — both CalibrationPoint
  * (saved calibrations) and AnalyzePointOut (live wizard analysis) are structural
  * supersets, mapped explicitly at each call site. */
@@ -207,21 +233,22 @@ export interface ResidualPoint {
   residual_pct: number | null;
 }
 
-export interface FrequencyResponsePoint {
-  id: string;
-  calibration_id: string;
+/** Minimal shape SensitivityChart needs — both AnalyzeFrequencyResponsePointOut
+ * (live wizard preview) and FrequencyResponsePoint (saved calibrations) are
+ * structural supersets. */
+export interface SensitivityChartPoint {
   sweep_index: number;
   frequency_value: number;
-  amplitude_value: number | null;
-  phase_value: number | null;
-  created_at: string;
+  sensitivity_value: number;
+  deviation_pct: number;
 }
 
-export interface FrequencyResponsePointInline {
+/** Minimal shape PhaseChart needs — only points with a non-null offset_value
+ * are plottable, filtered at the call site. */
+export interface PhaseChartPoint {
   sweep_index: number;
   frequency_value: number;
-  amplitude_value?: number | null;
-  phase_value?: number | null;
+  offset_value: number;
 }
 
 // ------------------------------------------------------------------ //
@@ -372,6 +399,51 @@ export interface CalibrationPointInline {
   point_role?: "primary" | "as_found";
 }
 
+/** A frequency-response sweep point for the create body — sensitivity_value/
+ * deviation_pct are never sent, the server always computes them. */
+export interface FrequencyResponsePointInline {
+  sweep_index: number;
+  frequency_value: number;
+  reference_value: number;
+  measured_value: number;
+  offset_value?: number | null;
+  reference_unit: string;
+  measured_unit: string;
+}
+
+// ------------------------------------------------------------------ //
+// Analyze-frequency-response endpoint types                          //
+// ------------------------------------------------------------------ //
+
+export interface AnalyzeFrequencyResponsePointIn {
+  sweep_index: number;
+  frequency_value: number;
+  reference_value: number;
+  measured_value: number;
+}
+
+export interface AnalyzeFrequencyResponseRequest {
+  points: AnalyzeFrequencyResponsePointIn[];
+  baseline_sweep_index: number;
+}
+
+export interface AnalyzeFrequencyResponsePointOut {
+  sweep_index: number;
+  frequency_value: number;
+  reference_value: number;
+  measured_value: number;
+  sensitivity_value: number;
+  deviation_pct: number;
+}
+
+export interface AnalyzeFrequencyResponseResponse {
+  gain: number;
+  poly_coefficients: number[];
+  range_min: number;
+  range_max: number;
+  points: AnalyzeFrequencyResponsePointOut[];
+}
+
 // ------------------------------------------------------------------ //
 // API create body (mirrors backend CalibrationCreate schema)         //
 // ------------------------------------------------------------------ //
@@ -428,6 +500,14 @@ export interface CalibrationCreateBody {
   range_min?: number | null;
   range_max?: number | null;
 
+  // data_entry_mode="frequency_response" sweep settings + points
+  frequency_response_frequency_unit?: string | null;
+  frequency_response_amplitude_type?: string | null;
+  frequency_response_offset_enabled?: boolean;
+  frequency_response_offset_unit?: string | null;
+  frequency_response_baseline_sweep_index?: number | null;
+  frequency_response_points?: FrequencyResponsePointInline[];
+
   // Regression statistics
   r_squared?: number | null;
   rmse?: number | null;
@@ -455,14 +535,6 @@ export interface CalibrationCreateBody {
   // Decision rule / conformity statement (ISO/IEC 17025 §7.1.3, §7.8.6)
   decision_rule?: string | null;
   conformity_statement?: ConformityStatement | null;
-
-  // Frequency response sweep (optional)
-  has_frequency_response?: boolean;
-  frequency_response_frequency_unit?: string | null;
-  frequency_response_amplitude_type?: string | null;
-  frequency_response_amplitude_unit?: string | null;
-  frequency_response_phase_unit?: string | null;
-  frequency_response_points?: FrequencyResponsePointInline[];
 
   // Embedded data points
   points?: CalibrationPointInline[];

@@ -137,7 +137,11 @@ export const WIZARD_DOCS_LINKS: Record<string, string> = {
   calibration_method: "/docs/guide/calibration/wizard-fields#calibration-method",
   repair_date: "/docs/guide/calibration/wizard-fields#repair-date",
   repair_description: "/docs/guide/calibration/wizard-fields#repair-description",
-  add_frequency_response: "/docs/guide/calibration/wizard-fields#add-frequency-response",
   environmental_conditions: "/docs/guide/calibration/wizard-fields#environmental-conditions",
   notes: "/docs/guide/calibration/wizard-fields#notes",
+  // data_entry_mode=frequency_response's Step 2/3 fields —
+  // apps/docs/content/docs/guide/calibration/frequency-response.mdx
+  frequency_response_sweep: "/docs/guide/calibration/frequency-response#sweep-entry",
+  frequency_response_baseline: "/docs/guide/calibration/frequency-response#baseline-frequency",
+  frequency_response_sensitivity: "/docs/guide/calibration/frequency-response#sensitivity",
 };

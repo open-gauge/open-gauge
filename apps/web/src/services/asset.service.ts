@@ -1,7 +1,7 @@
 import { apiBlob, apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { AssetCreateBody, AssetListItem, AssetProfile, AssetUpdateRequest, LocationOption } from "@/types/asset";
-import type { CalibrationRecord, CalibrationPoint, FrequencyResponsePoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationUser } from "@/types/calibration";
+import type { CalibrationRecord, CalibrationPoint, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationUser, FrequencyResponsePoint, AnalyzeFrequencyResponseRequest, AnalyzeFrequencyResponseResponse } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 
@@ -193,14 +193,24 @@ export async function getCalibrationPoints(
   });
 }
 
-export async function getCalibrationFrequencyPoints(calId: string): Promise<FrequencyResponsePoint[]> {
-  return apiFetch<FrequencyResponsePoint[]>(`/api/v1/calibrations/${calId}/frequency-points`, {
+export async function analyzeCalibration(body: AnalyzeRequest): Promise<AnalyzeResponse> {
+  return apiFetch<AnalyzeResponse>(`/api/v1/calibrations/analyze`, {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getCalibrationFrequencyResponsePoints(calId: string): Promise<FrequencyResponsePoint[]> {
+  return apiFetch<FrequencyResponsePoint[]>(`/api/v1/calibrations/${calId}/frequency-response-points`, {
     headers: tokenHeader(),
   });
 }
 
-export async function analyzeCalibration(body: AnalyzeRequest): Promise<AnalyzeResponse> {
-  return apiFetch<AnalyzeResponse>(`/api/v1/calibrations/analyze`, {
+export async function analyzeFrequencyResponse(
+  body: AnalyzeFrequencyResponseRequest
+): Promise<AnalyzeFrequencyResponseResponse> {
+  return apiFetch<AnalyzeFrequencyResponseResponse>(`/api/v1/calibrations/analyze-frequency-response`, {
     method: "POST",
     headers: { ...tokenHeader(), "Content-Type": "application/json" },
     body: JSON.stringify(body),

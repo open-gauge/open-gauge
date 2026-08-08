@@ -313,23 +313,6 @@ def _atomic_payload(asset_id: str, sensor_id: str | None = None) -> dict:
     }
 
 
-def _atomic_payload_with_frequency_response(asset_id: str) -> dict:
-    payload = _atomic_payload(asset_id)
-    payload.update({
-        "has_frequency_response": True,
-        "frequency_response_frequency_unit": "Hz",
-        "frequency_response_amplitude_type": "dB",
-        "frequency_response_amplitude_unit": None,
-        "frequency_response_phase_unit": "°",
-        "frequency_response_points": [
-            {"sweep_index": 0, "frequency_value": 10.0, "amplitude_value": 0.0, "phase_value": -2.0},
-            {"sweep_index": 1, "frequency_value": 100.0, "amplitude_value": -1.0, "phase_value": -15.0},
-            {"sweep_index": 2, "frequency_value": 1000.0, "amplitude_value": -3.0, "phase_value": -45.0},
-        ],
-    })
-    return payload
-
-
 class TestAtomicCalibrationCreate:
     def test_creates_calibration_with_regression_fields_and_points(
         self, client: TestClient, auth_headers: dict, asset: dict
@@ -435,50 +418,34 @@ class TestAtomicCalibrationCreate:
         r = client.post("/api/v1/calibrations", json=_atomic_payload(asset["id"]))
         assert r.status_code == 403  # HTTPBearer returns 403 when missing
 
-    def test_creates_calibration_with_frequency_response_points(
+    def test_ignores_fields_dropped_by_the_revert_and_never_reused(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:
-        r = client.post(
-            "/api/v1/calibrations",
-            json=_atomic_payload_with_frequency_response(asset["id"]),
-            headers=auth_headers,
-        )
+        """629052c's frequency-response-as-a-separate-step feature was reverted
+        (see 035_revert_frequency_response). Of its 5 dropped columns,
+        frequency_response_frequency_unit/amplitude_type were later reused —
+        with new semantics and a differently-shaped frequency_response_points
+        — by 036's frequency_response input mechanism (see
+        TestFrequencyResponseRoundTrip below), so sending them (or the old
+        points shape) now correctly validates against the new field instead
+        of being silently ignored. Only the 3 columns never reused
+        (has_frequency_response, frequency_response_amplitude_unit,
+        frequency_response_phase_unit) are still genuinely unknown to the
+        schema — a client still sending those must not error
+        (CalibrationCreate has no `extra="forbid"`), and they must not appear
+        on the created record."""
+        payload = _atomic_payload(asset["id"])
+        payload.update({
+            "has_frequency_response": True,
+            "frequency_response_amplitude_unit": None,
+            "frequency_response_phase_unit": "°",
+        })
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
         assert r.status_code == 201, r.text
         body = r.json()
-        assert body["has_frequency_response"] is True
-        assert body["frequency_response_frequency_unit"] == "Hz"
-        assert body["frequency_response_amplitude_type"] == "dB"
-        assert body["frequency_response_amplitude_unit"] is None
-        assert body["frequency_response_phase_unit"] == "°"
-
-    def test_frequency_response_defaults_false_when_omitted(
-        self, client: TestClient, auth_headers: dict, asset: dict
-    ) -> None:
-        r = client.post(
-            "/api/v1/calibrations",
-            json=_atomic_payload(asset["id"]),
-            headers=auth_headers,
-        )
-        body = r.json()
-        assert body["has_frequency_response"] is False
-        assert body["frequency_response_frequency_unit"] is None
-        assert body["frequency_response_amplitude_type"] is None
-        assert body["frequency_response_amplitude_unit"] is None
-        assert body["frequency_response_phase_unit"] is None
-
-    def test_frequency_response_points_nullable_amplitude_or_phase(
-        self, client: TestClient, auth_headers: dict, asset: dict
-    ) -> None:
-        payload = _atomic_payload_with_frequency_response(asset["id"])
-        payload["frequency_response_points"] = [
-            {"sweep_index": 0, "frequency_value": 10.0, "amplitude_value": 0.0},
-            {"sweep_index": 1, "frequency_value": 100.0, "amplitude_value": -1.0},
-        ]
-        cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers).json()
-        pts = client.get(f"/api/v1/calibrations/{cal['id']}/frequency-points", headers=auth_headers).json()
-        assert len(pts) == 2
-        assert all(p["phase_value"] is None for p in pts)
-        assert all(p["amplitude_value"] is not None for p in pts)
+        assert "has_frequency_response" not in body
+        assert "frequency_response_amplitude_unit" not in body
+        assert "frequency_response_phase_unit" not in body
 
 
 # ---------------------------------------------------------------------------
@@ -537,59 +504,15 @@ class TestGetCalibrationPoints:
 
 
 # ---------------------------------------------------------------------------
-# GET /calibrations/{id}/frequency-points
+# GET /calibrations/{id}/frequency-points — route removed by 629052c's revert
 # ---------------------------------------------------------------------------
 
-class TestGetCalibrationFrequencyPoints:
-    def test_returns_points_for_valid_calibration(
-        self, client: TestClient, auth_headers: dict, asset: dict
-    ) -> None:
-        cal = client.post(
-            "/api/v1/calibrations",
-            json=_atomic_payload_with_frequency_response(asset["id"]),
-            headers=auth_headers,
-        ).json()
-        r = client.get(f"/api/v1/calibrations/{cal['id']}/frequency-points", headers=auth_headers)
-        assert r.status_code == 200
-        pts = r.json()
-        assert len(pts) == 3
-        assert pts[0]["frequency_value"] == 10.0
-        assert pts[0]["amplitude_value"] == 0.0
-        assert pts[0]["phase_value"] == -2.0
-
-    def test_returns_empty_list_when_no_frequency_response(
+class TestFrequencyPointsRouteRemoved:
+    def test_returns_404_route_no_longer_exists(
         self, client: TestClient, auth_headers: dict, calibration: dict
     ) -> None:
         r = client.get(f"/api/v1/calibrations/{calibration['id']}/frequency-points", headers=auth_headers)
-        assert r.status_code == 200
-        assert r.json() == []
-
-    def test_points_ordered_by_sweep_index(
-        self, client: TestClient, auth_headers: dict, asset: dict
-    ) -> None:
-        cal = client.post(
-            "/api/v1/calibrations",
-            json=_atomic_payload_with_frequency_response(asset["id"]),
-            headers=auth_headers,
-        ).json()
-        pts = client.get(f"/api/v1/calibrations/{cal['id']}/frequency-points", headers=auth_headers).json()
-        indices = [p["sweep_index"] for p in pts]
-        assert indices == sorted(indices)
-
-    def test_returns_404_for_unknown_calibration(
-        self, client: TestClient, auth_headers: dict
-    ) -> None:
-        r = client.get(
-            f"/api/v1/calibrations/{uuid.uuid4()}/frequency-points",
-            headers=auth_headers,
-        )
         assert r.status_code == 404
-
-    def test_requires_authentication(
-        self, client: TestClient, calibration: dict
-    ) -> None:
-        r = client.get(f"/api/v1/calibrations/{calibration['id']}/frequency-points")
-        assert r.status_code == 403  # HTTPBearer returns 403 when missing
 
 
 # ---------------------------------------------------------------------------
@@ -1883,4 +1806,204 @@ class TestRawDataCalibrationMethodRoundTrip:
         body = r.json()
         assert body["model_type"] == "custom_formula"
         assert body["custom_formula"] == analyze["resolved_custom_formula"]
+
+
+# ---------------------------------------------------------------------------
+# data_entry_mode="frequency_response"
+# ---------------------------------------------------------------------------
+
+def _freq_sweep_points() -> list[dict]:
+    # sensitivity = measured/reference: 10, 12, 8 at reference=1 throughout —
+    # baseline (sweep_index=1) gain=12, deviations -16.667%/0%/-33.333%.
+    return [
+        {
+            "sweep_index": 0, "frequency_value": 10.0, "reference_value": 1.0, "measured_value": 10.0,
+            "offset_value": -2.0, "reference_unit": "g", "measured_unit": "mV",
+        },
+        {
+            "sweep_index": 1, "frequency_value": 100.0, "reference_value": 1.0, "measured_value": 12.0,
+            "offset_value": -5.0, "reference_unit": "g", "measured_unit": "mV",
+        },
+        {
+            "sweep_index": 2, "frequency_value": 1000.0, "reference_value": 1.0, "measured_value": 8.0,
+            "offset_value": None, "reference_unit": "g", "measured_unit": "mV",
+        },
+    ]
+
+
+class TestAnalyzeFrequencyResponseEndpoint:
+    def test_returns_200_with_computed_sensitivity(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        r = client.post(
+            "/api/v1/calibrations/analyze-frequency-response",
+            json={
+                "points": [
+                    {"sweep_index": 0, "frequency_value": 10.0, "reference_value": 1.0, "measured_value": 10.0},
+                    {"sweep_index": 1, "frequency_value": 100.0, "reference_value": 1.0, "measured_value": 12.0},
+                ],
+                "baseline_sweep_index": 1,
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["gain"] == pytest.approx(12.0)
+        assert body["poly_coefficients"] == [pytest.approx(12.0), 0.0]
+        baseline = next(p for p in body["points"] if p["sweep_index"] == 1)
+        assert baseline["deviation_pct"] == pytest.approx(0.0)
+
+    def test_fails_with_single_point(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.post(
+            "/api/v1/calibrations/analyze-frequency-response",
+            json={
+                "points": [{"sweep_index": 0, "frequency_value": 10.0, "reference_value": 1.0, "measured_value": 10.0}],
+                "baseline_sweep_index": 0,
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    def test_invalid_baseline_index_is_422(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.post(
+            "/api/v1/calibrations/analyze-frequency-response",
+            json={
+                "points": [
+                    {"sweep_index": 0, "frequency_value": 10.0, "reference_value": 1.0, "measured_value": 10.0},
+                    {"sweep_index": 1, "frequency_value": 100.0, "reference_value": 1.0, "measured_value": 12.0},
+                ],
+                "baseline_sweep_index": 99,
+            },
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+
+    def test_does_not_persist_anything(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        r_before = client.get(f"/api/v1/assets/{asset['id']}/calibrations", headers=auth_headers)
+        count_before = len(r_before.json())
+        client.post(
+            "/api/v1/calibrations/analyze-frequency-response",
+            json={
+                "points": [
+                    {"sweep_index": 0, "frequency_value": 10.0, "reference_value": 1.0, "measured_value": 10.0},
+                    {"sweep_index": 1, "frequency_value": 100.0, "reference_value": 1.0, "measured_value": 12.0},
+                ],
+                "baseline_sweep_index": 0,
+            },
+            headers=auth_headers,
+        )
+        r_after = client.get(f"/api/v1/assets/{asset['id']}/calibrations", headers=auth_headers)
+        assert len(r_after.json()) == count_before
+
+    def test_requires_authentication(self, client: TestClient) -> None:
+        r = client.post(
+            "/api/v1/calibrations/analyze-frequency-response",
+            json={
+                "points": [
+                    {"sweep_index": 0, "frequency_value": 10.0, "reference_value": 1.0, "measured_value": 10.0},
+                    {"sweep_index": 1, "frequency_value": 100.0, "reference_value": 1.0, "measured_value": 12.0},
+                ],
+                "baseline_sweep_index": 0,
+            },
+        )
+        assert r.status_code == 403
+
+
+class TestFrequencyResponseRoundTrip:
+    def test_round_trip_computes_and_stores_sensitivity(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="frequency_response",
+            frequency_response_frequency_unit="Hz",
+            frequency_response_amplitude_type="RMS",
+            frequency_response_offset_enabled=True,
+            frequency_response_offset_unit="°",
+            frequency_response_baseline_sweep_index=1,
+            frequency_response_points=_freq_sweep_points(),
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["data_entry_mode"] == "frequency_response"
+        # Server-computed gain-only model — [gain, 0], never trusted from the client.
+        assert body["poly_order"] == 1
+        assert body["poly_coefficients"] == [pytest.approx(12.0), 0.0]
+        assert body["range_min"] == pytest.approx(1.0)
+        assert body["range_max"] == pytest.approx(1.0)
+        assert body["frequency_response_frequency_unit"] == "Hz"
+        assert body["frequency_response_offset_enabled"] is True
+        assert body["frequency_response_baseline_sweep_index"] == 1
+        # No raw_data-style points — the sweep lives in its own collection.
+        assert body["poly_coefficients"] != []
+
+        pts = client.get(
+            f"/api/v1/calibrations/{body['id']}/frequency-response-points", headers=auth_headers
+        ).json()
+        assert len(pts) == 3
+        pts_by_index = {p["sweep_index"]: p for p in pts}
+        assert pts_by_index[0]["sensitivity_value"] == pytest.approx(10.0)
+        assert pts_by_index[1]["sensitivity_value"] == pytest.approx(12.0)
+        assert pts_by_index[1]["deviation_pct"] == pytest.approx(0.0)
+        assert pts_by_index[2]["deviation_pct"] == pytest.approx((8.0 - 12.0) / 12.0 * 100)
+        # Offset only entered for sweep_index 0 and 1 — sweep_index 2 stays null.
+        assert pts_by_index[0]["offset_value"] == pytest.approx(-2.0)
+        assert pts_by_index[2]["offset_value"] is None
+
+        # GET /points (the raw_data-style collection) stays empty for this mode.
+        primary_pts = client.get(f"/api/v1/calibrations/{body['id']}/points", headers=auth_headers).json()
+        assert primary_pts == []
+
+    def test_offset_disabled_leaves_offset_and_phase_fields_null(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        points = [
+            {**p, "offset_value": None} for p in _freq_sweep_points()
+        ]
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="frequency_response",
+            frequency_response_frequency_unit="Hz",
+            frequency_response_amplitude_type="RMS",
+            frequency_response_offset_enabled=False,
+            frequency_response_baseline_sweep_index=1,
+            frequency_response_points=points,
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        body = r.json()
+        assert body["frequency_response_offset_enabled"] is False
+        assert body["frequency_response_offset_unit"] is None
+
+        pts = client.get(
+            f"/api/v1/calibrations/{body['id']}/frequency-response-points", headers=auth_headers
+        ).json()
+        assert all(p["offset_value"] is None for p in pts)
+
+    def test_available_for_after_repair_purpose(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        # Unlike model_direct, frequency_response has no purpose restriction.
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="frequency_response",
+            calibration_purpose="after_repair",
+            repair_date="2025-02-01",
+            frequency_response_baseline_sweep_index=0,
+            frequency_response_points=_freq_sweep_points(),
+        )
+        r = client.post("/api/v1/calibrations", json=payload, headers=auth_headers)
+        assert r.status_code == 201, r.text
+        assert r.json()["calibration_purpose"] == "after_repair"
+
+    def test_frequency_response_points_empty_for_other_modes(
+        self, client: TestClient, auth_headers: dict, calibration: dict
+    ) -> None:
+        pts = client.get(
+            f"/api/v1/calibrations/{calibration['id']}/frequency-response-points", headers=auth_headers
+        ).json()
+        assert pts == []
 

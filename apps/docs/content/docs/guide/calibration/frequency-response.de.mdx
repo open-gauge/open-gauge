@@ -1,69 +1,80 @@
 ---
 title: Frequenzgang
-description: Erfassen eines optionalen Amplituden-/Phasen-vs-Frequenz-Durchlaufs zusätzlich zu einer Kalibrierung und dessen spätere Überprüfung.
+description: Kalibrierung von Sensoren, die ein Signal im Frequenzbereich liefern — Beschleunigungssensoren, Mikrofone und Ähnliches — als Empfindlichkeits-Sweep statt als angepasste Kurve.
 ---
 
-Bei AC-/dynamischen Sensoren — Drucksensoren, Beschleunigungssensoren, Mikrofonen — braucht eine
-vollständige Charakterisierung oft mehr als die statische Referenz-vs-Mess-Kurve, die der Rest
-des Assistenten erfasst: einen **Frequenzgang**-Durchlauf, der zeigt, wie sich die Amplituden-
-und/oder Phasenantwort des Sensors mit der Signalfrequenz ändert (eine klassische
-Bode-Diagramm-Charakterisierung). Open Gauge unterstützt die Erfassung dessen als optionale
-Ergänzung zu jeder Kalibrierung.
+Manche Sensoren haben keine einzige Referenz-vs-Gemessen-Beziehung wie ein Druck- oder
+Temperatursensor — die Ausgabe eines Beschleunigungssensors oder Mikrofons hängt neben der
+Amplitude auch von der *Frequenz* ab, mit der er angeregt wird. **Frequenzgang** ist die vierte
+**Dateneingabemethode** in Schritt 2, neben
+[Referenz vs. Gemessen, Referenz vs. Angezeigt und Modell](./coefficients-only.de.mdx): Statt eine
+Kurve anzupassen, stimmen Sie eine Plattform und den Sensor gemeinsam bei mehreren Frequenzen ab
+und erfassen dabei die Ausgangsamplitude des Referenznormals und des Sensors bei jeder Frequenz.
+Es steht für jeden **Kalibrierzweck** zur Verfügung, auch für Nach Reparatur — für diesen Modus
+gibt es keine Wie-vorgefunden-/Wie-belassen-Aufteilung.
 
-## Aktivieren
+## Sweep-Eingabe (Schritt 2) [#sweep-entry]
 
-Aktivieren Sie **"Frequenzgang hinzufügen"** in Schritt 1 des Kalibrier-Assistenten. Dies fügt
-einen neuen Schritt zwischen dem Rohdaten-Schritt und dem Analyse-Schritt ein, aufgeteilt in
-einen Bereich zur Dateneingabe (links) und ein Live-Diagramm (rechts), das sich beim Tippen
-aktualisiert — für dieses Diagramm gibt es keinen Server-Roundtrip, da ein Frequenzdurchlauf
-nicht wie die Referenz-vs-Mess-Kurve angepasst oder analysiert wird, sondern einfach direkt
-geplottet wird.
+Die Wahl von **Frequenzgang** ersetzt die übliche Punktetabelle durch eine Einstellungszeile und
+eine Sweep-Tabelle:
 
-## Die Felder des Schritts
+- **Frequenzeinheit** — Hz, kHz, MHz oder GHz, für jede Zeile angewendet.
+- **Referenzeinheit** — die Einheit der physikalischen Größe des Referenznormals (z. B. g, Pa),
+  aus der physikalischen Größe des Kanals.
+- **Gemessene Einheit** — die eigene Ausgangseinheit des Sensors (z. B. mV, V), aus dem
+  Ausgangssignaltyp des Kanals.
+- **Amplitudentyp** — dB, RMS, Spitze-Spitze oder Spitze, angewendet sowohl auf die Referenz- als
+  auch auf die gemessene Amplitude bei jeder Frequenz (beide müssen auf dieselbe Weise gelesen
+  werden, damit das Empfindlichkeitsverhältnis unten aussagekräftig ist).
+- **Phasenversatz einbeziehen** — standardmäßig aus. Bei Aktivierung erscheint eine zusätzliche
+  Versatz-Spalte in der Tabelle und eine Winkeleinheit (° oder rad) wird auswählbar — verwenden
+  Sie dies, wenn Ihr Referenz-/Messaufbau auch die Phasendifferenz zwischen Referenz und
+  Sensorausgang bei jeder Frequenz liefert.
 
-- **Frequenz** — wird immer erfasst, mit einem Einheiten-Dropdown (Hz, kHz, MHz, GHz).
-- **Amplitude** — ein Schalter, um sie einzubeziehen. Wenn aktiviert, wählen Sie einen
-  **Amplitudentyp** (dB, RMS, Spitze-Spitze oder Spitze) und, für alles außer dB, eine
-  **physikalische Einheit** aus der eigenen Einheitenliste des Sensorkanals (dieselben Einheiten,
-  die die Referenz-/Mess-Dropdowns des Assistenten verwenden).
-- **Phase** — ein Schalter, um sie einzubeziehen, mit einem Einheiten-Dropdown (Grad oder
-  Radiant).
+Darunter dieselbe Tabelle für manuelle Eingabe oder CSV-Upload, die auch jeder andere Modus
+verwendet, mit einer Zeile pro Frequenzpunkt: **Frequenz**, **Referenz**, **Gemessen** und
+**Versatz** (nur angezeigt, wenn aktiviert). Mindestens 2 Zeilen sind erforderlich. Ein
+CSV-Upload erwartet eine Kopfzeile mit Spalten namens `Frequency`, `Reference`, `Measured` und
+optional `Offset`.
 
-Sie können Amplitude, Phase oder beides aktivieren — die Datentabelle und das Diagramm passen
-sich an und zeigen nur die Spalten/Kurven für das an, was aktiv ist. Geben Sie Punkte manuell ein
-(Zeilen frei hinzufügen/entfernen) oder laden Sie eine CSV-Datei hoch — eine Kopfzeile ist
-erforderlich, mit einer Spalte, die "frequency" enthält (obligatorisch), und, sofern aktiv,
-"amplitude" und/oder "phase" (Abgleich per Groß-/Kleinschreibung-unabhängiger Teilzeichenkette,
-sodass sowohl "Freq (Hz)" als auch "Amplitude (dB)" funktionieren).
+## Empfindlichkeitsmodell (Schritt 3) [#sensitivity]
 
-## Das Diagramm
+Hier gibt es keine anzupassende Kurve — Schritt 3 zeigt ein einzelnes Panel anstelle des üblichen
+Verfahren-/[Unsicherheit](./uncertainty-budget.de.mdx)-/[Konformität](./decision-rules.de.mdx)-Stapels:
 
-- Die Frequenz ist immer die x-Achse. Das Diagramm wechselt automatisch zu einer
-  **logarithmischen** x-Achse, wenn der Durchlauf mindestens eine Dekade umfasst (`max/min ≥
-  10`) — die Standardkonvention, sobald ein Durchlauf einen ausreichend weiten Bereich abdeckt —
-  und bleibt andernfalls linear.
-- Wenn nur Amplitude oder nur Phase aktiv ist, handelt es sich um ein Liniendiagramm mit einer
-  Achse, dessen Punkte durch Linien verbunden und für exakte Werte mit dem Mauszeiger abfragbar
-  sind.
-- Wenn beide aktiv sind, teilt sich das Diagramm in ein **gestapeltes Bode-Layout**: die
-  Amplitudenkurve oben, die Phasenkurve direkt darunter, mit einer gemeinsamen Frequenzachse —
-  nicht überlagert, da Amplitude und Phase sehr unterschiedliche Skalen haben.
+- **Referenzfrequenz** [#baseline-frequency] — ein Dropdown mit jeder in Schritt 2 eingegebenen
+  Frequenz. Wählen Sie diejenige, gegen die die Ausgabe Ihres Sensors normalerweise spezifiziert
+  ist (oft die Nennfrequenz des Sensors, z. B. 100 Hz bei vielen Beschleunigungssensoren).
+- **Empfindlichkeit** — das Verhältnis zwischen gemessener und Referenzamplitude *bei der
+  Referenzfrequenz* (gemessen ÷ Referenz), in Ausgangseinheit pro physikalischer Einheit (z. B.
+  mV/g). Dies ist das gespeicherte Ergebnis der Kalibrierung.
 
-Dieselbe Diagrammkomponente (und dieselbe Logarithmusskalen-/Layout-Logik) wird sowohl im
-Live-Bearbeitungsschritt des Assistenten als auch beim Überprüfen einer gespeicherten
-Kalibrierung verwendet, sodass das, was Sie bei der Dateneingabe sehen, genau dem entspricht, was
-Sie danach sehen werden.
+Die Empfindlichkeit jeder anderen Frequenz wird als **%-Abweichung** von der Referenzfrequenz
+ausgedrückt: für einen Punkt mit Empfindlichkeit *s* und Referenz-Empfindlichkeit *g* gilt
+Abweichung = (*s* − *g*) / *g* × 100. Die Abweichung des Referenzpunkts selbst ist immer genau 0.
 
-## Speicherung
+Zwei Diagramme, beide mit runden, durch Linien verbundenen Markern, einer x-Achse, die
+automatisch auf logarithmisch umschaltet, wenn der Sweep eine Dekade oder mehr umfasst
+(andernfalls linear), und Tooltips beim Überfahren mit der Maus:
 
-Wie die eigenen Rohdatenpunkte der Kalibrierung werden auch die Frequenz-/Amplituden-/
-Phasenwerte **genau so gespeichert, wie sie eingegeben wurden** — in den Einheiten, die Sie für
-den Durchlauf gewählt haben — nicht in SI umgerechnet. Die gewählten Einheiten und der
-Amplitudentyp sind Teil dessen, was erfasst wird, keine beiläufige Anzeigeentscheidung.
+- **Empfindlichkeit vs. Frequenz** — immer angezeigt. Beim Überfahren eines Punkts werden dessen
+  Frequenz, Empfindlichkeit und %-Abweichung von der Referenzfrequenz angezeigt.
+- **Phase vs. Frequenz** — nur angezeigt, wenn **Phasenversatz einbeziehen** aktiviert ist, unter
+  dem Empfindlichkeitsdiagramm gestapelt. Nur Punkte mit eingegebenem Versatz werden dargestellt.
 
-## Spätere Überprüfung
+Da dieser Modus weder ein Unsicherheitsbudget noch eine Entscheidungsregel hat, wird eine
+Frequenzgang-Kalibrierung nie als nicht konform markiert — es gibt keine Spezifikation, mit der
+verglichen werden könnte. Der gespeicherte Datensatz durchläuft weiterhin den üblichen
+[Genehmigungsworkflow](./overview.de.mdx#approval-workflow), sofern ein **Geprüft von**-Prüfer
+zugewiesen wurde, und lädt wie jede andere Kalibrierung ein Zertifikat herunter.
 
-Sobald eine Kalibrierung mit Frequenzgang-Daten gespeichert ist, zeigt ihre Detailansicht auf der
-Anlagenseite ein Panel **"Frequenzgang"** (neben dem bestehenden Panel "Bedingungen & Notizen")
-mit dem interaktiven Diagramm und der vollständigen Datentabelle nebeneinander — Zoom, Verschieben
-und Hover funktionieren dort genauso wie im Assistenten.
+## Interne Darstellung
+
+Open Gauge speichert das Modell jeder Kalibrierung unabhängig vom Modus auf dieselbe Weise, daher
+wird ein Frequenzgang-Ergebnis intern als Polynom vom Grad 1 ohne Versatz dargestellt — eine reine
+Verstärkung: `poly_order = 1`, `poly_coefficients = [gain, 0]` (höchster Grad zuerst, dieselbe
+Konvention, die jedes andere angepasste Modell verwendet). Es wird keine tatsächliche Regression
+durchgeführt; die „Anpassung" ist einfach das eigene Verhältnis von gemessen/Referenz der
+Referenzfrequenz. Der vollständige Sweep — die Referenz-/gemessene Amplitude jeder Frequenz, der
+optionale Versatz und die berechnete Empfindlichkeit/Abweichung — wird separat gespeichert, eine
+Zeile pro Punkt, und speist die beiden obigen Diagramme.

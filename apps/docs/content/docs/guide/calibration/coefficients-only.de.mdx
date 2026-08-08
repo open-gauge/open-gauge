@@ -3,7 +3,7 @@ title: Alternative Dateneingabemodi für Kalibrierungen
 description: Erfassen einer Kalibrierung, wenn die Daten nicht in der üblichen Form von Referenz-vs-Messsignal-Punkten vorliegen — ein vom Labor geliefertes Modell oder ein bereits umgerechneter Referenz-vs-Wert-Vergleich.
 ---
 
-Schritt 2 des Kalibrierassistenten, **Eingabedaten**, beginnt mit einem Dropdown, das drei
+Schritt 2 des Kalibrierassistenten, **Eingabedaten**, beginnt mit einem Dropdown, das vier
 Möglichkeiten bietet, die Daten einer Kalibrierung zu liefern; der Rest des Schritts wird sofort
 darunter entsprechend der aktuellen Auswahl angezeigt:
 
@@ -16,11 +16,17 @@ darunter entsprechend der aktuellen Auswahl angezeigt:
 - **Modell (Übertragungsfunktion)** — das Labor-/Herstellerzertifikat gibt das Kalibriermodell
   selbst an, ganz ohne Rohdatenpunkte. Nur verfügbar für OEM-/Externes-akkreditiertes-Labor-/
   Kundenanlagen-Kalibrierungen, und für Nach Reparatur überhaupt nicht verfügbar.
+- **Frequenzgang** — ein Sweep aus Frequenz-/Referenz-/Messwertpunkten für Sensoren, die ein
+  Signal im Frequenzbereich liefern (Beschleunigungssensoren, Mikrofone usw.), reduziert auf ein
+  Empfindlichkeitsverhältnis bei einer gewählten Referenzfrequenz. Verfügbar für jeden
+  Kalibrierzweck, auch für Nach Reparatur. Siehe [Frequenzgang](./frequency-response.de.mdx) für
+  die vollständige Aufschlüsselung.
 
 Wenn der **Kalibrierzweck** des Datensatzes **Nach Reparatur** ist, teilen sich sowohl Referenz
 vs. Gemessen als auch Referenz vs. Angezeigt automatisch in zwei Vergleiche statt einem auf —
 siehe unten. Modell wird für Nach Reparatur überhaupt nicht angeboten, da ein einzelnes,
-labor-angegebenes Modell keinen Vorher-Nachher-Vergleich abbilden kann.
+labor-angegebenes Modell keinen Vorher-Nachher-Vergleich abbilden kann; Frequenzgang wird vom
+Zweck nicht beeinflusst und hat keine Wie-vorgefunden-/Wie-belassen-Aufteilung.
 
 ## Modell (Übertragungsfunktion) [#model-transfer-function]
 

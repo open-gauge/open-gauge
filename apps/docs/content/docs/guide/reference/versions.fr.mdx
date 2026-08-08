@@ -4,7 +4,7 @@ description: Historique des versions — ce qui a changé dans chaque version d'
 ---
 
 Open Gauge suit un unique numéro de version à travers le frontend et le backend. Il est affiché
-en bas à gauche de la barre latérale (`v3.15.0 · self-hosted`) et dans le schéma OpenAPI. Cette
+en bas à gauche de la barre latérale (`v4.0.0 · self-hosted`) et dans le schéma OpenAPI. Cette
 page reflète le fichier
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) à la racine du
 dépôt.
@@ -14,6 +14,33 @@ numéroté selon l'impact de versionnement sémantique (`0.x` tant que le produi
 pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté, sous licence, et
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
+
+## 4.0.0
+
+### Modifié
+
+- **Rupture : la réponse en fréquence est désormais un 4ᵉ mécanisme de saisie de calibration, et
+  non plus une étape séparée de l'assistant.** L'implémentation d'origine (une étape
+  supplémentaire optionnelle activée par une case à cocher de l'étape 1, adossée à une table
+  `calibration_frequency_points` et 5 colonnes sur `calibrations`) a été entièrement annulée et
+  réimplémentée comme un véritable `data_entry_mode`, sélectionné depuis le propre sélecteur de
+  méthode de saisie des données de l'étape 2, aux côtés de Référence par rapport à Mesuré/Indiqué
+  et Modèle, disponible pour tout Objectif de calibration. Un balayage de points
+  fréquence/référence/mesuré (+ déphasage optionnel) est saisi ; l'étape 3 affiche un seul panneau
+  de sensibilité — on choisit une fréquence de référence et Open Gauge y calcule le rapport de
+  sensibilité (mesuré/référence), exprimant chaque autre point comme un écart en % par rapport à
+  celui-ci — avec un graphique sensibilité en fonction de la fréquence (toujours) et un graphique
+  phase en fonction de la fréquence (uniquement avec le déphasage activé), remplaçant entièrement
+  la pile de panneaux Méthode/Incertitude/Conformité et le graphique à double axe de la
+  fonctionnalité supprimée : ce mode n'a ni ajustement de courbe, ni budget d'incertitude, ni
+  vérification de conformité. Représenté en interne comme un modèle d'ordre polynomial 1 sans
+  décalage (gain seul), la même convention que tout autre mode utilise. L'ancien point de
+  terminaison `GET /calibrations/{id}/frequency-points` et sa table/ses colonnes de support ont
+  disparu (migration `035`) ; le nouveau point de terminaison
+  `GET /calibrations/{id}/frequency-response-points` et la table
+  `calibration_frequency_response_points` les remplacent (migration `036`). Tout client dépendant
+  de l'ancienne forme doit migrer. Voir la nouvelle page
+  [Réponse en fréquence](../calibration/frequency-response.mdx).
 
 ## 3.15.0
 

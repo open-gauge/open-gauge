@@ -9,6 +9,29 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.0.0
+
+### Changed
+
+- **Breaking: Frequency response is now a 4th calibration input mechanism, not a separate wizard
+  step.** The original implementation (an optional extra step gated by a Step 1 checkbox, backed
+  by a `calibration_frequency_points` table and 5 `calibrations` columns) has been fully reverted
+  and reimplemented as a proper `data_entry_mode`, selected from Step 2's own Input data method
+  dropdown alongside Reference vs Measured/Indicated and Model, open to any Calibration purpose.
+  Enter a sweep of (frequency, reference, measured[, offset]) points; Step 3 shows one sensitivity
+  panel — pick a baseline frequency and Open Gauge computes the sensitivity ratio
+  (measured/reference) there, expressing every other point as a % deviation from it — with a
+  sensitivity-vs-frequency chart (always) and a phase-vs-frequency chart (only with offset
+  enabled), replacing the deleted feature's Method/Uncertainty/Conformity panel stack and
+  dual-axis chart entirely: this mode has no curve fit, uncertainty budget, or conformity check.
+  Internally represented as a polynomial-order-1, no-offset (gain-only) model, the same convention
+  every other mode uses. The old `GET /calibrations/{id}/frequency-points` endpoint and its
+  backing table/columns are gone (migration `035`); the new
+  `GET /calibrations/{id}/frequency-response-points` endpoint and
+  `calibration_frequency_response_points` table replace them (migration `036`). Any client relying
+  on the old shape must migrate. See the new
+  [Frequency response](apps/docs/content/docs/guide/calibration/frequency-response.mdx) guide page.
+
 ## 3.15.0
 
 ### Added

@@ -47,7 +47,12 @@ class Calibration(Base):
     # already-physical-quantity value, no known transfer function — verification purpose
     # only), "reference_vs_as_found_as_left" (same, but two datasets around a repair —
     # after_repair purpose only; as-left is this record's primary result, as-found is
-    # diagnostic-only, see as_found_summary below).
+    # diagnostic-only, see as_found_summary below), "frequency_response" (a sweep of
+    # (frequency, reference, measured[, offset]) points for sensors that deliver a
+    # signal in the frequency domain — see the frequency_response_* columns below and
+    # CalibrationFrequencyResponsePoint; the resulting sensitivity ratio is stored as a
+    # polynomial-order-1, no-offset (gain-only) model on poly_order/poly_coefficients,
+    # same as every other mode).
     data_entry_mode: Mapped[str] = mapped_column(String(30), nullable=False, server_default="raw_data")
     # model_type describes the shape of poly_coefficients/custom_formula below:
     # "polynomial" (poly_order/poly_coefficients, as always) or "custom_formula" (an
@@ -89,22 +94,22 @@ class Calibration(Base):
     pressure: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     pressure_uncertainty: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
-    # Optional frequency-response sweep (see CalibrationFrequencyPoint for the swept
-    # points). Values are stored exactly as entered, not canonicalized — the sweep's
-    # chosen units are part of what's being recorded, same rationale as
-    # reference_unit/measured_unit on CalibrationData. amplitude_type/phase_unit being
-    # null means that field wasn't captured for this sweep (no separate "active" flags).
-    has_frequency_response: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    frequency_response_frequency_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    frequency_response_amplitude_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    frequency_response_amplitude_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    frequency_response_phase_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
-
     # Polynomial model
     poly_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     poly_coefficients: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     range_min: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)
     range_max: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)
+
+    # data_entry_mode=frequency_response sweep settings. frequency_unit/amplitude_type
+    # apply to every point in the sweep; offset_unit only matters when offset_enabled
+    # (phase, ° or rad); baseline_sweep_index selects which CalibrationFrequencyResponsePoint
+    # (by its sweep_index) the sensitivity/deviation on every point (and the
+    # poly_coefficients gain) are computed against.
+    frequency_response_frequency_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    frequency_response_amplitude_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    frequency_response_offset_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    frequency_response_offset_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    frequency_response_baseline_sweep_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Regression statistics
     r_squared: Mapped[float | None] = mapped_column(Numeric(10, 8), nullable=True)

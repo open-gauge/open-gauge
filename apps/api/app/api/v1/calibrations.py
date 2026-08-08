@@ -17,6 +17,9 @@ from ...repositories import calibration as cal_repo
 from ...repositories import certificate_template as certtpl_repo
 from ...repositories import stored_file as sf_repo
 from ...schemas.calibration import (
+    AnalyzeFrequencyResponsePointOut,
+    AnalyzeFrequencyResponseRequest,
+    AnalyzeFrequencyResponseResponse,
     AnalyzePointOut,
     AnalyzeRequest,
     AnalyzeResponse,
@@ -30,6 +33,7 @@ from ...services import notifications as notification_svc
 from ...services.calibration_analysis import run_analysis
 from ...services.formula_eval import validate_formula
 from ...services.formula_params import substitute_formula_parameters
+from ...services.frequency_response_analysis import compute_sensitivity_sweep
 from ...services.latex_service import LatexCompileError
 from ...services.pdf_signing_service import CertificateSigningError
 from ...services.storage import (
@@ -175,6 +179,46 @@ def analyze_calibration(
     )
 
 
+@router.post("/analyze-frequency-response", response_model=AnalyzeFrequencyResponseResponse)
+def analyze_frequency_response(
+    body: AnalyzeFrequencyResponseRequest,
+    _: User = Depends(get_current_user),
+) -> AnalyzeFrequencyResponseResponse:
+    """Ephemeral sensitivity analysis for data_entry_mode=frequency_response —
+    powers Step 3's live preview. Mirrors /analyze's ephemeral-compute
+    pattern; the actual save goes through POST /calibrations with
+    data_entry_mode=frequency_response, which recomputes and persists the
+    same result server-side."""
+    try:
+        result = compute_sensitivity_sweep(
+            sweep_indices=[p.sweep_index for p in body.points],
+            frequency_values=[p.frequency_value for p in body.points],
+            reference_values=[p.reference_value for p in body.points],
+            measured_values=[p.measured_value for p in body.points],
+            baseline_sweep_index=body.baseline_sweep_index,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    return AnalyzeFrequencyResponseResponse(
+        gain=result.gain,
+        poly_coefficients=result.poly_coefficients,
+        range_min=result.range_min,
+        range_max=result.range_max,
+        points=[
+            AnalyzeFrequencyResponsePointOut(
+                sweep_index=p.sweep_index,
+                frequency_value=p.frequency_value,
+                reference_value=p.reference_value,
+                measured_value=p.measured_value,
+                sensitivity_value=p.sensitivity_value,
+                deviation_pct=p.deviation_pct,
+            )
+            for p in result.points
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Calibration CRUD
 # ---------------------------------------------------------------------------
@@ -287,23 +331,18 @@ def list_points(
     return cal_repo.list_points(db, cal_id, point_role=role)
 
 
-@router.get(
-    "/{cal_id}/frequency-points",
-    response_model=list[FrequencyResponsePointResponse],
-    summary="List frequency-response sweep points",
-    description="Returns the optional frequency-response sweep points recorded for this "
-    "calibration, ordered by sweep_index. Empty list if the calibration has no "
-    "frequency-response data.",
-)
-def list_frequency_points(
+@router.get("/{cal_id}/frequency-response-points", response_model=list[FrequencyResponsePointResponse])
+def list_frequency_response_points(
     cal_id: uuid.UUID,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[FrequencyResponsePointResponse]:
+    """The sweep for a data_entry_mode=frequency_response calibration —
+    empty for every other mode."""
     cal = cal_repo.get_by_id(db, cal_id)
     if not cal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
-    return cal_repo.list_frequency_points(db, cal_id)
+    return cal_repo.list_frequency_response_points(db, cal_id)
 
 
 @router.delete("/{cal_id}", status_code=status.HTTP_204_NO_CONTENT)

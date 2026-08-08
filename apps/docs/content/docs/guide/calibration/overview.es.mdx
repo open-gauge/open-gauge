@@ -37,9 +37,12 @@ Inicia una calibración desde el canal de un activo. El asistente tiene tres pas
 2. **Datos de entrada** — comienza con un selector de método: **Referencia frente a Medido** (por
    defecto — pares de puntos (referencia, medido) frente a la señal de salida bruta del canal,
    ajustados a una curva), **Referencia frente a Indicado** (referencia frente a una lectura de
-   magnitud física ya convertida, sin ajuste de curva), o **Modelo (función de transferencia)** (un
+   magnitud física ya convertida, sin ajuste de curva), **Modelo (función de transferencia)** (un
    modelo indicado por el laboratorio, sin ningún punto de dato en bruto — no se ofrece cuando el
-   Propósito de la calibración es Después de reparación). Consulta
+   Propósito de la calibración es Después de reparación), o **Respuesta en frecuencia** (un
+   barrido de puntos frecuencia/referencia/medido para sensores que entregan una señal en el
+   dominio de la frecuencia — disponible para cualquier propósito, incluido Después de reparación
+   — consulta [Respuesta en frecuencia](./frequency-response.mdx)). Consulta
    [Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx) para el
    desglose completo, incluyendo cómo Después de reparación divide automáticamente Referencia
    frente a Medido/Indicado en datos tal como se encontró/tal como se dejó. Consulta
@@ -74,9 +77,11 @@ flowchart TD
     Picker1 --> RVM["Referencia frente a Medido"]
     Picker1 --> RVI["Referencia frente a Indicado"]
     Picker1 --> Model["Modelo (función de transferencia)<br/>solo si tipo = OEM / Lab. externo / Activo del cliente"]
+    Picker1 --> FreqResp["Respuesta en frecuencia"]
 
     Picker2 --> RVMAfter["Referencia frente a Medido"]
     Picker2 --> RVIAfter["Referencia frente a Indicado"]
+    Picker2 --> FreqRespAfter["Respuesta en frecuencia"]
 
     RVM --> RVMEntry["Ingresa puntos (referencia, medido)<br/>elige Ajuste polinomial / Tabla de consulta / Fórmula personalizada"]
     RVMEntry --> RVMOut(["Resultado: ecuación ajustada,<br/>R² / RMSE / error máximo,<br/>presupuesto de incertidumbre, conformidad"])
@@ -92,10 +97,16 @@ flowchart TD
     AfalEntry --> AfalCalc["Paso 3: un único panel compartido de<br/>Incertidumbre + criterio de conformidad;<br/>Referencia frente a Medido ajusta cada lado<br/>de forma independiente, Referencia frente a<br/>Indicado compara residuos en cada lado"]
     AfalCalc --> AfalOut(["Resultado: Tal Como Se Dejó = resultado<br/>oficial (fecha de vencimiento, aprobación,<br/>pestaña Estado) — Tal Como Se Encontró =<br/>solo diagnóstico de solo lectura"])
 
+    FreqResp --> FreqEntry["Ingresa un barrido de frecuencia/<br/>referencia/medido (+ desfase opcional)"]
+    FreqRespAfter --> FreqEntry
+    FreqEntry --> FreqCalc["Paso 3: elige una frecuencia de<br/>referencia — sensibilidad = medido/<br/>referencia en esa frecuencia"]
+    FreqCalc --> FreqOut(["Resultado: valor de sensibilidad,<br/>gráficos de sensibilidad/fase vs.<br/>frecuencia — sin presupuesto de<br/>incertidumbre, sin conformidad"])
+
     RVMOut --> Save["Confirmar y guardar"]
     RVIOut --> Save
     ModelOut --> Save
     AfalOut --> Save
+    FreqOut --> Save
 ```
 
 Todos los caminos convergen en el mismo [flujo de aprobación](#approval-workflow) y en la misma
@@ -103,9 +114,11 @@ Todos los caminos convergen en el mismo [flujo de aprobación](#approval-workflo
 se guarda exactamente igual que uno conforme, y cada camino produce un registro de calibración
 normal con certificado. Lo que difiere entre caminos es solo *qué se pudo calcular*: Referencia
 frente a Indicado y Modelo nunca producen una ecuación de curva ajustada (no hay función de
-transferencia conocida que ajustar), y el lado tal como se encontró de Después de reparación nunca
-alimenta la fecha de vencimiento ni la pestaña Estado, sin importar de qué método base haya
-partido. Consulta
+transferencia conocida que ajustar), el lado tal como se encontró de Después de reparación nunca
+alimenta la fecha de vencimiento ni la pestaña Estado sin importar de qué método base haya
+partido, y Respuesta en frecuencia no tiene presupuesto de incertidumbre ni comprobación de
+conformidad — su resultado es una relación de sensibilidad, no un dictamen de aprobado/no
+aprobado. Consulta
 [Modos alternativos de entrada de datos de calibración](./coefficients-only.mdx) para el desglose
 completo campo por campo de cada rama de arriba.
 

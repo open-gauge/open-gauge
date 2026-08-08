@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { AssetProfile, SensorChannelFull } from "@/types/asset";
 import type {
-  AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationLabCandidate, CalibrationMethod,
+  AnalyzeFrequencyResponseResponse, AnalyzeRequest, AnalyzeResponse, CalibrationCreateBody, CalibrationLabCandidate, CalibrationMethod,
   CalibrationPointInline, CalibrationPurpose, CalibrationRecord, CalibrationType, CalibrationUser,
-  DataEntryMode, DecisionRule, DistributionType, InputMethod, ModelType,
-  FrequencyResponsePointInline, ResidualPoint, WizardRawPoint,
+  DataEntryMode, DecisionRule, DistributionType, FrequencyResponsePointInline, InputMethod, ModelType,
+  PhaseChartPoint, ResidualPoint, SensitivityChartPoint, WizardRawPoint,
 } from "@/types/calibration";
 import {
-  analyzeCalibration, createCalibration, getAssetCalibrations,
+  analyzeCalibration, analyzeFrequencyResponse, createCalibration, getAssetCalibrations,
   listAssets, listCalibrationUsers, listProcedures, uploadCalibrationCertificate,
 } from "@/services/asset.service";
 import {
@@ -22,7 +22,7 @@ import { useTranslations } from "next-intl";
 import { COLORS } from "@/lib/tokens";
 import { translateDynamic } from "@/lib/translate-dynamic";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
-import { getUnitsForQuantity, getOutputUnits, resolveSpecValue, getSpecUnitOptions, PERCENT_FS_UNIT, FREQUENCY_OUTPUT_UNITS } from "@/lib/sensor-options";
+import { getUnitsForQuantity, getOutputUnits, resolveSpecValue, getSpecUnitOptions, PERCENT_FS_UNIT, FREQUENCY_OUTPUT_UNITS, AMPLITUDE_TYPE_OPTIONS } from "@/lib/sensor-options";
 import { convertMagnitude } from "@/lib/unit-conversion";
 import { useAuth } from "@/lib/auth-context";
 import { STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
@@ -30,10 +30,10 @@ import { StatRow } from "@/components/stat-row";
 import { ToggleSwitch } from "@/components/toggle-switch";
 import { NumberInput } from "@/components/number-input";
 import { Tooltip } from "@/components/tooltip";
-import { FrequencyResponseChart } from "@/components/frequency-response-chart";
 import { ResidualsChart } from "@/components/residuals-chart";
+import { SensitivityChart } from "@/components/sensitivity-chart";
+import { PhaseChart } from "@/components/phase-chart";
 import { LinearityDeviationChart } from "@/components/linearity-deviation-chart";
-import { hasPlottableFrequencyPoints } from "@/lib/frequency-response-chart";
 import {
   CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, RestoreIcon, TrashIcon,
   WarningIcon, XIcon,
@@ -218,6 +218,7 @@ function todayIso(): string {
 // "reference_vs_measured" or "reference_vs_indicated".
 function deriveDataEntryMode(inputMethod: InputMethod, purpose: CalibrationPurpose): DataEntryMode {
   if (inputMethod === "model_direct") return "model_direct";
+  if (inputMethod === "frequency_response") return "frequency_response";
   const isAfterRepair = purpose === "after_repair";
   if (inputMethod === "reference_vs_measured") return isAfterRepair ? "reference_vs_as_found_as_left" : "raw_data";
   return isAfterRepair ? "reference_vs_as_found_as_left" : "reference_vs_indicated";
@@ -454,37 +455,7 @@ interface Step1State {
   humidity_unit: string;
   notes: string;
   env_expanded: boolean;
-  add_frequency_response: boolean;
 }
-
-// Frequency response: sweep-level settings, chosen once for the whole sweep (not
-// per-point) in the new step's "first row".
-interface FrequencyResponseSettings {
-  frequency_unit: string;
-  amplitude_active: boolean;
-  amplitude_type: string; // "dB" | "RMS" | "Peak-to-Peak" | "Peak"
-  amplitude_unit: string; // physical unit, meaningful only when amplitude_type !== "dB"
-  phase_active: boolean;
-  phase_unit: string; // "°" | "rad"
-}
-
-interface FrequencyResponseRow {
-  frequency: string;
-  amplitude: string;
-  phase: string;
-}
-
-const AMPLITUDE_TYPE_OPTIONS = [
-  { value: "dB", label: "dB" },
-  { value: "RMS", label: "RMS" },
-  { value: "Peak-to-Peak", label: "Peak-to-Peak" },
-  { value: "Peak", label: "Peak" },
-];
-
-const PHASE_UNIT_OPTIONS = [
-  { value: "°", label: "°" },
-  { value: "rad", label: "rad" },
-];
 
 interface AnalyzeParams {
   poly_degree: number | null;
@@ -515,6 +486,28 @@ interface ManualCoeffState {
   range_max: string;
 }
 
+// data_entry_mode="frequency_response": one sweep row per frequency point.
+// offset is only meaningful when FreqSweepSettings.offset_enabled is true —
+// left blank otherwise (its phase_value ends up null, same as any other
+// optional field on this wizard).
+interface FreqRow {
+  frequency: string;
+  reference: string;
+  measured: string;
+  offset: string;
+}
+
+// Settings shared by every row in the sweep — frequency_unit/amplitude_type
+// apply throughout; offset_unit only matters when offset_enabled.
+interface FreqSweepSettings {
+  frequency_unit: string;
+  reference_unit: string;
+  measured_unit: string;
+  amplitude_type: string;
+  offset_enabled: boolean;
+  offset_unit: string;
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -531,7 +524,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   const t = useTranslations("assets.wizard");
   const tDecisionRule = useTranslations("tokens.decisionRule");
   const { user } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const initialSensorId = profile.sensor_channels[0]?.id ?? "";
   const [step1, setStep1] = useState<Step1State>({
@@ -566,7 +559,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     humidity_unit: "%RH",
     notes: "",
     env_expanded: false,
-    add_frequency_response: false,
   });
 
   // The wire-level DataEntryMode, derived from Step 2's own method choice
@@ -577,6 +569,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   const isRawData = dataEntryMode === "raw_data";
   const isRefVsIndicated = dataEntryMode === "reference_vs_indicated";
   const isRefVsAsFoundAsLeft = dataEntryMode === "reference_vs_as_found_as_left";
+  const isFrequencyResponse = dataEntryMode === "frequency_response";
   // True for the Reference-vs-Indicated-based As-Found/As-Left variant
   // (skip_fit both sides, no transference function) — false for the
   // Reference-vs-Measured-based variant (curve-fit both sides).
@@ -677,23 +670,34 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   const [asLeftCsvError, setAsLeftCsvError] = useState<string | null>(null);
   const asLeftFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Optional frequency-response step (inserted between raw data and analysis when
-  // step1.add_frequency_response is checked). Pure client-side — no /analyze round-trip.
-  const [freqSettings, setFreqSettings] = useState<FrequencyResponseSettings>({
-    frequency_unit: "Hz",
-    amplitude_active: true,
-    amplitude_type: "dB",
-    amplitude_unit: "",
-    phase_active: false,
-    phase_unit: "°",
-  });
-  const [freqInputMode, setFreqInputMode] = useState<"manual" | "csv">("manual");
-  const [freqPoints, setFreqPoints] = useState<FrequencyResponseRow[]>([
-    { frequency: "", amplitude: "", phase: "" },
-    { frequency: "", amplitude: "", phase: "" },
+  // Step 2 alternative: data_entry_mode="frequency_response" — a sweep of
+  // (frequency, reference, measured[, offset]) points. freqBaselineIndex
+  // selects which row (by its position in freqRows) the sensitivity/deviation
+  // shown on every point — and the saved gain — are computed against; it's
+  // edited on Step 3 (the dropdown is sourced from Step 2's own frequencies)
+  // but lives here since it's part of the same sweep as freqRows/freqSettings.
+  const [freqRows, setFreqRows] = useState<FreqRow[]>([
+    { frequency: "", reference: "", measured: "", offset: "" },
+    { frequency: "", reference: "", measured: "", offset: "" },
   ]);
+  const [freqSettings, setFreqSettings] = useState<FreqSweepSettings>(() => {
+    const ch = profile.sensor_channels[0];
+    return {
+      frequency_unit: "Hz",
+      reference_unit: ch?.unit ?? "",
+      measured_unit: ch?.output_signal_unit ?? ch?.unit ?? "",
+      amplitude_type: "dB",
+      offset_enabled: false,
+      offset_unit: "°",
+    };
+  });
+  const [freqBaselineIndex, setFreqBaselineIndex] = useState<number>(0);
+  const [freqInputMode, setFreqInputMode] = useState<"manual" | "csv">("manual");
   const [freqCsvError, setFreqCsvError] = useState<string | null>(null);
   const freqFileInputRef = useRef<HTMLInputElement>(null);
+  const [freqAnalysisResult, setFreqAnalysisResult] = useState<AnalyzeFrequencyResponseResponse | null>(null);
+  const [freqAnalyzing, setFreqAnalyzing] = useState(false);
+  const [freqAnalyzeError, setFreqAnalyzeError] = useState<string | null>(null);
 
   // Step 3: analysis
   const [analyzeParams, setAnalyzeParams] = useState<AnalyzeParams>({
@@ -829,10 +833,33 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   const validAsFoundPoints = validRefPoints(asFoundPoints);
   const validAsLeftPoints = validRefPoints(asLeftPoints);
 
+  const validFreqRows = freqRows.filter(
+    (r) => r.frequency.trim() !== "" && r.reference.trim() !== "" && r.measured.trim() !== "" &&
+      !isNaN(parseFloat(r.frequency)) && !isNaN(parseFloat(r.reference)) && !isNaN(parseFloat(r.measured))
+  );
+  // sweep_index = the row's position in freqRows (matches freqBaselineIndex
+  // and what handleSave sends) — assigned before filtering out blank/invalid
+  // rows so it stays stable as the user edits other rows.
+  function freqAnalyzePoints() {
+    return freqRows
+      .map((r, sweep_index) => ({ r, sweep_index }))
+      .filter(({ r }) =>
+        r.frequency.trim() !== "" && r.reference.trim() !== "" && r.measured.trim() !== "" &&
+        !isNaN(parseFloat(r.frequency)) && !isNaN(parseFloat(r.reference)) && !isNaN(parseFloat(r.measured))
+      )
+      .map(({ r, sweep_index }) => ({
+        sweep_index,
+        frequency_value: parseFloat(r.frequency),
+        reference_value: parseFloat(r.reference),
+        measured_value: parseFloat(r.measured),
+      }));
+  }
+
   const step2Valid =
     isModelDirect ? manualCoeffValid
     : isRefVsIndicated ? validPoints.length >= 2
     : isRefVsAsFoundAsLeft ? (validAsFoundPoints.length >= 2 && validAsLeftPoints.length >= 2)
+    : isFrequencyResponse ? validFreqRows.length >= 2
     : validPoints.length >= 2;
 
   // Whether the final step's analysis has produced a result that's actually
@@ -857,15 +884,11 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
       // Same reasoning as model_direct above — the fitted formula's resolved
       // value always comes from the server.
       ? (analysisResult?.resolved_custom_formula != null && !analyzing)
+    : isFrequencyResponse
+      ? (freqAnalysisResult != null && !freqAnalyzing)
     : (analysisResult != null && !analyzing);
 
-  // When frequency response is enabled, it becomes step 3 and analysis moves to step 4;
-  // otherwise the wizard is unchanged (analysis stays at step 3).
-  const lastStep = step1.add_frequency_response ? 4 : 3;
-  const validFreqRows = freqPoints.filter(
-    (p) => p.frequency.trim() !== "" && !isNaN(parseFloat(p.frequency))
-  );
-  const freqResponseValid = !step1.add_frequency_response || validFreqRows.length >= 2;
+  const lastStep = 3;
 
   // Pre-fill the sensor nominal accuracy input from the channel's manufacturer
   // spec whenever the selected channel changes; still freely editable per
@@ -1260,6 +1283,49 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [step, lastStep, isRefVsAsFoundAsLeft, isAfalSkipFit, validAsFoundPoints, validAsLeftPoints, referenceUnit, measuredUnit, analyzeParams, selectedChannel, afalUncertainty, afalBudget, afalToleranceOverrideNum, afalCurveFitMethod, afalCustomFormulaTemplate, afalCustomFormulaError, referenceStandardAuto]);
 
+  // data_entry_mode="frequency_response": live sensitivity preview — no
+  // transference function to fit, just measured/reference ratios, so this is
+  // a much lighter call than the other modes' /analyze but shares the same
+  // debounce/dedupe-by-key mechanism (debounceRef/lastAnalysisKeyRef).
+  useEffect(() => {
+    if (step !== lastStep || !isFrequencyResponse) return;
+    const points = freqAnalyzePoints();
+    if (points.length < 2) return;
+    if (!points.some((p) => p.sweep_index === freqBaselineIndex)) return;
+
+    const key = JSON.stringify({ mode: "frequency_response", points, freqBaselineIndex });
+    if (key === lastAnalysisKeyRef.current) return;
+    lastAnalysisKeyRef.current = key;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setFreqAnalyzing(true);
+      setFreqAnalyzeError(null);
+      try {
+        const result = await analyzeFrequencyResponse({ points, baseline_sweep_index: freqBaselineIndex });
+        setFreqAnalysisResult(result);
+      } catch (e: unknown) {
+        setFreqAnalyzeError(e instanceof Error ? e.message : "Analysis failed");
+      } finally {
+        setFreqAnalyzing(false);
+      }
+    }, 400);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, lastStep, isFrequencyResponse, freqRows, freqBaselineIndex]);
+
+  // Keep freqBaselineIndex pointed at a valid row (e.g. after the row it was
+  // on is deleted, or on first entering enough valid rows to pick from).
+  useEffect(() => {
+    if (!isFrequencyResponse) return;
+    const indices = freqAnalyzePoints().map((p) => p.sweep_index);
+    if (indices.length > 0 && !indices.includes(freqBaselineIndex)) {
+      setFreqBaselineIndex(indices[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFrequencyResponse, freqRows, freqBaselineIndex]);
+
   // ---------------------------------------------------------------------------
   // CSV parsing
   // ---------------------------------------------------------------------------
@@ -1350,43 +1416,46 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     reader.readAsText(file);
   }
 
-  function parseFrequencyCSV(text: string) {
+  // data_entry_mode="frequency_response": Frequency/Reference/Measured
+  // required, Offset optional (present only when freqSettings.offset_enabled
+  // — a row missing it just gets a null phase_value, same as any other
+  // optional field elsewhere in the wizard).
+  function parseFreqCSV(text: string) {
     const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2) { setFreqCsvError(t("csvNeedHeaderAndRow")); return; }
 
     const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
     const freqIdx = header.findIndex((h) => h.includes("freq"));
+    const refIdx = header.findIndex((h) => h.includes("ref"));
+    const measIdx = header.findIndex((h) => h.includes("meas") || h.includes("actual"));
+    const offsetIdx = header.findIndex((h) => h.includes("offset") || h.includes("phase"));
     if (freqIdx === -1) { setFreqCsvError(t("csvMissingFrequencyColumn")); return; }
+    if (refIdx === -1 || measIdx === -1) { setFreqCsvError(t("csvMissingRefMeasuredColumns")); return; }
 
-    const ampIdx = freqSettings.amplitude_active ? header.findIndex((h) => h.includes("amp")) : -1;
-    if (freqSettings.amplitude_active && ampIdx === -1) { setFreqCsvError(t("csvMissingAmplitudeColumn")); return; }
-
-    const phaseIdx = freqSettings.phase_active ? header.findIndex((h) => h.includes("phase")) : -1;
-    if (freqSettings.phase_active && phaseIdx === -1) { setFreqCsvError(t("csvMissingPhaseColumn")); return; }
-
-    const rows: FrequencyResponseRow[] = [];
+    const rows: FreqRow[] = [];
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(",");
       const freq = cols[freqIdx]?.trim() ?? "";
-      if (freq === "") continue;
-      if (isNaN(parseFloat(freq))) {
+      const ref = cols[refIdx]?.trim() ?? "";
+      const meas = cols[measIdx]?.trim() ?? "";
+      const offset = offsetIdx !== -1 ? (cols[offsetIdx]?.trim() ?? "") : "";
+      if (freq === "" || ref === "" || meas === "") continue;
+      if (isNaN(parseFloat(freq)) || isNaN(parseFloat(ref)) || isNaN(parseFloat(meas))) {
         setFreqCsvError(t("csvNonNumericRow", { row: i + 1 }));
         continue;
       }
-      const amp = ampIdx >= 0 ? (cols[ampIdx]?.trim() ?? "") : "";
-      const phase = phaseIdx >= 0 ? (cols[phaseIdx]?.trim() ?? "") : "";
-      rows.push({ frequency: freq, amplitude: amp, phase: phase });
+      rows.push({ frequency: freq, reference: ref, measured: meas, offset });
     }
 
-    if (rows.length < 2) { setFreqCsvError(t("csvNeedTwoRows")); return; }
+    if (rows.length < 2) { setFreqCsvError(t("csvNeedTwoValidRows")); return; }
     setFreqCsvError(null);
-    setFreqPoints(rows);
-    setFreqInputMode("manual"); // switch to manual to allow editing
+    setFreqRows(rows);
+    setFreqInputMode("manual");
   }
 
   function handleFreqFileUpload(file: File) {
     const reader = new FileReader();
-    reader.onload = (e) => parseFrequencyCSV((e.target?.result as string) ?? "");
+    reader.onload = (e) => parseFreqCSV((e.target?.result as string) ?? "");
     reader.readAsText(file);
   }
 
@@ -1397,7 +1466,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   async function handleSave() {
     if (!canSave) return;
     const mode = dataEntryMode;
-    if (!freqResponseValid) return;
 
     setSaving(true);
     setSaveError(null);
@@ -1447,6 +1515,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
       let asFoundPointsBody: CalibrationPointInline[] = [];
       let asFoundSummaryBody: AnalyzeResponse | null = null;
       let polyStats: Partial<CalibrationCreateBody> = {};
+      let frequencyResponsePointsBody: FrequencyResponsePointInline[] = [];
 
       // Store point values and ranges in the display units used for
       // analysis, matching the exact shape run_analysis returned — for
@@ -1531,6 +1600,29 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
           asFoundPointsBody = pointsFromResult(asFoundResult).map((p) => ({ ...p, point_role: "as_found" }));
           asFoundSummaryBody = asFoundResult;
         }
+      } else if (mode === "frequency_response") {
+        // No raw_data-style points/polyStats here — poly_order=1/
+        // poly_coefficients=[gain, 0]/range_min/range_max are all computed
+        // server-side from frequency_response_points (see
+        // repositories/calibration.py's create_atomic), same reasoning as
+        // every other mode's server-computed result: never trust a
+        // client-sent gain.
+        frequencyResponsePointsBody = freqRows
+          .map((r, sweep_index) => ({ r, sweep_index }))
+          .filter(({ r }) =>
+            r.frequency.trim() !== "" && r.reference.trim() !== "" && r.measured.trim() !== "" &&
+            !isNaN(parseFloat(r.frequency)) && !isNaN(parseFloat(r.reference)) && !isNaN(parseFloat(r.measured))
+          )
+          .map(({ r, sweep_index }) => ({
+            sweep_index,
+            frequency_value: parseFloat(r.frequency),
+            reference_value: parseFloat(r.reference),
+            measured_value: parseFloat(r.measured),
+            offset_value: freqSettings.offset_enabled && r.offset.trim() !== "" && !isNaN(parseFloat(r.offset))
+              ? parseFloat(r.offset) : null,
+            reference_unit: freqSettings.reference_unit,
+            measured_unit: freqSettings.measured_unit,
+          }));
       } else if (analysisResult) {
         // raw_data and reference_vs_indicated share this exact branch —
         // both are `analysisResult`-driven (the latter via skip_fit=true).
@@ -1543,20 +1635,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
       const intervalMonths = parseInt(step1.calibration_interval) || 12;
       const dueDate = new Date(calDate);
       dueDate.setMonth(dueDate.getMonth() + intervalMonths);
-
-      // Frequency response points/settings — stored exactly as entered (see
-      // frequency-response-chart.ts's doc comment for the same rationale applied
-      // to the live chart).
-      const freqRespPoints: FrequencyResponsePointInline[] = step1.add_frequency_response
-        ? validFreqRows.map((p, i) => ({
-            sweep_index: i,
-            frequency_value: parseFloat(p.frequency),
-            amplitude_value: freqSettings.amplitude_active && p.amplitude.trim() !== "" && !isNaN(parseFloat(p.amplitude))
-              ? parseFloat(p.amplitude) : null,
-            phase_value: freqSettings.phase_active && p.phase.trim() !== "" && !isNaN(parseFloat(p.phase))
-              ? parseFloat(p.phase) : null,
-          }))
-        : [];
 
       const body: CalibrationCreateBody = {
         asset_id: assetId,
@@ -1585,12 +1663,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         pressure: pressurePa,
         pressure_uncertainty: pressureUncertaintyPa,
         notes: step1.notes || null,
-        has_frequency_response: step1.add_frequency_response,
-        frequency_response_frequency_unit: step1.add_frequency_response ? freqSettings.frequency_unit : null,
-        frequency_response_amplitude_type: step1.add_frequency_response && freqSettings.amplitude_active ? freqSettings.amplitude_type : null,
-        frequency_response_amplitude_unit: step1.add_frequency_response && freqSettings.amplitude_active && freqSettings.amplitude_type !== "dB" ? freqSettings.amplitude_unit : null,
-        frequency_response_phase_unit: step1.add_frequency_response && freqSettings.phase_active ? freqSettings.phase_unit : null,
-        frequency_response_points: freqRespPoints,
         data_entry_mode: mode,
         model_type: mode === "model_direct" ? manualCoeff.model_type
           : mode === "raw_data" ? (curveFitMethod === "polynomial_fit" ? "polynomial" : curveFitMethod)
@@ -1614,6 +1686,14 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
             : null,
         as_found_points: asFoundPointsBody,
         as_found_summary: asFoundSummaryBody,
+        ...(mode === "frequency_response" ? {
+          frequency_response_frequency_unit: freqSettings.frequency_unit,
+          frequency_response_amplitude_type: freqSettings.amplitude_type,
+          frequency_response_offset_enabled: freqSettings.offset_enabled,
+          frequency_response_offset_unit: freqSettings.offset_enabled ? freqSettings.offset_unit : null,
+          frequency_response_baseline_sweep_index: freqBaselineIndex,
+          frequency_response_points: frequencyResponsePointsBody,
+        } : {}),
         ...polyStats,
         points,
       };
@@ -1660,7 +1740,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
               steps={[
                 t("stepGeneralInfo"),
                 t("stepInputData"),
-                ...(step1.add_frequency_response ? [t("stepFrequencyResponse")] : []),
                 isModelDirect ? t("stepReview") : t("stepAnalysis"),
               ]}
             />
@@ -1743,6 +1822,20 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 onAsLeftFileUpload={handleAsLeftFileUpload}
                 asLeftFileInputRef={asLeftFileInputRef}
               />
+            ) : isFrequencyResponse ? (
+              <FrequencyResponseDataStep
+                rows={freqRows}
+                onRowsChange={setFreqRows}
+                settings={freqSettings}
+                onSettingsChange={setFreqSettings}
+                physicalQuantity={selectedChannel?.physical_quantity ?? ""}
+                outputType={selectedChannel?.output_type ?? null}
+                inputMode={freqInputMode}
+                onInputModeChange={setFreqInputMode}
+                csvError={freqCsvError}
+                onFileUpload={handleFreqFileUpload}
+                fileInputRef={freqFileInputRef}
+              />
             ) : (
               <Step2
                 points={rawPoints}
@@ -1762,20 +1855,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 measuredUnitIsPhysical={isRefVsIndicated}
               />
             )
-          )}
-          {step === 3 && step1.add_frequency_response && (
-            <FrequencyResponseStep
-              settings={freqSettings}
-              onSettingsChange={setFreqSettings}
-              points={freqPoints}
-              onPointsChange={setFreqPoints}
-              physicalQuantity={selectedChannel?.physical_quantity ?? ""}
-              inputMode={freqInputMode}
-              onInputModeChange={setFreqInputMode}
-              csvError={freqCsvError}
-              onFileUpload={handleFreqFileUpload}
-              fileInputRef={freqFileInputRef}
-            />
           )}
           {step === lastStep && (
             isRefVsAsFoundAsLeft ? (
@@ -1801,6 +1880,16 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 referenceStandardAuto={referenceStandardAuto}
                 referenceStandardAutoLoading={referenceStandardAutoLoading}
                 referenceAssetName={referenceAssets.find((a) => a.id === step1.internal_reference_asset_id)?.name ?? null}
+              />
+            ) : isFrequencyResponse ? (
+              <FrequencyResponseResults
+                rows={freqRows}
+                settings={freqSettings}
+                baselineIndex={freqBaselineIndex}
+                onBaselineIndexChange={setFreqBaselineIndex}
+                result={freqAnalysisResult}
+                analyzing={freqAnalyzing}
+                analyzeError={freqAnalyzeError}
               />
             ) : (
               <Step3
@@ -1851,7 +1940,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         <div className="flex items-center justify-between px-6 py-4 border-t border-og-border shrink-0">
           <button
             type="button"
-            onClick={() => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3 | 4)}
+            onClick={() => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3)}
             disabled={step === 1}
             className="px-4 py-2 text-sm font-medium rounded-lg border border-og-border-md text-og-text hover:bg-og-surface-alt disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
@@ -1864,13 +1953,11 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
               onClick={() => {
                 if (step === 1 && !step1Valid) return;
                 if (step === 2 && !step2Valid) return;
-                if (step === 3 && step1.add_frequency_response && !freqResponseValid) return;
-                setStep((s) => (s + 1) as 2 | 3 | 4);
+                setStep((s) => (s + 1) as 2 | 3);
               }}
               disabled={
                 (step === 1 && !step1Valid) ||
-                (step === 2 && !step2Valid) ||
-                (step === 3 && step1.add_frequency_response && !freqResponseValid)
+                (step === 2 && !step2Valid)
               }
               className="px-5 py-2 text-sm font-medium rounded-lg bg-og-action hover:bg-og-action-dark text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
@@ -1880,7 +1967,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
             <button
               type="button"
               onClick={() => setConfirmOpen(true)}
-              disabled={!canSave || !freqResponseValid}
+              disabled={!canSave}
               className="px-5 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t("confirmAndSave")}
@@ -2268,18 +2355,6 @@ function Step1({
         </div>
       )}
 
-      {/* Add frequency response, right above Environmental Conditions / Notes
-          — the Input data method itself is now chosen on Step 2. */}
-      <div className="pt-1">
-        <WCheckbox
-          label={t("addFrequencyResponseLabel")}
-          checked={state.add_frequency_response}
-          onChange={set("add_frequency_response") as (v: boolean) => void}
-          tooltip={t("tips.addFrequencyResponse")}
-          docsHref={WIZARD_DOCS_LINKS.add_frequency_response}
-        />
-      </div>
-
       {/* Environmental conditions */}
       <div className="border border-og-border rounded-lg overflow-hidden">
         <button
@@ -2400,6 +2475,7 @@ function InputMethodPicker({
     { value: "reference_vs_measured", label: t("inputMethodMeasuredTitle") },
     { value: "reference_vs_indicated", label: t("inputMethodIndicatedTitle") },
     ...(showModel ? [{ value: "model_direct" as InputMethod, label: t("inputMethodModelTitle") }] : []),
+    { value: "frequency_response", label: t("inputMethodFrequencyResponseTitle") },
   ];
 
   return (
@@ -2770,286 +2846,6 @@ function AsFoundAsLeftStep({
 }
 
 // ---------------------------------------------------------------------------
-// Optional step — Frequency Response (inserted between Step 2 and Step 3 when
-// step1.add_frequency_response is checked). Left: data entry. Right: live chart —
-// pure client-side plotting of the entered points, no /analyze round-trip.
-// ---------------------------------------------------------------------------
-
-function FrequencyResponseStep({
-  settings, onSettingsChange, points, onPointsChange, physicalQuantity,
-  inputMode, onInputModeChange, csvError, onFileUpload, fileInputRef,
-}: {
-  settings: FrequencyResponseSettings;
-  onSettingsChange: (s: FrequencyResponseSettings) => void;
-  points: FrequencyResponseRow[];
-  onPointsChange: (p: FrequencyResponseRow[]) => void;
-  physicalQuantity: string;
-  inputMode: "manual" | "csv";
-  onInputModeChange: (m: "manual" | "csv") => void;
-  csvError: string | null;
-  onFileUpload: (f: File) => void;
-  fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
-}) {
-  const t = useTranslations("assets.wizard");
-  const [dragging, setDragging] = useState(false);
-
-  const amplitudeUnitOpts = getUnitsForQuantity(physicalQuantity);
-
-  function updatePoint(idx: number, key: keyof FrequencyResponseRow, val: string) {
-    const next = [...points];
-    next[idx] = { ...next[idx], [key]: val };
-    onPointsChange(next);
-  }
-
-  function addRow() {
-    onPointsChange([...points, { frequency: "", amplitude: "", phase: "" }]);
-  }
-
-  function removeRow(idx: number) {
-    if (points.length <= 2) return;
-    onPointsChange(points.filter((_, i) => i !== idx));
-  }
-
-  const chartPoints = points
-    .map((p, i) => ({
-      sweep_index: i,
-      frequency_value: parseFloat(p.frequency),
-      amplitude_value: settings.amplitude_active && p.amplitude.trim() !== "" && !isNaN(parseFloat(p.amplitude))
-        ? parseFloat(p.amplitude) : null,
-      phase_value: settings.phase_active && p.phase.trim() !== "" && !isNaN(parseFloat(p.phase))
-        ? parseFloat(p.phase) : null,
-    }))
-    .filter((p) => !isNaN(p.frequency_value));
-
-  return (
-    <div className="p-6 grid grid-cols-2 gap-6">
-      {/* Left: data entry */}
-      <div className="space-y-4 min-w-0">
-        {/* First row: frequency / amplitude / phase settings */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <WLabel text={t("frequency")} required />
-            <select
-              value={settings.frequency_unit}
-              onChange={(e) => onSettingsChange({ ...settings, frequency_unit: e.target.value })}
-              className={`${IB} ${IB_OK} py-1.5`}
-            >
-              {FREQUENCY_OUTPUT_UNITS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <WCheckbox
-              label={t("amplitude")}
-              checked={settings.amplitude_active}
-              onChange={(v) => onSettingsChange({ ...settings, amplitude_active: v })}
-            />
-            {settings.amplitude_active && (
-              <>
-                <select
-                  value={settings.amplitude_type}
-                  onChange={(e) => onSettingsChange({ ...settings, amplitude_type: e.target.value })}
-                  className={`${IB} ${IB_OK} py-1.5`}
-                >
-                  {AMPLITUDE_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-                {settings.amplitude_type !== "dB" && (
-                  <select
-                    value={settings.amplitude_unit}
-                    onChange={(e) => onSettingsChange({ ...settings, amplitude_unit: e.target.value })}
-                    className={`${IB} ${IB_OK} py-1.5`}
-                  >
-                    <option value="">{t("selectUnit")}</option>
-                    {amplitudeUnitOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                )}
-              </>
-            )}
-          </div>
-          <div className="space-y-2">
-            <WCheckbox
-              label={t("phase")}
-              checked={settings.phase_active}
-              onChange={(v) => onSettingsChange({ ...settings, phase_active: v })}
-            />
-            {settings.phase_active && (
-              <select
-                value={settings.phase_unit}
-                onChange={(e) => onSettingsChange({ ...settings, phase_unit: e.target.value })}
-                className={`${IB} ${IB_OK} py-1.5`}
-              >
-                {PHASE_UNIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            )}
-          </div>
-        </div>
-
-        {/* Mode tabs */}
-        <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit">
-          {(["manual", "csv"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => onInputModeChange(m)}
-              className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-                inputMode === m ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
-              }`}
-            >
-              {m === "manual" ? t("manualEntry") : t("csvUpload")}
-            </button>
-          ))}
-        </div>
-
-        {inputMode === "manual" && (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-og-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-og-border bg-og-surface-alt">
-                    <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium w-10">#</th>
-                    <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
-                      {t("frequency")} <span className="font-mono ml-1">({settings.frequency_unit})</span>
-                    </th>
-                    {settings.amplitude_active && (
-                      <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
-                        {t("amplitude")}
-                        <span className="font-mono ml-1">
-                          ({settings.amplitude_type === "dB" ? "dB" : (settings.amplitude_unit || "—")})
-                        </span>
-                      </th>
-                    )}
-                    {settings.phase_active && (
-                      <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
-                        {t("phase")} <span className="font-mono ml-1">({settings.phase_unit})</span>
-                      </th>
-                    )}
-                    <th className="w-10" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {points.map((pt, i) => (
-                    <tr key={i} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
-                      <td className="px-3 py-1.5 text-xs text-gray-400 font-mono">{i + 1}</td>
-                      <td className="px-2 py-1">
-                        <input
-                          type="number"
-                          value={pt.frequency}
-                          onChange={(e) => updatePoint(i, "frequency", e.target.value)}
-                          step="any"
-                          className={`${IB} ${IB_OK} py-1.5`}
-                          placeholder="0.0"
-                        />
-                      </td>
-                      {settings.amplitude_active && (
-                        <td className="px-2 py-1">
-                          <input
-                            type="number"
-                            value={pt.amplitude}
-                            onChange={(e) => updatePoint(i, "amplitude", e.target.value)}
-                            step="any"
-                            className={`${IB} ${IB_OK} py-1.5`}
-                            placeholder="0.0"
-                          />
-                        </td>
-                      )}
-                      {settings.phase_active && (
-                        <td className="px-2 py-1">
-                          <input
-                            type="number"
-                            value={pt.phase}
-                            onChange={(e) => updatePoint(i, "phase", e.target.value)}
-                            step="any"
-                            className={`${IB} ${IB_OK} py-1.5`}
-                            placeholder="0.0"
-                          />
-                        </td>
-                      )}
-                      <td className="px-2 py-1">
-                        <button
-                          type="button"
-                          onClick={() => removeRow(i)}
-                          disabled={points.length <= 2}
-                          className="p-1 rounded-sm text-gray-400 hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <TrashIcon size={13} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <button
-              type="button"
-              onClick={addRow}
-              className="flex items-center gap-1.5 text-xs text-og-accent hover:text-og-accent-dark font-medium transition-colors"
-            >
-              <PlusIcon size={13} />
-              {t("addRow")}
-            </button>
-          </div>
-        )}
-
-        {inputMode === "csv" && (
-          <div className="space-y-3">
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragging(false);
-                const file = e.dataTransfer.files[0];
-                if (file) onFileUpload(file);
-              }}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-                dragging ? "border-og-accent bg-og-accent/5" : "border-og-border-md hover:border-og-accent hover:bg-og-surface-alt"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.txt"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileUpload(f); }}
-              />
-              <p className="text-sm font-medium text-og-text">{t("dropCsvHint")}</p>
-              <p className="text-xs text-gray-400 mt-1">{t("freqCsvFormatHint")}</p>
-            </div>
-            {csvError && (
-              <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-900/30">
-                <WarningIcon size={13} className="shrink-0 mt-0.5" />
-                {csvError}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Right: live chart */}
-      <div className="min-w-0">
-        {hasPlottableFrequencyPoints(chartPoints) ? (
-          <FrequencyResponseChart
-            points={chartPoints}
-            frequencyUnit={settings.frequency_unit}
-            amplitudeActive={settings.amplitude_active}
-            amplitudeType={settings.amplitude_active ? settings.amplitude_type : null}
-            amplitudeUnit={settings.amplitude_active && settings.amplitude_type !== "dB" ? settings.amplitude_unit : null}
-            phaseActive={settings.phase_active}
-            phaseUnit={settings.phase_active ? settings.phase_unit : null}
-            height={420}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full min-h-[300px] rounded-xl border border-og-border bg-og-surface-alt text-sm text-gray-400">
-            {t("waitingForFrequencyData")}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Step 2 alternative — manual coefficient entry ("coefficients only")
 // ---------------------------------------------------------------------------
 
@@ -3246,6 +3042,247 @@ function ManualCoefficientsStep({
       </div>
 
       <p className="text-xs text-gray-400">{t("modelDirectUncertaintyHint")}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step 2 alternative — data_entry_mode="frequency_response": a sweep of
+// (frequency, reference, measured[, offset]) rows, for sensors that deliver a
+// signal in the frequency domain (accelerometers, microphones, etc). One
+// settings row above a manual/CSV table reusing Step2's table UX.
+// ---------------------------------------------------------------------------
+
+function FrequencyResponseDataStep({
+  rows, onRowsChange, settings, onSettingsChange, physicalQuantity, outputType,
+  inputMode, onInputModeChange, csvError, onFileUpload, fileInputRef,
+}: {
+  rows: FreqRow[];
+  onRowsChange: (r: FreqRow[]) => void;
+  settings: FreqSweepSettings;
+  onSettingsChange: (s: FreqSweepSettings) => void;
+  physicalQuantity: string;
+  outputType: string | null;
+  inputMode: "manual" | "csv";
+  onInputModeChange: (m: "manual" | "csv") => void;
+  csvError: string | null;
+  onFileUpload: (f: File) => void;
+  fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
+}) {
+  const t = useTranslations("assets.wizard");
+  const [dragging, setDragging] = useState(false);
+
+  const refUnitOpts = (() => {
+    const base = getUnitsForQuantity(physicalQuantity);
+    const opts = base.length > 0 ? base : [{ value: settings.reference_unit, label: settings.reference_unit }];
+    return opts.some((u) => u.value === settings.reference_unit) ? opts : [{ value: settings.reference_unit, label: settings.reference_unit }, ...opts];
+  })();
+  const measUnitOpts = (() => {
+    const fromOutput = outputType ? (getOutputUnits(outputType, physicalQuantity) ?? []) : [];
+    const base = fromOutput.length > 0 ? fromOutput : getUnitsForQuantity(physicalQuantity);
+    const opts = base.length > 0 ? base : [{ value: settings.measured_unit, label: settings.measured_unit }];
+    return opts.some((u) => u.value === settings.measured_unit) ? opts : [{ value: settings.measured_unit, label: settings.measured_unit }, ...opts];
+  })();
+  const offsetUnitOpts = getUnitsForQuantity("angle");
+
+  function updateRow(idx: number, key: keyof FreqRow, val: string) {
+    const next = [...rows];
+    next[idx] = { ...next[idx], [key]: val };
+    onRowsChange(next);
+  }
+
+  function addRow() {
+    onRowsChange([...rows, { frequency: "", reference: "", measured: "", offset: "" }]);
+  }
+
+  function removeRow(idx: number) {
+    if (rows.length <= 2) return;
+    onRowsChange(rows.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <p className="text-xs text-gray-400">{t("frequencyResponseHint")}</p>
+
+      {/* Settings row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="flex flex-col gap-1">
+          <WLabel text={t("frequencyUnit")} />
+          <select
+            value={settings.frequency_unit}
+            onChange={(e) => onSettingsChange({ ...settings, frequency_unit: e.target.value })}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            {FREQUENCY_OUTPUT_UNITS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <WLabel text={t("referenceUnit")} />
+          <select
+            value={settings.reference_unit}
+            onChange={(e) => onSettingsChange({ ...settings, reference_unit: e.target.value })}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            {refUnitOpts.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <WLabel text={t("measuredUnit")} />
+          <select
+            value={settings.measured_unit}
+            onChange={(e) => onSettingsChange({ ...settings, measured_unit: e.target.value })}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            {measUnitOpts.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <WLabel text={t("amplitudeType")} />
+          <select
+            value={settings.amplitude_type}
+            onChange={(e) => onSettingsChange({ ...settings, amplitude_type: e.target.value })}
+            className={`${IB} ${IB_OK} py-1.5`}
+          >
+            {AMPLITUDE_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Offset toggle */}
+      <div className="flex items-center gap-3">
+        <ToggleSwitch checked={settings.offset_enabled} onChange={(v) => onSettingsChange({ ...settings, offset_enabled: v })} size="sm" />
+        <span className="text-xs text-og-text">{t("addOffsetLabel")}</span>
+        {settings.offset_enabled && (
+          <select
+            value={settings.offset_unit}
+            onChange={(e) => onSettingsChange({ ...settings, offset_unit: e.target.value })}
+            className={`${IB} ${IB_OK} py-1 w-24 text-xs`}
+          >
+            {offsetUnitOpts.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Mode tabs */}
+      <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit">
+        {(["manual", "csv"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onInputModeChange(m)}
+            className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+              inputMode === m ? "bg-og-surface text-og-text shadow-xs" : "text-gray-400 hover:text-og-text"
+            }`}
+          >
+            {m === "manual" ? t("manualEntry") : t("csvUpload")}
+          </button>
+        ))}
+      </div>
+
+      {inputMode === "manual" && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-og-border overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-og-border bg-og-surface-alt">
+                  <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium w-10">#</th>
+                  <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
+                    {t("frequency")} {settings.frequency_unit && <span className="font-mono ml-1">({settings.frequency_unit})</span>}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
+                    {t("reference")} {settings.reference_unit && <span className="font-mono ml-1">({settings.reference_unit})</span>}
+                  </th>
+                  <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
+                    {t("measured")} {settings.measured_unit && <span className="font-mono ml-1">({settings.measured_unit})</span>}
+                  </th>
+                  {settings.offset_enabled && (
+                    <th className="text-left px-3 py-2 text-xs text-gray-400 font-medium">
+                      {t("phase")} {settings.offset_unit && <span className="font-mono ml-1">({settings.offset_unit})</span>}
+                    </th>
+                  )}
+                  <th className="w-10" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={i} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
+                    <td className="px-3 py-1.5 text-xs text-gray-400 font-mono">{i + 1}</td>
+                    <td className="px-2 py-1">
+                      <input type="number" value={row.frequency} onChange={(e) => updateRow(i, "frequency", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input type="number" value={row.reference} onChange={(e) => updateRow(i, "reference", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input type="number" value={row.measured} onChange={(e) => updateRow(i, "measured", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                    </td>
+                    {settings.offset_enabled && (
+                      <td className="px-2 py-1">
+                        <input type="number" value={row.offset} onChange={(e) => updateRow(i, "offset", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                      </td>
+                    )}
+                    <td className="px-2 py-1">
+                      <button type="button" onClick={() => removeRow(i)} disabled={rows.length <= 2} className="p-1 rounded-sm text-gray-400 hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed transition-colors">
+                        <TrashIcon size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <button type="button" onClick={addRow} className="flex items-center gap-1.5 text-xs text-og-accent hover:text-og-accent-dark font-medium transition-colors">
+            <PlusIcon size={13} />
+            {t("addRow")}
+          </button>
+        </div>
+      )}
+
+      {inputMode === "csv" && (
+        <div className="space-y-3">
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const file = e.dataTransfer.files[0];
+              if (file) onFileUpload(file);
+            }}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+              dragging ? "border-og-accent bg-og-accent/5" : "border-og-border-md hover:border-og-accent hover:bg-og-surface-alt"
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.txt"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileUpload(f); }}
+            />
+            <p className="text-sm font-medium text-og-text">{t("dropCsvHint")}</p>
+            <p className="text-xs text-gray-400 mt-1">{t("freqCsvFormatHint")}</p>
+          </div>
+          {csvError && (
+            <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-900/30">
+              <WarningIcon size={13} className="shrink-0 mt-0.5" />
+              {csvError}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -4596,6 +4633,177 @@ function AsFoundAsLeftResults({
         {sideColumn(t("asFoundData"), asFoundResult, false)}
         {sideColumn(t("asLeftData"), asLeftResult, true)}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step 3 alternative — data_entry_mode="frequency_response": a single
+// sensitivity-model panel (baseline-frequency dropdown, sourced from Step 2's
+// own rows, + the computed sensitivity) instead of the raw_data Method/
+// Uncertainty/Conformity 3-panel stack — this mode has no curve fit, no
+// uncertainty budget, no conformity check (see
+// services/frequency_response_analysis.py). A sensitivity-vs-frequency chart
+// is always shown; a phase-vs-frequency chart is stacked below it only when
+// the offset switch is enabled.
+// ---------------------------------------------------------------------------
+
+function FrequencyResponseResults({
+  rows, settings, baselineIndex, onBaselineIndexChange, result, analyzing, analyzeError,
+}: {
+  rows: FreqRow[];
+  settings: FreqSweepSettings;
+  baselineIndex: number;
+  onBaselineIndexChange: (i: number) => void;
+  result: AnalyzeFrequencyResponseResponse | null;
+  analyzing: boolean;
+  analyzeError: string | null;
+}) {
+  const t = useTranslations("assets.wizard");
+
+  const baselineOptions = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) =>
+      row.frequency.trim() !== "" && !isNaN(parseFloat(row.frequency)) &&
+      row.reference.trim() !== "" && !isNaN(parseFloat(row.reference)) &&
+      row.measured.trim() !== "" && !isNaN(parseFloat(row.measured))
+    );
+
+  const sensitivityPoints: SensitivityChartPoint[] = result
+    ? result.points.map((p) => ({
+        sweep_index: p.sweep_index,
+        frequency_value: p.frequency_value,
+        sensitivity_value: p.sensitivity_value,
+        deviation_pct: p.deviation_pct,
+      }))
+    : [];
+
+  const phasePoints: PhaseChartPoint[] = (settings.offset_enabled && result)
+    ? result.points
+        .map((p): PhaseChartPoint | null => {
+          const row = rows[p.sweep_index];
+          const offsetNum = row ? parseFloat(row.offset) : NaN;
+          return isNaN(offsetNum) ? null : { sweep_index: p.sweep_index, frequency_value: p.frequency_value, offset_value: offsetNum };
+        })
+        .filter((p): p is PhaseChartPoint => p !== null)
+    : [];
+
+  const sensitivityUnit = `${settings.measured_unit}/${settings.reference_unit}`;
+
+  return (
+    <div className="p-5 space-y-4">
+      {analyzing && (
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span className="w-3.5 h-3.5 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+          {t("analyzing")}
+        </div>
+      )}
+
+      {analyzeError && (
+        <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-200 dark:border-red-900/30">
+          <WarningIcon size={13} />
+          {analyzeError}
+        </div>
+      )}
+
+      {/* Sensitivity model panel — full width */}
+      <div className="w-full space-y-3 rounded-xl border border-og-border bg-og-surface-alt p-4">
+        <p className="text-xs font-semibold text-og-text">{t("sensitivityModel")}</p>
+        <div className="flex items-end gap-6 flex-wrap">
+          <div className="flex flex-col gap-1 w-64">
+            <WLabel text={t("baselineFrequency")} tooltip={t("tips.baselineFrequency")} docsHref={WIZARD_DOCS_LINKS.frequency_response_baseline} />
+            <select
+              value={baselineIndex}
+              onChange={(e) => onBaselineIndexChange(parseInt(e.target.value))}
+              className={`${IB} ${IB_OK} py-1.5`}
+            >
+              {baselineOptions.map(({ row, index }) => (
+                <option key={index} value={index}>
+                  {row.frequency} {settings.frequency_unit} (#{index + 1})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {result ? (
+            <div className="flex flex-col gap-1">
+              <WLabel text={t("sensitivityResult")} tooltip={t("tips.sensitivityResult")} docsHref={WIZARD_DOCS_LINKS.frequency_response_sensitivity} />
+              <p className="text-lg font-semibold text-og-text font-mono">
+                {fmtN(result.gain, 6)} <span className="text-xs text-gray-400 font-normal">{sensitivityUnit}</span>
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center px-3 h-9 rounded-lg border border-og-border bg-og-surface text-xs text-gray-400">
+              {t("waitingForAnalysis")}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {result && (
+        <div className="flex gap-4 min-h-0">
+          {/* Left: sweep table — wide enough for every column to read cleanly,
+              chart(s) take the remainder */}
+          <div className="w-[62%] shrink-0 rounded-xl border border-og-border overflow-auto" style={{ maxHeight: 420 }}>
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-og-border bg-og-surface-alt">
+                  {[
+                    "#",
+                    `${t("frequency")}${settings.frequency_unit ? ` (${settings.frequency_unit})` : ""}`,
+                    `${t("reference")}${settings.reference_unit ? ` (${settings.reference_unit})` : ""}`,
+                    `${t("measured")}${settings.measured_unit ? ` (${settings.measured_unit})` : ""}`,
+                    `${t("sensitivityResult")}${sensitivityUnit ? ` (${sensitivityUnit})` : ""}`,
+                    t("deviationPercent"),
+                  ].map((h) => (
+                    <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {result.points.map((p) => (
+                  <tr
+                    key={p.sweep_index}
+                    className={`border-b border-og-border last:border-b-0 transition-colors ${
+                      p.sweep_index === baselineIndex ? "bg-og-accent/10" : "hover:bg-og-surface-alt/50"
+                    }`}
+                  >
+                    <td className="px-3 py-1.5 font-mono text-gray-400 whitespace-nowrap">{p.sweep_index + 1}</td>
+                    <td className="px-3 py-1.5 font-mono text-og-text whitespace-nowrap">{fmtN(p.frequency_value)}</td>
+                    <td className="px-3 py-1.5 font-mono text-og-text whitespace-nowrap">{fmtN(p.reference_value)}</td>
+                    <td className="px-3 py-1.5 font-mono text-og-text whitespace-nowrap">{fmtN(p.measured_value)}</td>
+                    <td className="px-3 py-1.5 font-mono text-og-text whitespace-nowrap">{fmtN(p.sensitivity_value)}</td>
+                    <td className="px-3 py-1.5 font-mono text-gray-400 whitespace-nowrap">{fmtN(p.deviation_pct, 3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Right: sensitivity chart (always) + phase chart (offset only) */}
+          <div className="flex-1 min-w-0 flex flex-col gap-3">
+            <SensitivityChart
+              className="flex-1 min-h-0"
+              points={sensitivityPoints}
+              frequencyUnit={settings.frequency_unit}
+              sensitivityUnit={sensitivityUnit}
+              frequencyLabel={t("frequency")}
+              sensitivityLabel={t("sensitivityResult")}
+              deviationLabel={t("deviationPercent")}
+            />
+            {settings.offset_enabled && (
+              <PhaseChart
+                className="flex-1 min-h-0"
+                points={phasePoints}
+                frequencyUnit={settings.frequency_unit}
+                offsetUnit={settings.offset_unit}
+                frequencyLabel={t("frequency")}
+                phaseLabel={t("phase")}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

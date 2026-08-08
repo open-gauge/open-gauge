@@ -4,7 +4,7 @@ description: Enregistrer une calibration lorsque les données n'arrivent pas sou
 ---
 
 L'étape 2 de l'assistant de calibration, **Données d'entrée**, s'ouvre sur un menu déroulant
-proposant trois façons de livrer les données d'une calibration ; le reste de l'étape s'affiche
+proposant quatre façons de livrer les données d'une calibration ; le reste de l'étape s'affiche
 immédiatement en dessous selon la sélection actuelle :
 
 - **Référence par rapport à Mesuré** — l'option par défaut : des paires de points (référence,
@@ -17,12 +17,18 @@ immédiatement en dessous selon la sélection actuelle :
   calibration lui-même, sans aucun point de données brutes. Proposé uniquement pour les
   calibrations OEM/Laboratoire externe accrédité/Actif du client, et pas du tout proposé lorsque
   l'Objectif de la calibration est Après réparation.
+- **Réponse en fréquence** — un balayage de points fréquence/référence/mesuré pour les capteurs
+  qui délivrent un signal dans le domaine fréquentiel (accéléromètres, microphones, etc.), réduit
+  à un rapport de sensibilité à une fréquence de référence choisie. Proposé pour tout Objectif de
+  calibration, y compris Après réparation. Voir
+  [Réponse en fréquence](./frequency-response.fr.mdx) pour le détail complet.
 
 Si l'**Objectif de la calibration** de l'enregistrement est **Après réparation**, Référence par
 rapport à Mesuré et Référence par rapport à Indiqué se scindent toutes deux automatiquement en
 deux comparaisons au lieu d'une seule — voir ci-dessous. Modèle n'est pas du tout proposé pour
 Après réparation, car un modèle unique indiqué par le laboratoire ne peut pas représenter une
-comparaison avant/après.
+comparaison avant/après ; Réponse en fréquence n'est pas affectée par l'objectif et n'a pas de
+scission telle-que-trouvée/telle-que-laissée.
 
 ## Modèle (fonction de transfert) [#model-transfer-function]
 

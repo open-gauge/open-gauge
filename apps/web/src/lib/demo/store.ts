@@ -18,7 +18,7 @@
 import rawFixture from "./fixtures/data.json";
 import type { AssetListItem, AssetProfile, ChannelListItem } from "@/types/asset";
 import type { AuditLogEntry } from "@/types/audit_log";
-import type { CalibrationPoint, CalibrationRecord } from "@/types/calibration";
+import type { CalibrationPoint, CalibrationRecord, FrequencyResponsePoint } from "@/types/calibration";
 import type { AssetHealthResponse } from "@/types/health";
 import type { LocationItem } from "@/types/location";
 import type { Procedure } from "@/types/procedure";
@@ -132,6 +132,7 @@ interface DemoState {
   signatures?: Record<string, UserSignature>;
   notifications?: StoredNotification[];
   notificationPreferences?: StoredNotificationPreference[];
+  calibrationFrequencyResponsePoints?: Record<string, FrequencyResponsePoint[]>;
 }
 
 const FIXTURE = rawFixture as unknown as DemoState;
@@ -399,15 +400,27 @@ export function getCalibrationPoints(calId: string, pointRole: "primary" | "as_f
   return (getState().calibrationPoints[calId] ?? []).filter((p) => (p.point_role ?? "primary") === pointRole);
 }
 
+export function getCalibrationFrequencyResponsePoints(calId: string): FrequencyResponsePoint[] {
+  return getState().calibrationFrequencyResponsePoints?.[calId] ?? [];
+}
+
 export function nextCalibrationVersion(assetId: string): number {
   const versions = getState().calibrations.filter((c) => c.asset_id === assetId).map((c) => c.calibration_version);
   return versions.length ? Math.max(...versions) + 1 : 1;
 }
 
-export function addCalibration(record: CalibrationRecord, points: CalibrationPoint[]): CalibrationRecord {
+export function addCalibration(
+  record: CalibrationRecord,
+  points: CalibrationPoint[],
+  frequencyResponsePoints: FrequencyResponsePoint[] = [],
+): CalibrationRecord {
   const state = getState();
   state.calibrations.push(record);
   state.calibrationPoints[record.id] = points;
+  if (frequencyResponsePoints.length) {
+    state.calibrationFrequencyResponsePoints ??= {};
+    state.calibrationFrequencyResponsePoints[record.id] = frequencyResponsePoints;
+  }
   const asset = state.assets.find((a) => a.id === record.asset_id);
   if (asset) recomputeAssetDerived(asset);
   persist();

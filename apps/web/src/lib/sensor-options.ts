@@ -662,6 +662,16 @@ export const OUTPUT_TYPE_OPTIONS = [
   { value: "ratiometric", label: "Ratiometric" },
 ];
 
+/** How the reference/measured amplitude of a data_entry_mode="frequency_response"
+ * sweep point is expressed — shared by both the reference standard and the
+ * sensor's output at every frequency in the sweep. */
+export const AMPLITUDE_TYPE_OPTIONS = [
+  { value: "dB", label: "dB" },
+  { value: "RMS", label: "RMS" },
+  { value: "peak_to_peak", label: "Peak-to-Peak" },
+  { value: "peak", label: "Peak" },
+];
+
 export const ACCURACY_TYPE_OPTIONS = [
   { value: "percent_of_reading", label: "% of Reading" },
   { value: "percent_of_full_scale", label: "% of Full Scale" },

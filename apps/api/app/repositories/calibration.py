@@ -5,9 +5,10 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..models.calibration import Calibration
-from ..models.calibration_frequency_point import CalibrationFrequencyPoint
+from ..models.calibration_frequency_response_point import CalibrationFrequencyResponsePoint
 from ..models.calibration_point import CalibrationData
 from ..schemas.calibration import CalibrationCreate
+from ..services.frequency_response_analysis import compute_sensitivity_sweep
 
 
 def get_by_id(db: Session, cal_id: uuid.UUID) -> Calibration | None:
@@ -113,16 +114,16 @@ def reject_calibration(
 
 def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -> Calibration:
     """
-    Atomically create a Calibration and all CalibrationData/CalibrationFrequencyPoint
-    rows in one transaction. Sets calibration_data_id to the first *primary* data
-    point created (if any) — as_found_points (data_entry_mode=
+    Atomically create a Calibration and all CalibrationData rows in one transaction.
+    Sets calibration_data_id to the first *primary* data point created (if any) —
+    as_found_points (data_entry_mode=
     reference_vs_as_found_as_left's diagnostic pre-repair dataset) are written with
     point_role="as_found" and never become calibration_data_id, since as-left is
     this record's primary/official result (see Calibration.as_found_summary).
     A calibration with a checked_by_user_id starts "pending_approval"
     (is_active=False) instead of "valid" — it isn't used until the checker decides.
     """
-    data = body.model_dump(exclude={"points", "frequency_response_points", "as_found_points"})
+    data = body.model_dump(exclude={"points", "as_found_points", "frequency_response_points"})
     cal_status = "pending_approval" if body.checked_by_user_id else "valid"
     cal = Calibration(created_by=created_by, status=cal_status, is_active=(cal_status == "valid"), **data)
     db.add(cal)
@@ -147,10 +148,38 @@ def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -
         pt_data["point_role"] = "as_found"
         db.add(CalibrationData(**pt_data))
 
-    for fp in body.frequency_response_points:
-        fp_data = fp.model_dump()
-        fp_data["calibration_id"] = cal.id
-        db.add(CalibrationFrequencyPoint(**fp_data))
+    if body.frequency_response_points:
+        # Sensitivity/deviation are computed server-side — never trusted from
+        # the client — same as every other mode's run_analysis-derived fields.
+        result = compute_sensitivity_sweep(
+            sweep_indices=[p.sweep_index for p in body.frequency_response_points],
+            frequency_values=[p.frequency_value for p in body.frequency_response_points],
+            reference_values=[p.reference_value for p in body.frequency_response_points],
+            measured_values=[p.measured_value for p in body.frequency_response_points],
+            baseline_sweep_index=body.frequency_response_baseline_sweep_index,
+        )
+        cal.poly_order = 1
+        cal.poly_coefficients = result.poly_coefficients
+        cal.range_min = result.range_min
+        cal.range_max = result.range_max
+
+        by_index = {p.sweep_index: p for p in body.frequency_response_points}
+        for computed in result.points:
+            src = by_index[computed.sweep_index]
+            db.add(
+                CalibrationFrequencyResponsePoint(
+                    calibration_id=cal.id,
+                    sweep_index=computed.sweep_index,
+                    frequency_value=computed.frequency_value,
+                    reference_value=computed.reference_value,
+                    measured_value=computed.measured_value,
+                    offset_value=src.offset_value,
+                    reference_unit=src.reference_unit,
+                    measured_unit=src.measured_unit,
+                    sensitivity_value=computed.sensitivity_value,
+                    deviation_pct=computed.deviation_pct,
+                )
+            )
 
     db.commit()
     db.refresh(cal)
@@ -179,10 +208,12 @@ def list_points(
     )
 
 
-def list_frequency_points(db: Session, calibration_id: uuid.UUID) -> list[CalibrationFrequencyPoint]:
+def list_frequency_response_points(
+    db: Session, calibration_id: uuid.UUID
+) -> list[CalibrationFrequencyResponsePoint]:
     return (
-        db.query(CalibrationFrequencyPoint)
-        .filter(CalibrationFrequencyPoint.calibration_id == calibration_id)
-        .order_by(CalibrationFrequencyPoint.sweep_index)
+        db.query(CalibrationFrequencyResponsePoint)
+        .filter(CalibrationFrequencyResponsePoint.calibration_id == calibration_id)
+        .order_by(CalibrationFrequencyResponsePoint.sweep_index)
         .all()
     )

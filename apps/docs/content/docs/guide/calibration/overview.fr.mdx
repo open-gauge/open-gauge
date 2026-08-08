@@ -39,9 +39,12 @@ Démarrez une calibration depuis la voie d'un actif. L'assistant comporte trois 
 2. **Données d'entrée** — commence par un sélecteur de méthode : **Référence par rapport à
    Mesuré** (par défaut — paires de points (référence, mesuré) par rapport au signal de sortie
    brut de la voie, ajustées à une courbe), **Référence par rapport à Indiqué** (référence par
-   rapport à une lecture de grandeur physique déjà convertie, sans ajustement de courbe), ou
+   rapport à une lecture de grandeur physique déjà convertie, sans ajustement de courbe),
    **Modèle (fonction de transfert)** (un modèle indiqué par le laboratoire, sans aucun point de
-   données brutes — non proposé lorsque l'Objectif de la calibration est Après réparation). Voir
+   données brutes — non proposé lorsque l'Objectif de la calibration est Après réparation), ou
+   **Réponse en fréquence** (un balayage de points fréquence/référence/mesuré pour les capteurs
+   qui délivrent un signal dans le domaine fréquentiel — proposé pour tout objectif, y compris
+   Après réparation — voir [Réponse en fréquence](./frequency-response.mdx)). Voir
    [Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx) pour le
    détail complet, y compris comment Après réparation scinde automatiquement Référence par
    rapport à Mesuré/Indiqué en données telles que trouvées/telles que laissées. Voir
@@ -78,9 +81,11 @@ flowchart TD
     Picker1 --> RVM["Référence par rapport à Mesuré"]
     Picker1 --> RVI["Référence par rapport à Indiqué"]
     Picker1 --> Model["Modèle (fonction de transfert)<br/>seulement si type = OEM / Lab. externe / Actif client"]
+    Picker1 --> FreqResp["Réponse en fréquence"]
 
     Picker2 --> RVMAfter["Référence par rapport à Mesuré"]
     Picker2 --> RVIAfter["Référence par rapport à Indiqué"]
+    Picker2 --> FreqRespAfter["Réponse en fréquence"]
 
     RVM --> RVMEntry["Saisir des points (référence, mesuré)<br/>choisir Ajustement polynomial / Table de correspondance / Formule personnalisée"]
     RVMEntry --> RVMOut(["Résultat : équation ajustée,<br/>R² / RMSE / erreur maximale,<br/>budget d'incertitude, conformité"])
@@ -96,10 +101,16 @@ flowchart TD
     AfalEntry --> AfalCalc["Étape 3 : un seul panneau partagé de<br/>Calcul d'incertitude + critère de conformité ;<br/>Référence par rapport à Mesuré ajuste chaque<br/>côté indépendamment, Référence par rapport à<br/>Indiqué compare les résidus de chaque côté"]
     AfalCalc --> AfalOut(["Résultat : Telle Que Laissée = résultat<br/>officiel (date d'échéance, approbation,<br/>onglet Santé) — Telle Que Trouvée =<br/>diagnostic en lecture seule uniquement"])
 
+    FreqResp --> FreqEntry["Saisir un balayage fréquence/référence/<br/>mesuré (+ déphasage optionnel)"]
+    FreqRespAfter --> FreqEntry
+    FreqEntry --> FreqCalc["Étape 3 : choisir une fréquence de<br/>référence — sensibilité = mesuré/<br/>référence à cette fréquence"]
+    FreqCalc --> FreqOut(["Résultat : valeur de sensibilité,<br/>graphiques sensibilité/phase vs.<br/>fréquence — pas de budget<br/>d'incertitude, pas de conformité"])
+
     RVMOut --> Save["Confirmer et enregistrer"]
     RVIOut --> Save
     ModelOut --> Save
     AfalOut --> Save
+    FreqOut --> Save
 ```
 
 Tous les chemins convergent vers le même [flux d'approbation](#approval-workflow) et la même
@@ -107,9 +118,11 @@ Tous les chemins convergent vers le même [flux d'approbation](#approval-workflo
 purement diagnostique est enregistré exactement comme un résultat conforme, et chaque chemin
 produit une calibration normale avec certificat. Ce qui diffère entre les chemins, c'est
 uniquement *ce qui a pu être calculé* : Référence par rapport à Indiqué et Modèle ne produisent
-jamais d'équation de courbe ajustée (il n'y a pas de fonction de transfert connue à ajuster), et
-le côté telle que trouvée d'Après réparation n'alimente jamais la date d'échéance ni l'onglet
-Santé, quelle que soit la méthode de base utilisée. Voir
+jamais d'équation de courbe ajustée (il n'y a pas de fonction de transfert connue à ajuster), le
+côté telle que trouvée d'Après réparation n'alimente jamais la date d'échéance ni l'onglet Santé
+quelle que soit la méthode de base utilisée, et Réponse en fréquence n'a ni budget d'incertitude
+ni vérification de conformité — son résultat est un rapport de sensibilité, pas une déclaration
+conforme/non conforme. Voir
 [Modes alternatifs de saisie des données de calibration](./coefficients-only.mdx) pour le détail
 complet, champ par champ, de chaque branche ci-dessus.
 

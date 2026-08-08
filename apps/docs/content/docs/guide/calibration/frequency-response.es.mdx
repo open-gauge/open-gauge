@@ -1,67 +1,81 @@
 ---
 title: Respuesta en frecuencia
-description: Registrar un barrido opcional de amplitud/fase en función de la frecuencia junto a una calibración, y revisarlo más tarde.
+description: Calibración de sensores que entregan una señal en el dominio de la frecuencia — acelerómetros, micrófonos y similares — como un barrido de sensibilidad en lugar de una curva ajustada.
 ---
 
-Para sensores AC/dinámicos — transductores de presión, acelerómetros, micrófonos — una
-caracterización completa suele necesitar algo más que la curva estática de referencia frente a
-medido que captura el resto del asistente: un barrido de **respuesta en frecuencia** que muestra
-cómo cambia la respuesta de amplitud y/o fase del sensor con la frecuencia de la señal (una
-caracterización clásica de tipo diagrama de Bode). Open Gauge admite registrar esto como un
-complemento opcional de cualquier calibración.
+Algunos sensores no tienen una única relación referencia-frente-a-medido como sí la tiene un
+sensor de presión o temperatura — la salida de un acelerómetro o un micrófono depende de la
+*frecuencia* a la que se excita, además de la amplitud. **Respuesta en frecuencia** es el cuarto
+**Método de entrada de datos** del paso 2, junto a
+[Referencia frente a Medido, Referencia frente a Indicado y Modelo](./coefficients-only.es.mdx):
+en lugar de ajustar una curva, se sintoniza una plataforma y el sensor juntos en varias
+frecuencias y se registra la amplitud de salida del patrón de referencia y del sensor en cada
+una. Está disponible para cualquier **Propósito de calibración**, incluido Tras reparación — este
+modo no tiene división en datos tal-como-se-encontró/tal-como-se-dejó.
 
-## Cómo habilitarla
+## Entrada del barrido (Paso 2) [#sweep-entry]
 
-Marca **"Agregar respuesta en frecuencia"** en el Paso 1 del asistente de calibración. Esto
-inserta un nuevo paso entre el paso de datos en bruto y el paso de análisis, dividido en un área
-de ingreso de datos (izquierda) y un gráfico en vivo (derecha) que se actualiza mientras escribes
-— no hay ida y vuelta al servidor para este gráfico, ya que un barrido de frecuencia no se ajusta
-ni se analiza como la curva de referencia frente a medido, simplemente se grafica directamente.
+Al elegir **Respuesta en frecuencia** se sustituye la tabla de puntos habitual por una fila de
+ajustes y una tabla de barrido:
 
-## Los campos del paso
+- **Unidad de frecuencia** — Hz, kHz, MHz o GHz, aplicada a cada fila.
+- **Unidad de referencia** — la unidad de magnitud física del patrón de referencia (p. ej. g,
+  Pa), tomada de la magnitud física del canal.
+- **Unidad medida** — la unidad de salida propia del sensor (p. ej. mV, V), tomada del tipo de
+  señal de salida del canal.
+- **Tipo de amplitud** — dB, RMS, Pico a pico o Pico, aplicado tanto a la amplitud de referencia
+  como a la medida en cada frecuencia (ambas deben leerse de la misma forma para que la relación
+  de sensibilidad de abajo tenga sentido).
+- **Incluir desfase de fase** — desactivado por defecto. Al activarlo aparece una columna
+  adicional de Desfase en la tabla y se puede seleccionar una unidad angular (° o rad) — úsalo si
+  tu configuración de referencia/medición también te proporciona la diferencia de fase entre la
+  referencia y la salida del sensor en cada frecuencia.
 
-- **Frecuencia** — siempre se captura, con un menú desplegable de unidad (Hz, kHz, MHz, GHz).
-- **Amplitud** — un interruptor para incluirla. Cuando está activado, elige un **tipo de
-  amplitud** (dB, RMS, Pico a pico, o Pico) y, para cualquier caso distinto de dB, una **unidad
-  física** tomada de la propia lista de unidades del canal del sensor (las mismas unidades que
-  usan los menús desplegables de referencia/medido del asistente).
-- **Fase** — un interruptor para incluirla, con un menú desplegable de unidad (grados o
-  radianes).
+Debajo, la misma tabla de entrada manual o carga de CSV que usan el resto de modos, con una fila
+por punto de frecuencia: **Frecuencia**, **Referencia**, **Medido** y **Desfase** (solo se
+muestra si está activado). Se requieren al menos 2 filas. La carga de CSV espera una fila de
+encabezado con columnas llamadas `Frequency`, `Reference`, `Measured` y, opcionalmente, `Offset`.
 
-Puedes habilitar amplitud, fase, o ambas — la tabla de datos y el gráfico se adaptan para mostrar
-solo las columnas/trazas de lo que esté activo. Ingresa los puntos manualmente (agrega/elimina
-filas libremente) o sube un CSV — se requiere una fila de encabezado, con una columna que
-contenga "frequency" (obligatoria) y, cuando estén activas, "amplitude" y/o "phase" (coincidencia
-por subcadena sin distinguir mayúsculas/minúsculas, así que tanto "Freq (Hz)" como "Amplitude
-(dB)" funcionan).
+## Modelo de sensibilidad (Paso 3) [#sensitivity]
 
-## El gráfico
+Aquí no hay ninguna curva que ajustar — el paso 3 muestra un solo panel en lugar de la habitual
+pila de Método/[Incertidumbre](./uncertainty-budget.es.mdx)/[Conformidad](./decision-rules.es.mdx):
 
-- La frecuencia siempre es el eje x. El gráfico cambia automáticamente a un eje x
-  **logarítmico** cuando el barrido abarca al menos una década (`max/min ≥ 10`) — la convención
-  estándar una vez que un barrido cubre un rango lo bastante amplio — y permanece lineal en caso
-  contrario.
-- Con solo amplitud o solo fase activa, es un gráfico de líneas de un solo eje, con los puntos
-  conectados por líneas, con valores exactos al pasar el cursor.
-- Con ambas activas, el gráfico se divide en un **diseño apilado estilo Bode**: la traza de
-  amplitud arriba, la traza de fase justo debajo, compartiendo un solo eje de frecuencia — no
-  superpuestas, ya que la amplitud y la fase tienen escalas muy diferentes.
+- **Frecuencia de referencia** [#baseline-frequency] — un desplegable con todas las frecuencias
+  introducidas en el paso 2. Elige aquella contra la que se especifica normalmente la salida de
+  tu sensor (a menudo la frecuencia nominal del sensor, p. ej. 100 Hz para muchos acelerómetros).
+- **Sensibilidad** — la relación entre las amplitudes medida y de referencia *en la frecuencia de
+  referencia elegida* (medido ÷ referencia), en unidad de salida por unidad de magnitud física
+  (p. ej. mV/g). Este es el resultado guardado de la calibración.
 
-El mismo componente de gráfico (y la misma lógica de escala logarítmica/diseño) se usa tanto en
-el paso de edición en vivo del asistente como al revisar una calibración guardada, así que lo que
-ves mientras ingresas datos es exactamente lo que verás después.
+La sensibilidad de cada otra frecuencia se expresa como una **desviación %** respecto a la
+frecuencia de referencia: para un punto con sensibilidad *s* y sensibilidad de referencia *g*,
+desviación = (*s* − *g*) / *g* × 100. La desviación del propio punto de referencia es siempre
+exactamente 0.
 
-## Almacenamiento
+Dos gráficos, ambos con marcadores redondos unidos por líneas, un eje x que cambia
+automáticamente a escala logarítmica cuando el barrido abarca una década o más (lineal en caso
+contrario), y tooltips al pasar el cursor:
 
-Al igual que los propios puntos de datos en bruto de la calibración, los valores de
-frecuencia/amplitud/fase se almacenan **exactamente como se ingresaron** — en las unidades que
-hayas elegido para el barrido — sin convertirlos a SI. Las unidades elegidas y el tipo de
-amplitud forman parte de lo que se está registrando, no son una elección de visualización
-incidental.
+- **Sensibilidad frente a frecuencia** — siempre visible. Al pasar el cursor sobre un punto se
+  muestra su frecuencia, sensibilidad y desviación % respecto a la frecuencia de referencia.
+- **Fase frente a frecuencia** — solo se muestra cuando **Incluir desfase de fase** está
+  activado, apilado debajo del gráfico de sensibilidad. Solo se representan los puntos con un
+  desfase introducido.
 
-## Revisarla más tarde
+Como este modo no tiene presupuesto de incertidumbre ni regla de decisión, una calibración de
+Respuesta en frecuencia nunca se marca como no conforme — no hay ninguna especificación con la
+que compararla. El registro guardado sigue pasando por el
+[flujo de aprobación](./overview.es.mdx#approval-workflow) habitual si se asignó un revisor
+**Revisado por**, y descarga un certificado como cualquier otra calibración.
 
-Una vez que se guarda una calibración con datos de respuesta en frecuencia, su vista de detalle
-en la página del activo muestra un panel **"Respuesta en frecuencia"** (junto al panel existente
-de "Condiciones y notas") con el gráfico interactivo y la tabla de datos completa uno al lado del
-otro — el zoom, el desplazamiento y el cursor funcionan igual ahí que en el asistente.
+## Representación interna
+
+Open Gauge almacena el modelo de cada calibración de la misma forma independientemente del modo,
+así que un resultado de Respuesta en frecuencia se representa internamente como un polinomio de
+orden 1 sin desfase — una ganancia pura: `poly_order = 1`, `poly_coefficients = [gain, 0]` (grado
+más alto primero, la misma convención que usa cualquier otro modelo ajustado). No se ejecuta
+ninguna regresión real; el "ajuste" es simplemente la propia relación medido/referencia de la
+frecuencia de referencia. El barrido completo — la amplitud de referencia/medida de cada
+frecuencia, el desfase opcional y la sensibilidad/desviación calculadas — se almacena por
+separado, una fila por punto, y es lo que alimenta los dos gráficos anteriores.

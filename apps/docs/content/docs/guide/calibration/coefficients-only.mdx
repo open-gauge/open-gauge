@@ -3,7 +3,7 @@ title: Alternative calibration data-entry modes
 description: Recording a calibration when the data doesn't come as the usual reference-vs-measured-signal points — a lab-supplied model, or an already-converted reference-vs-value comparison.
 ---
 
-Step 2 of the calibration wizard, **Input data**, opens with a dropdown offering three ways of
+Step 2 of the calibration wizard, **Input data**, opens with a dropdown offering four ways of
 delivering a calibration's data; the rest of the step renders immediately below according to the
 current selection:
 
@@ -16,11 +16,17 @@ current selection:
 - **Model (transfer function)** — the lab/manufacturer certificate states the calibration model
   itself, with no raw data points at all. Only offered for OEM/External Accredited Lab/Customer's
   Asset calibrations, and not offered at all when Calibration purpose is After Repair.
+- **Frequency response** — a sweep of frequency/reference/measured points for sensors that
+  deliver a signal in the frequency domain (accelerometers, microphones, etc), reduced to a
+  sensitivity ratio at a chosen baseline frequency. Offered for every Calibration purpose,
+  including After Repair. See [Frequency response](./frequency-response.mdx) for the full
+  breakdown.
 
 If the calibration's **Calibration purpose** is **After Repair**, Reference vs Measured and
 Reference vs Indicated both automatically split into two comparisons instead of one — see below.
 Model isn't offered at all for After Repair, since a single lab-stated model can't represent a
-before/after comparison.
+before/after comparison; Frequency response is unaffected by purpose and has no as-found/as-left
+split.
 
 ## Model (transfer function) [#model-transfer-function]
 

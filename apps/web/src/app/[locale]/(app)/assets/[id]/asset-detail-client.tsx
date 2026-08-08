@@ -14,7 +14,7 @@ import {
   getAssetFiles,
   getAssetProfile,
   getCalibrationCertificateUrl,
-  getCalibrationFrequencyPoints,
+  getCalibrationFrequencyResponsePoints,
   getCalibrationPoints,
   listCalibrationCertificateTemplates,
   listLocations,
@@ -29,13 +29,14 @@ import {
   voidCalibration,
   type CertificateTemplateOption,
 } from "@/services/asset.service";
-import { FrequencyResponseChart } from "@/components/frequency-response-chart";
 import { ResidualsChart } from "@/components/residuals-chart";
+import { SensitivityChart } from "@/components/sensitivity-chart";
+import { PhaseChart } from "@/components/phase-chart";
 import { useAuth } from "@/lib/auth-context";
 import { listMyOrganizations } from "@/services/organization.service";
 import type { OrganizationListItem } from "@/types/organization";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
-import type { CalibrationPoint, CalibrationRecord, FrequencyResponsePoint } from "@/types/calibration";
+import type { CalibrationPoint, CalibrationRecord, FrequencyResponsePoint, PhaseChartPoint, SensitivityChartPoint } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 import {
@@ -1415,7 +1416,12 @@ function formatCalEquation(coefficients: number[], degree: number): string {
 // variant of reference_vs_as_found_as_left has real coefficients, same as
 // raw_data) *and* for a Lookup Table (its "model" is its own points, not a
 // formula — see hasEvaluableCurve below for the broader curve-rendering check).
+// Also false for frequency_response: its poly_coefficients=[gain, 0] is an
+// internal representation only (see services/frequency_response_analysis.py)
+// — it gets its own dedicated results panel below instead of the generic
+// equation card.
 function hasModel(cal: CalibrationRecord): boolean {
+  if (cal.data_entry_mode === "frequency_response") return false;
   return (cal.poly_coefficients != null && cal.poly_coefficients.length > 0)
     || (cal.model_type === "custom_formula" && !!cal.custom_formula);
 }
@@ -1438,6 +1444,84 @@ function calResidualColor(residual: number, maxAbsResidual: number): string {
   const t = Math.min(Math.abs(residual) / (maxAbsResidual || 1), 1);
   const hue = Math.round(120 * (1 - t));
   return `hsl(${hue},80%,42%)`;
+}
+
+// data_entry_mode="frequency_response"'s own results panel — a single
+// sensitivity-model readout (baseline frequency + the resulting gain, from
+// poly_coefficients[0]) instead of the generic equation card/stats panel,
+// plus a sensitivity-vs-frequency chart (always) and a phase-vs-frequency
+// chart (only when the sweep has offset data) — mirrors the wizard's own
+// Step 3 FrequencyResponseResults panel.
+function FrequencyResponseDetailPanel({
+  cal, points, loading,
+}: {
+  cal: CalibrationRecord;
+  points: FrequencyResponsePoint[];
+  loading: boolean;
+}) {
+  const t = useTranslations("assets.calibration");
+  const baselinePoint = points.find((p) => p.sweep_index === cal.frequency_response_baseline_sweep_index);
+  const gain = cal.poly_coefficients?.[0] ?? null;
+  const sensitivityUnit = `${points[0]?.measured_unit ?? ""}/${points[0]?.reference_unit ?? ""}`;
+  const frequencyUnit = cal.frequency_response_frequency_unit ?? "";
+
+  const sensitivityPoints: SensitivityChartPoint[] = points
+    .filter((p) => p.sensitivity_value != null && p.deviation_pct != null)
+    .map((p) => ({
+      sweep_index: p.sweep_index,
+      frequency_value: p.frequency_value,
+      sensitivity_value: p.sensitivity_value!,
+      deviation_pct: p.deviation_pct!,
+    }));
+  const phasePoints: PhaseChartPoint[] = points
+    .filter((p) => p.offset_value != null)
+    .map((p) => ({ sweep_index: p.sweep_index, frequency_value: p.frequency_value, offset_value: p.offset_value! }));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center text-gray-400 gap-2 text-xs py-10">
+        <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+        {t("loadingData")}
+      </div>
+    );
+  }
+
+  if (points.length === 0) {
+    return <p className="text-sm text-gray-400">{t("noPointData")}</p>;
+  }
+
+  return (
+    <div className="flex gap-4 min-h-0">
+      <div className="w-[38%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{t("sensitivityModel")}</p>
+        {baselinePoint && (
+          <StatRow label={t("baselineFrequency")} value={`${fmtNum(baselinePoint.frequency_value)}${frequencyUnit ? ` ${frequencyUnit}` : ""}`} />
+        )}
+        <StatRow label={t("sensitivityResult")} value={gain != null ? `${fmtNum(gain, 6)} ${sensitivityUnit}` : "—"} />
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col gap-3">
+        <SensitivityChart
+          className="flex-1 min-h-0"
+          points={sensitivityPoints}
+          frequencyUnit={frequencyUnit}
+          sensitivityUnit={sensitivityUnit}
+          frequencyLabel={t("frequency")}
+          sensitivityLabel={t("sensitivityResult")}
+          deviationLabel={t("deviationPercent")}
+        />
+        {cal.frequency_response_offset_enabled && (
+          <PhaseChart
+            className="flex-1 min-h-0"
+            points={phasePoints}
+            frequencyUnit={frequencyUnit}
+            offsetUnit={cal.frequency_response_offset_unit ?? ""}
+            frequencyLabel={t("frequency")}
+            phaseLabel={t("phase")}
+          />
+        )}
+      </div>
+    </div>
+  );
 }
 
 // Chart panel — renders Plotly scatter + fit curve from saved CalibrationPoint data
@@ -1673,16 +1757,14 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
       .finally(() => setLoadingPoints(false));
   }, [selectedCal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Separate from the points fetch above so calibrations without a frequency
-  // response never issue the extra request.
   useEffect(() => {
-    if (!selectedCal?.has_frequency_response) { setFreqPoints([]); return; }
+    if (!selectedCal || selectedCal.data_entry_mode !== "frequency_response") { setFreqPoints([]); return; }
     setLoadingFreqPoints(true);
-    getCalibrationFrequencyPoints(selectedCal.id)
+    getCalibrationFrequencyResponsePoints(selectedCal.id)
       .then(setFreqPoints)
       .catch(() => setFreqPoints([]))
       .finally(() => setLoadingFreqPoints(false));
-  }, [selectedCal?.id, selectedCal?.has_frequency_response]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedCal?.id, selectedCal?.data_entry_mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const locId = selectedCal?.calibration_location_id;
@@ -2035,11 +2117,24 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             </div>
           )}
 
+          {/* data_entry_mode="frequency_response" gets its own dedicated
+              results panel — no curve fit, no uncertainty budget, no
+              conformity check, just the sensitivity model + charts (see
+              FrequencyResponseDetailPanel below). */}
+          {selectedCal.data_entry_mode === "frequency_response" && (
+            <FrequencyResponseDetailPanel
+              cal={selectedCal}
+              points={freqPoints}
+              loading={loadingFreqPoints}
+            />
+          )}
+
           {/* Stats + chart/table — raw_data needs a real fitted model (or a
               Lookup Table's own points) to have anything to show; the other
               3 modes always have *something* (a declared model, or real
               fit-free residual statistics). */}
-          {(selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
+          {selectedCal.data_entry_mode !== "frequency_response" && (
+          (selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
             <div className="flex gap-4 min-h-0">
               {/* Left: stats panel (40%) */}
               <div className="w-[38%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
@@ -2198,6 +2293,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             </div>
           ) : (
             <p className="text-sm text-gray-400">{t("noPolyModel")}</p>
+          )
           )}
 
           {/* As-found diagnostic panel — data_entry_mode=reference_vs_as_found_as_left
@@ -2289,69 +2385,6 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("notes")}</p>
                   <p className="text-xs text-og-text leading-relaxed">{selectedCal.notes}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Frequency Response */}
-          {selectedCal.has_frequency_response && (
-            <div className="rounded-xl border border-og-border bg-og-surface-alt p-4 space-y-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("frequencyResponse")}</p>
-              {loadingFreqPoints ? (
-                <div className="flex items-center justify-center text-gray-400 gap-2 text-xs py-10">
-                  <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
-                  {t("loadingData")}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <FrequencyResponseChart
-                    points={freqPoints}
-                    frequencyUnit={selectedCal.frequency_response_frequency_unit ?? ""}
-                    amplitudeActive={selectedCal.frequency_response_amplitude_type != null}
-                    amplitudeType={selectedCal.frequency_response_amplitude_type}
-                    amplitudeUnit={selectedCal.frequency_response_amplitude_unit}
-                    phaseActive={selectedCal.frequency_response_phase_unit != null}
-                    phaseUnit={selectedCal.frequency_response_phase_unit}
-                    height={300}
-                  />
-                  <div className="rounded-lg border border-og-border overflow-hidden" style={{ maxHeight: 300, overflowY: "auto" }}>
-                    <table className="w-full text-xs">
-                      <thead className="sticky top-0 z-10">
-                        <tr className="border-b border-og-border bg-og-surface-alt">
-                          <th className="text-left px-3 py-2 text-gray-400 font-medium">#</th>
-                          <th className="text-left px-3 py-2 text-gray-400 font-medium">
-                            {t("frequency")} ({selectedCal.frequency_response_frequency_unit})
-                          </th>
-                          {selectedCal.frequency_response_amplitude_type != null && (
-                            <th className="text-left px-3 py-2 text-gray-400 font-medium">
-                              {t("amplitude")} ({selectedCal.frequency_response_amplitude_type === "dB"
-                                ? "dB" : selectedCal.frequency_response_amplitude_unit})
-                            </th>
-                          )}
-                          {selectedCal.frequency_response_phase_unit != null && (
-                            <th className="text-left px-3 py-2 text-gray-400 font-medium">
-                              {t("phase")} ({selectedCal.frequency_response_phase_unit})
-                            </th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {freqPoints.map((p) => (
-                          <tr key={p.id} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
-                            <td className="px-3 py-1.5 font-mono text-gray-400">{p.sweep_index + 1}</td>
-                            <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.frequency_value)}</td>
-                            {selectedCal.frequency_response_amplitude_type != null && (
-                              <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.amplitude_value)}</td>
-                            )}
-                            {selectedCal.frequency_response_phase_unit != null && (
-                              <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.phase_value)}</td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               )}
             </div>

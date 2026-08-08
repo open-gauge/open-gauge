@@ -4,7 +4,7 @@ description: Registrar una calibración cuando los datos no llegan en la forma h
 ---
 
 El Paso 2 del asistente de calibración, **Datos de entrada**, comienza con un menú desplegable que
-ofrece tres formas de entregar los datos de una calibración; el resto del paso se muestra de
+ofrece cuatro formas de entregar los datos de una calibración; el resto del paso se muestra de
 inmediato debajo según la selección actual:
 
 - **Referencia frente a Medido** — la opción por defecto: pares de puntos (referencia, medido), la
@@ -17,12 +17,18 @@ inmediato debajo según la selección actual:
   propio modelo de calibración, sin ningún punto de dato en bruto. Solo se ofrece para
   calibraciones OEM/Laboratorio externo acreditado/Activo del cliente, y no se ofrece en absoluto
   cuando el Propósito de la calibración es Después de reparación.
+- **Respuesta en frecuencia** — un barrido de puntos frecuencia/referencia/medido para sensores
+  que entregan una señal en el dominio de la frecuencia (acelerómetros, micrófonos, etc.),
+  reducido a una relación de sensibilidad en una frecuencia de referencia elegida. Disponible para
+  cualquier Propósito de calibración, incluido Después de reparación. Consulta
+  [Respuesta en frecuencia](./frequency-response.es.mdx) para el desglose completo.
 
 Si el **Propósito de la calibración** del registro es **Después de reparación**, tanto Referencia
 frente a Medido como Referencia frente a Indicado se dividen automáticamente en dos comparaciones
 en lugar de una — consulta más abajo. Modelo no se ofrece en absoluto para Después de reparación,
 ya que un único modelo indicado por el laboratorio no puede representar una comparación
-antes/después.
+antes/después; Respuesta en frecuencia no se ve afectada por el propósito y no tiene división
+tal-como-se-encontró/tal-como-se-dejó.
 
 ## Modelo (función de transferencia) [#model-transfer-function]
 
