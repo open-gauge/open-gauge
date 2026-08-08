@@ -35,6 +35,7 @@ import type {
   AssetImportResponse,
   ProcedureDetail,
 } from "@/services/asset.service";
+import type { ProcedureImportPreview, ProcedureImportResponse } from "@/services/procedure.service";
 import type { RegisterResult } from "@/services/auth.service";
 import type { LocationCreateBody } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
@@ -445,6 +446,27 @@ route("DELETE", "/api/v1/procedures/:procId/files/:fileId", ({ params }) => {
   store.deleteStoredFile(params[1]);
   return undefined;
 });
+
+route("POST", "/api/v1/procedures/import", () => (({
+  results: [{
+    source_folder: "demo-upload",
+    status: "error",
+    proc_id: null,
+    new_proc_pk: null,
+    error_message: "Procedure import isn't available in this demo — try creating a procedure manually instead.",
+  }],
+} as unknown) as ProcedureImportResponse));
+
+route("POST", "/api/v1/procedures/import/validate", (): ProcedureImportPreview => ({
+  valid: false,
+  error_message: "Procedure import validation isn't available in this demo.",
+  proc_id: null,
+  name: null,
+  physical_quantity: null,
+  version: null,
+  step_count: 0,
+  file_count: 0,
+}));
 
 // ---------------------------------------------------------------------------
 // Calibrations / procedure lookups nested under /calibrations
@@ -1207,7 +1229,10 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
   const req = parse(path, options);
   const file = form.get("file");
 
-  if (req.pathname === "/api/v1/assets/import" || req.pathname === "/api/v1/assets/import/validate") {
+  if (
+    req.pathname === "/api/v1/assets/import" || req.pathname === "/api/v1/assets/import/validate" ||
+    req.pathname === "/api/v1/procedures/import" || req.pathname === "/api/v1/procedures/import/validate"
+  ) {
     return dispatch(req) as T;
   }
 

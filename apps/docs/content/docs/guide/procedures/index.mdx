@@ -44,3 +44,36 @@ An **internal** calibration (see
 followed (`internal_procedure_id`), and that reference is printed on the resulting certificate
 alongside the reference standard used and the environmental conditions recorded — the full
 traceability chain a calibration certificate needs.
+
+## Import & export
+
+Available to **admin** and **superadmin** users only. Any procedure can be exported as a ZIP
+bundle — from the **Export** button next to **+ New Procedure** on the Procedures page to
+bulk-export a selection (a checklist modal lets you pick individual procedures or select all at
+once), or from **+ New Procedure → Import from file** for a single procedure at a time. A bulk
+export is just several single-procedure bundles inside one outer ZIP, so it can be re-imported
+the same way it was exported.
+
+Each procedure gets its own folder named after its `proc_id` (e.g. `PROC-TEMP-001/`), containing:
+
+- **`procedure.yaml`** — every procedure field (name, version, difficulty, standard reference,
+  tags, equipment, materials, environment, safety notes, steps, and acceptance criteria), in a
+  human-readable format.
+- **`media/steps/{n}/`** — the actual bytes of any file attached to step `n` (images, PDFs, etc.),
+  one subfolder per step index.
+
+**What's deliberately left out of `procedure.yaml`**: internal database UUIDs — the procedure's
+own id, `created_by`, and every file's id. These only make sense inside the database they came
+from.
+
+### Importing
+
+Import a ZIP either from **Procedures → + New Procedure → Import from file** (expects exactly one
+procedure in the file) or from the page's **Import** button (accepts one or more ZIPs at once,
+each of which may itself contain one or more procedure folders — handy for re-importing a prior
+bulk export). Both flows call the same backend endpoint and report one result per procedure
+folder, so a problem with one procedure never blocks the others in the same file.
+
+On import, a brand-new procedure is created with a new internal id. If the exported `proc_id`
+already exists in the target system, that procedure's import fails with a clear error — rename it
+in the YAML and retry.

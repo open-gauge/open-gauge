@@ -9,6 +9,44 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.2.0
+
+### Added
+
+- **Procedure export/import.** Admin and superadmin users can export procedures as ZIP bundles
+  (`procedure.yaml` + a `media/steps/{n}/` folder per step attachment) and re-import them on
+  another instance — `GET /procedures/{id}/export`, `POST /procedures/export/bulk`,
+  `POST /procedures/import`, and `POST /procedures/import/validate` on the backend
+  (`app/services/procedure_export.py` / `procedure_import.py`, mirroring the existing asset
+  export/import format). On the Procedures page, **Export** and **Import** buttons sit next to
+  **+ New Procedure** for bulk actions, and **+ New Procedure → Import from file** handles a
+  single-procedure ZIP — both gated to admin/superadmin, unlike the asset equivalents which allow
+  any non-viewer.
+
+## 4.1.0
+
+### Added
+
+- **Calibration purpose tag** on each row of the Calibration tab's history list — colored by
+  purpose (Initial: blue, Routine: green, After Repair: orange, Verification: purple), via a new
+  `CALIBRATION_PURPOSE_STYLE` map in `apps/web/src/lib/tokens.ts` and a `tokens.calibrationPurpose`
+  translation namespace, shared with the same tag now also shown in the calibration metadata panel
+  below.
+
+### Changed
+
+- **Harmonized calibration detail view.** The Calibration tab's left-side record view now leads
+  with a single metadata panel covering calibration date, due date, registered/checked by,
+  calibration type and purpose, calibration lab (resolved per calibration type: manufacturer
+  snapshot, external organization, or internal location), environmental conditions, and notes —
+  each field with a tooltip linking to the matching wizard-field documentation. The small header
+  line (`v6 · date · by name`) and the standalone Conditions & Notes panel are both gone — this one
+  panel replaces them, with the Approve/Reject actions and certificate download button moved into
+  its header row. Below it, the model/equation panel and the statistics/uncertainty/conformity
+  panel are now laid out side by side (model left, statistics right), with the chart/data-table
+  view spanning full width beneath them — mirroring the layout of step 3 of the calibration wizard
+  for the record's `data_entry_mode`.
+
 ## 4.0.0
 
 ### Changed

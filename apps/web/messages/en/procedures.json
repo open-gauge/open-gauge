@@ -87,6 +87,8 @@
     "fromScratchDesc": "Start with an empty procedure and define steps in the editor",
     "copyTitle": "Copy existing procedure",
     "copyDesc": "Duplicate an existing procedure as a starting point",
+    "optionImportTitle": "Import from file",
+    "optionImportHint": "Restore a procedure from a previously exported ZIP.",
     "procId": "Procedure ID *",
     "procIdPlaceholder": "PROC-XX-001",
     "name": "Name *",
@@ -108,7 +110,18 @@
     "selectSource": "Select a procedure to copy",
     "copying": "Copying…",
     "createCopyAndEdit": "Create copy & edit",
-    "copyFailed": "Failed to copy procedure"
+    "copyFailed": "Failed to copy procedure",
+    "checkingFile": "Checking file…",
+    "dropZip": "Drop a ZIP file here or click to browse",
+    "zipHint": "The ZIP must contain exactly one procedure folder (as produced by the procedure Export feature).",
+    "invalidFile": "The file is not a valid procedure. Please check the file and try again.",
+    "stepsUnit": "step(s)",
+    "filesUnit": "file(s)",
+    "importing": "Importing…",
+    "importProcedure": "Import procedure",
+    "errorImportOne": "Expected exactly one procedure in the file, found {count}.",
+    "errorImportFailed": "Import failed",
+    "errorImportGeneric": "Failed to import procedure"
   },
   "emptyDetail": {
     "title": "Select a procedure",
@@ -118,9 +131,30 @@
     "title": "Calibration procedures",
     "count": "{count, plural, one {# procedure} other {# procedures}} registered.",
     "newProcedure": "New procedure",
+    "export": "Export",
+    "import": "Import",
     "filteredBy": "Filtered by physical quantity: {label}",
     "viewAll": "View all ✕",
     "searchPlaceholder": "Search procedures...",
     "empty": "No procedures found"
+  },
+  "bulkExport": {
+    "title": "Export procedures",
+    "selectAll": "Select all ({count})",
+    "cancel": "Cancel",
+    "exportSelected": "Export selected ({count})",
+    "errorExport": "Failed to export procedures"
+  },
+  "bulkImport": {
+    "title": "Import procedures",
+    "selectFiles": "Click to select one or more ZIP files",
+    "filesSelected": "{count} file(s) selected",
+    "hint": "Each ZIP can contain one or more exported procedures.",
+    "cancel": "Cancel",
+    "import": "Import",
+    "done": "Done",
+    "created": "{count} created",
+    "failed": ", {count} failed",
+    "errorImport": "Failed to import procedures"
   }
 }

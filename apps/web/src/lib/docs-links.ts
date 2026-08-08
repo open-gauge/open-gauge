@@ -128,6 +128,7 @@ export const WIZARD_DOCS_LINKS: Record<string, string> = {
   registered_by: "/docs/guide/calibration/wizard-fields#registered-by",
   checked_by: "/docs/guide/calibration/wizard-fields#checked-by",
   calibration_interval: "/docs/guide/calibration/wizard-fields#calibration-interval",
+  due_date: "/docs/guide/calibration/wizard-fields#due-date",
   calibration_type: "/docs/guide/calibration/wizard-fields#calibration-type",
   calibration_purpose: "/docs/guide/calibration/wizard-fields#calibration-purpose",
   calibration_lab: "/docs/guide/calibration/wizard-fields#calibration-lab",

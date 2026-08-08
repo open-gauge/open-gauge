@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { translateDynamic } from "@/lib/translate-dynamic";
 import {
+  CheckCircleIcon,
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -14,6 +15,8 @@ import {
   CopyIcon,
   DocumentIcon,
   EditIcon,
+  ExportIcon,
+  ImportIcon,
   PaperclipIcon,
   PlusIcon,
   PrinterIcon,
@@ -21,16 +24,23 @@ import {
   SearchIcon,
   ShieldIcon,
   TrashIcon,
+  WarningIcon,
   XIcon,
 } from "@/components/icons";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import {
   createProcedure,
   deleteProcedure,
   deleteProcedureFile,
+  fetchBulkExportBlob,
+  getProcedure,
+  importProceduresZip,
+  importProcedureZip,
   listProcedureFiles,
   listProcedures,
   updateProcedure,
   uploadProcedureStepFile,
+  validateProcedureImportZip,
 } from "@/services/procedure.service";
 import type {
   Procedure,
@@ -41,6 +51,7 @@ import type {
   ProcedureMaterialItem,
   ProcedureStep,
 } from "@/types/procedure";
+import type { ProcedureImportPreview, ProcedureImportResult } from "@/services/procedure.service";
 import type { StoredFile } from "@/types/stored_file";
 
 // ---------------------------------------------------------------------------
@@ -1059,18 +1070,257 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
 }
 
 // ---------------------------------------------------------------------------
+// Bulk export modal
+// ---------------------------------------------------------------------------
+
+function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return (
+    <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 cursor-pointer hover:text-og-text">
+      <ToggleSwitch checked={checked} onChange={onChange} />
+      {label}
+    </label>
+  );
+}
+
+interface BulkExportModalProps {
+  procedures: Procedure[];
+  onClose: () => void;
+}
+
+function BulkExportModal({ procedures, onClose }: BulkExportModalProps) {
+  const t = useTranslations("procedures.bulkExport");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const allSelected = procedures.length > 0 && selected.size === procedures.length;
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(procedures.map((p) => p.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    setError(null);
+    try {
+      const blob = await fetchBulkExportBlob([...selected]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `procedures-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : t("errorExport"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-og-surface border border-og-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
+          <h2 className="text-sm font-semibold text-og-text">{t("title")}</h2>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
+            <XIcon size={15} />
+          </button>
+        </div>
+
+        <div className="px-5 py-3 border-b border-og-border">
+          <CheckRow label={t("selectAll", { count: procedures.length })} checked={allSelected} onChange={toggleAll} />
+        </div>
+
+        <div className="overflow-y-auto max-h-96 divide-y divide-og-border">
+          {procedures.map((p) => (
+            <label key={p.id} className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-og-surface-alt transition-colors">
+              <ToggleSwitch checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-og-text truncate">{p.name}</p>
+                <p className="text-xs font-mono text-gray-400">{p.proc_id ?? "—"}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {error && <p className="px-5 pt-3 text-xs text-red-500">{error}</p>}
+
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-og-border">
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={selected.size === 0 || exporting}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+          >
+            {exporting && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            {t("exportSelected", { count: selected.size })}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Bulk import modal
+// ---------------------------------------------------------------------------
+
+interface BulkImportModalProps {
+  onClose: () => void;
+  onImported: () => void;
+}
+
+function BulkImportModal({ onClose, onImported }: BulkImportModalProps) {
+  const t = useTranslations("procedures.bulkImport");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [results, setResults] = useState<ProcedureImportResult[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setFiles(Array.from(e.target.files ?? []));
+  }
+
+  async function handleImport() {
+    if (files.length === 0) return;
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await importProceduresZip(files);
+      setResults(res.results);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : t("errorImport"));
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function handleDone() {
+    onImported();
+    onClose();
+  }
+
+  const createdCount = results?.filter((r) => r.status === "created").length ?? 0;
+  const failedCount = results ? results.length - createdCount : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={results ? undefined : onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-og-surface border border-og-border rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-og-border">
+          <h2 className="text-sm font-semibold text-og-text">{t("title")}</h2>
+          {!results && (
+            <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-og-surface-alt text-gray-400 hover:text-og-text transition-colors">
+              <XIcon size={15} />
+            </button>
+          )}
+        </div>
+
+        <div className="p-5 overflow-y-auto max-h-[60vh]">
+          {!results ? (
+            <div className="space-y-3">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer border-og-border hover:border-og-accent/50 hover:bg-og-surface-alt transition-colors"
+              >
+                <ImportIcon size={24} className="text-gray-400" />
+                <p className="text-sm text-gray-500">
+                  {files.length > 0 ? t("filesSelected", { count: files.length }) : t("selectFiles")}
+                </p>
+                <p className="text-xs text-gray-400">{t("hint")}</p>
+                <input ref={fileInputRef} type="file" accept=".zip" multiple className="hidden" onChange={handleFileChange} />
+              </div>
+              {files.length > 0 && (
+                <ul className="text-xs text-gray-500 space-y-1">
+                  {files.map((f) => <li key={f.name} className="font-mono truncate">{f.name}</li>)}
+                </ul>
+              )}
+              {error && <p className="text-xs text-red-500">{error}</p>}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-og-text">
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("created", { count: createdCount })}</span>
+                {failedCount > 0 && <span className="text-red-500 font-medium">{t("failed", { count: failedCount })}</span>}
+              </p>
+              <div className="divide-y divide-og-border rounded-lg border border-og-border overflow-hidden">
+                {results.map((r, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                    {r.status === "created" ? (
+                      <CheckCircleIcon size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <WarningIcon size={14} className="text-red-500 shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-og-text truncate">
+                        {r.proc_id ?? r.source_folder}
+                      </p>
+                      {r.status === "error" && r.error_message && (
+                        <p className="text-xs text-red-500 mt-0.5">{r.error_message}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-og-border">
+          {!results ? (
+            <>
+              <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleImport}
+                disabled={files.length === 0 || importing}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {importing && <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                {t("import")}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={handleDone} className="px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors">
+              {t("done")}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // New procedure modal
 // ---------------------------------------------------------------------------
 
-type ModalMode = "choose" | "new" | "copy";
+type ModalMode = "choose" | "new" | "copy" | "import";
 
 interface NewProcedureModalProps {
   procedures: Procedure[];
+  canImport: boolean;
   onClose: () => void;
   onCreate: (proc: Procedure) => void;
 }
 
-function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalProps) {
+function NewProcedureModal({ procedures, canImport, onClose, onCreate }: NewProcedureModalProps) {
   const t = useTranslations("procedures.newModal");
   const tPhysicalQuantity = useTranslations("tokens.physicalQuantity");
   const [mode, setMode] = useState<ModalMode>("choose");
@@ -1084,6 +1334,15 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
   const [copyProcId, setCopyProcId] = useState("");
   const [copyName, setCopyName] = useState("");
   const [copyErrors, setCopyErrors] = useState<Record<string, string>>({});
+
+  // --- "import from file" state ---
+  const importFileInputRef = useRef<HTMLInputElement>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importDragging, setImportDragging] = useState(false);
+  const [importValidating, setImportValidating] = useState(false);
+  const [importPreview, setImportPreview] = useState<ProcedureImportPreview | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const inputCls = (hasError: boolean) =>
     `w-full px-3 py-2 text-sm bg-og-surface border rounded-lg text-og-text placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-og-accent/40 focus:border-og-accent/60 transition-colors ${
@@ -1129,6 +1388,65 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
     finally { setSaving(false); }
   }
 
+  async function handleImportFileSelected(file: File) {
+    setImportFile(file);
+    setImportPreview(null);
+    setImportError(null);
+    setImportValidating(true);
+    try {
+      const preview = await validateProcedureImportZip(file);
+      if (!preview.valid) {
+        setImportError(t("invalidFile"));
+        return;
+      }
+      setImportPreview(preview);
+    } catch {
+      setImportError(t("invalidFile"));
+    } finally {
+      setImportValidating(false);
+    }
+  }
+
+  function handleImportDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setImportDragging(true);
+  }
+
+  function handleImportDragLeave(e: React.DragEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setImportDragging(false);
+  }
+
+  function handleImportDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setImportDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleImportFileSelected(file);
+  }
+
+  async function handleImportSubmit() {
+    if (!importFile || !importPreview?.valid) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const res = await importProcedureZip(importFile);
+      if (res.results.length !== 1) {
+        setImportError(t("errorImportOne", { count: res.results.length }));
+        return;
+      }
+      const [only] = res.results;
+      if (only.status === "error" || !only.new_proc_pk) {
+        setImportError(only.error_message ?? t("errorImportFailed"));
+        return;
+      }
+      const created = await getProcedure(only.new_proc_pk);
+      onCreate(created);
+    } catch (e: unknown) {
+      setImportError(e instanceof Error ? e.message : t("errorImportGeneric"));
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="bg-og-surface rounded-xl border border-og-border shadow-xl w-full max-w-md">
@@ -1142,6 +1460,18 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
         {mode === "choose" && (
           <div className="p-6 space-y-3">
             <p className="text-xs text-gray-400 mb-4">{t("chooseQuestion")}</p>
+            {canImport && (
+              <button type="button" onClick={() => { setMode("import"); setImportFile(null); setImportError(null); setImportPreview(null); }}
+                className="w-full flex items-start gap-4 p-4 border border-og-border-md rounded-xl hover:bg-og-surface-alt hover:border-og-accent/40 transition-colors text-left">
+                <div className="shrink-0 w-9 h-9 rounded-lg bg-og-accent/10 text-og-accent flex items-center justify-center">
+                  <ImportIcon size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-og-text mb-0.5">{t("optionImportTitle")}</p>
+                  <p className="text-xs text-gray-400">{t("optionImportHint")}</p>
+                </div>
+              </button>
+            )}
             <button type="button" onClick={() => setMode("new")}
               className="w-full flex items-start gap-4 p-4 border border-og-border-md rounded-xl hover:bg-og-surface-alt hover:border-og-accent/40 transition-colors text-left">
               <div className="shrink-0 w-9 h-9 rounded-lg bg-og-accent/10 text-og-accent flex items-center justify-center">
@@ -1238,6 +1568,69 @@ function NewProcedureModal({ procedures, onClose, onCreate }: NewProcedureModalP
             </div>
           </form>
         )}
+
+        {mode === "import" && (
+          <div className="p-6 space-y-4">
+            <div
+              onClick={() => importFileInputRef.current?.click()}
+              onDragOver={handleImportDragOver}
+              onDragLeave={handleImportDragLeave}
+              onDrop={handleImportDrop}
+              className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors
+                ${importDragging
+                  ? "border-og-accent bg-og-accent/5"
+                  : "border-og-border hover:border-og-accent/50 hover:bg-og-surface-alt"}`}
+            >
+              <ImportIcon size={24} className={importDragging ? "text-og-accent" : "text-gray-400"} />
+              <p className="text-sm text-gray-500">
+                {importValidating
+                  ? t("checkingFile")
+                  : importFile
+                  ? importFile.name
+                  : t("dropZip")}
+              </p>
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept=".zip"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportFileSelected(file);
+                }}
+              />
+            </div>
+            <p className="text-[10px] text-gray-400">{t("zipHint")}</p>
+
+            {importError && <p className="text-xs text-red-500">{importError}</p>}
+
+            {importPreview?.valid && (
+              <div className="rounded-lg bg-og-surface-alt border border-og-border px-4 py-3">
+                <p className="text-sm font-semibold text-og-text">{importPreview.name}</p>
+                <p className="text-xs font-mono text-gray-400 mt-0.5">
+                  {importPreview.proc_id} · v{importPreview.version}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {translateDynamic(tPhysicalQuantity, importPreview.physical_quantity ?? "")}
+                  {" · "}{importPreview.step_count} {t("stepsUnit")}
+                  {" · "}{importPreview.file_count} {t("filesUnit")}
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-1">
+              <button type="button" onClick={() => setMode("choose")} className="text-xs text-gray-400 hover:text-og-text transition-colors">{t("back")}</button>
+              <div className="flex gap-2">
+                <button type="button" onClick={onClose} disabled={importing} className="px-4 py-2 text-sm font-medium border border-og-border-md rounded-lg hover:bg-og-surface-alt text-og-text transition-colors disabled:opacity-50">{t("cancel")}</button>
+                <button type="button" onClick={handleImportSubmit} disabled={!importPreview?.valid || importing}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-og-action hover:bg-og-action-dark text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
+                  {importing ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> : <ImportIcon size={14} />}
+                  {importing ? t("importing") : t("importProcedure")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1271,20 +1664,28 @@ export default function ProceduresPage() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const canEdit = user.role !== "viewer";
+  const isAdmin = user.role === "admin" || user.role === "superadmin";
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Procedure | null>(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [bulkExportOpen, setBulkExportOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [editNewProcId, setEditNewProcId] = useState<string | null>(null);
   const [physicalQuantityFilter, setPhysicalQuantityFilter] = useState<{ value: string; label: string } | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  function reloadProcedures() {
     setLoading(true);
-    listProcedures()
+    return listProcedures(search || undefined)
       .then((data) => { setProcedures(data); if (data.length > 0) setSelected(data[0]); })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    reloadProcedures();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -1352,6 +1753,18 @@ export default function ProceduresPage() {
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <>
+                <button type="button" onClick={() => setBulkExportOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                  <ExportIcon size={13} />{t("export")}
+                </button>
+                <button type="button" onClick={() => setBulkImportOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                  <ImportIcon size={13} />{t("import")}
+                </button>
+              </>
+            )}
             <button type="button" onClick={() => setShowNewModal(true)}
               className="flex items-center gap-1.5 px-3 py-2 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">
               <PlusIcon size={13} />{t("newProcedure")}
@@ -1359,6 +1772,13 @@ export default function ProceduresPage() {
           </div>
         )}
       </div>
+
+      {bulkExportOpen && (
+        <BulkExportModal procedures={procedures} onClose={() => setBulkExportOpen(false)} />
+      )}
+      {bulkImportOpen && (
+        <BulkImportModal onClose={() => setBulkImportOpen(false)} onImported={reloadProcedures} />
+      )}
 
       {physicalQuantityFilter && (
         <div className="flex items-center gap-3 rounded-xl bg-og-accent/5 border border-og-accent/20 px-4 py-2.5">
@@ -1429,6 +1849,7 @@ export default function ProceduresPage() {
       {showNewModal && (
         <NewProcedureModal
           procedures={procedures}
+          canImport={isAdmin}
           onClose={() => setShowNewModal(false)}
           onCreate={(proc) => {
             setProcedures((prev) => [proc, ...prev]);

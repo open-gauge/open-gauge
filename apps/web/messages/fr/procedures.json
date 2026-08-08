@@ -87,6 +87,8 @@
     "fromScratchDesc": "Commencez avec un procédé vide et définissez les étapes dans l'éditeur",
     "copyTitle": "Copier un procédé existant",
     "copyDesc": "Dupliquez un procédé existant comme point de départ",
+    "optionImportTitle": "Importer depuis un fichier",
+    "optionImportHint": "Restaurez un procédé à partir d'un ZIP exporté précédemment.",
     "procId": "ID du procédé *",
     "procIdPlaceholder": "PROC-XX-001",
     "name": "Nom *",
@@ -108,7 +110,18 @@
     "selectSource": "Sélectionnez un procédé à copier",
     "copying": "Copie…",
     "createCopyAndEdit": "Créer la copie et modifier",
-    "copyFailed": "Échec de la copie du procédé"
+    "copyFailed": "Échec de la copie du procédé",
+    "checkingFile": "Vérification du fichier…",
+    "dropZip": "Déposez un fichier ZIP ici ou cliquez pour parcourir",
+    "zipHint": "Le ZIP doit contenir exactement un dossier de procédé (comme celui généré par la fonction Exporter des procédés).",
+    "invalidFile": "Le fichier n'est pas un procédé valide. Vérifiez-le et réessayez.",
+    "stepsUnit": "étape(s)",
+    "filesUnit": "fichier(s)",
+    "importing": "Importation…",
+    "importProcedure": "Importer le procédé",
+    "errorImportOne": "Un seul procédé était attendu dans le fichier, {count} trouvé(s).",
+    "errorImportFailed": "Échec de l'importation",
+    "errorImportGeneric": "Échec de l'importation du procédé"
   },
   "emptyDetail": {
     "title": "Sélectionnez un procédé",
@@ -118,9 +131,30 @@
     "title": "Procédés de calibration",
     "count": "{count, plural, one {# procédé enregistré} other {# procédés enregistrés}}.",
     "newProcedure": "Nouveau procédé",
+    "export": "Exporter",
+    "import": "Importer",
     "filteredBy": "Filtré par grandeur physique : {label}",
     "viewAll": "Tout afficher ✕",
     "searchPlaceholder": "Rechercher des procédés...",
     "empty": "Aucun procédé trouvé"
+  },
+  "bulkExport": {
+    "title": "Exporter des procédés",
+    "selectAll": "Tout sélectionner ({count})",
+    "cancel": "Annuler",
+    "exportSelected": "Exporter la sélection ({count})",
+    "errorExport": "Échec de l'exportation des procédés"
+  },
+  "bulkImport": {
+    "title": "Importer des procédés",
+    "selectFiles": "Cliquez pour sélectionner un ou plusieurs fichiers ZIP",
+    "filesSelected": "{count} fichier(s) sélectionné(s)",
+    "hint": "Chaque ZIP peut contenir un ou plusieurs procédés exportés.",
+    "cancel": "Annuler",
+    "import": "Importer",
+    "done": "Terminé",
+    "created": "{count} créé(s)",
+    "failed": ", {count} échoué(s)",
+    "errorImport": "Échec de l'importation des procédés"
   }
 }

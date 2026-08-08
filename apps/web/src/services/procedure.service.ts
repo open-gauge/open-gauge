@@ -1,4 +1,4 @@
-import { apiFetch, apiUpload, authHeader } from "@/lib/api";
+import { apiBlob, apiBlobPost, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { Procedure, ProcedureCreateBody } from "@/types/procedure";
 import type { StoredFile } from "@/types/stored_file";
@@ -66,6 +66,72 @@ export async function uploadProcedureStepFile(procId: string, stepIndex: number,
 export async function deleteProcedureFile(procId: string, fileId: string): Promise<void> {
   return apiFetch<void>(`/api/v1/procedures/${procId}/files/${fileId}`, {
     method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Export / import
+// ---------------------------------------------------------------------------
+
+export async function fetchProcedureExportBlob(procPk: string): Promise<Blob> {
+  return apiBlob(`/api/v1/procedures/${procPk}/export`, { headers: tokenHeader() });
+}
+
+export async function fetchBulkExportBlob(procPks: string[]): Promise<Blob> {
+  return apiBlobPost(`/api/v1/procedures/export/bulk`, { proc_ids: procPks }, { headers: tokenHeader() });
+}
+
+export interface ProcedureImportResult {
+  source_folder: string;
+  status: "created" | "error";
+  proc_id: string | null;
+  new_proc_pk: string | null;
+  error_message: string | null;
+}
+
+export interface ProcedureImportResponse {
+  results: ProcedureImportResult[];
+}
+
+export async function importProceduresZip(files: File[]): Promise<ProcedureImportResponse> {
+  // The backend endpoint takes a single file; bulk import (one or more zips)
+  // is handled by calling it once per file and merging the result lists.
+  const all: ProcedureImportResult[] = [];
+  for (const file of files) {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await apiUpload<ProcedureImportResponse>(`/api/v1/procedures/import`, form, {
+      headers: tokenHeader(),
+    });
+    all.push(...res.results);
+  }
+  return { results: all };
+}
+
+export interface ProcedureImportPreview {
+  valid: boolean;
+  error_message: string | null;
+  proc_id: string | null;
+  name: string | null;
+  physical_quantity: string | null;
+  version: string | null;
+  step_count: number;
+  file_count: number;
+}
+
+export async function validateProcedureImportZip(file: File): Promise<ProcedureImportPreview> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<ProcedureImportPreview>(`/api/v1/procedures/import/validate`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function importProcedureZip(file: File): Promise<ProcedureImportResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<ProcedureImportResponse>(`/api/v1/procedures/import`, form, {
     headers: tokenHeader(),
   });
 }

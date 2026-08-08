@@ -4,7 +4,7 @@ description: Release-Historie — was sich in jeder Version von Open Gauge geän
 ---
 
 Open Gauge verfolgt eine einzige Versionsnummer über Frontend und Backend hinweg. Sie wird unten
-links in der Seitenleiste angezeigt (`v4.0.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
+links in der Seitenleiste angezeigt (`v4.1.0 · self-hosted`) sowie im OpenAPI-Schema. Diese Seite
 spiegelt [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) im
 Repository-Root wider.
 
@@ -14,6 +14,49 @@ Veröffentlichung/instabil war, `1.0.0` ab dem Punkt, an dem es zu einem dokumen
 lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern die kleineren
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
+
+## 4.2.0
+
+### Hinzugefügt
+
+- **Import/Export von Verfahren.** Admin- und Superadmin-Benutzer können Verfahren als ZIP-Pakete
+  exportieren (`procedure.yaml` + ein `media/steps/{n}/`-Ordner pro an einen Schritt angehängter
+  Datei) und sie auf einer anderen Instanz wieder importieren — `GET /procedures/{id}/export`,
+  `POST /procedures/export/bulk`, `POST /procedures/import` und `POST /procedures/import/validate`
+  im Backend (`app/services/procedure_export.py` / `procedure_import.py`, nach demselben Format
+  wie der bestehende Asset-Export/-Import). Auf der Verfahren-Seite befinden sich die
+  Schaltflächen **Exportieren** und **Importieren** neben **+ Neues Verfahren** für
+  Sammelaktionen, und **+ Neues Verfahren → Aus Datei importieren** verarbeitet ein ZIP mit einem
+  einzelnen Verfahren — beide nur für Admin/Superadmin, anders als das Asset-Äquivalent, das jedem
+  Nicht-Viewer offensteht. Siehe
+  [Verfahren → Import & Export](../procedures/index.de.mdx#import--export).
+
+## 4.1.0
+
+### Hinzugefügt
+
+- **Kalibrierzweck-Tag** auf jeder Zeile der Verlaufsliste des Kalibrier-Tabs — farbig nach Zweck
+  (Erstkalibrierung: blau, Routine: grün, Nach Reparatur: orange, Verifizierung: lila), über eine
+  neue `CALIBRATION_PURPOSE_STYLE`-Zuordnung in `apps/web/src/lib/tokens.ts` und einen
+  `tokens.calibrationPurpose`-Übersetzungsnamensraum, geteilt mit demselben Tag, das jetzt auch im
+  Kalibrier-Metadaten-Panel unten angezeigt wird.
+
+### Geändert
+
+- **Vereinheitlichte Kalibrier-Detailansicht.** Die Datensatzansicht auf der linken Seite des
+  Kalibrier-Tabs beginnt jetzt mit einem einzigen Metadaten-Panel, das Kalibrierdatum,
+  Fälligkeitsdatum, registriert/geprüft von, Kalibrierart und -zweck, Kalibrierlabor (aufgelöst je
+  nach Kalibrierart: Herstellerangabe, externe Organisation oder interner Standort),
+  Umgebungsbedingungen und Notizen abdeckt — jedes Feld mit einem Tooltip, der zur passenden
+  Dokumentation des Assistenten-Felds verlinkt. Die kleine Kopfzeile (`v6 · Datum · von Name`) und
+  das eigenständige Panel Bedingungen & Notizen sind beide verschwunden — dieses eine Panel ersetzt
+  sie, wobei die Aktionen Genehmigen/Ablehnen und die Schaltfläche zum Herunterladen des
+  Zertifikats in seine Kopfzeile verschoben wurden. Darunter werden das Modell-/Gleichungspanel und
+  das Panel für Statistik/Messunsicherheit/Konformität jetzt nebeneinander angezeigt (Modell links,
+  Statistik rechts), wobei die Diagramm-/Datentabellenansicht darunter über die volle Breite reicht
+  — dies spiegelt das Layout von Schritt 3 des Kalibrierassistenten für den `data_entry_mode` des
+  Datensatzes wider. Siehe
+  [Einen Kalibrierdatensatz ansehen](../calibration/overview.mdx#viewing-a-calibration-record).
 
 ## 4.0.0
 

@@ -45,3 +45,39 @@ référencer la procédure qui a été suivie (`internal_procedure_id`), et cett
 imprimée sur le certificat résultant aux côtés de l'étalon de référence utilisé et des conditions
 environnementales enregistrées — la chaîne de traçabilité complète dont un certificat de
 calibration a besoin.
+
+## Import et export
+
+Réservé aux utilisateurs **admin** et **superadmin**. Toute procédure peut être exportée sous
+forme d'archive ZIP — depuis le bouton **Exporter** à côté de **+ Nouvelle procédure** sur la page
+Procédures pour exporter en masse une sélection (une fenêtre à cases à cocher permet de choisir
+des procédures individuelles ou de tout sélectionner), ou depuis **+ Nouvelle procédure →
+Importer depuis un fichier** pour une seule procédure à la fois. Un export en masse n'est qu'un
+regroupement de plusieurs archives à procédure unique dans un ZIP externe, il peut donc être
+réimporté de la même manière qu'il a été exporté.
+
+Chaque procédure obtient son propre dossier nommé d'après son `proc_id` (p. ex.
+`PROC-TEMP-001/`), contenant :
+
+- **`procedure.yaml`** — tous les champs de la procédure (nom, version, difficulté, référence de
+  norme, tags, équipement, matériaux, environnement, notes de sécurité, étapes et critères
+  d'acceptation), dans un format lisible.
+- **`media/steps/{n}/`** — les fichiers réels attachés à l'étape `n` (images, PDF, etc.), un
+  sous-dossier par index d'étape.
+
+**Ce qui est volontairement exclu de `procedure.yaml`** : les UUID internes de la base de
+données — l'id propre de la procédure, `created_by` et l'id de chaque fichier. Ils n'ont de sens
+que dans la base de données d'origine.
+
+### Importer
+
+Importez un ZIP depuis **Procédures → + Nouvelle procédure → Importer depuis un fichier** (une
+seule procédure attendue dans le fichier) ou depuis le bouton **Importer** de la page (accepte un
+ou plusieurs ZIP à la fois, chacun pouvant lui-même contenir un ou plusieurs dossiers de
+procédure — pratique pour réimporter un export en masse précédent). Les deux flux appellent le
+même endpoint backend et renvoient un résultat par dossier de procédure, de sorte qu'un problème
+sur une procédure ne bloque jamais les autres du même fichier.
+
+À l'import, une toute nouvelle procédure est créée avec un nouvel id interne. Si le `proc_id`
+exporté existe déjà sur le système cible, l'import de cette procédure échoue avec un message
+d'erreur clair — renommez-le dans le YAML et réessayez.

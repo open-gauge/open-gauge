@@ -198,6 +198,30 @@ Kalibrierung für jeden Kanal, neueste zuerst, jeweils mit vollständiger Analys
 und Zertifikat. Nichts wird jemals nachträglich bearbeitet; eine erneute Kalibrierung ist eine neue
 Zeile, keine Korrektur einer alten.
 
+## Einen Kalibrierdatensatz ansehen [#viewing-a-calibration-record]
+
+Die Auswahl einer Kalibrierung in der Verlaufsliste des Kalibrier-Tabs zeigt links den
+vollständigen Datensatz — vereinheitlicht über alle `data_entry_mode`-Werte hinweg (Referenz vs.
+Gemessen, Referenz vs. Angezeigt, Modell, Wie-vorgefunden/Wie-belassen und Frequenzgang zeigen alle
+dieselbe Art von Panels, nur mit dem Modell/den Statistiken/den Diagrammen, die der jeweilige Modus
+tatsächlich hat). Oben deckt ein einziges Metadaten-Panel jedes in Schritt 1 eingegebene Feld des
+Datensatzes ab: Kalibrierdatum, Fälligkeitsdatum, wer es registriert hat und (falls zugewiesen) wer
+es geprüft hat, Kalibrierart und -zweck, Kalibrierintervall, das Kalibrierlabor (aufgelöst zum
+Hersteller, zur externen Organisation oder zum internen Standort, je nach Kalibrierart),
+Zertifikatsnummer, internes Verfahren und Referenzanlage (Kalibrierungen im internen Labor),
+Reparaturdatum/-beschreibung (Kalibrierungen Nach Reparatur), Umgebungsbedingungen und Notizen —
+die Aktionen Genehmigen/Ablehnen und die Schaltfläche zum Herunterladen des Zertifikats befinden
+sich in der Kopfzeile dieses Panels. Darunter folgen das Modell-/Gleichungspanel (wenn der Modus
+eines hat), das Statistik-/Unsicherheits-/Konformitätspanel mit seinen Diagrammen (wenn der Modus
+sie hat) und jedes modusspezifische Diagnosepanel (die Wie-vorgefunden-Zusammenfassung; das
+Empfindlichkeitspanel des Frequenzgangs) — genau wie in Schritt 3 des Assistenten beim Erstellen
+des Datensatzes.
+
+Jede Zeile der Verlaufsliste ist außerdem mit ihrem **Kalibrierzweck** markiert, farbig nach Zweck
+— **Erstkalibrierung** (blau), **Routine** (grün), **Nach Reparatur** (orange), **Verifizierung**
+(lila) — sodass der Zweck, der später in die Beitragslogik des Zustand-Tabs einfließt, auf einen
+Blick sichtbar ist.
+
 ## Versionsnummern
 
 Die **Version** jeder Kalibrierung (`v1`, `v2`, …) ist ein stets steigender, pro Anlage (bzw.

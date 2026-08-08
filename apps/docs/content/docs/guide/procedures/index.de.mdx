@@ -45,3 +45,40 @@ befolgte Verfahren referenzieren (`internal_procedure_id`), und diese Referenz w
 resultierenden Zertifikat zusammen mit dem verwendeten Referenznormal und den erfassten
 Umgebungsbedingungen ausgedruckt — die vollständige Rückführbarkeitskette, die ein
 Kalibrierzertifikat benötigt.
+
+## Import & Export
+
+Nur für **Admin**- und **Superadmin**-Benutzer verfügbar. Jedes Verfahren kann als ZIP-Paket
+exportiert werden — über die Schaltfläche **Exportieren** neben **+ Neues Verfahren** auf der
+Verfahren-Seite, um eine Auswahl im Bulk zu exportieren (ein Auswahldialog lässt Sie einzelne
+Verfahren auswählen oder alle auf einmal), oder über **+ Neues Verfahren → Aus Datei
+importieren** für ein einzelnes Verfahren. Ein Bulk-Export besteht einfach aus mehreren
+Einzelverfahren-Paketen innerhalb eines äußeren ZIPs und kann daher genauso wieder importiert
+werden, wie er exportiert wurde.
+
+Jedes Verfahren erhält einen eigenen Ordner, benannt nach seiner `proc_id` (z. B.
+`PROC-TEMP-001/`), der Folgendes enthält:
+
+- **`procedure.yaml`** — alle Verfahrensfelder (Name, Version, Schwierigkeitsgrad,
+  Normreferenz, Tags, Ausrüstung, Materialien, Umgebung, Sicherheitshinweise, Schritte und
+  Abnahmekriterien) in einem menschenlesbaren Format.
+- **`media/steps/{n}/`** — die tatsächlichen Bytes jeder an Schritt `n` angehängten Datei
+  (Bilder, PDFs usw.), ein Unterordner pro Schrittindex.
+
+**Was absichtlich aus `procedure.yaml` weggelassen wird**: interne Datenbank-UUIDs — die eigene
+ID des Verfahrens, `created_by` und die ID jeder Datei. Diese ergeben nur innerhalb der
+Datenbank Sinn, aus der sie stammen.
+
+### Importieren
+
+Importieren Sie ein ZIP entweder über **Verfahren → + Neues Verfahren → Aus Datei importieren**
+(erwartet genau ein Verfahren in der Datei) oder über die Schaltfläche **Importieren** der Seite
+(akzeptiert ein oder mehrere ZIPs auf einmal, von denen jedes selbst einen oder mehrere
+Verfahrensordner enthalten kann — praktisch zum erneuten Importieren eines vorherigen
+Bulk-Exports). Beide Abläufe rufen denselben Backend-Endpunkt auf und melden ein Ergebnis pro
+Verfahrensordner, sodass ein Problem mit einem Verfahren nie die anderen in derselben Datei
+blockiert.
+
+Beim Import wird ein völlig neues Verfahren mit einer neuen internen ID erstellt. Wenn die
+exportierte `proc_id` im Zielsystem bereits existiert, schlägt der Import dieses Verfahrens mit
+einer klaren Fehlermeldung fehl — benennen Sie es im YAML um und versuchen Sie es erneut.

@@ -48,6 +48,17 @@ export const CALIBRATION_STATUS_STYLE: Record<string, string> = {
 // display text comes from useTranslations("tokens.calibrationStatus") instead.
 export const CALIBRATION_STATUSES = ["valid", "due_soon", "expired", "not_calibrated", "retired"] as const;
 
+// ---------------------------------------------------------------------------
+// Calibration purpose — the tag shown on each calibration history row and in
+// the calibration detail metadata panel (see PurposeTag in asset-detail-client.tsx)
+// ---------------------------------------------------------------------------
+export const CALIBRATION_PURPOSE_STYLE: Record<string, string> = {
+  initial:      "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+  routine:      "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+  after_repair: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
+  verification: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
+};
+
 // Human-readable labels for the maps above now live in translation catalogs
 // (messages/{locale}/tokens.json) since they're user-facing text — look them
 // up with useTranslations("tokens.calibrationStatus") / "tokens.assetCategory"

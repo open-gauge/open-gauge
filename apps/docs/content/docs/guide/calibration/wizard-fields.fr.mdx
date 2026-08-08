@@ -48,6 +48,13 @@ annuelle ou `6` pour semestrielle. Pré-rempli à partir de l'intervalle par dé
 voie, mais modifiable par calibration — une voie qui dérive plus vite que prévu peut se voir
 attribuer un intervalle plus court cette fois.
 
+## Date d'échéance [#due-date]
+
+Non saisie directement — calculée comme **Date de calibration** + **Intervalle de calibration**
+au moment où l'enregistrement est sauvegardé, et affichée sur la vue de détail de la calibration.
+Exemple : une calibration datée du `2026-03-14` avec un intervalle de 12 mois obtient une date
+d'échéance du `2027-03-14`.
+
 ## Type de calibration
 
 Qui a effectué la calibration — **OEM**, un **Laboratoire Externe Accrédité**, votre

@@ -87,6 +87,8 @@
     "fromScratchDesc": "Beginnen Sie mit einem leeren Verfahren und definieren Sie die Schritte im Editor",
     "copyTitle": "Bestehendes Verfahren kopieren",
     "copyDesc": "Duplizieren Sie ein bestehendes Verfahren als Ausgangspunkt",
+    "optionImportTitle": "Aus Datei importieren",
+    "optionImportHint": "Ein Verfahren aus einem zuvor exportierten ZIP wiederherstellen.",
     "procId": "Verfahrens-ID *",
     "procIdPlaceholder": "PROC-XX-001",
     "name": "Name *",
@@ -108,7 +110,18 @@
     "selectSource": "Wählen Sie ein zu kopierendes Verfahren",
     "copying": "Wird kopiert…",
     "createCopyAndEdit": "Kopie erstellen & bearbeiten",
-    "copyFailed": "Verfahren konnte nicht kopiert werden"
+    "copyFailed": "Verfahren konnte nicht kopiert werden",
+    "checkingFile": "Datei wird geprüft…",
+    "dropZip": "ZIP-Datei hierher ziehen oder klicken, um sie auszuwählen",
+    "zipHint": "Das ZIP muss genau einen Verfahrensordner enthalten (wie ihn die Exportfunktion für Verfahren erzeugt).",
+    "invalidFile": "Die Datei ist kein gültiges Verfahren. Bitte überprüfen und erneut versuchen.",
+    "stepsUnit": "Schritt(e)",
+    "filesUnit": "Datei(en)",
+    "importing": "Wird importiert…",
+    "importProcedure": "Verfahren importieren",
+    "errorImportOne": "Es wurde genau ein Verfahren in der Datei erwartet, {count} gefunden.",
+    "errorImportFailed": "Import fehlgeschlagen",
+    "errorImportGeneric": "Verfahren konnte nicht importiert werden"
   },
   "emptyDetail": {
     "title": "Verfahren auswählen",
@@ -118,9 +131,30 @@
     "title": "Kalibrierverfahren",
     "count": "{count, plural, one {# Verfahren registriert} other {# Verfahren registriert}}.",
     "newProcedure": "Neues Verfahren",
+    "export": "Exportieren",
+    "import": "Importieren",
     "filteredBy": "Gefiltert nach physikalischer Größe: {label}",
     "viewAll": "Alle anzeigen ✕",
     "searchPlaceholder": "Verfahren suchen...",
     "empty": "Keine Verfahren gefunden"
+  },
+  "bulkExport": {
+    "title": "Verfahren exportieren",
+    "selectAll": "Alle auswählen ({count})",
+    "cancel": "Abbrechen",
+    "exportSelected": "Auswahl exportieren ({count})",
+    "errorExport": "Verfahren konnten nicht exportiert werden"
+  },
+  "bulkImport": {
+    "title": "Verfahren importieren",
+    "selectFiles": "Klicken, um eine oder mehrere ZIP-Dateien auszuwählen",
+    "filesSelected": "{count} Datei(en) ausgewählt",
+    "hint": "Jedes ZIP kann ein oder mehrere exportierte Verfahren enthalten.",
+    "cancel": "Abbrechen",
+    "import": "Importieren",
+    "done": "Fertig",
+    "created": "{count} erstellt",
+    "failed": ", {count} fehlgeschlagen",
+    "errorImport": "Verfahren konnten nicht importiert werden"
   }
 }

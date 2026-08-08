@@ -206,6 +206,31 @@ calibration passée pour chaque voie, la plus récente en premier, chacune avec 
 complète, son budget d'incertitude, et son certificat. Rien n'est jamais modifié sur place ; une
 nouvelle calibration est une nouvelle ligne, pas une correction d'une ancienne.
 
+## Consulter un enregistrement de calibration [#viewing-a-calibration-record]
+
+Sélectionner une calibration dans la liste d'historique de l'onglet Calibration affiche son
+enregistrement complet à gauche — harmonisé sur tous les `data_entry_mode` (Référence par rapport
+à Mesuré, Référence par rapport à Indiqué, Modèle, Telle Que Trouvée/Telle Que Laissée et Réponse
+en fréquence affichent tous le même type de panneaux, avec seulement le modèle/les
+statistiques/les graphiques que chaque mode possède réellement). En haut, un panneau de métadonnées
+unique couvre chaque champ de l'étape 1 saisi pour l'enregistrement : date de calibration, date
+d'échéance, qui l'a enregistrée et (le cas échéant) qui l'a vérifiée, type et objectif de la
+calibration, intervalle de calibration, le laboratoire de calibration (résolu au fabricant, à
+l'organisation externe ou à l'emplacement interne selon le type de calibration), numéro de
+certificat, procédure interne et actif de référence (calibrations en laboratoire interne), date/
+description de la réparation (calibrations Après réparation), conditions environnementales et
+notes — les actions Approuver/Rejeter et le bouton de téléchargement du certificat se trouvent
+dans l'en-tête de ce panneau. En dessous, le panneau de modèle/équation (quand le mode en a un), le
+panneau de statistiques/incertitude/conformité et ses graphiques (quand le mode les a), et tout
+panneau de diagnostic spécifique au mode (le résumé Telle Que Trouvée ; le panneau de sensibilité
+de Réponse en fréquence) suivent, reflétant exactement ce que l'étape 3 de l'assistant affichait
+lors de la création de l'enregistrement.
+
+Chaque ligne de la liste d'historique est également étiquetée avec son **Objectif de la
+calibration**, coloré selon l'objectif — **Initiale** (bleu), **Routine** (vert), **Après
+réparation** (orange), **Vérification** (violet) — afin que l'objectif qui influencera plus tard la
+logique de contribution de l'onglet Santé soit visible en un coup d'œil.
+
 ## Numéros de version
 
 La **version** de chaque calibration (`v1`, `v2`, …) est un compteur unique toujours croissant

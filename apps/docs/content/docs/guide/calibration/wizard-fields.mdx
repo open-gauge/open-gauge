@@ -43,6 +43,12 @@ Months until this channel's next calibration is due, e.g. `12` for an annual cad
 semi-annual. Pre-filled from the channel's configured default interval, but editable per
 calibration — a channel drifting faster than expected might get a shorter interval this time.
 
+## Due date [#due-date]
+
+Not entered directly — computed as **Calibration date** + **Calibration interval** the moment the
+record is saved, and shown on the calibration's detail view. Example: a calibration dated
+`2026-03-14` with a 12-month interval gets a due date of `2027-03-14`.
+
 ## Calibration type
 
 Who performed the calibration — **OEM**, an **External Accredited Lab**, your own **Internal Lab

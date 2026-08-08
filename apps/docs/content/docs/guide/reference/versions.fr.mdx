@@ -4,7 +4,7 @@ description: Historique des versions — ce qui a changé dans chaque version d'
 ---
 
 Open Gauge suit un unique numéro de version à travers le frontend et le backend. Il est affiché
-en bas à gauche de la barre latérale (`v4.0.0 · self-hosted`) et dans le schéma OpenAPI. Cette
+en bas à gauche de la barre latérale (`v4.1.0 · self-hosted`) et dans le schéma OpenAPI. Cette
 page reflète le fichier
 [`VERSIONS.md`](https://github.com/open-gauge/open-gauge/blob/main/VERSIONS.md) à la racine du
 dépôt.
@@ -14,6 +14,51 @@ numéroté selon l'impact de versionnement sémantique (`0.x` tant que le produi
 pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté, sous licence, et
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
+
+## 4.2.0
+
+### Ajouté
+
+- **Import/export des procédures.** Les utilisateurs admin et superadmin peuvent exporter des
+  procédures sous forme d'archives ZIP (`procedure.yaml` + un dossier `media/steps/{n}/` par
+  fichier attaché à une étape) et les réimporter sur une autre instance —
+  `GET /procedures/{id}/export`, `POST /procedures/export/bulk`, `POST /procedures/import` et
+  `POST /procedures/import/validate` côté backend (`app/services/procedure_export.py` /
+  `procedure_import.py`, reprenant le même format que l'import/export d'actifs existant). Sur la
+  page Procédures, les boutons **Exporter** et **Importer** se trouvent à côté de **+ Nouvelle
+  procédure** pour les actions en masse, et **+ Nouvelle procédure → Importer depuis un fichier**
+  gère un ZIP à procédure unique — les deux réservés aux admin/superadmin, contrairement à
+  l'équivalent pour les actifs accessible à tout utilisateur non-viewer. Voir
+  [Procédures → Import et export](../procedures/index.fr.mdx#import-et-export).
+
+## 4.1.0
+
+### Ajouté
+
+- **Étiquette d'objectif de calibration** sur chaque ligne de la liste d'historique de l'onglet
+  Calibration — colorée selon l'objectif (Initiale : bleu, Routine : vert, Après réparation :
+  orange, Vérification : violet), via une nouvelle carte `CALIBRATION_PURPOSE_STYLE` dans
+  `apps/web/src/lib/tokens.ts` et un espace de noms de traduction `tokens.calibrationPurpose`,
+  partagé avec la même étiquette désormais aussi affichée dans le panneau de métadonnées de la
+  calibration ci-dessous.
+
+### Modifié
+
+- **Vue de détail de calibration harmonisée.** La vue d'enregistrement du côté gauche de l'onglet
+  Calibration commence désormais par un panneau de métadonnées unique couvrant la date de
+  calibration, la date d'échéance, enregistrée/vérifiée par, le type et l'objectif de la
+  calibration, le laboratoire de calibration (résolu selon le type de calibration : instantané du
+  fabricant, organisation externe ou emplacement interne), les conditions environnementales et les
+  notes — chaque champ avec une info-bulle renvoyant vers la documentation du champ correspondant
+  de l'assistant. La petite ligne d'en-tête (`v6 · date · par nom`) et le panneau autonome
+  Conditions et notes ont tous deux disparu — ce panneau unique les remplace, avec les actions
+  Approuver/Rejeter et le bouton de téléchargement du certificat déplacés dans sa ligne d'en-tête.
+  En dessous, le panneau de modèle/équation et le panneau de statistiques/incertitude/conformité
+  sont désormais affichés côte à côte (modèle à gauche, statistiques à droite), avec la vue
+  graphique/tableau de données occupant toute la largeur en dessous des deux — reflétant la
+  disposition de l'étape 3 de l'assistant de calibration pour le `data_entry_mode` de
+  l'enregistrement. Voir
+  [Consulter un enregistrement de calibration](../calibration/overview.mdx#viewing-a-calibration-record).
 
 ## 4.0.0
 

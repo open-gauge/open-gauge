@@ -4,6 +4,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class ProcedureBulkExportRequest(BaseModel):
+    proc_ids: list[uuid.UUID] = Field(min_length=1)
+
+
 class ProcedureStep(BaseModel):
     title: str
     description: str | None = None

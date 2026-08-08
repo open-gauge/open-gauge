@@ -198,6 +198,31 @@ pasada de cada canal, la más reciente primero, cada una con su análisis comple
 incertidumbre y certificado. Nada se edita nunca en el mismo lugar; una nueva calibración es una fila
 nueva, no una corrección a una anterior.
 
+## Ver un registro de calibración [#viewing-a-calibration-record]
+
+Al seleccionar una calibración en la lista de historial de la pestaña Calibración se muestra su
+registro completo a la izquierda — armonizado en todos los `data_entry_mode` (Referencia frente a
+Medido, Referencia frente a Indicado, Modelo, Tal Como Se Encontró/Tal Como Se Dejó y Respuesta en
+frecuencia muestran todos el mismo tipo de paneles, solo con el modelo/estadísticas/gráficos que
+cada modo realmente tiene). En la parte superior, un único panel de metadatos cubre cada campo del
+Paso 1 introducido para el registro: fecha de calibración, fecha de vencimiento, quién la registró
+y (si se asignó) quién la verificó, tipo y propósito de la calibración, intervalo de calibración,
+el laboratorio de calibración (resuelto al fabricante, a la organización externa o a la ubicación
+interna según el tipo de calibración), número de certificado, procedimiento interno y activo de
+referencia (calibraciones de laboratorio interno), fecha/descripción de la reparación
+(calibraciones Tras reparación), condiciones ambientales y notas — las acciones Aprobar/Rechazar y
+el botón de descarga del certificado viven en el encabezado de este panel. Debajo, el panel de
+modelo/ecuación (cuando el modo tiene uno), el panel de estadísticas/incertidumbre/conformidad y
+sus gráficos (cuando el modo los tiene), y cualquier panel de diagnóstico específico del modo (el
+resumen Tal Como Se Encontró; el panel de sensibilidad de Respuesta en frecuencia) se muestran a
+continuación, reflejando exactamente lo que mostró el Paso 3 del asistente cuando se creó el
+registro.
+
+Cada fila de la lista de historial también se etiqueta con su **Propósito de la calibración**,
+coloreada según el propósito — **Inicial** (azul), **Rutinaria** (verde), **Tras reparación**
+(naranja), **Verificación** (morado) — de modo que el propósito que influirá más adelante en la
+lógica de contribución de la pestaña Estado sea visible de un vistazo.
+
 ## Números de versión
 
 La **versión** de cada calibración (`v1`, `v2`, …) es un contador único y siempre creciente por

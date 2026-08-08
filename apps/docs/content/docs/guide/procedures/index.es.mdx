@@ -45,3 +45,39 @@ Una calibración **interna** (consulta
 siguió (`internal_procedure_id`), y esa referencia se imprime en el certificado resultante junto al
 patrón de referencia utilizado y las condiciones ambientales registradas — la cadena de trazabilidad
 completa que necesita un certificado de calibración.
+
+## Importar y exportar
+
+Disponible solo para usuarios **admin** y **superadmin**. Cualquier procedimiento se puede exportar
+como un paquete ZIP — desde el botón **Exportar** junto a **+ Nuevo procedimiento** en la página de
+Procedimientos para exportar en bloque una selección (un modal de casillas te permite elegir
+procedimientos individuales o seleccionarlos todos a la vez), o desde **+ Nuevo procedimiento →
+Importar desde archivo** para un solo procedimiento a la vez. Una exportación en bloque es
+simplemente varios paquetes de un solo procedimiento dentro de un ZIP exterior, así que se puede
+volver a importar de la misma manera en que se exportó.
+
+Cada procedimiento obtiene su propia carpeta con el nombre de su `proc_id` (p. ej.
+`PROC-TEMP-001/`), que contiene:
+
+- **`procedure.yaml`** — todos los campos del procedimiento (nombre, versión, dificultad,
+  referencia de norma, etiquetas, equipo, materiales, entorno, notas de seguridad, pasos y
+  criterios de aceptación), en un formato legible por humanos.
+- **`media/steps/{n}/`** — los bytes reales de cualquier archivo adjunto al paso `n` (imágenes,
+  PDFs, etc.), una subcarpeta por índice de paso.
+
+**Lo que se omite deliberadamente de `procedure.yaml`**: los UUID internos de la base de datos —
+el id propio del procedimiento, `created_by` y el id de cada archivo. Estos solo tienen sentido
+dentro de la base de datos de la que provienen.
+
+### Importar
+
+Importa un ZIP desde **Procedimientos → + Nuevo procedimiento → Importar desde archivo** (espera
+exactamente un procedimiento en el archivo) o desde el botón **Importar** de la página (acepta uno
+o más ZIPs a la vez, cada uno de los cuales puede contener a su vez una o más carpetas de
+procedimiento — útil para volver a importar una exportación en bloque anterior). Ambos flujos
+llaman al mismo endpoint del backend y reportan un resultado por carpeta de procedimiento, de modo
+que un problema con un procedimiento nunca bloquea a los demás del mismo archivo.
+
+Al importar, se crea un procedimiento completamente nuevo con un id interno nuevo. Si el `proc_id`
+exportado ya existe en el sistema destino, la importación de ese procedimiento falla con un error
+claro — renómbralo en el YAML y vuelve a intentarlo.

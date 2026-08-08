@@ -187,6 +187,27 @@ every channel, most recent first, each with its full analysis, uncertainty budge
 certificate. Nothing is ever edited in place; a re-calibration is a new row, not a correction
 to an old one.
 
+## Viewing a calibration record [#viewing-a-calibration-record]
+
+Selecting a calibration in the Calibration tab's history list shows its full record on the left —
+harmonized across every `data_entry_mode` (Reference vs Measured, Reference vs Indicated, Model,
+As-Found/As-Left, and Frequency response all render the same kind of panels, just with the
+model/statistics/graphs each mode actually has). At the top, a single metadata panel covers every
+Step 1 field entered for the record: calibration date, due date, who registered and (if assigned)
+who checked it, calibration type and purpose, calibration interval, the calibration lab
+(resolved to the manufacturer, external organization, or internal location depending on
+calibration type), certificate number, internal procedure and reference asset (internal-lab
+calibrations), repair date/description (After Repair calibrations), environmental conditions, and
+notes — the Approve/Reject actions and the certificate download button live in this panel's header.
+Below it, the model/equation panel (when the mode has one), the
+statistics/uncertainty/conformity panel and its charts (when the mode has them), and any
+mode-specific diagnostic panel (the As-Found summary; the Frequency response sensitivity panel)
+follow, mirroring exactly what Step 3 of the wizard showed when the record was created.
+
+Each row in the history list is also tagged with its **Calibration purpose**, colored by purpose —
+**Initial** (blue), **Routine** (green), **After Repair** (orange), **Verification** (purple) — so
+the purpose that will factor into the Health tab's contribution logic is visible at a glance.
+
 ## Version numbers
 
 Each calibration's **version** (`v1`, `v2`, …) is an always-increasing, unique counter per

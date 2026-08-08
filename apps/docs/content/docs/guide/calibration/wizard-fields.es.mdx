@@ -46,6 +46,13 @@ Meses hasta que vence la próxima calibración de este canal, p. ej. `12` para u
 editable por calibración — un canal que deriva más rápido de lo esperado podría recibir esta vez un
 intervalo más corto.
 
+## Fecha de vencimiento [#due-date]
+
+No se introduce directamente — se calcula como **Fecha de calibración** + **Intervalo de
+calibración** en el momento en que se guarda el registro, y se muestra en la vista de detalle de
+la calibración. Ejemplo: una calibración con fecha `2026-03-14` y un intervalo de 12 meses obtiene
+una fecha de vencimiento de `2027-03-14`.
+
 ## Tipo de calibración
 
 Quién realizó la calibración — **OEM**, un **Laboratorio Externo Acreditado**, tu **Laboratorio
