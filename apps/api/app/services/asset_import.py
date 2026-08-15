@@ -48,9 +48,13 @@ _EXT_CONTENT_TYPE = {
 _ASSET_MEDIA_SPECS = [
     ("has_picture", "picture", "picture_id", "asset_picture"),
     ("has_datasheet_file", "datasheet", "datasheet_file_id", "asset"),
-    ("has_pinout_image", "pinout_image", "pinout_image_id", "asset"),
+    # "asset_pinout_image"/"asset_mechanical_image" (not the generic "asset") so a
+    # restored image doesn't show up in the general Files tab — matches the tag used by
+    # the live upload endpoints (assets.py's upload_asset_pinout_image/_mechanical_image).
+    ("has_pinout_image", "pinout_image", "pinout_image_id", "asset_pinout_image"),
     ("has_sensor_image", "sensor_image", "sensor_image_id", "asset"),
     ("has_sensor_schematic", "sensor_schematic", "sensor_schematic_id", "asset"),
+    ("has_mechanical_image", "mechanical_image", "mechanical_image_id", "asset_mechanical_image"),
 ]
 
 
@@ -180,6 +184,7 @@ def import_asset_from_folder(
         warranty_expiry_date=a.warranty_expiry_date,
         notes=a.notes,
         pinout_table=a.pinout_table,
+        mechanical_table=a.mechanical_table,
         is_active=a.is_active,
         retired_at=a.retired_at,
         retired_by=None,
@@ -386,6 +391,23 @@ def import_asset_from_folder(
             original_filename=f.original_filename,
             content_type=f.content_type,
             entity_type="asset",
+            entity_id=new_asset.id,
+            uploaded_by=created_by,
+        )
+
+    for f in imported.cad_files:
+        if not f.media_path:
+            continue
+        zip_path = f"{folder}/{f.media_path}"
+        try:
+            content = zf.read(zip_path)
+        except KeyError:
+            continue
+        _restore_media_file(
+            db, content,
+            original_filename=f.original_filename,
+            content_type=f.content_type,
+            entity_type="asset_cad",
             entity_id=new_asset.id,
             uploaded_by=created_by,
         )

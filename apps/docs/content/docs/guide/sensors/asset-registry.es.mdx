@@ -104,7 +104,54 @@ modal. En modo edición, usa el botón de cámara sobre la foto para subirla o r
 eliminarla — los cambios surten efecto de inmediato, independientemente del flujo de "Guardar cambios" usado para
 el resto de los campos del activo. La foto se almacena en MinIO como cualquier otro archivo adjunto (consulta
 [Modelo de datos y conceptos](../concepts/data-model.mdx)) y es distinta de las imágenes de referencia de solo
-escritura única `sensor_image_id`/`pinout_image_id`/`sensor_schematic_id` establecidas al crear el activo.
+escritura única `sensor_image_id`/`sensor_schematic_id` establecidas al crear el activo, y de
+`pinout_image_id`, que es editable desde la pestaña Interfaz (ver más abajo).
+
+## Pestaña Interfaz
+
+La pestaña **Interfaz** documenta las conexiones físicas de un activo mediante dos paneles independientes,
+**Eléctrico** y **Mecánico**, cada uno con su propio Editar/Guardar/Cancelar — independiente del modo de
+edición de la pestaña Resumen, de modo que actualizar un pinout no requiere tocar el resto de los campos
+del activo.
+
+### Eléctrico
+
+- Una **imagen del conector** que se puede subir (una foto o dibujo del conector físico), en la columna
+  izquierda.
+- Una **tabla de pinout** editable, en la columna derecha: número de pin, color, nombre de señal y una
+  descripción, una fila por pin.
+  - **Color** admite más de un color por pin (p. ej. un cable de tierra rayado) mediante un selector de
+    muestras de una paleta fija.
+  - **Nombre de señal** acepta un nombre común (GND, VCC, TX, RX, CLK, …) de una lista de sugerencias, o
+    cualquier valor de texto libre.
+- **Mapeo** — en modo edición, una vez que existen tanto una imagen como al menos un pin, este botón abre
+  un diálogo para colocar cada pin en su ubicación física en la imagen del conector: selecciona un pin de
+  la lista y luego haz clic en su posición en la imagen. Volver a hacer clic en el marcador de un pin ya
+  colocado elimina ese mapeo. El mapeo forma parte de la misma tabla de pinout (cada fila lleva una
+  posición `x`/`y`, en porcentaje del ancho/alto de la imagen) y se guarda junto con el resto del panel.
+- Fuera del modo edición, al pasar el cursor sobre una fila del pinout se muestra su marcador en la imagen
+  del conector, y al hacer clic en la imagen se abre el mismo diálogo de mapeo en modo de solo lectura (sin
+  necesidad de botón) para explorar la disposición completa sin riesgo de mover nada.
+
+### Mecánico
+
+- Un **plano mecánico** que se puede subir (un diagrama de montaje o una vista explosionada), en la columna
+  izquierda.
+- Una **tabla de puntos de montaje** editable, en la columna derecha: etiqueta del punto de montaje, tipo,
+  especificación de par y una descripción, una fila por punto. Sin mapeo de pin a imagen — eso es
+  específico del conector eléctrico.
+
+## Pestaña CAD
+
+La pestaña **CAD** es un gestor de archivos CAD por activo — STL, STEP, STP, IGES, IGS y BREP, hasta 50MB
+cada uno — con una vista previa 3D en vivo del archivo que esté seleccionado en la lista. Todo archivo
+subido también se puede descargar tal cual.
+
+- **STL** se renderiza directamente en el navegador (three.js) — no necesita conversión.
+- **STEP, IGES y BREP** se triangulan en el navegador mediante
+  [occt-import-js](https://github.com/kovacsv/occt-import-js), una compilación WebAssembly del núcleo
+  OpenCascade, de modo que ningún archivo sale nunca del navegador para convertirse en el servidor.
+- Arrastra para orbitar, desplázate para hacer zoom — los mismos controles para todos los formatos.
 
 ## Etiquetas adhesivas con código QR
 
@@ -131,9 +178,10 @@ Cada activo obtiene su propia carpeta con el nombre de su `asset_id` (p. ej. `OG
 - **`asset.yaml`** — cada campo del activo, sus canales de sensor o detalles de DAQ, y su historial de
   calibración completo (incluyendo los puntos de datos de calibración y las estadísticas calculadas), en un
   formato legible por humanos.
-- **`media/`** — los archivos reales: la foto del activo, la hoja de datos, las imágenes de conexión/sensor y
-  el esquema, cualquier archivo adjunto en bloque, y el PDF del certificado de cada calibración (una subcarpeta por
-  calibración, de la más antigua a la más reciente).
+- **`media/`** — los archivos reales: la foto del activo, la hoja de datos, las imágenes de
+  conexión/sensor/mecánica y el esquema, cualquier archivo adjunto en bloque, cada archivo CAD subido, y el
+  PDF del certificado de cada calibración (una subcarpeta por calibración, de la más antigua a la más
+  reciente).
 
 **Lo que se deja fuera de `asset.yaml` a propósito**: los UUID internos de base de datos — el propio id del activo,
 su ubicación, `created_by`/`retired_by`, y el id de cada archivo. Estos solo tienen sentido dentro de la

@@ -113,8 +113,54 @@ téléverser ou la remplacer, et le bouton corbeille pour la supprimer — les c
 effet immédiatement, indépendamment du flux « Enregistrer les modifications » utilisé pour le
 reste des champs de l'actif. La photo est stockée dans MinIO comme tout autre fichier joint (voir
 [Modèle de données et concepts](../concepts/data-model.mdx)) et est distincte des images de
-référence en écriture unique `sensor_image_id`/`pinout_image_id`/`sensor_schematic_id` définies à
-la création de l'actif.
+référence en écriture unique `sensor_image_id`/`sensor_schematic_id` définies à la création de
+l'actif, et de `pinout_image_id`, qui est modifiable depuis l'onglet Interface (voir ci-dessous).
+
+## Onglet Interface
+
+L'onglet **Interface** documente les connexions physiques d'un actif sous la forme de deux panneaux
+indépendants, **Électrique** et **Mécanique**, chacun avec son propre Modifier/Enregistrer/Annuler —
+distinct du mode d'édition de l'onglet Aperçu, de sorte que la mise à jour d'un brochage ne nécessite pas
+de toucher au reste des champs de l'actif.
+
+### Électrique
+
+- Une **image du connecteur** téléversable (une photo ou un dessin du connecteur physique), colonne de
+  gauche.
+- Un **tableau de brochage** modifiable, colonne de droite : numéro de broche, couleur, nom du signal, et
+  une description, une ligne par broche.
+  - **Couleur** prend en charge plusieurs couleurs par broche (par ex. un fil de terre rayé) via un
+    sélecteur d'échantillons dans une palette fixe.
+  - **Nom du signal** accepte un nom courant (GND, VCC, TX, RX, CLK, …) issu d'une liste de suggestions, ou
+    toute valeur en texte libre.
+- **Cartographie** — en mode édition, une fois qu'une image et au moins une broche existent, ce bouton
+  ouvre une boîte de dialogue pour placer chaque broche à son emplacement physique sur l'image du
+  connecteur : sélectionnez une broche dans la liste, puis cliquez sur son emplacement sur l'image. Cliquer
+  à nouveau sur le marqueur d'une broche déjà placée supprime cette cartographie. La cartographie fait
+  partie du même tableau de brochage (chaque ligne porte une position `x`/`y`, en pourcentage de la
+  largeur/hauteur de l'image) et est enregistrée avec le reste du panneau.
+- En dehors du mode édition, survoler une ligne du brochage affiche son marqueur sur l'image du connecteur,
+  et cliquer sur l'image ouvre la même boîte de dialogue de cartographie en mode lecture seule (sans besoin
+  de bouton) pour parcourir la disposition complète sans risque de déplacer quoi que ce soit.
+
+### Mécanique
+
+- Un **plan mécanique** téléversable (un schéma de montage ou une vue éclatée), colonne de gauche.
+- Un **tableau des points de fixation** modifiable, colonne de droite : étiquette du point de fixation,
+  type, couple de serrage, et une description, une ligne par point. Pas de cartographie broche-image —
+  c'est spécifique au connecteur électrique.
+
+## Onglet CAO
+
+L'onglet **CAO** est un gestionnaire de fichiers CAO par actif — STL, STEP, STP, IGES, IGS et BREP, jusqu'à
+50 Mo chacun — avec un aperçu 3D en direct du fichier sélectionné dans la liste. Tout fichier téléversé
+peut également être téléchargé tel quel.
+
+- **STL** s'affiche directement dans le navigateur (three.js) — aucune conversion nécessaire.
+- **STEP, IGES et BREP** sont triangulés dans le navigateur par
+  [occt-import-js](https://github.com/kovacsv/occt-import-js), une compilation WebAssembly du noyau
+  OpenCascade, de sorte qu'aucun fichier ne quitte jamais le navigateur pour être converti côté serveur.
+- Glissez pour faire pivoter, faites défiler pour zoomer — les mêmes commandes pour tous les formats.
 
 ## Étiquettes QR autocollantes
 
@@ -144,8 +190,8 @@ contenant :
   historique complet de calibration (incluant les points de données de calibration et les
   statistiques calculées), dans un format lisible par un humain.
 - **`media/`** — les fichiers eux-mêmes : la photo de l'actif, la fiche technique, les images de
-  brochage/capteur et le schéma, tout fichier joint en masse, et le PDF de certificat de chaque
-  calibration (un sous-dossier par calibration, du plus ancien au plus récent).
+  brochage/capteur/mécanique et le schéma, tout fichier joint en masse, chaque fichier CAO téléversé, et le
+  PDF de certificat de chaque calibration (un sous-dossier par calibration, du plus ancien au plus récent).
 
 **Ce qui est délibérément exclu de `asset.yaml`** : les UUID internes de la base de données —
 l'identifiant propre de l'actif, son emplacement, `created_by`/`retired_by`, et l'identifiant de

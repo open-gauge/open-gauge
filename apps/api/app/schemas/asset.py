@@ -53,6 +53,7 @@ class AssetCreate(BaseModel):
     pinout_image_id: uuid.UUID | None = None
     sensor_image_id: uuid.UUID | None = None
     sensor_schematic_id: uuid.UUID | None = None
+    mechanical_table: list[dict[str, Any]] | None = None
     sensor_channels: list[SensorChannelCreate] | None = None
     daq_details: DaqCreate | None = None
 
@@ -95,6 +96,7 @@ class AssetUpdate(BaseModel):
     warranty_expiry_date: date | None = None
     notes: str | None = None
     pinout_table: list[dict[str, Any]] | None = None
+    mechanical_table: list[dict[str, Any]] | None = None
     sensor_channels: list[SensorChannelCreate] | None = None
 
 
@@ -139,8 +141,12 @@ class AssetResponse(BaseModel):
     notes: str | None
     pinout_table: list[dict[str, Any]] | None = None
     pinout_image_id: uuid.UUID | None = None
+    pinout_image_url: str | None = None
     sensor_image_id: uuid.UUID | None = None
     sensor_schematic_id: uuid.UUID | None = None
+    mechanical_table: list[dict[str, Any]] | None = None
+    mechanical_image_id: uuid.UUID | None = None
+    mechanical_image_url: str | None = None
     picture_id: uuid.UUID | None = None
     picture_url: str | None = None
     sensor_channels: list[SensorChannelResponse] = []

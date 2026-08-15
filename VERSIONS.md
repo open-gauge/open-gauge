@@ -9,6 +9,40 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.3.0
+
+### Added
+
+- **Asset "Interface" and "CAD" tabs.** Two new asset detail tabs:
+  - **Interface** — an Electrical panel (uploadable connector image + an editable pinout table
+    with pin number, multi-color wire swatches, signal name with a common-name suggestion list,
+    and description) and a Mechanical panel (uploadable drawing + an editable mounting-points
+    table: point label, type, torque spec, description). Each panel has its own independent
+    Edit/Save/Cancel, separate from the Overview tab's edit mode. The Electrical panel adds a
+    **Mapping** dialog to place each pin's marker on the connector image by clicking it (click
+    again to remove); mapping coordinates live on the same pinout row and save with it.
+  - **CAD** — a per-asset file manager for CAD models (STL, STEP, STP, IGES, IGS, BREP; 50MB cap)
+    with a live 3D preview: STL renders directly via `three`, STEP/IGES/BREP are triangulated
+    in-browser by `occt-import-js` (an OpenCascade WASM build), so no file is ever converted
+    server-side.
+  - Backend: `mechanical_table`/`mechanical_image_id` columns on `assets` (migration 037); the
+    existing `pinout_table`/`pinout_image_id` columns are reused and widened (wire colors, signal
+    name, x/y mapping) rather than adding new ones. New endpoints `POST`/`DELETE
+    /assets/{id}/pinout-image`, `POST`/`DELETE /assets/{id}/mechanical-image`, and
+    `GET`/`POST`/`DELETE /assets/{id}/cad-files`. Asset export/import now bundles the mechanical
+    image and CAD files alongside the existing media.
+  - The old read-only pinout table on the Overview tab's Electrical section is removed — the
+    Interface tab is now the single source of truth for pinout data.
+
+### Fixed
+
+- **Asset picture upload/removal was blanking the header stats.** `uploadAssetPicture`/
+  `deleteAssetPicture` (and the new pinout/mechanical-image endpoints) return the slim
+  `AssetResponse` shape, not the enriched profile — using that response directly to update local
+  state was dropping `organization_name`/`location_name`/`calibration_status`/`next_due_at`/etc.
+  from the page. Fixed by reloading the full profile after these mutations, matching the pattern
+  the Overview tab's own Save flow already used.
+
 ## 4.2.0
 
 ### Added

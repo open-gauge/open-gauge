@@ -77,11 +77,13 @@ class ImportedAsset(BaseModel):
     retired_reason: str | None = None
     notes: str | None = None
     pinout_table: list[dict[str, Any]] | None = None
+    mechanical_table: list[dict[str, Any]] | None = None
     has_picture: bool = False
     has_datasheet_file: bool = False
     has_pinout_image: bool = False
     has_sensor_image: bool = False
     has_sensor_schematic: bool = False
+    has_mechanical_image: bool = False
 
 
 class ImportedSensorChannel(BaseModel):
@@ -213,3 +215,4 @@ class ImportedAssetYaml(BaseModel):
     daq_details: ImportedDaqDetails | None = None
     calibrations: list[ImportedCalibration] = []
     files: list[ImportedFile] = []
+    cad_files: list[ImportedFile] = []

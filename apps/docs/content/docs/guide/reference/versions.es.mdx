@@ -14,6 +14,26 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.3.0
+
+### Añadido
+
+- **Pestañas de activo "Interfaz" y "CAD".** Un panel Eléctrico (imagen del conector + tabla de
+  pinout con muestras de color de cable multicolor, nombre de señal, descripción y un diálogo de
+  **Mapeo** para colocar los pines haciendo clic) y un panel Mecánico (plano + tabla de puntos de
+  montaje), cada uno con su propio Editar/Guardar/Cancelar independiente — además de una pestaña
+  CAD para subir y previsualizar en vivo archivos STL/STEP/IGES/BREP (STL mediante `three`, el
+  resto triangulado en el navegador por el módulo WASM de OpenCascade `occt-import-js`). Consulta
+  [Registro de activos → Pestaña Interfaz](../sensors/asset-registry.es.mdx#pestaña-interfaz) y
+  [→ Pestaña CAD](../sensors/asset-registry.es.mdx#pestaña-cad).
+
+### Corregido
+
+- La subida/eliminación de la foto del activo (y las nuevas subidas de imagen de pinout/mecánica)
+  ya no vacían las estadísticas de calibración/ubicación de la cabecera — ahora recargan el
+  perfil completo tras guardar en lugar de confiar directamente en la forma más reducida de la
+  respuesta del endpoint de subida.
+
 ## 4.2.0
 
 ### Añadido

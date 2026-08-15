@@ -106,8 +106,55 @@ Bild, um es hochzuladen oder zu ersetzen, und die Papierkorb-Schaltfläche, um e
 Änderungen wirken sich sofort aus, unabhängig vom "Änderungen speichern"-Ablauf, der für die übrigen
 Felder der Anlage verwendet wird. Das Bild wird wie jede andere angehängte Datei in MinIO gespeichert
 (siehe [Datenmodell & Konzepte](../concepts/data-model.mdx)) und ist getrennt von den bei der
-Anlagenerstellung einmalig festgelegten Referenzbildern `sensor_image_id`/`pinout_image_id`/
-`sensor_schematic_id`.
+Anlagenerstellung einmalig festgelegten Referenzbildern `sensor_image_id`/`sensor_schematic_id`, sowie
+von `pinout_image_id`, das über den Reiter Schnittstelle bearbeitet werden kann (siehe unten).
+
+## Reiter Schnittstelle
+
+Der Reiter **Schnittstelle** dokumentiert die physischen Anschlüsse einer Anlage in zwei unabhängigen
+Bereichen, **Elektrisch** und **Mechanisch**, jeweils mit eigenem Bearbeiten/Speichern/Abbrechen —
+getrennt vom Bearbeitungsmodus des Reiters Übersicht, sodass die Aktualisierung eines Pinouts nicht
+erfordert, die übrigen Felder der Anlage anzufassen.
+
+### Elektrisch
+
+- Ein hochladbares **Steckerbild** (ein Foto oder eine Zeichnung des physischen Steckverbinders), linke
+  Spalte.
+- Eine bearbeitbare **Pinout-Tabelle**, rechte Spalte: Pinnummer, Farbe, Signalname und eine Beschreibung,
+  eine Zeile pro Pin.
+  - **Farbe** unterstützt mehr als eine Farbe pro Pin (z. B. einen gestreiften Massedraht) über eine
+    Farbmuster-Auswahl aus einer festen Palette.
+  - **Signalname** akzeptiert einen gängigen Namen (GND, VCC, TX, RX, CLK, …) aus einer Vorschlagsliste
+    oder einen beliebigen Freitextwert.
+- **Zuordnung** — im Bearbeitungsmodus öffnet diese Schaltfläche, sobald sowohl ein Bild als auch
+  mindestens ein Pin vorhanden sind, einen Dialog, um jeden Pin an seiner physischen Position auf dem
+  Steckerbild zu platzieren: Wählen Sie einen Pin aus der Liste aus und klicken Sie dann auf seine Stelle
+  im Bild. Ein erneuter Klick auf die Markierung eines bereits platzierten Pins entfernt diese Zuordnung.
+  Die Zuordnung ist Teil derselben Pinout-Tabelle (jede Zeile trägt eine `x`/`y`-Position, in Prozent von
+  Bildbreite/-höhe) und wird zusammen mit dem Rest des Bereichs gespeichert.
+- Außerhalb des Bearbeitungsmodus zeigt das Überfahren einer Pinout-Zeile deren Markierung auf dem
+  Steckerbild an, und ein Klick auf das Bild öffnet denselben Zuordnungsdialog im reinen Ansichtsmodus
+  (ohne Schaltfläche), um das gesamte Layout gefahrlos zu durchsuchen.
+
+### Mechanisch
+
+- Eine hochladbare **mechanische Zeichnung** (ein Montagediagramm oder eine Explosionsdarstellung), linke
+  Spalte.
+- Eine bearbeitbare **Befestigungspunkte-Tabelle**, rechte Spalte: Bezeichnung des Befestigungspunkts, Typ,
+  Drehmomentvorgabe und eine Beschreibung, eine Zeile pro Punkt. Keine Pin-zu-Bild-Zuordnung — das ist
+  spezifisch für den elektrischen Steckverbinder.
+
+## Reiter CAD
+
+Der Reiter **CAD** ist eine anlagenbezogene Dateiverwaltung für CAD-Modelle — STL, STEP, STP, IGES, IGS und
+BREP, bis zu 50MB je Datei — mit einer Live-3D-Vorschau der jeweils in der Liste ausgewählten Datei. Jede
+hochgeladene Datei kann außerdem unverändert heruntergeladen werden.
+
+- **STL** wird direkt im Browser gerendert (three.js) — keine Konvertierung erforderlich.
+- **STEP, IGES und BREP** werden im Browser von [occt-import-js](https://github.com/kovacsv/occt-import-js)
+  trianguliert, einem WebAssembly-Build des OpenCascade-Kernels, sodass keine Datei zur serverseitigen
+  Konvertierung den Browser verlässt.
+- Ziehen zum Drehen, Scrollen zum Zoomen — dieselben Steuerelemente für jedes Format.
 
 ## QR-Aufkleber-Etiketten
 
@@ -134,9 +181,9 @@ Jede Anlage erhält ihren eigenen Ordner, benannt nach ihrer `asset_id` (z. B. `
 - **`asset.yaml`** — jedes Anlagenfeld, ihre Sensorkanäle oder DAQ-Details und ihre vollständige
   Kalibrierhistorie (einschließlich Kalibrierdatenpunkte und berechneter Statistiken), in einem
   menschenlesbaren Format.
-- **`media/`** — die eigentlichen Dateien: das Anlagenbild, das Datenblatt, Pinout-/Sensorbilder und
-  Schaltpläne, alle als Sammelanhang hochgeladenen Dateien und die Zertifikats-PDF jeder Kalibrierung
-  (ein Unterordner pro Kalibrierung, älteste zuerst).
+- **`media/`** — die eigentlichen Dateien: das Anlagenbild, das Datenblatt, Pinout-/Sensor-/Mechanikbilder
+  und Schaltpläne, alle als Sammelanhang hochgeladenen Dateien, jede hochgeladene CAD-Datei, und die
+  Zertifikats-PDF jeder Kalibrierung (ein Unterordner pro Kalibrierung, älteste zuerst).
 
 **Was bewusst aus `asset.yaml` ausgelassen wird**: interne Datenbank-UUIDs — die eigene ID der Anlage,
 ihr Standort, `created_by`/`retired_by` und die ID jeder Datei. Diese ergeben nur innerhalb der

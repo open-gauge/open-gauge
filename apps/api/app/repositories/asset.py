@@ -349,6 +349,20 @@ def set_picture(db: Session, asset: Asset, file_id: uuid.UUID | None) -> Asset:
     return asset
 
 
+def set_pinout_image(db: Session, asset: Asset, file_id: uuid.UUID | None) -> Asset:
+    asset.pinout_image_id = file_id
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+def set_mechanical_image(db: Session, asset: Asset, file_id: uuid.UUID | None) -> Asset:
+    asset.mechanical_image_id = file_id
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
 def retire(db: Session, asset: Asset, retired_by: uuid.UUID, reason: str | None = None) -> Asset:
     asset.is_active = False
     asset.retired_at = datetime.now(timezone.utc)

@@ -12,6 +12,24 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.3.0
+
+### Added
+
+- **Asset "Interface" and "CAD" tabs.** An Electrical panel (connector image + pinout table with
+  multi-color wire swatches, signal name, description, and a click-to-place pin **Mapping**
+  dialog) and a Mechanical panel (drawing + mounting-points table), each with independent
+  Edit/Save/Cancel — plus a CAD tab for uploading and live-previewing STL/STEP/IGES/BREP files
+  (STL via `three`, the rest triangulated in-browser by the `occt-import-js` OpenCascade WASM
+  build). See [Asset registry → Interface tab](../sensors/asset-registry.mdx#interface-tab) and
+  [→ CAD tab](../sensors/asset-registry.mdx#cad-tab).
+
+### Fixed
+
+- Asset picture upload/removal (and the new pinout/mechanical-image uploads) no longer blank the
+  header's calibration/location stats — they now reload the full profile after saving instead of
+  trusting the upload endpoint's slimmer response shape directly.
+
 ## 4.2.0
 
 ### Added

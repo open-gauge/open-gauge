@@ -13,6 +13,10 @@
 /.next/
 /out/
 
+# occt-import-js's WASM binary, copied from node_modules by scripts/copy-occt-wasm.mjs
+# (postinstall/prebuild) — regenerated on every install, never hand-edited.
+/public/wasm/
+
 # fumadocs-mdx (see source.config.ts — reads apps/docs/content in dev, or ./docs-content
 # copied in at Docker build time; neither should be committed here)
 /.source

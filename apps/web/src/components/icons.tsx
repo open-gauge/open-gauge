@@ -822,3 +822,23 @@ export function PhoneIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+/** Isometric cube — CAD/3D model tab. */
+export function CubeIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M8 1.5 14 5v6l-6 3.5L2 11V5l6-3.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M2 5l6 3.5L14 5M8 8.5v6" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Electrical plug — Interface tab (connector pinout / mechanical mounting). */
+export function PlugIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M6 1.5v3M10 1.5v3M4.5 4.5h7v3a3.5 3.5 0 0 1-3.5 3.5 3.5 3.5 0 0 1-3.5-3.5v-3Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 11v3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+

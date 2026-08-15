@@ -62,3 +62,7 @@ class Asset(Base):
     sensor_image_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     sensor_schematic_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
     picture_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)
+    # Mechanical interface panel (Interface tab) — mirrors pinout_table/pinout_image_id's
+    # shape but for the mechanical connection (mounting points) rather than the electrical one.
+    mechanical_table: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    mechanical_image_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=True)

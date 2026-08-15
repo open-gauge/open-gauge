@@ -180,6 +180,22 @@ def validate_image_upload(content_type: str | None, size: int) -> str:
     return ct
 
 
+MAX_CAD_SIZE_BYTES = 50 * 1024 * 1024
+
+CAD_EXTENSIONS = {".stl", ".step", ".stp", ".iges", ".igs", ".brep"}
+
+
+def validate_cad_upload(filename: str, size: int) -> None:
+    """Validate an uploaded CAD file. Browsers rarely report a useful content-type for
+    STEP/IGES/BREP, so — unlike validate_image_upload/validate_pdf_upload — this checks
+    the file extension rather than a MIME type or magic bytes. Raises ValueError."""
+    ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in CAD_EXTENSIONS:
+        raise ValueError(f"Unsupported CAD file type — expected one of {', '.join(sorted(CAD_EXTENSIONS))}")
+    if size > MAX_CAD_SIZE_BYTES:
+        raise ValueError("CAD file must be smaller than 50MB")
+
+
 MAX_CERTIFICATE_SIZE_BYTES = 20 * 1024 * 1024
 
 

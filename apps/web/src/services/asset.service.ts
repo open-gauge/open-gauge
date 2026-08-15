@@ -85,6 +85,65 @@ export async function deleteAssetPicture(assetId: string): Promise<AssetProfile>
   });
 }
 
+// ---------------------------------------------------------------------------
+// Interface tab — electrical (pinout) and mechanical connector images
+// ---------------------------------------------------------------------------
+
+export async function uploadAssetPinoutImage(assetId: string, file: File): Promise<AssetProfile> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<AssetProfile>(`/api/v1/assets/${assetId}/pinout-image`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteAssetPinoutImage(assetId: string): Promise<AssetProfile> {
+  return apiFetch<AssetProfile>(`/api/v1/assets/${assetId}/pinout-image`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+export async function uploadAssetMechanicalImage(assetId: string, file: File): Promise<AssetProfile> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<AssetProfile>(`/api/v1/assets/${assetId}/mechanical-image`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteAssetMechanicalImage(assetId: string): Promise<AssetProfile> {
+  return apiFetch<AssetProfile>(`/api/v1/assets/${assetId}/mechanical-image`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// CAD tab
+// ---------------------------------------------------------------------------
+
+export async function listAssetCadFiles(assetId: string): Promise<StoredFile[]> {
+  return apiFetch<StoredFile[]>(`/api/v1/assets/${assetId}/cad-files`, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function uploadAssetCadFile(assetId: string, file: File): Promise<StoredFile> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<StoredFile>(`/api/v1/assets/${assetId}/cad-files`, form, {
+    headers: tokenHeader(),
+  });
+}
+
+export async function deleteAssetCadFile(assetId: string, fileId: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/assets/${assetId}/cad-files/${fileId}`, {
+    method: "DELETE",
+    headers: tokenHeader(),
+  });
+}
+
 export async function fetchAssetExportBlob(assetId: string): Promise<Blob> {
   return apiBlob(`/api/v1/assets/${assetId}/export`, { headers: tokenHeader() });
 }

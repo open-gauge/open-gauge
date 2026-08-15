@@ -2,9 +2,10 @@
 
 Read-only: no database writes happen here. Each asset is serialized to a
 human-readable YAML file (asset.yaml) plus a media/ folder with the actual
-bytes of its picture, datasheet, pinout/sensor images, attached files, and
-calibration certificates. UUIDs for location/file ids are excluded
-from the YAML — see the "asset import/export" guide doc for the full schema.
+bytes of its picture, datasheet, pinout/sensor/mechanical images, attached
+files, CAD files, and calibration certificates. UUIDs for location/file ids
+are excluded from the YAML — see the "asset import/export" guide doc for the
+full schema.
 """
 import enum
 import io
@@ -45,6 +46,7 @@ _ASSET_MEDIA_SPECS = [
     ("pinout_image_id", "has_pinout_image", "pinout_image"),
     ("sensor_image_id", "has_sensor_image", "sensor_image"),
     ("sensor_schematic_id", "has_sensor_schematic", "sensor_schematic"),
+    ("mechanical_image_id", "has_mechanical_image", "mechanical_image"),
 ]
 
 
@@ -84,6 +86,11 @@ def _sorted_calibrations(db: Session, asset_pk: uuid.UUID) -> list[Calibration]:
 def _asset_attached_files(db: Session, asset_pk: uuid.UUID) -> list[StoredFile]:
     """Bulk-attached files (via /assets/{id}/files), in stable creation order."""
     return [f for f in file_repo.list_by_entity(db, asset_pk) if f.entity_type == "asset"]
+
+
+def _asset_cad_files(db: Session, asset_pk: uuid.UUID) -> list[StoredFile]:
+    """CAD files (via /assets/{id}/cad-files, CAD tab), in stable creation order."""
+    return [f for f in file_repo.list_by_entity(db, asset_pk) if f.entity_type == "asset_cad"]
 
 
 def build_asset_yaml(db: Session, asset: Asset) -> dict:
@@ -137,6 +144,7 @@ def build_asset_yaml(db: Session, asset: Asset) -> dict:
         "version": asset.version,
         "notes": asset.notes,
         "pinout_table": asset.pinout_table,
+        "mechanical_table": asset.mechanical_table,
         "created_at": asset.created_at,
         "updated_at": asset.updated_at,
         "location_name": location_name,
@@ -291,6 +299,18 @@ def build_asset_yaml(db: Session, asset: Asset) -> dict:
         for f in _asset_attached_files(db, asset.id)
     ]
 
+    cad_files_meta = [
+        {
+            "original_filename": f.original_filename,
+            "content_type": f.content_type,
+            "size_bytes": f.size_bytes,
+            "checksum_sha256": f.checksum_sha256,
+            "created_at": f.created_at,
+            "media_path": None,  # filled in by _write_asset_into_zip
+        }
+        for f in _asset_cad_files(db, asset.id)
+    ]
+
     data = {
         "export_format_version": EXPORT_FORMAT_VERSION,
         "exported_at": datetime.now(timezone.utc),
@@ -299,6 +319,7 @@ def build_asset_yaml(db: Session, asset: Asset) -> dict:
         "daq_details": daq_details,
         "calibrations": calibrations_list,
         "files": files_meta,
+        "cad_files": cad_files_meta,
     }
     return _clean(data)
 
@@ -338,6 +359,26 @@ def _write_asset_into_zip(zf: zipfile.ZipFile, db: Session, asset: Asset) -> Non
                 n += 1
         used_names.add(name)
         media_path = f"media/files/{name}"
+        zf.writestr(f"{folder}/{media_path}", content)
+        entry["media_path"] = media_path
+
+    used_cad_names: set[str] = set()
+    for entry, stored in zip(data["cad_files"], _asset_cad_files(db, asset.id)):
+        content = storage_svc.download_file(stored.storage_path, stored.bucket)
+        if content is None:
+            continue
+        name = stored.original_filename
+        if name in used_cad_names:
+            stem, _, suffix = name.rpartition(".")
+            n = 1
+            while True:
+                candidate = f"{stem} ({n}).{suffix}" if suffix else f"{name} ({n})"
+                if candidate not in used_cad_names:
+                    name = candidate
+                    break
+                n += 1
+        used_cad_names.add(name)
+        media_path = f"media/cad/{name}"
         zf.writestr(f"{folder}/{media_path}", content)
         entry["media_path"] = media_path
 

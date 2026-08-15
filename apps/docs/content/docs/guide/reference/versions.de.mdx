@@ -15,6 +15,26 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.3.0
+
+### Hinzugefügt
+
+- **Asset-Tabs „Schnittstelle" und „CAD".** Ein Elektrisch-Panel (Steckerbild + Pinout-Tabelle mit
+  mehrfarbigen Kabelfarbmustern, Signalname, Beschreibung und einem **Zuordnungs**-Dialog zum
+  Platzieren der Pins per Klick) und ein Mechanisch-Panel (Zeichnung + Tabelle der
+  Befestigungspunkte), jeweils mit eigenem, unabhängigem Bearbeiten/Speichern/Abbrechen — dazu ein
+  CAD-Tab zum Hochladen und Live-Vorschauen von STL-/STEP-/IGES-/BREP-Dateien (STL über `three`,
+  der Rest im Browser trianguliert durch das OpenCascade-WASM-Modul `occt-import-js`). Siehe
+  [Asset-Register → Reiter Schnittstelle](../sensors/asset-registry.de.mdx#reiter-schnittstelle) und
+  [→ Reiter CAD](../sensors/asset-registry.de.mdx#reiter-cad).
+
+### Behoben
+
+- Das Hochladen/Entfernen des Asset-Bilds (und die neuen Pinout-/Mechanik-Bild-Uploads) leerten
+  bisher die Kalibrierungs-/Standort-Statistiken im Kopfbereich — sie laden jetzt nach dem
+  Speichern das vollständige Profil neu, statt sich direkt auf die schlankere Antwortform des
+  Upload-Endpunkts zu verlassen.
+
 ## 4.2.0
 
 ### Hinzugefügt

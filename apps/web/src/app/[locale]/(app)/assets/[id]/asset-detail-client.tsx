@@ -98,6 +98,8 @@ import { StatRow } from "@/components/stat-row";
 import { ActivityDiff } from "@/components/activity-diff";
 import { ASSET_DOCS_LINKS, CHAN_DOCS_LINKS, STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
+import { CadTab } from "./CadTab";
+import { InterfaceTab } from "./InterfaceTab";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1274,7 +1276,7 @@ function OverviewTab({
           </CollapsibleSection>
         )}
 
-        {hasAny(profile.power_supply, profile.power_consumption_w, profile.firmware_version, profile.pinout_table?.length) && (
+        {hasAny(profile.power_supply, profile.power_consumption_w, profile.firmware_version) && (
           <CollapsibleSection title={t("electrical")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mt-3">
               <SpecRow label={t("powerSupply")} value={profile.power_supply} tooltip={t("tips.powerSupply")} tooltipDocsHref={ASSET_DOCS_LINKS.power} />
@@ -1283,31 +1285,6 @@ function OverviewTab({
               )}
               <SpecRow label={t("firmware")} value={profile.firmware_version} tooltip={t("tips.firmware")} tooltipDocsHref={ASSET_DOCS_LINKS.firmware_version} />
             </div>
-            {profile.pinout_table && profile.pinout_table.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs text-gray-400 mb-2">{t("pinout")}</p>
-                <div className="overflow-x-auto rounded-lg border border-og-border">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-og-border bg-og-surface-alt">
-                        <th className="px-3 py-2 font-semibold text-gray-400 w-16">{t("pin")}</th>
-                        <th className="px-3 py-2 font-semibold text-gray-400 w-32">{t("name")}</th>
-                        <th className="px-3 py-2 font-semibold text-gray-400">{t("description")}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-og-border">
-                      {profile.pinout_table.map((row) => (
-                        <tr key={row.pin_number}>
-                          <td className="px-3 py-2 font-mono text-og-text">{row.pin_number}</td>
-                          <td className="px-3 py-2 text-og-text">{row.name}</td>
-                          <td className="px-3 py-2 text-gray-400">{row.description}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </CollapsibleSection>
         )}
 
@@ -2993,9 +2970,9 @@ function ActivityTab({ logs }: { logs: AuditLogEntry[] }) {
 // Page
 // ---------------------------------------------------------------------------
 
-type Tab = "overview" | "health" | "calibration" | "files" | "activity";
+type Tab = "overview" | "interface" | "cad" | "health" | "calibration" | "files" | "activity";
 
-const TABS: Tab[] = ["overview", "health", "calibration", "files", "activity"];
+const TABS: Tab[] = ["overview", "interface", "cad", "health", "calibration", "files", "activity"];
 
 // ---------------------------------------------------------------------------
 // Calibration ring card — 2/3 dates + 1/3 270° arc ring, color per remaining days
@@ -3391,8 +3368,11 @@ export default function AssetDetailClient() {
     setPictureUploading(true);
     setSaveError(null);
     try {
-      const updated = await uploadAssetPicture(profile.id, file);
-      setProfile(updated);
+      await uploadAssetPicture(profile.id, file);
+      // The picture endpoint returns the slim AssetResponse shape, not the
+      // enriched profile (organization/location/calibration-status fields)
+      // — reload the full profile rather than trusting it directly.
+      setProfile(await getAssetProfile(id));
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : t("errorUploadPicture"));
     } finally {
@@ -3405,8 +3385,8 @@ export default function AssetDetailClient() {
     setPictureUploading(true);
     setSaveError(null);
     try {
-      const updated = await deleteAssetPicture(profile.id);
-      setProfile(updated);
+      await deleteAssetPicture(profile.id);
+      setProfile(await getAssetProfile(id));
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : t("errorRemovePicture"));
     } finally {
@@ -3760,6 +3740,12 @@ export default function AssetDetailClient() {
               locations={locations}
               myOrgs={myOrgs}
             />
+          )}
+          {activeTab === "interface" && (
+            <InterfaceTab assetId={id} profile={profile} canEdit={user.role !== "viewer"} onProfileUpdate={setProfile} />
+          )}
+          {activeTab === "cad" && (
+            <CadTab assetId={id} canEdit={user.role !== "viewer"} />
           )}
           {activeTab === "health" && (
             <HealthTab assetId={id} profile={profile} />

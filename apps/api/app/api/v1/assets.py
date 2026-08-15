@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Callable
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ...core.database import get_db
 from ...dependencies.deps import get_current_user, require_not_viewer
-from ...models.asset import AssetType
+from ...models.asset import Asset, AssetType
 from ...models.calibration import Calibration
 from ...models.stored_file import StoredFile
 from ...models.user import User, UserRole
@@ -63,6 +64,14 @@ def _enrich(asset, db: Session) -> AssetResponse:
         picture_file = file_repo.get_by_id(db, asset.picture_id)
         if picture_file:
             data.picture_url = storage_svc.get_presigned_url(picture_file.storage_path, picture_file.bucket)
+    if asset.pinout_image_id:
+        pinout_file = file_repo.get_by_id(db, asset.pinout_image_id)
+        if pinout_file:
+            data.pinout_image_url = storage_svc.get_presigned_url(pinout_file.storage_path, pinout_file.bucket)
+    if asset.mechanical_image_id:
+        mech_file = file_repo.get_by_id(db, asset.mechanical_image_id)
+        if mech_file:
+            data.mechanical_image_url = storage_svc.get_presigned_url(mech_file.storage_path, mech_file.bucket)
     return data
 
 
@@ -681,6 +690,283 @@ def delete_asset_picture(
             user_agent=request.headers.get("user-agent"),
         )
     return _enrich(asset, db)
+
+
+# ---------------------------------------------------------------------------
+# Interface tab — electrical (pinout) and mechanical connector images
+# ---------------------------------------------------------------------------
+
+async def _replace_asset_image(
+    db: Session,
+    asset: Asset,
+    file: UploadFile,
+    *,
+    old_file_id: uuid.UUID | None,
+    entity_type: str,
+    setter: Callable[[Session, Asset, uuid.UUID | None], Asset],
+    current_user: User,
+) -> Asset:
+    """Shared upload logic for the Interface tab's pinout_image_id / mechanical_image_id
+    fields — same validate/upload/record/replace flow as the asset picture, parameterized
+    over which FK to set so it isn't duplicated per field."""
+    data = await file.read()
+    try:
+        content_type = storage_svc.validate_image_upload(file.content_type, len(data))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    checksum = storage_svc.sha256_hex(data)
+    object_path = storage_svc.unique_object_name(f"assets/{asset.id}/{entity_type}", file.filename or entity_type)
+    bucket, path, size = storage_svc.upload_file(data, content_type, object_path)
+
+    record = file_repo.create(
+        db,
+        original_filename=file.filename or entity_type,
+        storage_path=path,
+        bucket=bucket,
+        content_type=content_type,
+        size_bytes=size,
+        checksum_sha256=checksum,
+        entity_type=entity_type,
+        entity_id=asset.id,
+        uploaded_by=current_user.id,
+    )
+    asset = setter(db, asset, record.id)
+
+    if old_file_id:
+        old_file = file_repo.get_by_id(db, old_file_id)
+        if old_file:
+            storage_svc.delete_file(old_file.storage_path, old_file.bucket)
+            file_repo.delete(db, old_file_id)
+    return asset
+
+
+@router.post("/{asset_ref}/pinout-image", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
+async def upload_asset_pinout_image(
+    asset_ref: str,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> AssetResponse:
+    """Upload or replace the electrical interface panel's connector image (Interface tab)."""
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    asset = await _replace_asset_image(
+        db, asset, file,
+        old_file_id=asset.pinout_image_id,
+        entity_type="asset_pinout_image",
+        setter=asset_repo.set_pinout_image,
+        current_user=current_user,
+    )
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.pinout_image_updated",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return _enrich(asset, db)
+
+
+@router.delete("/{asset_ref}/pinout-image", response_model=AssetResponse)
+def delete_asset_pinout_image(
+    asset_ref: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> AssetResponse:
+    """Remove the electrical interface panel's connector image, if one is set."""
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    if asset.pinout_image_id:
+        old_file = file_repo.get_by_id(db, asset.pinout_image_id)
+        asset_repo.set_pinout_image(db, asset, None)
+        if old_file:
+            storage_svc.delete_file(old_file.storage_path, old_file.bucket)
+            file_repo.delete(db, old_file.id)
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="asset.pinout_image_removed",
+            entity_type="asset",
+            entity_id=asset.id,
+            entity_asset_id=asset.asset_id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    return _enrich(asset, db)
+
+
+@router.post("/{asset_ref}/mechanical-image", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
+async def upload_asset_mechanical_image(
+    asset_ref: str,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> AssetResponse:
+    """Upload or replace the mechanical interface panel's drawing/mounting image (Interface tab)."""
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    asset = await _replace_asset_image(
+        db, asset, file,
+        old_file_id=asset.mechanical_image_id,
+        entity_type="asset_mechanical_image",
+        setter=asset_repo.set_mechanical_image,
+        current_user=current_user,
+    )
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.mechanical_image_updated",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    return _enrich(asset, db)
+
+
+@router.delete("/{asset_ref}/mechanical-image", response_model=AssetResponse)
+def delete_asset_mechanical_image(
+    asset_ref: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> AssetResponse:
+    """Remove the mechanical interface panel's image, if one is set."""
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    if asset.mechanical_image_id:
+        old_file = file_repo.get_by_id(db, asset.mechanical_image_id)
+        asset_repo.set_mechanical_image(db, asset, None)
+        if old_file:
+            storage_svc.delete_file(old_file.storage_path, old_file.bucket)
+            file_repo.delete(db, old_file.id)
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="asset.mechanical_image_removed",
+            entity_type="asset",
+            entity_id=asset.id,
+            entity_asset_id=asset.asset_id,
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+    return _enrich(asset, db)
+
+
+# ---------------------------------------------------------------------------
+# CAD tab — CAD file attachments (STL/STEP/IGES/BREP)
+# ---------------------------------------------------------------------------
+
+@router.get("/{asset_ref}/cad-files", response_model=list[StoredFileResponse])
+def list_asset_cad_files(
+    asset_ref: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[StoredFileResponse]:
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    files = [f for f in file_repo.list_by_entity(db, asset.id) if f.entity_type == "asset_cad"]
+    return _enrich_files(files)
+
+
+@router.post("/{asset_ref}/cad-files", response_model=StoredFileResponse, status_code=status.HTTP_201_CREATED)
+async def upload_asset_cad_file(
+    asset_ref: str,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> StoredFileResponse:
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    if not asset:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+
+    data = await file.read()
+    try:
+        storage_svc.validate_cad_upload(file.filename or "", len(data))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    checksum = storage_svc.sha256_hex(data)
+    object_path = storage_svc.unique_object_name(f"assets/{asset.id}/cad", file.filename or "model")
+    content_type = file.content_type or "application/octet-stream"
+
+    bucket, path, size = storage_svc.upload_file(data, content_type, object_path)
+
+    record = file_repo.create(
+        db,
+        original_filename=file.filename or "model",
+        storage_path=path,
+        bucket=bucket,
+        content_type=content_type,
+        size_bytes=size,
+        checksum_sha256=checksum,
+        entity_type="asset_cad",
+        entity_id=asset.id,
+        uploaded_by=current_user.id,
+    )
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.cad_file_uploaded",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        after_state={"filename": record.original_filename},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    resp = StoredFileResponse.model_validate(record)
+    resp.url = storage_svc.get_presigned_url(record.storage_path, record.bucket)
+    return resp
+
+
+@router.delete("/{asset_ref}/cad-files/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_asset_cad_file(
+    asset_ref: str,
+    file_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> None:
+    asset = asset_repo.get_by_ref(db, asset_ref)
+    f = file_repo.get_by_id(db, file_id)
+    if not f or not asset or f.entity_id != asset.id or f.entity_type != "asset_cad":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    storage_svc.delete_file(f.storage_path, f.bucket)
+    file_repo.delete(db, file_id)
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="asset.cad_file_deleted",
+        entity_type="asset",
+        entity_id=asset.id,
+        entity_asset_id=asset.asset_id,
+        after_state={"filename": f.original_filename},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.get(

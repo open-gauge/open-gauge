@@ -1,4 +1,25 @@
 // ---------------------------------------------------------------------------
+// Interface tab — electrical (pinout) and mechanical connector rows
+// ---------------------------------------------------------------------------
+export interface PinoutRow {
+  pin_number: number;
+  signal_name: string;
+  wire_colors: string[] | null;
+  description: string;
+  // Mapping placement on the connector image, in percent (0-100) of image
+  // width/height — null until the user places this pin via the Mapping modal.
+  x: number | null;
+  y: number | null;
+}
+
+export interface MechanicalRow {
+  point_label: string;
+  type: string;
+  torque_spec: string;
+  description: string;
+}
+
+// ---------------------------------------------------------------------------
 // Full sensor channel (used on profile page — includes accuracy, output, etc.)
 // ---------------------------------------------------------------------------
 export interface SensorChannelFull {
@@ -108,10 +129,14 @@ export interface AssetProfile {
   retired_reason: string | null;
   version: number;
   notes: string | null;
-  pinout_table: Array<{ pin_number: number; name: string; description: string }> | null;
+  pinout_table: PinoutRow[] | null;
   pinout_image_id: string | null;
+  pinout_image_url: string | null;
   sensor_image_id: string | null;
   sensor_schematic_id: string | null;
+  mechanical_table: MechanicalRow[] | null;
+  mechanical_image_id: string | null;
+  mechanical_image_url: string | null;
   picture_id: string | null;
   picture_url: string | null;
   created_at: string;
@@ -219,7 +244,8 @@ export interface AssetUpdateRequest {
   purchase_date?: string | null;
   warranty_expiry_date?: string | null;
   notes?: string | null;
-  pinout_table?: Array<{ pin_number: number; name: string; description: string }> | null;
+  pinout_table?: PinoutRow[] | null;
+  mechanical_table?: MechanicalRow[] | null;
   sensor_channels?: SensorChannelUpdateInput[];
 }
 

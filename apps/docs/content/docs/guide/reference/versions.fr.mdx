@@ -15,6 +15,27 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.3.0
+
+### Ajouté
+
+- **Onglets d'actif « Interface » et « CAO ».** Un panneau Électrique (image du connecteur +
+  tableau de brochage avec échantillons de couleur de fil multicolores, nom de signal,
+  description et une boîte de dialogue **Cartographie** pour placer les broches en cliquant) et
+  un panneau Mécanique (plan + tableau des points de fixation), chacun avec son propre
+  Modifier/Enregistrer/Annuler indépendant — plus un onglet CAO pour téléverser et prévisualiser
+  en direct des fichiers STL/STEP/IGES/BREP (STL via `three`, le reste triangulé dans le
+  navigateur par le module WASM OpenCascade `occt-import-js`). Voir
+  [Registre des actifs → Onglet Interface](../sensors/asset-registry.fr.mdx#onglet-interface) et
+  [→ Onglet CAO](../sensors/asset-registry.fr.mdx#onglet-cao).
+
+### Corrigé
+
+- Le téléversement/la suppression de la photo de l'actif (et les nouveaux téléversements d'image
+  de brochage/mécanique) ne vident plus les statistiques de calibration/emplacement de l'en-tête
+  — ils rechargent désormais le profil complet après l'enregistrement au lieu de se fier
+  directement à la forme allégée de la réponse du point de terminaison de téléversement.
+
 ## 4.2.0
 
 ### Ajouté

@@ -778,8 +778,12 @@ route("POST", "/api/v1/assets", ({ body }) => {
     notes: null,
     pinout_table: null,
     pinout_image_id: null,
+    pinout_image_url: null,
     sensor_image_id: null,
     sensor_schematic_id: null,
+    mechanical_table: null,
+    mechanical_image_id: null,
+    mechanical_image_url: null,
     picture_id: null,
     picture_url: null,
     created_at: now,
@@ -905,6 +909,32 @@ route("DELETE", "/api/v1/assets/:id/picture", ({ params }) => {
   const asset = store.updateAsset(params[0], { picture_id: null, picture_url: null });
   if (!asset) throw new NotFoundError("asset not found");
   return asset;
+});
+
+route("DELETE", "/api/v1/assets/:id/pinout-image", ({ params }) => {
+  const asset = store.updateAsset(params[0], { pinout_image_id: null, pinout_image_url: null });
+  if (!asset) throw new NotFoundError("asset not found");
+  return asset;
+});
+
+route("DELETE", "/api/v1/assets/:id/mechanical-image", ({ params }) => {
+  const asset = store.updateAsset(params[0], { mechanical_image_id: null, mechanical_image_url: null });
+  if (!asset) throw new NotFoundError("asset not found");
+  return asset;
+});
+
+route("GET", "/api/v1/assets/:id/cad-files", ({ params }) => {
+  const asset = store.getAssetProfile(params[0]);
+  if (!asset) throw new NotFoundError("asset not found");
+  return store.listFilesForEntity("asset_cad", asset.id);
+});
+
+route("DELETE", "/api/v1/assets/:id/cad-files/:fileId", ({ params }) => {
+  const asset = store.getAssetProfile(params[0]);
+  const file = store.getStoredFile(params[1]);
+  if (!asset || !file || file.entity_id !== asset.id) throw new NotFoundError("file not found");
+  store.deleteStoredFile(params[1]);
+  return undefined;
 });
 
 route("PUT", "/api/v1/assets/:id", ({ params, body }) => {
@@ -1273,6 +1303,31 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
     const asset = store.updateAsset(m[1], { picture_url: url, picture_id: store.genId() });
     if (!asset) throw new Error("asset not found");
     return asset as unknown as T;
+  }
+
+  // /api/v1/assets/:id/pinout-image
+  m = /^\/api\/v1\/assets\/([^/]+)\/pinout-image$/.exec(req.pathname);
+  if (m) {
+    const asset = store.updateAsset(m[1], { pinout_image_url: url, pinout_image_id: store.genId() });
+    if (!asset) throw new Error("asset not found");
+    return asset as unknown as T;
+  }
+
+  // /api/v1/assets/:id/mechanical-image
+  m = /^\/api\/v1\/assets\/([^/]+)\/mechanical-image$/.exec(req.pathname);
+  if (m) {
+    const asset = store.updateAsset(m[1], { mechanical_image_url: url, mechanical_image_id: store.genId() });
+    if (!asset) throw new Error("asset not found");
+    return asset as unknown as T;
+  }
+
+  // /api/v1/assets/:id/cad-files
+  m = /^\/api\/v1\/assets\/([^/]+)\/cad-files$/.exec(req.pathname);
+  if (m) {
+    const asset = store.getAssetProfile(m[1]);
+    if (!asset) throw new Error("asset not found");
+    const stored = store.addStoredFile(makeStoredFile("asset_cad", asset.id));
+    return stored as unknown as T;
   }
 
   // /api/v1/organizations/:id/logo
