@@ -17,6 +17,7 @@ import {
   getCalibrationFrequencyResponsePoints,
   getCalibrationPoints,
   listCalibrationCertificateTemplates,
+  listCalibrationUsers,
   listLocations,
   rejectCalibration,
   restoreCalibration,
@@ -36,7 +37,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getOrganization, listMyOrganizations } from "@/services/organization.service";
 import type { Organization, OrganizationListItem } from "@/types/organization";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, MechanicalRow, PinoutRow, SensorChannelUpdateInput } from "@/types/asset";
-import type { CalibrationPoint, CalibrationRecord, FrequencyResponsePoint, PhaseChartPoint, SensitivityChartPoint } from "@/types/calibration";
+import type { CalibrationPoint, CalibrationRecord, CalibrationUser, FrequencyResponsePoint, PhaseChartPoint, SensitivityChartPoint } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
 import {
@@ -210,32 +211,6 @@ function SpecRow({
         )}
       </span>
       <span className={`text-sm ${accent ? "text-og-accent font-medium" : "text-og-text"}`}>{value}</span>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Info card (calibration metadata panel) — mirrors the pattern in
-// app/[locale]/(app)/sites/page.tsx; never rendered for a null/empty value.
-// ---------------------------------------------------------------------------
-
-function InfoCard({
-  label, value, className, tooltip, tooltipDocsHref,
-}: {
-  label: string; value: ReactNode; className?: string; tooltip?: string; tooltipDocsHref?: string;
-}) {
-  if (!value) return null;
-  return (
-    <div className={`bg-og-surface-alt border border-og-border rounded-lg px-4 py-3 ${className ?? ""}`}>
-      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">
-        {label}
-        {tooltip && (
-          <Tooltip content={tooltip} docsHref={tooltipDocsHref}>
-            <InfoIcon size={10} className="text-gray-400 cursor-help normal-case tracking-normal" />
-          </Tooltip>
-        )}
-      </p>
-      <div className="text-sm text-og-text">{value}</div>
     </div>
   );
 }
@@ -1486,35 +1461,75 @@ function FrequencyResponseDetailPanel({
     return <p className="text-sm text-gray-400">{t("noPointData")}</p>;
   }
 
+  const offsetEnabled = cal.frequency_response_offset_enabled;
+  const offsetUnit = cal.frequency_response_offset_unit ?? "";
+
   return (
-    <div className="flex gap-4 min-h-0">
-      <div className="w-[38%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{t("sensitivityModel")}</p>
+    <div className="space-y-4">
+      {/* Sensitivity model — full width, in the Model panel's place */}
+      <div className="px-4 py-3 rounded-lg bg-og-surface-alt border border-og-border space-y-2">
+        <p className="text-xs font-semibold text-og-text">{t("sensitivityModel")}</p>
         {baselinePoint && (
           <StatRow label={t("baselineFrequency")} value={`${fmtNum(baselinePoint.frequency_value)}${frequencyUnit ? ` ${frequencyUnit}` : ""}`} />
         )}
         <StatRow label={t("sensitivityResult")} value={gain != null ? `${fmtNum(gain, 6)} ${sensitivityUnit}` : "—"} />
       </div>
-      <div className="flex-1 min-w-0 flex flex-col gap-3">
-        <SensitivityChart
-          className="flex-1 min-h-0"
-          points={sensitivityPoints}
-          frequencyUnit={frequencyUnit}
-          sensitivityUnit={sensitivityUnit}
-          frequencyLabel={t("frequency")}
-          sensitivityLabel={t("sensitivityResult")}
-          deviationLabel={t("deviationPercent")}
-        />
-        {cal.frequency_response_offset_enabled && (
-          <PhaseChart
+
+      {/* Dataset (50%) + graphs (50%) */}
+      <div className="flex gap-4 items-stretch min-h-[420px]">
+        <div className="flex-1 min-w-0 min-h-0 rounded-xl border border-og-border overflow-x-auto" style={{ overflowY: "auto" }}>
+          <table className="w-full text-xs min-w-max">
+            <thead className="sticky top-0 z-10">
+              <tr className="border-b border-og-border bg-og-surface-alt">
+                {[
+                  "#",
+                  `${t("frequency")}${frequencyUnit ? ` (${frequencyUnit})` : ""}`,
+                  `${t("reference")}${points[0]?.reference_unit ? ` (${points[0].reference_unit})` : ""}`,
+                  `${t("measured")}${points[0]?.measured_unit ? ` (${points[0].measured_unit})` : ""}`,
+                  `${t("sensitivityResult")}${sensitivityUnit ? ` (${sensitivityUnit})` : ""}`,
+                  t("deviationPercent"),
+                  ...(offsetEnabled ? [`${t("offset")}${offsetUnit ? ` (${offsetUnit})` : ""}`] : []),
+                ].map((h) => (
+                  <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {points.map((p) => (
+                <tr key={p.id} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
+                  <td className="px-3 py-1.5 font-mono text-gray-400">{p.sweep_index + 1}</td>
+                  <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.frequency_value)}</td>
+                  <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.reference_value)}</td>
+                  <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.measured_value)}</td>
+                  <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.sensitivity_value)}</td>
+                  <td className="px-3 py-1.5 font-mono text-gray-400">{fmtNum(p.deviation_pct, 3)}</td>
+                  {offsetEnabled && <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(p.offset_value)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
+          <SensitivityChart
             className="flex-1 min-h-0"
-            points={phasePoints}
+            points={sensitivityPoints}
             frequencyUnit={frequencyUnit}
-            offsetUnit={cal.frequency_response_offset_unit ?? ""}
+            sensitivityUnit={sensitivityUnit}
             frequencyLabel={t("frequency")}
-            phaseLabel={t("phase")}
+            sensitivityLabel={t("sensitivityResult")}
+            deviationLabel={t("deviationPercent")}
           />
-        )}
+          {offsetEnabled && (
+            <PhaseChart
+              className="flex-1 min-h-0"
+              points={phasePoints}
+              frequencyUnit={frequencyUnit}
+              offsetUnit={offsetUnit}
+              frequencyLabel={t("frequency")}
+              phaseLabel={t("phase")}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1695,6 +1710,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const [wizardOpen, setWizardOpen] = useState(false);
   const [calLocation, setCalLocation] = useState<LocationItem | null>(null);
   const [calOrganization, setCalOrganization] = useState<Organization | null>(null);
+  const [calibrationUsers, setCalibrationUsers] = useState<CalibrationUser[]>([]);
   const [deletingCalId, setDeletingCalId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
@@ -1716,6 +1732,12 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   function refetchVoided() {
     getAssetCalibrations(profile.id, true).then(setAllCals).catch(() => {});
   }
+
+  // Organization members — looked up by id to resolve the registered/checked-by
+  // avatar's picture, same list the wizard's own pickers use.
+  useEffect(() => {
+    listCalibrationUsers(profile.id).then(setCalibrationUsers).catch(() => {});
+  }, [profile.id]);
 
   useEffect(() => {
     if (showVoided) refetchVoided();
@@ -2011,118 +2033,128 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <InfoCard
-              className="flex-1 min-w-[160px]"
-              label={t("calibrationDate")} value={fmtDate(selectedCal.calibration_date)}
-              tooltip={tWizardTips("calibrationDate")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_date}
-            />
-            <InfoCard
-              className="flex-1 min-w-[160px]"
-              label={t("dueDate")} value={selectedCal.due_date ? fmtDate(selectedCal.due_date) : null}
-              tooltip={t("tips.dueDate")} tooltipDocsHref={WIZARD_DOCS_LINKS.due_date}
-            />
-            <InfoCard
-              className="flex-1 min-w-[180px]"
-              label={t("registeredBy")}
-              value={<UserSummary userId={selectedCal.performed_by_user_id} name={selectedCal.performed_by_name} size={24} />}
-              tooltip={tWizardTips("registeredBy")} tooltipDocsHref={WIZARD_DOCS_LINKS.registered_by}
-            />
-            {selectedCal.checked_by_name && (
-              <InfoCard
-                className="flex-1 min-w-[180px]"
-                label={t("checkedBy")}
-                value={<UserSummary userId={selectedCal.checked_by_user_id} name={selectedCal.checked_by_name} size={24} />}
-                tooltip={tWizardTips("checkedBy")} tooltipDocsHref={WIZARD_DOCS_LINKS.checked_by}
+          <div className="rounded-lg bg-og-surface-alt border border-og-border p-4 space-y-3">
+            <p className="text-xs font-semibold text-og-text">{t("general")}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+              <SpecRow
+                label={t("calibrationDate")} value={fmtDate(selectedCal.calibration_date)}
+                tooltip={tWizardTips("calibrationDate")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_date}
               />
-            )}
-            <InfoCard
-              className="flex-1 min-w-[160px]"
-              label={t("calibrationType")} value={translateDynamic(tCalType, selectedCal.calibration_type)}
-              tooltip={tWizardTips("calibrationType")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_type}
-            />
-            <InfoCard
-              className="flex-1 min-w-[160px]"
-              label={t("calibrationPurpose")} value={<PurposeTag purpose={selectedCal.calibration_purpose} />}
-              tooltip={tWizardTips("calibrationPurpose")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_purpose}
-            />
-            <InfoCard
-              className="flex-1 min-w-[160px]"
-              label={t("calibrationLab")}
-              tooltip={tWizardTips("calibrationLab")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_lab}
-              value={
-                selectedCal.calibration_type === "oem" ? selectedCal.external_lab_name
-                : selectedCal.calibration_type === "internal_lab"
-                  ? (calLocation && (
-                      <Link href={`/sites?id=${calLocation.id}`} className="text-og-accent hover:underline inline-flex items-center gap-1">
-                        <MapPinIcon size={11} />{calLocation.name}
-                      </Link>
-                    ))
-                : (selectedCal.calibration_type === "external_accredited_lab" || selectedCal.calibration_type === "customer_asset")
-                  ? (calOrganization && (
-                      <Link href={`/organizations/${calOrganization.id}`} className="text-og-accent hover:underline">
-                        {calOrganization.name}
-                      </Link>
-                    ))
-                : null
-              }
-            />
-          </div>
+              <SpecRow
+                label={t("dueDate")} value={selectedCal.due_date ? fmtDate(selectedCal.due_date) : null}
+                tooltip={t("tips.dueDate")} tooltipDocsHref={WIZARD_DOCS_LINKS.due_date}
+              />
+              <SpecRow
+                label={t("registeredBy")}
+                value={
+                  <UserSummary
+                    userId={selectedCal.performed_by_user_id}
+                    name={selectedCal.performed_by_name}
+                    pictureUrl={calibrationUsers.find((u) => u.id === selectedCal.performed_by_user_id)?.profile_picture_url}
+                    size={24}
+                  />
+                }
+                tooltip={tWizardTips("registeredBy")} tooltipDocsHref={WIZARD_DOCS_LINKS.registered_by}
+              />
+              {selectedCal.checked_by_name && (
+                <SpecRow
+                  label={t("checkedBy")}
+                  value={
+                    <UserSummary
+                      userId={selectedCal.checked_by_user_id}
+                      name={selectedCal.checked_by_name}
+                      pictureUrl={calibrationUsers.find((u) => u.id === selectedCal.checked_by_user_id)?.profile_picture_url}
+                      size={24}
+                    />
+                  }
+                  tooltip={tWizardTips("checkedBy")} tooltipDocsHref={WIZARD_DOCS_LINKS.checked_by}
+                />
+              )}
+              <SpecRow
+                label={t("calibrationType")} value={translateDynamic(tCalType, selectedCal.calibration_type)}
+                tooltip={tWizardTips("calibrationType")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_type}
+              />
+              <SpecRow
+                label={t("calibrationPurpose")} value={<PurposeTag purpose={selectedCal.calibration_purpose} />}
+                tooltip={tWizardTips("calibrationPurpose")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_purpose}
+              />
+              <SpecRow
+                label={t("calibrationLab")}
+                tooltip={tWizardTips("calibrationLab")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_lab}
+                value={
+                  selectedCal.calibration_type === "oem" ? selectedCal.external_lab_name
+                  : selectedCal.calibration_type === "internal_lab"
+                    ? (calLocation && (
+                        <Link href={`/sites?id=${calLocation.id}`} className="text-og-accent hover:underline inline-flex items-center gap-1">
+                          <MapPinIcon size={11} />{calLocation.name}
+                        </Link>
+                      ))
+                  : (selectedCal.calibration_type === "external_accredited_lab" || selectedCal.calibration_type === "customer_asset")
+                    ? (calOrganization && (
+                        <Link href={`/organizations/${calOrganization.id}`} className="text-og-accent hover:underline">
+                          {calOrganization.name}
+                        </Link>
+                      ))
+                  : null
+                }
+              />
+            </div>
 
-          {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null) && (
-            <div className="pt-3 border-t border-og-border">
-              <p className="flex items-center gap-1 text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">
-                {t("environmentalConditions")}
-                <Tooltip content={tWizardTips("environmentalConditions")} docsHref={WIZARD_DOCS_LINKS.environmental_conditions}>
-                  <InfoIcon size={10} className="text-gray-400 cursor-help normal-case tracking-normal" />
-                </Tooltip>
-              </p>
-              <div className="grid grid-cols-3 gap-4">
-                {selectedCal.temperature != null && (
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("temperature")}</p>
-                    <p className="font-mono text-xs text-og-text">
-                      {fmtNum(selectedCal.temperature, 2)}
-                      {selectedCal.temperature_uncertainty != null && ` ± ${fmtNum(selectedCal.temperature_uncertainty, 2)}`}
-                      {" "}<span className="text-gray-400">°C</span>
-                    </p>
-                  </div>
-                )}
-                {selectedCal.humidity != null && (
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("humidity")}</p>
-                    <p className="font-mono text-xs text-og-text">
-                      {fmtNum(selectedCal.humidity, 2)}
-                      {selectedCal.humidity_uncertainty != null && ` ± ${fmtNum(selectedCal.humidity_uncertainty, 2)}`}
-                      {" "}<span className="text-gray-400">%RH</span>
-                    </p>
-                  </div>
-                )}
-                {selectedCal.pressure != null && (
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("pressure")}</p>
-                    <p className="font-mono text-xs text-og-text">
-                      {fmtNum(selectedCal.pressure, 2)}
-                      {selectedCal.pressure_uncertainty != null && ` ± ${fmtNum(selectedCal.pressure_uncertainty, 2)}`}
-                      {" "}<span className="text-gray-400">Pa</span>
-                    </p>
-                  </div>
-                )}
+            {(selectedCal.temperature != null || selectedCal.humidity != null || selectedCal.pressure != null) && (
+              <div className="pt-3 border-t border-og-border">
+                <p className="flex items-center gap-1 text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">
+                  {t("environmentalConditions")}
+                  <Tooltip content={tWizardTips("environmentalConditions")} docsHref={WIZARD_DOCS_LINKS.environmental_conditions}>
+                    <InfoIcon size={10} className="text-gray-400 cursor-help normal-case tracking-normal" />
+                  </Tooltip>
+                </p>
+                <div className="grid grid-cols-3 gap-4">
+                  {selectedCal.temperature != null && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("temperature")}</p>
+                      <p className="font-mono text-xs text-og-text">
+                        {fmtNum(selectedCal.temperature, 2)}
+                        {selectedCal.temperature_uncertainty != null && ` ± ${fmtNum(selectedCal.temperature_uncertainty, 2)}`}
+                        {" "}<span className="text-gray-400">°C</span>
+                      </p>
+                    </div>
+                  )}
+                  {selectedCal.humidity != null && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("humidity")}</p>
+                      <p className="font-mono text-xs text-og-text">
+                        {fmtNum(selectedCal.humidity, 2)}
+                        {selectedCal.humidity_uncertainty != null && ` ± ${fmtNum(selectedCal.humidity_uncertainty, 2)}`}
+                        {" "}<span className="text-gray-400">%RH</span>
+                      </p>
+                    </div>
+                  )}
+                  {selectedCal.pressure != null && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">{t("pressure")}</p>
+                      <p className="font-mono text-xs text-og-text">
+                        {fmtNum(selectedCal.pressure, 2)}
+                        {selectedCal.pressure_uncertainty != null && ` ± ${fmtNum(selectedCal.pressure_uncertainty, 2)}`}
+                        {" "}<span className="text-gray-400">Pa</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {selectedCal.notes && (
-            <div className="pt-3 border-t border-og-border">
-              <p className="flex items-center gap-1 text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
-                {t("notes")}
-                <Tooltip content={tWizardTips("notes")} docsHref={WIZARD_DOCS_LINKS.notes}>
-                  <InfoIcon size={10} className="text-gray-400 cursor-help normal-case tracking-normal" />
-                </Tooltip>
-              </p>
-              <p className="text-xs text-og-text leading-relaxed">{selectedCal.notes}</p>
-            </div>
-          )}
+            {selectedCal.notes && (
+              <div className="pt-3 border-t border-og-border">
+                <p className="flex items-center gap-1 text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
+                  {t("notes")}
+                  <Tooltip content={tWizardTips("notes")} docsHref={WIZARD_DOCS_LINKS.notes}>
+                    <InfoIcon size={10} className="text-gray-400 cursor-help normal-case tracking-normal" />
+                  </Tooltip>
+                </p>
+                <p className="text-xs text-og-text leading-relaxed">{selectedCal.notes}</p>
+              </div>
+            )}
+          </div>
 
           {/* data_entry_mode="frequency_response" gets its own dedicated
               results panel — no curve fit, no uncertainty budget, no
@@ -2145,8 +2177,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           {selectedCal.data_entry_mode !== "frequency_response" && (
           (selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
             <div className="space-y-4">
-            <div className="flex gap-4 items-start">
-              {/* Left: model panel — shared with the wizard's Step 3
+            <div className="space-y-4">
+              {/* Model panel — full width, stacked above the statistics
+                  panel. Shared with the wizard's Step 3
                   (components/calibration-model-panel) so the two views can't
                   drift out of sync. Skipped when hasModel() is false:
                   reference_vs_indicated and skip-fit
@@ -2154,7 +2187,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   all; the curve-fit variant of reference_vs_as_found_as_left
                   has a real model, same as raw_data, and shows this panel. */}
               {(hasModel(selectedCal) || selectedCal.model_type === "lookup_table") && (
-                <div className="w-[40%] shrink-0 space-y-4">
+                <div className="space-y-4">
                   {hasModel(selectedCal) && (
                     <ModelPanel
                       isPolynomial={selectedCal.model_type !== "custom_formula"}
@@ -2175,8 +2208,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 </div>
               )}
 
-              {/* Right: statistics / uncertainty budget / conformity */}
-              <div className="flex-1 min-w-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
+              <div className="flex gap-4 items-stretch">
+              {/* Statistics / uncertainty budget / conformity — 40% */}
+              <div className="w-[40%] shrink-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{t("calibration")}</p>
                 {points.length > 0 && (
                   <StatRow
@@ -2247,10 +2281,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   </>
                 )}
               </div>
-            </div>
 
-            {/* Below: chart/table toggle, full width */}
-            <div className="flex flex-col gap-2">
+              {/* Chart/table toggle — 60%, graphs stacked one over the other */}
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
               <div className="flex gap-1 p-1 bg-og-surface-alt rounded-lg w-fit border border-og-border">
                 {(["chart", "table"] as const).map((v) => (
                   <button
@@ -2266,20 +2299,21 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 ))}
               </div>
 
+              <div className="flex-1 min-h-0 flex flex-col">
               {loadingPoints ? (
-                <div className="flex items-center justify-center text-gray-400 gap-2 text-xs py-10">
+                <div className="flex-1 flex items-center justify-center text-gray-400 gap-2 text-xs py-10">
                   <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
                   {t("loadingData")}
                 </div>
               ) : points.length === 0 ? (
-                <div className="flex items-center justify-center text-gray-400 text-sm py-10">
+                <div className="flex-1 flex items-center justify-center text-gray-400 text-sm py-10">
                   {t("noPointData")}
                 </div>
               ) : rightView === "chart" ? (
-                <div className="flex flex-col gap-3">
+                <div className="flex-1 min-h-0 flex flex-col gap-3">
                   {hasEvaluableCurve(selectedCal) && (
                     <CalibrationChart
-                      className="min-h-[320px]"
+                      className="flex-1 min-h-0"
                       cal={selectedCal}
                       points={points}
                       measuredUnit={measuredUnit}
@@ -2287,7 +2321,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     />
                   )}
                   <ResidualsChart
-                    className="min-h-[240px]"
+                    className="flex-1 min-h-0"
                     points={points.map((p) => ({
                       point_index: p.point_index,
                       reference_value: p.reference_value,
@@ -2301,15 +2335,15 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   />
                 </div>
               ) : (
-                <div className="rounded-xl border border-og-border overflow-hidden" style={{ maxHeight: 340, overflowY: "auto" }}>
-                  <table className="w-full text-xs">
+                <div className="rounded-xl border border-og-border overflow-x-auto" style={{ maxHeight: 340, overflowY: "auto" }}>
+                  <table className="w-full text-xs min-w-max">
                     <thead className="sticky top-0 z-10">
                       <tr className="border-b border-og-border bg-og-surface-alt">
                         {[
                           "#",
-                          `${t("measured")}${measuredUnit ? ` (${measuredUnit})` : ""}`,
+                          `${selectedCal.data_entry_mode === "reference_vs_indicated" ? t("indicated") : t("measured")}${measuredUnit ? ` (${measuredUnit})` : ""}`,
                           `${t("reference")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
-                          `${t("fitted")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
+                          ...(selectedCal.data_entry_mode === "reference_vs_indicated" ? [] : [`${t("fitted")}${referenceUnit ? ` (${referenceUnit})` : ""}`]),
                           `${t("residual")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
                           t("residualPercent"),
                         ].map((h) => (
@@ -2323,7 +2357,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                           <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
                           <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.measured_value)}</td>
                           <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.reference_value)}</td>
-                          <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.calculated_value)}</td>
+                          {selectedCal.data_entry_mode !== "reference_vs_indicated" && (
+                            <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.calculated_value)}</td>
+                          )}
                           <td className={`px-3 py-1.5 font-mono ${selectedCal.rmse != null && Math.abs(pt.residual_abs ?? 0) > selectedCal.rmse * 2 ? "text-amber-400 dark:text-amber-300" : "text-og-text"}`}>
                             {fmtNum(pt.residual_abs)}
                           </td>
@@ -2334,6 +2370,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   </table>
                 </div>
               )}
+              </div>
+              </div>
+            </div>
             </div>
             </div>
           ) : (

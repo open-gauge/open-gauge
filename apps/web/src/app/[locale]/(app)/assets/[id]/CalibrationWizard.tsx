@@ -566,11 +566,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // (skip_fit both sides, no transference function) — false for the
   // Reference-vs-Measured-based variant (curve-fit both sides).
   const isAfalSkipFit = isRefVsAsFoundAsLeft && step1.input_method === "reference_vs_indicated";
-  // Same calibration_type gate Step1 itself uses for showsCertificateUpload/
-  // its own allowsModelDirect — duplicated here (a one-line check) since
-  // Step 2's method picker needs it too and the two components don't share
-  // scope.
-  const allowsModelDirect = step1.calibration_type === "oem" || step1.calibration_type === "external_accredited_lab" || step1.calibration_type === "customer_asset";
 
   // data_entry_mode="raw_data"'s Step 3 "Calibration method" — how the
   // entered points become a model. Named curveFitMethod (not
@@ -1776,8 +1771,6 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                   if (m === "reference_vs_indicated") setMeasuredUnit(selectedChannel?.unit ?? "");
                   else if (m === "reference_vs_measured") setMeasuredUnit(selectedChannel?.output_signal_unit ?? selectedChannel?.unit ?? "");
                 }}
-                allowsModelDirect={allowsModelDirect}
-                purpose={step1.calibration_purpose}
               />
             </div>
           )}
@@ -2068,11 +2061,6 @@ function Step1({
     { value: "verification", label: t("purposeVerification") },
   ];
   const showsCertificateUpload = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab";
-  // model_direct is the successor of the original "coefficients only" mode —
-  // same calibration_type gate (a lab/manufacturer delivering a model instead
-  // of raw data). The Input data method itself is now chosen on Step 2 (see
-  // allowsModelDirect there) — this copy only feeds the reset below.
-  const allowsModelDirect = state.calibration_type === "oem" || state.calibration_type === "external_accredited_lab" || state.calibration_type === "customer_asset";
 
   function handleCertificateFile(file: File | null) {
     if (!file) {
@@ -2184,15 +2172,7 @@ function Step1({
         <WSelect
           label={t("calibrationType")}
           value={state.calibration_type}
-          onChange={(v) => {
-            const newType = v as CalibrationType;
-            const stillAllowsModelDirect = newType === "oem" || newType === "external_accredited_lab" || newType === "customer_asset";
-            onChange({
-              ...state,
-              calibration_type: newType,
-              input_method: state.input_method === "model_direct" && !stillAllowsModelDirect ? "reference_vs_measured" : state.input_method,
-            });
-          }}
+          onChange={(v) => onChange({ ...state, calibration_type: v as CalibrationType })}
           options={CALIBRATION_TYPE_OPTIONS}
           required
           tooltip={t("tips.calibrationType")}
@@ -2201,14 +2181,7 @@ function Step1({
         <WSelect
           label={t("calibrationPurpose")}
           value={state.calibration_purpose}
-          onChange={(v) => {
-            const newPurpose = v as CalibrationPurpose;
-            // Model isn't offered for After Repair (it splits into As
-            // Found/As Left instead) — every other input_method/purpose
-            // pairing is valid, dataEntryMode just reflows automatically.
-            const resetModelDirect = state.input_method === "model_direct" && newPurpose === "after_repair";
-            onChange({ ...state, calibration_purpose: newPurpose, input_method: resetModelDirect ? "reference_vs_measured" : state.input_method });
-          }}
+          onChange={(v) => onChange({ ...state, calibration_purpose: v as CalibrationPurpose })}
           options={CALIBRATION_PURPOSE_OPTIONS}
           required
           tooltip={t("tips.calibrationPurpose")}
@@ -2447,21 +2420,20 @@ function Step1({
 // according to the current selection, no separate "pick a method" screen.
 // As-Found/As-Left is deliberately not one of the options here; it's an
 // automatic consequence of purpose="after_repair" applied to either of the
-// first two (see deriveDataEntryMode).
+// first two (see deriveDataEntryMode). "Model (transfer function)" is always
+// offered alongside the rest — independent of whatever calibration_type/
+// calibration_purpose was entered on Step 1.
 function InputMethodPicker({
-  value, onChange, allowsModelDirect, purpose,
+  value, onChange,
 }: {
   value: InputMethod;
   onChange: (m: InputMethod) => void;
-  allowsModelDirect: boolean;
-  purpose: CalibrationPurpose;
 }) {
   const t = useTranslations("assets.wizard");
-  const showModel = allowsModelDirect && purpose !== "after_repair";
   const options: { value: InputMethod; label: string }[] = [
     { value: "reference_vs_measured", label: t("inputMethodMeasuredTitle") },
     { value: "reference_vs_indicated", label: t("inputMethodIndicatedTitle") },
-    ...(showModel ? [{ value: "model_direct" as InputMethod, label: t("inputMethodModelTitle") }] : []),
+    { value: "model_direct", label: t("inputMethodModelTitle") },
     { value: "frequency_response", label: t("inputMethodFrequencyResponseTitle") },
   ];
 
