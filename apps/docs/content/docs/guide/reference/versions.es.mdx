@@ -14,6 +14,31 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.6.0
+
+### Añadido
+
+- **Entrada del rango válido como señal medida o como magnitud física para un modelo declarado.**
+  El método de entrada "Modelo (función de transferencia)" del asistente de calibración (Paso 2)
+  ahora tiene un interruptor junto a los campos de rango válido: introduce el rango en los
+  términos propios de la señal medida (x), o en la magnitud física a la que corresponde (f(x)) —
+  esta última resuelve numéricamente (bisección) los límites correspondientes de la señal
+  medida, y solo se ofrece cuando el modelo realmente se puede invertir (es monótono) en el
+  rango declarado.
+
+### Corregido
+
+- **Las cifras de incertidumbre/conformidad de un modelo declarado eran ficticias, no reales.**
+  El Paso 3 del asistente de calibración solía procesar un modelo declarado directamente
+  ("Modelo (función de transferencia)") a través del mismo mecanismo de presupuesto de
+  incertidumbre/comprobación de conformidad que un conjunto de datos real, sintetizando dos
+  puntos ficticios de residuo cero en los extremos del rango declarado. Eso siempre producía un
+  resultado trivial y sin sentido (incertidumbre 0, siempre conforme) — no hay datos reales de
+  los que derivar nada de eso. Tanto el Paso 3 como la vista de calibración guardada ahora
+  muestran solo lo que realmente se conoce para este modo: el modelo, su rango válido declarado
+  (medido y la magnitud física a la que corresponde), y la curva que implica — sin presupuesto
+  de incertidumbre, sin comprobación de conformidad, sin estadísticas ficticias.
+
 ## 4.5.0
 
 ### Cambiado

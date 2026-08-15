@@ -12,6 +12,29 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.6.0
+
+### Added
+
+- **Measured-signal vs. physical-magnitude valid-range entry for a declared model.** The
+  calibration wizard's "Model (transfer function)" input method (Step 2) now has a switch next
+  to the valid range fields: enter the range in the measured signal's own terms (x), or in the
+  physical magnitude it maps to (f(x)) — the latter solves for the corresponding measured-signal
+  bounds numerically (bisection), and is only offered when the model is actually invertible
+  (monotonic) over the declared range.
+
+### Fixed
+
+- **A declared model's uncertainty/conformity numbers were fabricated, not real.** Step 3 of the
+  calibration wizard used to run a directly-declared model ("Model (transfer function)") through
+  the same uncertainty-budget/conformity-check machinery as a real dataset, by synthesizing two
+  fake zero-residual points at the declared range's endpoints. That always produced a trivial,
+  meaningless result (0 uncertainty, always conforms) — there's no real data to derive any of
+  that from. Both Step 3 and the saved-calibration view now show just what's actually known for
+  this mode: the model, its declared valid range (measured and the physical magnitude it maps
+  to), and the curve it implies — no uncertainty budget, no conformity check, no fake
+  statistics.
+
 ## 4.5.0
 
 ### Changed

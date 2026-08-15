@@ -98,6 +98,7 @@ import { ImageUploadField } from "@/components/image-upload-field";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { StatRow } from "@/components/stat-row";
 import { ModelPanel } from "@/components/calibration-model-panel";
+import { ModelCurveChart } from "@/components/model-curve-chart";
 import { ActivityDiff } from "@/components/activity-diff";
 import { ASSET_DOCS_LINKS, CHAN_DOCS_LINKS, STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
@@ -1535,6 +1536,62 @@ function FrequencyResponseDetailPanel({
   );
 }
 
+// data_entry_mode="model_direct" gets its own dedicated results panel too —
+// a directly-declared model has no real dataset to derive an uncertainty
+// budget or conformity check from, so this mirrors the wizard's own Step 3
+// model_direct results block: the model, the declared valid range, and the
+// curve it implies — no stats/uncertainty/conformity panel, no chart/table
+// toggle (there are no real points to tabulate at all).
+function ModelDirectDetailPanel({
+  cal, measuredUnit, referenceUnit,
+}: {
+  cal: CalibrationRecord;
+  measuredUnit: string;
+  referenceUnit: string;
+}) {
+  const t = useTranslations("assets.calibration");
+  if (!hasModel(cal)) return null;
+  const rangeValid = cal.range_min != null && cal.range_max != null && cal.range_min < cal.range_max;
+  return (
+    <div className="space-y-4">
+      <ModelPanel
+        isPolynomial={cal.model_type !== "custom_formula"}
+        degree={cal.poly_order ?? 0}
+        coefficients={cal.poly_coefficients ?? []}
+        formulaTemplate={cal.model_type === "custom_formula" ? cal.custom_formula : null}
+        formulaParamValues={null}
+      />
+      {rangeValid && (
+        <>
+          <div className="rounded-lg bg-og-surface-alt border border-og-border p-4 space-y-0">
+            <p className="text-xs font-semibold text-og-text mb-2">{t("validRange")}</p>
+            <StatRow
+              label={`${t("measured")}${measuredUnit ? ` (${measuredUnit})` : ""}`}
+              value={`${fmtNum(cal.range_min)} – ${fmtNum(cal.range_max)}`}
+            />
+            {cal.valid_range_min != null && (
+              <StatRow
+                label={`${t("reference")}${referenceUnit ? ` (${referenceUnit})` : ""}`}
+                value={`${fmtNum(cal.valid_range_min)} – ${fmtNum(cal.valid_range_max)}`}
+              />
+            )}
+          </div>
+          <ModelCurveChart
+            className="min-h-[360px]"
+            isPolynomial={cal.model_type !== "custom_formula"}
+            coefficients={cal.poly_coefficients ?? []}
+            formulaTemplate={cal.model_type === "custom_formula" ? cal.custom_formula : null}
+            xMin={cal.range_min!}
+            xMax={cal.range_max!}
+            measuredUnit={measuredUnit}
+            referenceUnit={referenceUnit}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 // Chart panel — renders Plotly scatter + fit curve from saved CalibrationPoint data
 function CalibrationChart({
   cal, points, measuredUnit, referenceUnit, className,
@@ -2168,13 +2225,22 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             />
           )}
 
+          {/* data_entry_mode="model_direct" gets its own dedicated results
+              panel too — see ModelDirectDetailPanel above: just the model,
+              the declared valid range, and the curve it implies, no
+              stats/uncertainty/conformity panel (a declared model has no
+              real dataset to derive any of that from). */}
+          {selectedCal.data_entry_mode === "model_direct" && (
+            <ModelDirectDetailPanel cal={selectedCal} measuredUnit={measuredUnit} referenceUnit={referenceUnit} />
+          )}
+
           {/* Model (left) + statistics/uncertainty/conformity (right), with
               the chart/table below spanning full width — mirrors step 3 of
               the calibration wizard. raw_data needs a real fitted model (or a
               Lookup Table's own points) to have anything to show; the other
-              3 modes always have *something* (a declared model, or real
+              modes always have *something* (a declared model, or real
               fit-free residual statistics). */}
-          {selectedCal.data_entry_mode !== "frequency_response" && (
+          {selectedCal.data_entry_mode !== "frequency_response" && selectedCal.data_entry_mode !== "model_direct" && (
           (selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
             <div className="space-y-4">
             <div className="space-y-4">

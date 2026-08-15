@@ -15,6 +15,7 @@ import {
 import {
   evaluateModel, extractFormulaParameters, validateFormulaTemplate,
   computeLinearityDeviation, computeLinearityDeviationAtPoints,
+  isModelMonotonic, invertModelBisection,
 } from "@/lib/evaluate-model";
 import { listCalibrationLabs } from "@/services/location.service";
 import { listCalibrationLabCandidates } from "@/services/organization.service";
@@ -28,6 +29,7 @@ import { useAuth } from "@/lib/auth-context";
 import { STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { StatRow } from "@/components/stat-row";
 import { ModelPanel } from "@/components/calibration-model-panel";
+import { ModelCurveChart } from "@/components/model-curve-chart";
 import { ToggleSwitch } from "@/components/toggle-switch";
 import { NumberInput } from "@/components/number-input";
 import { Select } from "@/components/select";
@@ -391,6 +393,36 @@ function coeffPowerLabel(power: number, t: ReturnType<typeof useTranslations>): 
   return `× x${SUPERS[power] ?? `^${power}`}`;
 }
 
+// The measured-signal (x) domain model type a ManualCoeffState represents —
+// matches ModelType, which also allows "lookup_table" (never used by
+// model_direct, always either a polynomial or a custom formula).
+function manualCoeffModelType(state: ManualCoeffState): ModelType {
+  return state.model_type === "polynomial" ? "polynomial" : "custom_formula";
+}
+
+// Resolves a custom-formula *template*'s free parameters (e.g. "a*x + b")
+// into a plain x-only formula string ready for evaluateModel — null if the
+// template doesn't parse or any detected parameter is missing/invalid.
+// Always null for a polynomial model (it doesn't use a formula template at
+// all). Shared by ManualCoefficientsStep's own equation preview and Step3's
+// model_direct results block, so the two can't drift out of sync.
+function resolveManualFormula(state: ManualCoeffState): string | null {
+  if (state.model_type !== "custom_formula") return null;
+  let names: string[];
+  try {
+    names = extractFormulaParameters(state.custom_formula_template);
+  } catch {
+    return null;
+  }
+  let text = state.custom_formula_template;
+  for (const name of names) {
+    const v = state.custom_formula_params[name];
+    if (v === undefined || v.trim() === "" || isNaN(parseFloat(v))) return null;
+    text = text.replace(new RegExp(`\\b${name}\\b`, "g"), v);
+  }
+  return text;
+}
+
 // Format polynomial as human-readable equation string — ascending order: a₀ + a₁·x + a₂·x² + …
 function formatEquation(coefficients: number[], degree: number): string {
   const parts: string[] = [];
@@ -474,8 +506,15 @@ interface ManualCoeffState {
   custom_formula_params: Record<string, string>;
   poly_order: number;
   coefficients: string[];
+  // Always the measured-signal (x) domain — the canonical representation,
+  // since that's what the model is evaluated forward from. When the user
+  // enters the range in physical-magnitude terms instead (range_input_mode
+  //="physical"), the typed f(x) bounds are inverted (see
+  // isModelMonotonic/invertModelBisection in evaluate-model.ts) into these
+  // same two fields rather than stored separately.
   range_min: string;
   range_max: string;
+  range_input_mode: "measured" | "physical";
 }
 
 // data_entry_mode="frequency_response": one sweep row per frequency point.
@@ -627,6 +666,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     coefficients: ["", ""],
     range_min: "",
     range_max: "",
+    range_input_mode: "measured",
   });
   const [customFormulaError, setCustomFormulaError] = useState<string | null>(null);
 
@@ -854,13 +894,13 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
   // button's disabled state never drifts out of sync with it.
   const canSave =
     isModelDirect
-      ? manualCoeffValid && (
-          // A custom formula's stored value always comes from the server
-          // (resolved template + params) — wait for that round-trip so
-          // Save can never write a stale/empty custom_formula.
-          manualCoeff.model_type !== "custom_formula"
-            || (analysisResult?.resolved_custom_formula != null && !analyzing)
-        )
+      // No server round-trip for this mode anymore (see the removed
+      // model_direct analyze effect) — a custom formula's resolved value is
+      // computed client-side (resolveManualFormula), deterministically, the
+      // moment every detected parameter has a valid number. manualCoeffValid
+      // already requires exactly that (formulaParamsValid), so it alone is
+      // sufficient here.
+      ? manualCoeffValid
     : isRefVsAsFoundAsLeft
       ? (asFoundResult != null && asLeftResult != null && !asFoundAsLeftAnalyzing && (
           // Curve-fit As-Found/As-Left's Custom Formula method — same
@@ -1125,80 +1165,13 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [step, lastStep, rawPoints, referenceUnit, measuredUnit, analyzeParams, dataEntryMode, isRawData, isRefVsIndicated, isRawCustomFormula, curveFitMethod, rawCustomFormulaTemplate, rawCustomFormulaError, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum, toleranceOverrideNum]);
 
-  // data_entry_mode="model_direct": there's no raw data, so "residuals" are
-  // synthesized as exactly zero at both ends of the declared valid range
-  // (measured == reference) and run through the same /analyze(skip_fit=true)
-  // pipeline. This combines the *same* Type B budget inputs Step3 already
-  // collects for raw_data (reference standard, sensor nominal accuracy,
-  // resolution, distribution/confidence, decision rule — none of it is
-  // actually specific to how the model was entered) via RSS, and applies the
-  // decision rule against the channel's tolerance spec with the model
-  // trusted as declared (max_error=0) — reusing the tested GUM math server-
-  // side instead of re-deriving coverage factors/effective dof in JS.
-  useEffect(() => {
-    if (step !== lastStep || !isModelDirect || !manualCoeffValid) return;
-
-    const rMin = parseFloat(manualCoeff.range_min);
-    const rMax = parseFloat(manualCoeff.range_max);
-
-    const key = JSON.stringify({
-      mode: "model_direct", rMin, rMax, referenceUnit, analyzeParams,
-      includeSensorNominalUncertainty, decisionRule,
-      referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum, toleranceOverrideNum,
-      accV: selectedChannel?.accuracy_value, accT: selectedChannel?.accuracy_type,
-      formulaTemplate: manualCoeff.model_type === "custom_formula" ? manualCoeff.custom_formula_template : null,
-      formulaParams: manualCoeff.model_type === "custom_formula" ? manualCoeff.custom_formula_params : null,
-    });
-    if (key === lastAnalysisKeyRef.current) return;
-    lastAnalysisKeyRef.current = key;
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      const req: AnalyzeRequest = {
-        points: [
-          { reference: rMin, measured: rMin },
-          { reference: rMax, measured: rMax },
-        ],
-        reference_unit: referenceUnit,
-        measured_unit: referenceUnit,
-        physical_quantity: selectedChannel?.physical_quantity ?? "",
-        poly_degree: null,
-        skip_fit: true,
-        distribution_type: analyzeParams.distribution_type,
-        confidence_level: analyzeParams.confidence_level,
-        channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
-        channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
-        decision_rule: decisionRule,
-        resolution: resolveSpecValue(
-          selectedChannel?.resolution ?? null, selectedChannel?.resolution_unit ?? null,
-          selectedChannel?.measurement_min ?? null, selectedChannel?.measurement_max ?? null,
-        ),
-        sensor_nominal_uncertainty: sensorNominalUncertaintyNum,
-        sensor_nominal_coverage_factor: 2.0,
-        include_sensor_nominal_uncertainty: includeSensorNominalUncertainty,
-        reference_standard_uncertainty: referenceStandardUncertainty,
-        reference_standard_coverage_factor: referenceStandardCoverageFactor,
-        ...(manualCoeff.model_type === "custom_formula" ? {
-          custom_formula_template: manualCoeff.custom_formula_template,
-          custom_formula_params: Object.fromEntries(
-            Object.entries(manualCoeff.custom_formula_params).map(([k, v]) => [k, parseFloat(v)])
-          ),
-        } : {}),
-      };
-      setAnalyzing(true);
-      setAnalyzeError(null);
-      try {
-        const result = await analyzeCalibration(req);
-        setAnalysisResult(result);
-      } catch (e: unknown) {
-        setAnalyzeError(e instanceof Error ? e.message : "Analysis failed");
-      } finally {
-        setAnalyzing(false);
-      }
-    }, 400);
-
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [step, lastStep, isModelDirect, manualCoeffValid, manualCoeff.range_min, manualCoeff.range_max, manualCoeff.model_type, manualCoeff.custom_formula_template, manualCoeff.custom_formula_params, referenceUnit, analyzeParams, selectedChannel, includeSensorNominalUncertainty, decisionRule, referenceStandardUncertainty, referenceStandardCoverageFactor, sensorNominalUncertaintyNum, toleranceOverrideNum]);
+  // data_entry_mode="model_direct" — a directly-declared model, no raw
+  // measurement data at all. There's nothing real to derive an uncertainty
+  // budget or conformity check from (the old synthetic-zero-residual
+  // /analyze(skip_fit=true) trick just produced a trivial, meaningless
+  // "0 uncertainty, always conforms" result), so Step 3 skips the analyze
+  // call entirely for this mode — see the isModelDirect branch in Step3
+  // below, which renders straight from `manualCoeff` instead.
 
   // data_entry_mode="reference_vs_as_found_as_left": two independent
   // /analyze calls — skip_fit when the base method is reference_vs_indicated
@@ -1548,32 +1521,27 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
       });
 
       if (mode === "model_direct") {
-        // No raw data: the model (coefficients or formula) comes straight
-        // from the certificate. Uncertainty/conformity are still real,
-        // though — they come from the model_direct useEffect's synthetic
-        // zero-residual /analyze(skip_fit=true) call over the same Type B
-        // budget raw_data collects, so points/range there mirror manualCoeff.
+        // No raw data at all — the model (coefficients or formula) and its
+        // declared valid range come straight from the certificate. There's
+        // nothing real to derive an uncertainty budget or conformity check
+        // from (the old synthetic-zero-residual /analyze trick just
+        // produced a trivial, meaningless "0 uncertainty, always conforms"
+        // result), so none of that is collected or saved for this mode
+        // anymore — see the removed model_direct analyze effect above.
         const rangeMin = n(manualCoeff.range_min);
         const rangeMax = n(manualCoeff.range_max);
+        const modelType = manualCoeffModelType(manualCoeff);
+        const coeffs = manualCoeff.model_type === "polynomial" ? manualCoeff.coefficients.map((c) => parseFloat(c)) : null;
+        const formula = resolveManualFormula(manualCoeff);
+        const yAtMin = rangeMin != null ? evaluateModel(modelType, coeffs, formula, rangeMin) : null;
+        const yAtMax = rangeMax != null ? evaluateModel(modelType, coeffs, formula, rangeMax) : null;
         polyStats = {
           poly_order: manualCoeff.model_type === "polynomial" ? manualCoeff.poly_order : null,
-          poly_coefficients: manualCoeff.model_type === "polynomial"
-            ? manualCoeff.coefficients.map((c) => parseFloat(c)) : [],
+          poly_coefficients: manualCoeff.model_type === "polynomial" ? coeffs! : [],
           range_min: rangeMin,
           range_max: rangeMax,
-          valid_range_min: rangeMin,
-          valid_range_max: rangeMax,
-          ...(analysisResult ? {
-            distribution_type: analysisResult.distribution_type,
-            confidence_level: analysisResult.confidence_level,
-            coverage_factor: analysisResult.coverage_factor,
-            combined_uncertainty: analysisResult.combined_uncertainty,
-            expanded_uncertainty: analysisResult.expanded_uncertainty,
-            uncertainty_budget: analysisResult.uncertainty_budget,
-            effective_degrees_of_freedom: analysisResult.effective_degrees_of_freedom,
-            decision_rule: analysisResult.conformity_statement.decision_rule,
-            conformity_statement: analysisResult.conformity_statement,
-          } : {}),
+          valid_range_min: yAtMin != null && yAtMax != null ? Math.min(yAtMin, yAtMax) : null,
+          valid_range_max: yAtMin != null && yAtMax != null ? Math.max(yAtMin, yAtMax) : null,
         };
         // No raw data points exist for this mode at all.
         points = [];
@@ -1660,13 +1628,16 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
           : mode === "reference_vs_as_found_as_left" && !isAfalSkipFit
             ? (afalCurveFitMethod === "polynomial_fit" ? "polynomial" : afalCurveFitMethod)
           : "polynomial",
-        // The resolved (numbers-only) formula always comes from the server
-        // — either fitted (raw_data's/curve-fit As-Found-As-Left's Custom
-        // Formula method) or resolved by direct substitution (model_direct's
-        // declared-values flow). Never send the unresolved template.
+        // The resolved (numbers-only) formula is always what actually gets
+        // saved, never the unresolved template. raw_data/curve-fit
+        // As-Found-As-Left fit it server-side (via /analyze); model_direct
+        // has no server round-trip anymore (see the removed model_direct
+        // analyze effect above), so it's resolved client-side the same way
+        // Step2/Step3's own preview does (resolveManualFormula).
         custom_formula:
           (mode === "model_direct" && manualCoeff.model_type === "custom_formula")
-          || (mode === "raw_data" && curveFitMethod === "custom_formula")
+            ? resolveManualFormula(manualCoeff)
+          : (mode === "raw_data" && curveFitMethod === "custom_formula")
             ? analysisResult?.resolved_custom_formula ?? null
           : (mode === "reference_vs_as_found_as_left" && !isAfalSkipFit && afalCurveFitMethod === "custom_formula")
             ? asLeftResult?.resolved_custom_formula ?? null
@@ -1767,9 +1738,10 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                   setStep1((s) => ({ ...s, input_method: m }));
                   // Reference vs Indicated is a display reading, always in
                   // the channel's own physical unit — Reference vs Measured
-                  // is the channel's raw output signal (today's default).
+                  // and Model (transfer function) both work in the channel's
+                  // raw output signal (today's default).
                   if (m === "reference_vs_indicated") setMeasuredUnit(selectedChannel?.unit ?? "");
-                  else if (m === "reference_vs_measured") setMeasuredUnit(selectedChannel?.output_signal_unit ?? selectedChannel?.unit ?? "");
+                  else if (m === "reference_vs_measured" || m === "model_direct") setMeasuredUnit(selectedChannel?.output_signal_unit ?? selectedChannel?.unit ?? "");
                 }}
               />
             </div>
@@ -1780,6 +1752,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
                 state={manualCoeff}
                 onChange={setManualCoeff}
                 referenceUnit={referenceUnit}
+                measuredUnit={measuredUnit}
                 customFormulaError={customFormulaError}
                 onCustomFormulaErrorChange={setCustomFormulaError}
               />
@@ -2781,11 +2754,12 @@ function AsFoundAsLeftStep({
 // ---------------------------------------------------------------------------
 
 function ManualCoefficientsStep({
-  state, onChange, referenceUnit, customFormulaError, onCustomFormulaErrorChange,
+  state, onChange, referenceUnit, measuredUnit, customFormulaError, onCustomFormulaErrorChange,
 }: {
   state: ManualCoeffState;
   onChange: (s: ManualCoeffState) => void;
   referenceUnit: string;
+  measuredUnit: string;
   customFormulaError: string | null;
   onCustomFormulaErrorChange: (e: string | null) => void;
 }) {
@@ -2839,19 +2813,73 @@ function ManualCoefficientsStep({
       return [];
     }
   })();
-  // Local, display-only preview (simple word-boundary substitution) — the
-  // authoritative resolved formula always comes back from the server, since
-  // it's the only side guaranteed to produce valid, re-parseable syntax
-  // (see evaluate-model.ts's validateFormulaTemplate doc comment).
-  const previewFormula = (() => {
-    let text = state.custom_formula_template;
-    for (const name of detectedParams) {
-      const v = state.custom_formula_params[name];
-      if (v === undefined || v.trim() === "" || isNaN(parseFloat(v))) return null;
-      text = text.replace(new RegExp(`\\b${name}\\b`, "g"), v);
+  // Display-only preview — the authoritative resolved formula always comes
+  // back from the server, since it's the only side guaranteed to produce
+  // valid, re-parseable syntax (see evaluate-model.ts's
+  // validateFormulaTemplate doc comment).
+  const previewFormula = resolveManualFormula(state);
+
+  // Valid range — always stored as the measured-signal (x) domain
+  // (range_min/range_max), since that's what the model evaluates forward
+  // from. "Physical magnitude" mode is a data-entry convenience only: it
+  // shows/accepts f(x) bounds instead and inverts them into the same two
+  // fields, so it's only offered when the model is actually invertible
+  // (monotonic) over the declared range — see isModelMonotonic.
+  const modelIsPolynomial = state.model_type === "polynomial";
+  const rangeModelType = manualCoeffModelType(state);
+  const rangeCoefficients = modelIsPolynomial ? numericCoeffs : null;
+  const rangeFormula = modelIsPolynomial ? null : previewFormula;
+  const modelReadyForRange = modelIsPolynomial ? previewValid : rangeFormula !== null;
+  const rMinNum = parseFloat(state.range_min);
+  const rMaxNum = parseFloat(state.range_max);
+  const rangeReady = modelReadyForRange && !isNaN(rMinNum) && !isNaN(rMaxNum) && rMinNum < rMaxNum;
+  const canInvert = rangeReady && isModelMonotonic(rangeModelType, rangeCoefficients, rangeFormula, rMinNum, rMaxNum);
+
+  // Fall back to measured-signal mode if the model stops being invertible
+  // (e.g. coefficients edited into a non-monotonic shape) while physical
+  // mode was active.
+  useEffect(() => {
+    if (state.range_input_mode === "physical" && !canInvert) {
+      onChange({ ...state, range_input_mode: "measured" });
     }
-    return text;
-  })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canInvert]);
+
+  const [physicalMin, setPhysicalMin] = useState("");
+  const [physicalMax, setPhysicalMax] = useState("");
+
+  // Re-derive the displayed f(x) bounds from the current measured-signal
+  // range only when *entering* physical mode (forward evaluation is always
+  // well-defined) — not on every keystroke while already in physical mode,
+  // which would fight the user's typing as invertModelBisection's result
+  // rounds back through evaluateModel.
+  useEffect(() => {
+    if (state.range_input_mode !== "physical" || !rangeReady) return;
+    setPhysicalMin(fmtN(evaluateModel(rangeModelType, rangeCoefficients, rangeFormula, rMinNum)));
+    setPhysicalMax(fmtN(evaluateModel(rangeModelType, rangeCoefficients, rangeFormula, rMaxNum)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.range_input_mode]);
+
+  function invertRangeBound(y: number): number | null {
+    const span = Math.max(Math.abs(rMaxNum - rMinNum), 1e-6);
+    return invertModelBisection(rangeModelType, rangeCoefficients, rangeFormula, y, rMinNum - span * 1000, rMaxNum + span * 1000);
+  }
+
+  function handlePhysicalMinChange(v: string) {
+    setPhysicalMin(v);
+    const y = parseFloat(v);
+    if (isNaN(y)) return;
+    const x = invertRangeBound(y);
+    if (x !== null) onChange({ ...state, range_min: String(x) });
+  }
+
+  function handlePhysicalMaxChange(v: string) {
+    setPhysicalMax(v);
+    const y = parseFloat(v);
+    if (isNaN(y)) return;
+    const x = invertRangeBound(y);
+    if (x !== null) onChange({ ...state, range_max: String(x) });
+  }
 
   return (
     <div className="p-6 space-y-5">
@@ -2956,26 +2984,66 @@ function ManualCoefficientsStep({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <WInput
-          label={referenceUnit ? t("validRangeMinUnit", { unit: referenceUnit }) : t("validRangeMin")}
-          type="number"
-          numberWidth="w-24"
-          value={state.range_min}
-          onChange={(v) => onChange({ ...state, range_min: v })}
-          required
-        />
-        <WInput
-          label={referenceUnit ? t("validRangeMaxUnit", { unit: referenceUnit }) : t("validRangeMax")}
-          type="number"
-          numberWidth="w-24"
-          value={state.range_max}
-          onChange={(v) => onChange({ ...state, range_max: v })}
-          required
-        />
-      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className={`text-xs ${state.range_input_mode === "measured" ? "text-og-text font-medium" : "text-gray-400"}`}>
+            {t("rangeModeMeasured")}
+          </span>
+          <ToggleSwitch
+            checked={state.range_input_mode === "physical"}
+            onChange={(v) => onChange({ ...state, range_input_mode: v ? "physical" : "measured" })}
+            disabled={!canInvert}
+            size="sm"
+          />
+          <span className={`text-xs ${state.range_input_mode === "physical" ? "text-og-text font-medium" : "text-gray-400"}`}>
+            {t("rangeModePhysical")}
+          </span>
+          <FieldTooltip tooltip={t("tips.rangeInputMode")} />
+        </div>
+        {!canInvert && (
+          <p className="text-[11px] text-gray-400">{t("rangeModePhysicalUnavailable")}</p>
+        )}
 
-      <p className="text-xs text-gray-400">{t("modelDirectUncertaintyHint")}</p>
+        {state.range_input_mode === "measured" ? (
+          <div className="grid grid-cols-2 gap-4">
+            <WInput
+              label={measuredUnit ? t("validRangeMinUnit", { unit: measuredUnit }) : t("validRangeMin")}
+              type="number"
+              numberWidth="w-24"
+              value={state.range_min}
+              onChange={(v) => onChange({ ...state, range_min: v })}
+              required
+            />
+            <WInput
+              label={measuredUnit ? t("validRangeMaxUnit", { unit: measuredUnit }) : t("validRangeMax")}
+              type="number"
+              numberWidth="w-24"
+              value={state.range_max}
+              onChange={(v) => onChange({ ...state, range_max: v })}
+              required
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <WInput
+              label={referenceUnit ? t("validRangeMinUnit", { unit: referenceUnit }) : t("validRangeMin")}
+              type="number"
+              numberWidth="w-24"
+              value={physicalMin}
+              onChange={handlePhysicalMinChange}
+              required
+            />
+            <WInput
+              label={referenceUnit ? t("validRangeMaxUnit", { unit: referenceUnit }) : t("validRangeMax")}
+              type="number"
+              numberWidth="w-24"
+              value={physicalMax}
+              onChange={handlePhysicalMaxChange}
+              required
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -4035,11 +4103,12 @@ function Step3({
           />
         )}
 
-        {/* Hidden for Lookup Table: an exact interpolant's own results panel
-            doesn't show uncertainty/statistics either (see the results
-            section below), so there's nothing for these inputs to feed
-            visibly. */}
-        {!isLookupTable && (
+        {/* Hidden for Lookup Table (an exact interpolant's own results panel
+            doesn't show uncertainty/statistics either, see the results
+            section below) and for model_direct (a declared model has no
+            real data to derive an uncertainty budget from at all — see the
+            isModelDirect results block below instead). */}
+        {!isLookupTable && !isModelDirect && (
           <UncertaintyCalculationPanel
             analyzeParams={analyzeParams}
             onAnalyzeParamsChange={onAnalyzeParamsChange}
@@ -4064,11 +4133,11 @@ function Step3({
           />
         )}
 
-        {/* Not shown for Lookup Table: the entered points are exact by
+        {/* Not shown for Lookup Table (the entered points are exact by
             construction, so comparing them to a spec is trivially always
-            true and not a meaningful conformity check (see the Linearity
-            deviation chart below instead). */}
-        {!isLookupTable && (
+            true — see the Linearity deviation chart below instead) or for
+            model_direct (no real data to assess conformity against). */}
+        {!isLookupTable && !isModelDirect && (
           <ConformityAssessmentPanel
             result={result}
             referenceUnit={referenceUnit}
@@ -4103,7 +4172,7 @@ function Step3({
           formulaParamValues={result.custom_formula_parameter_values ?? null}
         />
       )}
-      {result && !analyzing && isModelDirect && (
+      {isModelDirect && (
         <ModelPanel
           isPolynomial={manualCoeff.model_type === "polynomial"}
           degree={manualCoeff.poly_order}
@@ -4116,6 +4185,41 @@ function Step3({
           }
         />
       )}
+
+      {/* model_direct has no real dataset to derive uncertainty/conformity
+          from (see the removed model_direct analyze effect above) — just
+          the declared valid range and the curve it implies. */}
+      {isModelDirect && (() => {
+        const modelType = manualCoeffModelType(manualCoeff);
+        const coeffs = manualCoeff.model_type === "polynomial" ? manualCoeff.coefficients.map((c) => parseFloat(c)) : null;
+        const formula = resolveManualFormula(manualCoeff);
+        const mMin = parseFloat(manualCoeff.range_min);
+        const mMax = parseFloat(manualCoeff.range_max);
+        const rangeValid = !isNaN(mMin) && !isNaN(mMax) && mMin < mMax
+          && (manualCoeff.model_type === "polynomial" ? coeffs!.every((c) => !isNaN(c)) : formula !== null);
+        if (!rangeValid) return null;
+        const yMin = evaluateModel(modelType, coeffs, formula, mMin);
+        const yMax = evaluateModel(modelType, coeffs, formula, mMax);
+        return (
+          <>
+            <div className="rounded-lg bg-og-surface-alt border border-og-border p-4 space-y-0">
+              <p className="text-xs font-semibold text-og-text mb-2">{t("validRange")}</p>
+              <StatRow label={`${t("measured")} (${measuredUnit})`} value={`${fmtN(mMin)} ${t("to")} ${fmtN(mMax)}`} />
+              <StatRow label={`${t("reference")} (${referenceUnit})`} value={`${fmtN(Math.min(yMin, yMax))} ${t("to")} ${fmtN(Math.max(yMin, yMax))}`} />
+            </div>
+            <ModelCurveChart
+              className="min-h-[360px]"
+              isPolynomial={manualCoeff.model_type === "polynomial"}
+              coefficients={coeffs ?? []}
+              formulaTemplate={formula}
+              xMin={mMin}
+              xMax={mMax}
+              measuredUnit={measuredUnit}
+              referenceUnit={referenceUnit}
+            />
+          </>
+        );
+      })()}
 
       {analyzeError && (
         <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-200 dark:border-red-900/30">
@@ -4181,7 +4285,7 @@ function Step3({
         </div>
       )}
 
-      {result && !analyzing && !isLookupTable && (
+      {result && !analyzing && !isLookupTable && !isModelDirect && (
         <div className="flex gap-4 min-h-0">
           {/* Left: stats + uncertainty (40%, full width when there's no chart panel) */}
           <StatisticsPanel
@@ -4303,7 +4407,7 @@ function Step3({
         </div>
       )}
 
-      {!result && !analyzing && !analyzeError && (
+      {!result && !analyzing && !analyzeError && !isModelDirect && (
         <div className="flex flex-col items-center justify-center py-16 text-gray-400">
           <p className="text-sm">{t("waitingForAnalysis")}</p>
         </div>

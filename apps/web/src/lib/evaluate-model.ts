@@ -66,6 +66,93 @@ export function evaluateModel(
   return evalPolynomial(coefficients ?? [], x);
 }
 
+/** Whether `evaluateModel` is monotonic (strictly increasing or strictly
+ * decreasing, no flat stretch and no direction change) across [xLo, xHi],
+ * checked by sampling rather than symbolically — a custom formula can be
+ * arbitrary, so this is the only general way to tell. Monotonicity is what
+ * makes "solve x from a target f(x)" well-posed (a unique x exists for
+ * every y in range); used to gate whether the calibration wizard's Model
+ * (transfer function) step may let the user enter the valid range in
+ * physical-magnitude terms instead of measured-signal terms. */
+export function isModelMonotonic(
+  modelType: ModelType,
+  coefficients: number[] | null,
+  customFormula: string | null,
+  xLo: number,
+  xHi: number,
+  lookupPoints?: { x: number; y: number }[],
+  samples = 40
+): boolean {
+  if (!isFinite(xLo) || !isFinite(xHi) || xLo >= xHi) return false;
+  let prevY: number | null = null;
+  let sign = 0;
+  for (let i = 0; i <= samples; i++) {
+    const x = xLo + ((xHi - xLo) * i) / samples;
+    let y: number;
+    try {
+      y = evaluateModel(modelType, coefficients, customFormula, x, lookupPoints);
+    } catch {
+      return false;
+    }
+    if (!isFinite(y)) return false;
+    if (prevY !== null) {
+      const diff = y - prevY;
+      if (Math.abs(diff) > 1e-12) {
+        const s = diff > 0 ? 1 : -1;
+        if (sign === 0) sign = s;
+        else if (s !== sign) return false;
+      }
+    }
+    prevY = y;
+  }
+  return sign !== 0;
+}
+
+/** Numerically solves `evaluateModel(...) === y` for x via bisection,
+ * assuming the model is monotonic over [xLo, xHi] (check with
+ * isModelMonotonic first — this function doesn't verify it, just requires
+ * the two endpoints to bracket y). Returns null when they don't bracket y
+ * or either endpoint evaluates to a non-finite value. */
+export function invertModelBisection(
+  modelType: ModelType,
+  coefficients: number[] | null,
+  customFormula: string | null,
+  y: number,
+  xLo: number,
+  xHi: number,
+  lookupPoints?: { x: number; y: number }[],
+  maxIter = 100,
+  tol = 1e-9
+): number | null {
+  if (!isFinite(xLo) || !isFinite(xHi) || xLo >= xHi || !isFinite(y)) return null;
+  let lo = xLo, hi = xHi;
+  const evalAt = (x: number): number | null => {
+    try {
+      const v = evaluateModel(modelType, coefficients, customFormula, x, lookupPoints);
+      return isFinite(v) ? v : null;
+    } catch {
+      return null;
+    }
+  };
+  const fLoVal = evalAt(lo);
+  const fHiVal = evalAt(hi);
+  if (fLoVal === null || fHiVal === null) return null;
+  let fLo = fLoVal - y;
+  const fHi = fHiVal - y;
+  if (fLo === 0) return lo;
+  if (fHi === 0) return hi;
+  if ((fLo > 0) === (fHi > 0)) return null;
+  for (let i = 0; i < maxIter; i++) {
+    const mid = (lo + hi) / 2;
+    const fMidVal = evalAt(mid);
+    if (fMidVal === null) return null;
+    const fMid = fMidVal - y;
+    if (Math.abs(fMid) < tol || (hi - lo) / 2 < tol) return mid;
+    if ((fMid > 0) === (fLo > 0)) { lo = mid; fLo = fMid; } else { hi = mid; }
+  }
+  return (lo + hi) / 2;
+}
+
 /** Throws if `formula` doesn't parse/evaluate at a test point — used for
  * inline validation before the wizard lets a custom formula be saved. Only
  * valid for a fully-resolved (x-only) formula; a template with unresolved

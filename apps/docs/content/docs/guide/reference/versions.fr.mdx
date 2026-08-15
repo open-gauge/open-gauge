@@ -15,6 +15,31 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.6.0
+
+### Ajouté
+
+- **Saisie de la plage valide en signal mesuré ou en grandeur physique pour un modèle déclaré.**
+  La méthode de saisie « Modèle (fonction de transfert) » de l'assistant de calibration
+  (étape 2) dispose désormais d'un commutateur à côté des champs de plage valide : saisissez la
+  plage dans les termes propres du signal mesuré (x), ou dans la grandeur physique à laquelle
+  elle correspond (f(x)) — cette dernière résout numériquement (bissection) les bornes
+  correspondantes du signal mesuré, et n'est proposée que lorsque le modèle peut réellement être
+  inversé (monotone) sur la plage déclarée.
+
+### Corrigé
+
+- **Les chiffres d'incertitude/conformité d'un modèle déclaré étaient fabriqués, pas réels.**
+  L'étape 3 de l'assistant de calibration faisait passer un modèle déclaré directement
+  (« Modèle (fonction de transfert) ») par le même mécanisme de budget d'incertitude/vérification
+  de conformité qu'un jeu de données réel, en synthétisant deux points fictifs à résidu nul aux
+  extrémités de la plage déclarée. Cela produisait toujours un résultat trivial et dénué de sens
+  (incertitude nulle, toujours conforme) — il n'y a aucune donnée réelle dont dériver quoi que ce
+  soit de tel. L'étape 3 et la vue de calibration enregistrée n'affichent désormais que ce qui
+  est réellement connu pour ce mode : le modèle, sa plage valide déclarée (mesurée et la
+  grandeur physique à laquelle elle correspond), et la courbe qu'elle implique — sans budget
+  d'incertitude, sans vérification de conformité, sans statistiques fictives.
+
 ## 4.5.0
 
 ### Modifié

@@ -15,6 +15,32 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.6.0
+
+### Hinzugefügt
+
+- **Eingabe des gültigen Bereichs als gemessenes Signal oder als physikalische Größe für ein
+  deklariertes Modell.** Die Eingabemethode „Modell (Übertragungsfunktion)“ des
+  Kalibrierungsassistenten (Schritt 2) hat jetzt einen Schalter neben den Feldern für den
+  gültigen Bereich: Geben Sie den Bereich in den eigenen Begriffen des gemessenen Signals (x)
+  ein, oder in der physikalischen Größe, auf die er abgebildet wird (f(x)) — Letzteres löst
+  numerisch (Bisektion) nach den entsprechenden Grenzen des gemessenen Signals auf und wird nur
+  angeboten, wenn das Modell im deklarierten Bereich tatsächlich umkehrbar (monoton) ist.
+
+### Behoben
+
+- **Die Unsicherheits-/Konformitätswerte eines deklarierten Modells waren erfunden, nicht real.**
+  Schritt 3 des Kalibrierungsassistenten ließ ein direkt deklariertes Modell („Modell
+  (Übertragungsfunktion)“) bisher durch denselben Unsicherheitsbudget-/
+  Konformitätsprüfungsmechanismus laufen wie einen echten Datensatz, indem zwei fiktive
+  Nullresiduum-Punkte an den Endpunkten des deklarierten Bereichs synthetisiert wurden. Das
+  ergab immer ein triviales, bedeutungsloses Ergebnis (Unsicherheit 0, immer konform) — es gibt
+  keine echten Daten, aus denen sich irgendetwas davon ableiten ließe. Sowohl Schritt 3 als auch
+  die Ansicht der gespeicherten Kalibrierung zeigen für diesen Modus jetzt nur das, was
+  tatsächlich bekannt ist: das Modell, seinen deklarierten gültigen Bereich (gemessen und die
+  physikalische Größe, auf die er abgebildet wird) und die daraus resultierende Kurve — kein
+  Unsicherheitsbudget, keine Konformitätsprüfung, keine erfundenen Statistiken.
+
 ## 4.5.0
 
 ### Geändert
