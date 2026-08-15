@@ -6,6 +6,15 @@
   "language": {
     "label": "Idioma"
   },
+  "datePicker": {
+    "placeholder": "Seleccionar fecha",
+    "selectDate": "Seleccionar fecha",
+    "today": "Hoy",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente"
+  },
   "activityDiff": {
     "yes": "Sí",
     "no": "No",

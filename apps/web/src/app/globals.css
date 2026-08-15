@@ -239,29 +239,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgb(var(--og-accent-rgb));
 }
-
-/* Date inputs — the native <input type="date"> stays (reliable, accessible,
-   no bespoke calendar widget to maintain), but its calendar icon otherwise
-   ignores the app's theme entirely: Chromium always renders it near-black,
-   which is nearly invisible on a dark og-surface background. color-scheme
-   is the standard fix — it tells the browser which palette its own native
-   form controls should render in, so the icon (and any OS-level date-picker
-   popup) automatically switches to a light-on-dark rendering that's
-   actually visible, with no filter/recolor hacks needed. Border, radius,
-   and focus ring already come from each screen's own input base classes
-   (IB/IB_OK), same as every other input. */
-input[type="date"] {
-  color-scheme: light;
-}
-.dark input[type="date"] {
-  color-scheme: dark;
-}
-input[type="date"]::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  border-radius: 4px;
-  padding: 2px;
-  transition: background-color 0.15s ease;
-}
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  background-color: var(--og-surface-alt);
-}

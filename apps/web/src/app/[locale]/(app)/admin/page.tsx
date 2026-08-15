@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/auth-context";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { Avatar } from "@/components/avatar";
 import { ToggleSwitch } from "@/components/toggle-switch";
+import { Select } from "@/components/select";
+import { NumberInput } from "@/components/number-input";
 import type { UserProfile } from "@/types/user";
 import {
   CameraIcon,
@@ -272,15 +274,12 @@ function UserRow({
           </div>
           <div className="space-y-1">
             <label className="text-xs text-gray-400">{t("role")}</label>
-            <select
+            <Select
               value={role}
-              onChange={(e) => setRole(e.target.value as typeof role)}
-              className={`${IB} ${IB_OK}`}
-            >
-              {EDITABLE_ROLES.map((r) => (
-                <option key={r} value={r}>{translateDynamic(tRole, r)}</option>
-              ))}
-            </select>
+              onChange={(v) => setRole(v as typeof role)}
+              options={EDITABLE_ROLES.map((r) => ({ value: r, label: translateDynamic(tRole, r) }))}
+              className="w-40"
+            />
           </div>
           {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex gap-2">
@@ -615,13 +614,12 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
       <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
         <p className="text-xs font-semibold text-og-text">{t("title")}</p>
         <div className="flex items-center gap-3">
-          <select value={scope} onChange={(e) => setScope(e.target.value)}
-            className="px-2 py-1.5 text-xs rounded-lg border border-og-border-md bg-og-surface text-og-text">
-            <option value="global">{t("global")}</option>
-            {orgs.map((org) => (
-              <option key={org.id} value={org.id}>{org.name}</option>
-            ))}
-          </select>
+          <Select
+            value={scope}
+            onChange={setScope}
+            options={[{ value: "global", label: t("global") }, ...orgs.map((org) => ({ value: org.id, label: org.name }))]}
+            className="w-44"
+          />
           <div className="flex items-center gap-2 pl-3 border-l border-og-border-md">
             <PdfThumbnail fetchPdf={previewBuiltinCertificateTemplate} title={t("builtinDefault")} />
             <span className="text-xs text-gray-400">{t("builtinDefault")}</span>
@@ -820,11 +818,10 @@ function EmailSettingsSection() {
             </div>
             <div className="space-y-1">
               <label className="text-xs text-gray-400">{t("port")}</label>
-              <input
-                type="number"
-                value={form.smtp_port}
-                onChange={(e) => setForm((f) => ({ ...f, smtp_port: Number(e.target.value) }))}
-                className={`${IB} ${IB_OK}`}
+              <NumberInput
+                value={String(form.smtp_port)}
+                onChange={(v) => setForm((f) => ({ ...f, smtp_port: Number(v) }))}
+                className="w-24"
               />
             </div>
           </div>
@@ -879,13 +876,12 @@ function EmailSettingsSection() {
             </label>
             <div className="space-y-1">
               <label className="text-xs text-gray-400">{t("reminderLeadTime")}</label>
-              <input
-                type="number"
+              <NumberInput
                 min={1}
                 max={90}
-                value={form.calibration_reminder_days}
-                onChange={(e) => setForm((f) => ({ ...f, calibration_reminder_days: Number(e.target.value) }))}
-                className={`${IB} ${IB_OK}`}
+                value={String(form.calibration_reminder_days)}
+                onChange={(v) => setForm((f) => ({ ...f, calibration_reminder_days: Number(v) }))}
+                className="w-20"
               />
             </div>
           </div>

@@ -12,6 +12,7 @@ import {
   getAssetProfile,
 } from "@/services/asset.service";
 import { WireColorPicker } from "@/components/wire-color-picker";
+import { NumberInput } from "@/components/number-input";
 import { CameraIcon, MapPinIcon, PlusIcon, TrashIcon, XIcon } from "@/components/icons";
 
 const COMMON_SIGNAL_NAMES = [
@@ -352,9 +353,9 @@ function ElectricalPanel({ assetId, profile, isEditing, form, onChange, onProfil
                       >
                         <td className="px-2 py-1.5 align-top">
                           {isEditing ? (
-                            <input type="number" value={row.pin_number}
-                              onChange={(e) => updateRow(i, { ...row, pin_number: parseInt(e.target.value, 10) || 0 })}
-                              className={`${INPUT_CLS} w-14 font-mono`} />
+                            <NumberInput value={String(row.pin_number)}
+                              onChange={(v) => updateRow(i, { ...row, pin_number: parseInt(v, 10) || 0 })}
+                              className="w-16 font-mono" />
                           ) : (
                             <span className="font-mono text-og-text">{row.pin_number}</span>
                           )}

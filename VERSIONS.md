@@ -9,6 +9,33 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.4.0
+
+### Added
+
+- **Shared `Select` and `DatePicker` components, and app-wide numeric input standardization.**
+  UI.md now defines consistent width tiers and behavior for the three input kinds used across
+  every form in the app:
+  - **Numeric inputs** — the `NumberInput` component (chevron up/down buttons, previously only
+    used in the Calibration Wizard's Step 3) is now used for every numeric field app-wide, with
+    a documented width-tier table (`w-16` to `w-32`, sized to the value rather than the label).
+  - **Dropdowns** — a new shared `Select` component (`@/components/select`) replaces the several
+    near-duplicate per-page `<select>` wrappers. It stays a native `<select>` (full keyboard nav,
+    mobile picker, screen-reader support) with a restyled, theme-aware chevron in place of the
+    OS arrow; the trigger caps at a documented width tier (`w-20` to a `w-64` ceiling) and
+    ellipsizes long selected labels with a native `title` tooltip, while the native option popup
+    still auto-sizes to the widest option regardless of the trigger's width.
+  - **Date pickers** — a new shared `DatePicker` component (`@/components/date-picker`) replaces
+    the native `<input type="date">` (and the `color-scheme`-based icon recoloring it needed)
+    with a themed popover calendar: month navigation, a day grid with `og-accent` markers for the
+    selected day and today, and a month/year quick-jump view. The field itself stays a button —
+    a date is always picked from the calendar, not typed — sidestepping locale date-format
+    ambiguity entirely.
+  - All three components, and the width-tier tables, are documented in `UI.md` and applied across
+    every screen that previously hand-rolled its own numeric input, `<select>`, or date input
+    (admin, procedures, sites, assets, asset detail, calibration wizard, health tab, interface
+    tab, organization detail).
+
 ## 4.3.0
 
 ### Added

@@ -29,6 +29,8 @@ import { STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { StatRow } from "@/components/stat-row";
 import { ToggleSwitch } from "@/components/toggle-switch";
 import { NumberInput } from "@/components/number-input";
+import { Select } from "@/components/select";
+import { DatePicker } from "@/components/date-picker";
 import { Tooltip } from "@/components/tooltip";
 import { ResidualsChart } from "@/components/residuals-chart";
 import { SensitivityChart } from "@/components/sensitivity-chart";
@@ -102,49 +104,63 @@ function WLabel({
 }
 
 function WInput({
-  label, value, onChange, type = "text", placeholder, required, readOnly, error, tooltip, docsHref,
+  label, value, onChange, type = "text", placeholder, required, readOnly, error, tooltip, docsHref, numberWidth,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   type?: string; placeholder?: string; required?: boolean; readOnly?: boolean; error?: string;
   tooltip?: string; docsHref?: string;
+  /** Width tier for `type="number"` fields only — see UI.md's Compact Numeric Inputs sizing table. */
+  numberWidth?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
       <WLabel text={label} required={required} tooltip={tooltip} docsHref={docsHref} />
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        className={`${IB} ${error ? IB_ERR : IB_OK} ${readOnly ? "opacity-60 cursor-not-allowed" : ""}`}
-      />
+      {type === "number" ? (
+        <NumberInput
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          invalid={!!error}
+          className={numberWidth}
+        />
+      ) : type === "date" ? (
+        <DatePicker value={value} onChange={onChange} placeholder={placeholder} readOnly={readOnly} invalid={!!error} />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          className={`${IB} ${error ? IB_ERR : IB_OK} ${readOnly ? "opacity-60 cursor-not-allowed" : ""}`}
+        />
+      )}
       {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
     </div>
   );
 }
 
 function WSelect({
-  label, value, onChange, options, required, placeholder, tooltip, docsHref,
+  label, value, onChange, options, required, placeholder, tooltip, docsHref, width,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   options: { value: string; label: string }[];
   required?: boolean; placeholder?: string; tooltip?: string; docsHref?: string;
+  /** Width tier — see UI.md's Dropdown / Select Inputs sizing table. Defaults to full width. */
+  width?: string;
 }) {
   const t = useTranslations("assets.fields");
   return (
     <div className="flex flex-col gap-1">
       <WLabel text={label} required={required} tooltip={tooltip} docsHref={docsHref} />
-      <select
+      <Select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${IB} ${IB_OK}`}
-      >
-        <option value="">{placeholder ?? t("select")}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder ?? t("select")}
+        className={width}
+      />
     </div>
   );
 }
@@ -2139,6 +2155,7 @@ function Step1({
         <WInput
           label={t("calibrationIntervalMonths")}
           type="number"
+          numberWidth="w-24"
           value={state.calibration_interval}
           onChange={set("calibration_interval") as (v: string) => void}
           placeholder={String(selectedChannel?.calibration_interval ?? 12)}
@@ -2370,68 +2387,62 @@ function Step1({
         </button>
         {state.env_expanded && (
           <div className="px-4 pb-4 pt-2 space-y-4 border-t border-og-border">
-            {(() => {
-              const numErr = (v: string) =>
-                v.trim() !== "" && isNaN(parseFloat(v.trim())) ? t("mustBeNumber") : undefined;
-              return (
-                <>
-                  <div className="grid grid-cols-3 gap-3">
-                    <WInput label={t("temperature")} value={state.temperature_value}
-                      onChange={set("temperature_value") as (v: string) => void}
-                      placeholder="e.g. 23" error={numErr(state.temperature_value)} />
-                    <div className="flex flex-col gap-1">
-                      <WLabel text={t("uncertainty")} />
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm text-gray-400">±</span>
-                        <input type="text" value={state.temperature_uncertainty}
-                          onChange={(e) => set("temperature_uncertainty")(e.target.value)}
-                          placeholder="e.g. 0.1"
-                          className={`${IB} ${numErr(state.temperature_uncertainty) ? IB_ERR : IB_OK}`} />
-                      </div>
-                    </div>
-                    <WSelect label={t("unit")} value={state.temperature_unit}
-                      onChange={set("temperature_unit") as (v: string) => void}
-                      options={[{ value: "°C", label: "°C" }, { value: "K", label: "K" }, { value: "°F", label: "°F" }]} />
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <WInput label={t("temperature")} type="number" numberWidth="w-24" value={state.temperature_value}
+                  onChange={set("temperature_value") as (v: string) => void}
+                  placeholder="e.g. 23" />
+                <div className="flex flex-col gap-1">
+                  <WLabel text={t("uncertainty")} />
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-gray-400">±</span>
+                    <NumberInput value={state.temperature_uncertainty}
+                      onChange={set("temperature_uncertainty")}
+                      placeholder="e.g. 0.1" className="w-24" />
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <WInput label={t("pressure")} value={state.pressure_value}
-                      onChange={set("pressure_value") as (v: string) => void}
-                      placeholder="e.g. 1013.25" error={numErr(state.pressure_value)} />
-                    <div className="flex flex-col gap-1">
-                      <WLabel text={t("uncertainty")} />
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm text-gray-400">±</span>
-                        <input type="text" value={state.pressure_uncertainty}
-                          onChange={(e) => set("pressure_uncertainty")(e.target.value)}
-                          placeholder="e.g. 0.5"
-                          className={`${IB} ${numErr(state.pressure_uncertainty) ? IB_ERR : IB_OK}`} />
-                      </div>
-                    </div>
-                    <WSelect label={t("unit")} value={state.pressure_unit}
-                      onChange={set("pressure_unit") as (v: string) => void}
-                      options={[{ value: "hPa", label: "hPa" }, { value: "Pa", label: "Pa" }, { value: "bar", label: "bar" }, { value: "psi", label: "psi" }]} />
+                </div>
+                <WSelect label={t("unit")} value={state.temperature_unit}
+                  onChange={set("temperature_unit") as (v: string) => void}
+                  options={[{ value: "°C", label: "°C" }, { value: "K", label: "K" }, { value: "°F", label: "°F" }]}
+                  width="w-20" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <WInput label={t("pressure")} type="number" numberWidth="w-24" value={state.pressure_value}
+                  onChange={set("pressure_value") as (v: string) => void}
+                  placeholder="e.g. 1013.25" />
+                <div className="flex flex-col gap-1">
+                  <WLabel text={t("uncertainty")} />
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-gray-400">±</span>
+                    <NumberInput value={state.pressure_uncertainty}
+                      onChange={set("pressure_uncertainty")}
+                      placeholder="e.g. 0.5" className="w-24" />
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <WInput label={t("humidity")} value={state.humidity_value}
-                      onChange={set("humidity_value") as (v: string) => void}
-                      placeholder="e.g. 45" error={numErr(state.humidity_value)} />
-                    <div className="flex flex-col gap-1">
-                      <WLabel text={t("uncertainty")} />
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm text-gray-400">±</span>
-                        <input type="text" value={state.humidity_uncertainty}
-                          onChange={(e) => set("humidity_uncertainty")(e.target.value)}
-                          placeholder="e.g. 2"
-                          className={`${IB} ${numErr(state.humidity_uncertainty) ? IB_ERR : IB_OK}`} />
-                      </div>
-                    </div>
-                    <WSelect label={t("unit")} value={state.humidity_unit}
-                      onChange={set("humidity_unit") as (v: string) => void}
-                      options={[{ value: "%RH", label: "%RH" }]} />
+                </div>
+                <WSelect label={t("unit")} value={state.pressure_unit}
+                  onChange={set("pressure_unit") as (v: string) => void}
+                  options={[{ value: "hPa", label: "hPa" }, { value: "Pa", label: "Pa" }, { value: "bar", label: "bar" }, { value: "psi", label: "psi" }]}
+                  width="w-20" />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <WInput label={t("humidity")} type="number" numberWidth="w-24" value={state.humidity_value}
+                  onChange={set("humidity_value") as (v: string) => void}
+                  placeholder="e.g. 45" />
+                <div className="flex flex-col gap-1">
+                  <WLabel text={t("uncertainty")} />
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-gray-400">±</span>
+                    <NumberInput value={state.humidity_uncertainty}
+                      onChange={set("humidity_uncertainty")}
+                      placeholder="e.g. 2" className="w-24" />
                   </div>
-                </>
-              );
-            })()}
+                </div>
+                <WSelect label={t("unit")} value={state.humidity_unit}
+                  onChange={set("humidity_unit") as (v: string) => void}
+                  options={[{ value: "%RH", label: "%RH" }]}
+                  width="w-20" />
+              </div>
+            </>
           </div>
         )}
       </div>
@@ -2481,15 +2492,7 @@ function InputMethodPicker({
   return (
     <div className="flex flex-col gap-1 w-72">
       <WLabel text={t("dataEntryMode")} tooltip={t("tips.dataEntryMode")} docsHref={WIZARD_DOCS_LINKS.data_entry_mode} />
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as InputMethod)}
-        className={`${IB} ${IB_OK} py-1.5`}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <Select value={value} onChange={(v) => onChange(v as InputMethod)} options={options} />
     </div>
   );
 }
@@ -2530,27 +2533,11 @@ function UnitSelectorsRow({
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col gap-1">
         <WLabel text={t("referenceUnit")} />
-        <select
-          value={referenceUnit}
-          onChange={(e) => onReferenceUnitChange(e.target.value)}
-          className={`${IB} ${IB_OK} py-1.5`}
-        >
-          {refUnitOpts.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        <Select value={referenceUnit} onChange={onReferenceUnitChange} options={refUnitOpts} className="w-32" />
       </div>
       <div className="flex flex-col gap-1">
         <WLabel text={measuredLabel ?? t("measuredUnit")} />
-        <select
-          value={measuredUnit}
-          onChange={(e) => onMeasuredUnitChange(e.target.value)}
-          className={`${IB} ${IB_OK} py-1.5`}
-        >
-          {measUnitOpts.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+        <Select value={measuredUnit} onChange={onMeasuredUnitChange} options={measUnitOpts} className="w-32" />
       </div>
     </div>
   );
@@ -2661,23 +2648,19 @@ function Step2({
                   <tr key={i} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
                     <td className="px-3 py-1.5 text-xs text-gray-400 font-mono">{i + 1}</td>
                     <td className="px-2 py-1">
-                      <input
-                        type="number"
+                      <NumberInput
                         value={pt.reference}
-                        onChange={(e) => updatePoint(i, "reference", e.target.value)}
-                        step="any"
-                        className={`${IB} ${IB_OK} py-1.5`}
+                        onChange={(v) => updatePoint(i, "reference", v)}
                         placeholder="0.0"
+                        className="w-24"
                       />
                     </td>
                     <td className="px-2 py-1">
-                      <input
-                        type="number"
+                      <NumberInput
                         value={pt.measured}
-                        onChange={(e) => updatePoint(i, "measured", e.target.value)}
-                        step="any"
-                        className={`${IB} ${IB_OK} py-1.5`}
+                        onChange={(v) => updatePoint(i, "measured", v)}
                         placeholder="0.0"
+                        className="w-24"
                       />
                     </td>
                     <td className="px-2 py-1">
@@ -2930,27 +2913,26 @@ function ManualCoefficientsStep({
 
       <div className="flex flex-col gap-1 w-56">
         <WLabel text={t("modelType")} required tooltip={t("tips.modelType")} />
-        <select
+        <Select
           value={state.model_type}
-          onChange={(e) => onChange({ ...state, model_type: e.target.value as ModelType })}
-          className={`${IB} ${IB_OK}`}
-        >
-          <option value="polynomial">{t("modelTypePolynomial")}</option>
-          <option value="custom_formula">{t("modelTypeCustomFormula")}</option>
-        </select>
+          onChange={(v) => onChange({ ...state, model_type: v as ModelType })}
+          options={[
+            { value: "polynomial", label: t("modelTypePolynomial") },
+            { value: "custom_formula", label: t("modelTypeCustomFormula") },
+          ]}
+        />
       </div>
 
       {state.model_type === "polynomial" ? (
         <>
           <div className="flex flex-col gap-1 w-40">
             <WLabel text={t("polynomialOrder")} required />
-            <select
-              value={state.poly_order}
-              onChange={(e) => setOrder(parseInt(e.target.value))}
-              className={`${IB} ${IB_OK}`}
-            >
-              {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <Select
+              value={String(state.poly_order)}
+              onChange={(v) => setOrder(parseInt(v))}
+              options={[1, 2, 3, 4, 5].map((d) => ({ value: String(d), label: String(d) }))}
+              className="w-20"
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -2961,6 +2943,7 @@ function ManualCoefficientsStep({
                   key={i}
                   label={t("coefficientLabel", { power: coeffPowerLabel(power, t) })}
                   type="number"
+                  numberWidth="w-24"
                   value={c}
                   onChange={(v) => setCoeff(i, v)}
                   placeholder="0.0"
@@ -3005,6 +2988,7 @@ function ManualCoefficientsStep({
                     key={name}
                     label={t("parameterValueLabel", { name })}
                     type="number"
+                    numberWidth="w-24"
                     value={state.custom_formula_params[name] ?? ""}
                     onChange={(v) => setCustomFormulaParam(name, v)}
                     placeholder="0.0"
@@ -3028,6 +3012,7 @@ function ManualCoefficientsStep({
         <WInput
           label={referenceUnit ? t("validRangeMinUnit", { unit: referenceUnit }) : t("validRangeMin")}
           type="number"
+          numberWidth="w-24"
           value={state.range_min}
           onChange={(v) => onChange({ ...state, range_min: v })}
           required
@@ -3035,6 +3020,7 @@ function ManualCoefficientsStep({
         <WInput
           label={referenceUnit ? t("validRangeMaxUnit", { unit: referenceUnit }) : t("validRangeMax")}
           type="number"
+          numberWidth="w-24"
           value={state.range_max}
           onChange={(v) => onChange({ ...state, range_max: v })}
           required
@@ -3108,51 +3094,39 @@ function FrequencyResponseDataStep({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="flex flex-col gap-1">
           <WLabel text={t("frequencyUnit")} />
-          <select
+          <Select
             value={settings.frequency_unit}
-            onChange={(e) => onSettingsChange({ ...settings, frequency_unit: e.target.value })}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            {FREQUENCY_OUTPUT_UNITS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onChange={(v) => onSettingsChange({ ...settings, frequency_unit: v })}
+            options={FREQUENCY_OUTPUT_UNITS}
+            className="w-24"
+          />
         </div>
         <div className="flex flex-col gap-1">
           <WLabel text={t("referenceUnit")} />
-          <select
+          <Select
             value={settings.reference_unit}
-            onChange={(e) => onSettingsChange({ ...settings, reference_unit: e.target.value })}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            {refUnitOpts.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onChange={(v) => onSettingsChange({ ...settings, reference_unit: v })}
+            options={refUnitOpts}
+            className="w-24"
+          />
         </div>
         <div className="flex flex-col gap-1">
           <WLabel text={t("measuredUnit")} />
-          <select
+          <Select
             value={settings.measured_unit}
-            onChange={(e) => onSettingsChange({ ...settings, measured_unit: e.target.value })}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            {measUnitOpts.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onChange={(v) => onSettingsChange({ ...settings, measured_unit: v })}
+            options={measUnitOpts}
+            className="w-24"
+          />
         </div>
         <div className="flex flex-col gap-1">
           <WLabel text={t("amplitudeType")} />
-          <select
+          <Select
             value={settings.amplitude_type}
-            onChange={(e) => onSettingsChange({ ...settings, amplitude_type: e.target.value })}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            {AMPLITUDE_TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onChange={(v) => onSettingsChange({ ...settings, amplitude_type: v })}
+            options={AMPLITUDE_TYPE_OPTIONS}
+            className="w-32"
+          />
         </div>
       </div>
 
@@ -3161,15 +3135,12 @@ function FrequencyResponseDataStep({
         <ToggleSwitch checked={settings.offset_enabled} onChange={(v) => onSettingsChange({ ...settings, offset_enabled: v })} size="sm" />
         <span className="text-xs text-og-text">{t("addOffsetLabel")}</span>
         {settings.offset_enabled && (
-          <select
+          <Select
             value={settings.offset_unit}
-            onChange={(e) => onSettingsChange({ ...settings, offset_unit: e.target.value })}
-            className={`${IB} ${IB_OK} py-1 w-24 text-xs`}
-          >
-            {offsetUnitOpts.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+            onChange={(v) => onSettingsChange({ ...settings, offset_unit: v })}
+            options={offsetUnitOpts}
+            className="w-20"
+          />
         )}
       </div>
 
@@ -3218,17 +3189,17 @@ function FrequencyResponseDataStep({
                   <tr key={i} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
                     <td className="px-3 py-1.5 text-xs text-gray-400 font-mono">{i + 1}</td>
                     <td className="px-2 py-1">
-                      <input type="number" value={row.frequency} onChange={(e) => updateRow(i, "frequency", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                      <NumberInput value={row.frequency} onChange={(v) => updateRow(i, "frequency", v)} placeholder="0.0" className="w-24" />
                     </td>
                     <td className="px-2 py-1">
-                      <input type="number" value={row.reference} onChange={(e) => updateRow(i, "reference", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                      <NumberInput value={row.reference} onChange={(v) => updateRow(i, "reference", v)} placeholder="0.0" className="w-24" />
                     </td>
                     <td className="px-2 py-1">
-                      <input type="number" value={row.measured} onChange={(e) => updateRow(i, "measured", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                      <NumberInput value={row.measured} onChange={(v) => updateRow(i, "measured", v)} placeholder="0.0" className="w-24" />
                     </td>
                     {settings.offset_enabled && (
                       <td className="px-2 py-1">
-                        <input type="number" value={row.offset} onChange={(e) => updateRow(i, "offset", e.target.value)} step="any" className={`${IB} ${IB_OK} py-1.5`} placeholder="0.0" />
+                        <NumberInput value={row.offset} onChange={(v) => updateRow(i, "offset", v)} placeholder="0.0" className="w-24" />
                       </td>
                     )}
                     <td className="px-2 py-1">
@@ -3406,27 +3377,24 @@ function CalibrationMethodPanel({
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex flex-col gap-1 w-56 shrink-0">
           <WLabel text={t("calibrationMethod")} tooltip={t("tips.calibrationMethodAnalysis")} docsHref={STAT_DOCS_LINKS.calibration_method} />
-          <select
+          <Select
             value={curveFitMethod}
-            onChange={(e) => onCurveFitMethodChange(e.target.value as CalibrationMethod)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="polynomial_fit">{t("calibrationMethodPolynomialFit")}</option>
-            <option value="lookup_table">{t("calibrationMethodLookupTable")}</option>
-            <option value="custom_formula">{t("calibrationMethodCustomFormula")}</option>
-          </select>
+            onChange={(v) => onCurveFitMethodChange(v as CalibrationMethod)}
+            options={[
+              { value: "polynomial_fit", label: t("calibrationMethodPolynomialFit") },
+              { value: "lookup_table", label: t("calibrationMethodLookupTable") },
+              { value: "custom_formula", label: t("calibrationMethodCustomFormula") },
+            ]}
+          />
         </div>
         {curveFitMethod === "polynomial_fit" && (
         <div className="flex flex-col gap-1 w-40">
           <WLabel text={t("regressionDegree")} tooltip={t("tips.regressionDegree")} docsHref={STAT_DOCS_LINKS.regression_degree} />
-          <select
+          <Select
             value={analyzeParams.poly_degree === null ? "auto" : String(analyzeParams.poly_degree)}
-            onChange={(e) => onAnalyzeParamsChange({ ...analyzeParams, poly_degree: e.target.value === "auto" ? null : parseInt(e.target.value) })}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="auto">{t("auto")}</option>
-            {[1, 2, 3, 4, 5].map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
+            onChange={(v) => onAnalyzeParamsChange({ ...analyzeParams, poly_degree: v === "auto" ? null : parseInt(v) })}
+            options={[{ value: "auto", label: t("auto") }, ...[1, 2, 3, 4, 5].map((d) => ({ value: String(d), label: String(d) }))]}
+          />
         </div>
         )}
         {curveFitMethod === "custom_formula" && (
@@ -3507,15 +3475,15 @@ function UncertaintyCalculationPanel({
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex flex-col gap-1 min-w-[130px]">
           <div className="min-h-[32px] flex items-end"><WLabel text={t("distribution")} tooltip={t("tips.distribution")} docsHref={STAT_DOCS_LINKS.coverage_factor} /></div>
-          <select
+          <Select
             value={analyzeParams.distribution_type}
-            onChange={(e) => setParam("distribution_type")(e.target.value as DistributionType)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="normal">{t("distributionNormal")}</option>
-            <option value="t">{t("distributionT")}</option>
-            <option value="chi_squared">{t("distributionChiSquared")}</option>
-          </select>
+            onChange={(v) => setParam("distribution_type")(v as DistributionType)}
+            options={[
+              { value: "normal", label: t("distributionNormal") },
+              { value: "t", label: t("distributionT") },
+              { value: "chi_squared", label: t("distributionChiSquared") },
+            ]}
+          />
         </div>
         <div className="flex flex-col gap-1 w-20">
           <div className="min-h-[32px] flex items-end">
@@ -3678,15 +3646,15 @@ function ConformityAssessmentPanel({
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex flex-col gap-1 w-56 shrink-0">
             <WLabel text={t("decisionRuleLabel")} tooltip={t("tips.decisionRuleCert")} docsHref={STAT_DOCS_LINKS.decision_rule} />
-            <select
+            <Select
               value={decisionRule}
-              onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
-              className={`${IB} ${IB_OK} py-1.5`}
-            >
-              <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
-              <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
-              <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
-            </select>
+              onChange={(v) => onDecisionRuleChange(v as DecisionRule)}
+              options={[
+                { value: "simple_acceptance", label: tDecisionRule("simple_acceptance") },
+                { value: "guard_band_w_uncertainty", label: tDecisionRule("guard_band_w_uncertainty") },
+                { value: "shared_risk", label: tDecisionRule("shared_risk") },
+              ]}
+            />
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-end gap-1.5">
@@ -3783,15 +3751,15 @@ function ConformityCriteriaSelector({
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex flex-col gap-1 w-56 shrink-0">
           <WLabel text={t("decisionRuleLabel")} tooltip={t("tips.decisionRuleCert")} docsHref={STAT_DOCS_LINKS.decision_rule} />
-          <select
+          <Select
             value={decisionRule}
-            onChange={(e) => onDecisionRuleChange(e.target.value as DecisionRule)}
-            className={`${IB} ${IB_OK} py-1.5`}
-          >
-            <option value="simple_acceptance">{tDecisionRule("simple_acceptance")}</option>
-            <option value="guard_band_w_uncertainty">{tDecisionRule("guard_band_w_uncertainty")}</option>
-            <option value="shared_risk">{tDecisionRule("shared_risk")}</option>
-          </select>
+            onChange={(v) => onDecisionRuleChange(v as DecisionRule)}
+            options={[
+              { value: "simple_acceptance", label: tDecisionRule("simple_acceptance") },
+              { value: "guard_band_w_uncertainty", label: tDecisionRule("guard_band_w_uncertainty") },
+              { value: "shared_risk", label: tDecisionRule("shared_risk") },
+            ]}
+          />
         </div>
         <div className="flex flex-col gap-1 w-20">
           <div className="flex items-center gap-1">
@@ -4712,17 +4680,14 @@ function FrequencyResponseResults({
         <div className="flex items-end gap-6 flex-wrap">
           <div className="flex flex-col gap-1 w-64">
             <WLabel text={t("baselineFrequency")} tooltip={t("tips.baselineFrequency")} docsHref={WIZARD_DOCS_LINKS.frequency_response_baseline} />
-            <select
-              value={baselineIndex}
-              onChange={(e) => onBaselineIndexChange(parseInt(e.target.value))}
-              className={`${IB} ${IB_OK} py-1.5`}
-            >
-              {baselineOptions.map(({ row, index }) => (
-                <option key={index} value={index}>
-                  {row.frequency} {settings.frequency_unit} (#{index + 1})
-                </option>
-              ))}
-            </select>
+            <Select
+              value={String(baselineIndex)}
+              onChange={(v) => onBaselineIndexChange(parseInt(v))}
+              options={baselineOptions.map(({ row, index }) => ({
+                value: String(index),
+                label: `${row.frequency} ${settings.frequency_unit} (#${index + 1})`,
+              }))}
+            />
           </div>
 
           {result ? (

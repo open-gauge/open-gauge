@@ -91,6 +91,8 @@ import type { LocationItem } from "@/types/location";
 import { UserMention } from "@/components/user-mention";
 import { UserSummary } from "@/components/user-summary";
 import { Tooltip } from "@/components/tooltip";
+import { Select } from "@/components/select";
+import { DatePicker } from "@/components/date-picker";
 import { ToggleSwitch } from "@/components/toggle-switch";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
@@ -536,14 +538,18 @@ function EditInput({
   return (
     <div className="flex flex-col gap-1">
       <ELabel label={label} required={required} tooltip={tooltip} tooltipDocsHref={tooltipDocsHref} />
-      <input
-        type={type}
-        value={value}
-        readOnly={readOnly}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK} ${readOnly ? "opacity-60 cursor-not-allowed" : ""}`}
-      />
+      {type === "date" ? (
+        <DatePicker value={value} onChange={onChange} readOnly={readOnly} invalid={!!error} />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          readOnly={readOnly}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK} ${readOnly ? "opacity-60 cursor-not-allowed" : ""}`}
+        />
+      )}
       <EError msg={error} />
     </div>
   );
@@ -581,16 +587,7 @@ function EditSelect({
   return (
     <div className="flex flex-col gap-1">
       <ELabel label={label} required={required} tooltip={tooltip} tooltipDocsHref={tooltipDocsHref} />
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK}`}
-      >
-        <option value="">{placeholder ?? t("select")}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <Select value={value} onChange={onChange} options={options} placeholder={placeholder ?? t("select")} invalid={!!error} />
       <EError msg={error} />
     </div>
   );
@@ -619,25 +616,21 @@ function EditSelectWithOther({
   return (
     <div className="flex flex-col gap-1">
       <ELabel label={label} required={required} tooltip={tooltip} />
-      <select
+      <Select
         value={otherMode ? "__other__" : value}
-        onChange={(e) => {
-          if (e.target.value === "__other__") {
+        onChange={(v) => {
+          if (v === "__other__") {
             setOtherMode(true);
             onChange("");
           } else {
             setOtherMode(false);
-            onChange(e.target.value);
+            onChange(v);
           }
         }}
-        className={`${INPUT_BASE} ${error ? INPUT_ERR : INPUT_OK}`}
-      >
-        <option value="">{placeholder ?? t("select")}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-        <option value="__other__">{t("other")}</option>
-      </select>
+        options={[...options, { value: "__other__", label: t("other") }]}
+        placeholder={placeholder ?? t("select")}
+        invalid={!!error}
+      />
       {otherMode && (
         <input
           type="text"
@@ -1167,9 +1160,9 @@ function OverviewTab({
           {/* Commercial */}
           <CollapsibleSection title={t("commercial")} forceOpen={isEditing}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <EditInput label={t("purchaseDate")} value={form.purchase_date} onChange={set("purchase_date")} error={errors.purchase_date} placeholder="YYYY-MM-DD" type="date" />
+              <EditInput label={t("purchaseDate")} value={form.purchase_date} onChange={set("purchase_date")} error={errors.purchase_date} type="date" />
               <EditInput label={t("purchasePrice")} value={form.price_eur} onChange={set("price_eur")} error={errors.price_eur} placeholder={t("purchasePricePlaceholder")} />
-              <EditInput label={t("warrantyExpiry")} value={form.warranty_expiry_date} onChange={set("warranty_expiry_date")} error={errors.warranty_expiry_date} placeholder="YYYY-MM-DD" type="date" />
+              <EditInput label={t("warrantyExpiry")} value={form.warranty_expiry_date} onChange={set("warranty_expiry_date")} error={errors.warranty_expiry_date} type="date" />
             </div>
           </CollapsibleSection>
 
@@ -2489,17 +2482,15 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
         <div className="p-3 border-b border-og-border space-y-2">
           <div className="flex items-center justify-between gap-2">
             {hasChannelTabs ? (
-              <select
+              <Select
                 value={activeChannelId ?? ""}
-                onChange={(e) => setActiveChannelId(e.target.value || null)}
-                className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-og-border-md bg-og-surface text-xs text-og-text focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
-              >
-                {channelIdsWithCals.map((chId) => {
+                onChange={(v) => setActiveChannelId(v || null)}
+                options={channelIdsWithCals.map((chId) => {
                   const ch = profile.sensor_channels.find((c) => c.id === chId);
-                  const label = ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId;
-                  return <option key={chId} value={chId}>{label}</option>;
+                  return { value: chId, label: ch ? `${ch.channel_id} — ${ch.physical_quantity}` : chId };
                 })}
-              </select>
+                className="flex-1 min-w-0 max-w-44"
+              />
             ) : (
               <p className="text-xs font-semibold text-og-text">{t("calibrationHistory")}</p>
             )}

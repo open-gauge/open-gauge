@@ -39,6 +39,8 @@ import {
 import type { LocationUpdateBody } from "@/services/location.service";
 import type { LocationItem, LocationTreeNode } from "@/types/location";
 import { ToggleSwitch } from "@/components/toggle-switch";
+import { Select } from "@/components/select";
+import { NumberInput } from "@/components/number-input";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -200,20 +202,26 @@ function FLabel({ label, required }: { label: string; required?: boolean }) {
   );
 }
 
-function FInput({ label, value, onChange, error, required, placeholder, type = "text" }: {
+function FInput({ label, value, onChange, error, required, placeholder, type = "text", numberWidth }: {
   label: string; value: string; onChange: (v: string) => void;
   error?: string; required?: boolean; placeholder?: string; type?: string;
+  /** Width tier for `type="number"` fields only — see UI.md's Compact Numeric Inputs sizing table. */
+  numberWidth?: string;
 }) {
   return (
     <div className="flex flex-col gap-1">
       <FLabel label={label} required={required} />
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`${IB} ${error ? IERR : IOK}`}
-      />
+      {type === "number" ? (
+        <NumberInput value={value} onChange={onChange} placeholder={placeholder} invalid={!!error} className={numberWidth} />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`${IB} ${error ? IERR : IOK}`}
+        />
+      )}
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
@@ -244,16 +252,7 @@ function FSelect({ label, value, onChange, options, required, placeholder }: {
   return (
     <div className="flex flex-col gap-1">
       <FLabel label={label} required={required} />
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${IB} ${IOK}`}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <Select value={value} onChange={onChange} options={options} placeholder={placeholder} />
     </div>
   );
 }
@@ -684,6 +683,7 @@ function LocationDetail({
             <FInput
               label={t("latitude")}
               type="number"
+              numberWidth="w-32"
               value={form.latitude}
               onChange={field("latitude")}
               placeholder="e.g. 40.71280"
@@ -691,6 +691,7 @@ function LocationDetail({
             <FInput
               label={t("longitude")}
               type="number"
+              numberWidth="w-32"
               value={form.longitude}
               onChange={field("longitude")}
               placeholder="e.g. -74.00600"

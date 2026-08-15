@@ -44,6 +44,8 @@ import {
 } from "@/components/icons";
 import { Tooltip } from "@/components/tooltip";
 import { ToggleSwitch } from "@/components/toggle-switch";
+import { Select } from "@/components/select";
+import { NumberInput } from "@/components/number-input";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -357,30 +359,26 @@ function FilterDropdown({ open, filters, onChange, options, onClose }: FilterDro
         {/* Range */}
         {options.units.length > 0 && (
           <FilterSection title={t("measurementRange")}>
-            <select
+            <Select
               value={filters.rangeUnit}
-              onChange={(e) => onChange({ ...filters, rangeUnit: e.target.value, rangeMin: "", rangeMax: "" })}
-              className="w-full text-xs bg-og-surface-alt border border-og-border-md rounded-lg px-2.5 py-1.5 text-og-text outline-hidden"
-            >
-              <option value="">{t("selectUnit")}</option>
-              {options.units.map((u) => <option key={u} value={u}>{u}</option>)}
-            </select>
+              onChange={(v) => onChange({ ...filters, rangeUnit: v, rangeMin: "", rangeMax: "" })}
+              options={options.units.map((u) => ({ value: u, label: u }))}
+              placeholder={t("selectUnit")}
+            />
             {filters.rangeUnit && (
               <div className="flex items-center gap-2 mt-1.5">
-                <input
-                  type="number"
+                <NumberInput
                   placeholder={t("min")}
                   value={filters.rangeMin}
-                  onChange={(e) => onChange({ ...filters, rangeMin: e.target.value })}
-                  className="w-full text-xs bg-og-surface-alt border border-og-border-md rounded-lg px-2.5 py-1.5 text-og-text placeholder:text-gray-400 outline-hidden"
+                  onChange={(v) => onChange({ ...filters, rangeMin: v })}
+                  className="w-20"
                 />
                 <span className="text-xs text-gray-400 shrink-0">–</span>
-                <input
-                  type="number"
+                <NumberInput
                   placeholder={t("max")}
                   value={filters.rangeMax}
-                  onChange={(e) => onChange({ ...filters, rangeMax: e.target.value })}
-                  className="w-full text-xs bg-og-surface-alt border border-og-border-md rounded-lg px-2.5 py-1.5 text-og-text placeholder:text-gray-400 outline-hidden"
+                  onChange={(v) => onChange({ ...filters, rangeMax: v })}
+                  className="w-20"
                 />
                 <span className="text-[10px] text-gray-400 shrink-0">{filters.rangeUnit}</span>
               </div>
@@ -1132,16 +1130,13 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
               {/* Organization */}
               <div className="space-y-1">
                 <label className="text-xs text-gray-400">{t("organization")} <span className="text-red-400">*</span></label>
-                <select
+                <Select
                   value={form.organization_id}
-                  onChange={(e) => set("organization_id")(e.target.value)}
-                  className={`${IB} ${formErrors.organization_id ? IB_ERR : IB_OK}`}
-                >
-                  <option value="">{t("selectOrganization")}</option>
-                  {myOrgs.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
+                  onChange={set("organization_id")}
+                  options={myOrgs.map((o) => ({ value: o.id, label: o.name }))}
+                  placeholder={t("selectOrganization")}
+                  invalid={!!formErrors.organization_id}
+                />
                 {formErrors.organization_id && <p className="text-xs text-red-500">{formErrors.organization_id}</p>}
                 {myOrgs.length === 0 && (
                   <p className="text-[10px] text-gray-400">{t("noOrganizations")}</p>
@@ -1300,16 +1295,12 @@ function NewAssetModal({ existingAssets, onClose, onCreated }: NewAssetModalProp
 
                   <div className="space-y-1">
                     <label className="text-xs text-gray-400">{t("location")} <span className="text-gray-400 font-normal">{t("optional")}</span></label>
-                    <select
+                    <Select
                       value={importLocationId}
-                      onChange={(e) => setImportLocationId(e.target.value)}
-                      className={`${IB} ${IB_OK}`}
-                    >
-                      <option value="">{t("unassigned")}</option>
-                      {importLocations.map((loc) => (
-                        <option key={loc.id} value={loc.id}>{loc.path}</option>
-                      ))}
-                    </select>
+                      onChange={setImportLocationId}
+                      options={importLocations.map((loc) => ({ value: loc.id, label: loc.path }))}
+                      placeholder={t("unassigned")}
+                    />
                   </div>
                 </div>
               )}

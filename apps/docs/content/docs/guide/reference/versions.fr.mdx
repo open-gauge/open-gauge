@@ -15,6 +15,32 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.4.0
+
+### Ajouté
+
+- **Composants partagés `Select` et `DatePicker`, et standardisation des champs numériques dans
+  toute l'application.** [UI.md](https://github.com/open-gauge/open-gauge/blob/main/UI.md) définit
+  désormais des largeurs et comportements cohérents pour tous les champs numériques, listes
+  déroulantes et champs de date de l'application :
+  - **Champs numériques** — le composant `NumberInput` avec boutons chevron (auparavant utilisé
+    uniquement à l'étape 3 de l'assistant de calibration) est désormais utilisé partout, dimensionné
+    selon la valeur plutôt que l'étiquette (`w-16` jusqu'à un plafond `w-32`).
+  - **Listes déroulantes** — un nouveau composant partagé `Select` remplace les divers wrappers
+    `<select>` quasi identiques propres à chaque page. Il reste un `<select>` natif (navigation
+    clavier complète, sélecteur mobile, support des lecteurs d'écran) avec une flèche restylée ; le
+    champ est plafonné à une largeur donnée (`w-20` jusqu'à un plafond `w-64`) et tronque les
+    libellés longs avec une infobulle native, tandis que la liste native des options continue de
+    s'adapter automatiquement à l'option la plus large.
+  - **Sélecteurs de date** — un nouveau composant partagé `DatePicker` remplace le
+    `<input type="date">` natif par un calendrier contextuel aux couleurs de l'application
+    (navigation par mois, marqueurs `og-accent` pour le jour sélectionné et aujourd'hui, et une vue
+    de sélection rapide mois/année) — une date est toujours choisie dans le calendrier, jamais
+    saisie, ce qui évite toute ambiguïté de format de date selon la langue.
+  - Appliqué à tous les écrans qui avaient auparavant leur propre champ numérique, `<select>` ou
+    champ de date fait maison (administration, procédures, sites, actifs, détail d'actif, assistant
+    de calibration, onglet santé, onglet interface, détail d'organisation).
+
 ## 4.3.0
 
 ### Ajouté

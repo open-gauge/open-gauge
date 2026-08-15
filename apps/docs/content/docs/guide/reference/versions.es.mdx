@@ -14,6 +14,32 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.4.0
+
+### Añadido
+
+- **Componentes compartidos `Select` y `DatePicker`, y estandarización de los campos numéricos en
+  toda la aplicación.** [UI.md](https://github.com/open-gauge/open-gauge/blob/main/UI.md) ahora
+  define anchos y comportamientos consistentes para todos los campos numéricos, desplegables y de
+  fecha de la aplicación:
+  - **Campos numéricos** — el componente `NumberInput` con botones de flecha (antes solo usado en
+    el Paso 3 del asistente de calibración) ahora se usa en toda la aplicación, con un tamaño
+    ajustado al valor y no a la etiqueta (`w-16` hasta un máximo de `w-32`).
+  - **Desplegables** — un nuevo componente compartido `Select` reemplaza los varios envoltorios
+    `<select>` casi duplicados de cada página. Sigue siendo un `<select>` nativo (navegación
+    completa por teclado, selector móvil, soporte de lector de pantalla) con una flecha
+    restilizada; el campo se limita a un ancho máximo (`w-20` hasta un tope de `w-64`) y trunca
+    las etiquetas largas con puntos suspensivos y un tooltip nativo, mientras que la lista nativa
+    de opciones sigue ajustándose automáticamente a la opción más ancha.
+  - **Selectores de fecha** — un nuevo componente compartido `DatePicker` reemplaza el
+    `<input type="date">` nativo por un calendario emergente con el estilo de la aplicación
+    (navegación por mes, marcadores en `og-accent` para el día seleccionado y hoy, y una vista
+    rápida de mes/año) — la fecha siempre se elige en el calendario, nunca se escribe, evitando
+    la ambigüedad de formato de fecha según el idioma.
+  - Aplicado en todas las pantallas que antes tenían su propio campo numérico, `<select>` o campo
+    de fecha hecho a mano (admin, procedimientos, sitios, activos, detalle de activo, asistente
+    de calibración, pestaña de salud, pestaña de interfaz, detalle de organización).
+
 ## 4.3.0
 
 ### Añadido

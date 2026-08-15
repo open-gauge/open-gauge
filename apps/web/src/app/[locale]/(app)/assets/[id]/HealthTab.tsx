@@ -18,6 +18,7 @@ import type { RepairPeriod } from "@/types/calibration";
 import { getAssetHealth, getCurveComparison, listRepairPeriods } from "@/services/health.service";
 import { COLORS, HEALTH_METRIC_COLOR } from "@/lib/tokens";
 import { Tooltip } from "@/components/tooltip";
+import { Select } from "@/components/select";
 import { CURVE_METRIC_DOCS_LINKS, DETAILED_METRIC_DOCS_LINKS, HEALTH_DOCS_LINKS } from "@/lib/docs-links";
 import { usePlotly, PLOTLY_DARK_LAYOUT_BASE, PLOTLY_AXIS_BASE, axisTitle } from "@/hooks/use-plotly";
 import { ActivityIcon, InfoIcon, TrendingDownIcon, TrendingUpIcon, WarningIcon } from "@/components/icons";
@@ -369,23 +370,19 @@ function CurveComparisonCard({
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col gap-1">
           <span className="text-xs text-gray-400">{t("referenceCalibration")}</span>
-          <select
+          <Select
             value={referenceId}
-            onChange={(e) => setReferenceId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
-          >
-            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+            onChange={setReferenceId}
+            options={options.map((o) => ({ value: o.id, label: o.label }))}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <span className="text-xs text-gray-400">{t("currentCalibration")}</span>
-          <select
+          <Select
             value={currentId}
-            onChange={(e) => setCurrentId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-og-border-md text-sm text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
-          >
-            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+            onChange={setCurrentId}
+            options={options.map((o) => ({ value: o.id, label: o.label }))}
+          />
         </div>
       </div>
 
@@ -653,17 +650,15 @@ export function HealthTab({ assetId, profile }: { assetId: string; profile: Asse
             </div>
           ) : <div />}
           {repairPeriods.length > 1 && (
-            <select
-              value={repairPeriods.findIndex((p) => p === selectedPeriod)}
-              onChange={(e) => setSelectedPeriod(repairPeriods[parseInt(e.target.value)] ?? null)}
-              className="px-3 py-1.5 rounded-lg border border-og-border-md text-xs text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:border-og-accent focus:ring-og-accent/20"
-            >
-              {repairPeriods.map((p, i) => (
-                <option key={i} value={i}>
-                  {p.before ? t("beforeRepair", { date: fmtDate(p.before) }) : t("currentlyPeriod")}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={String(repairPeriods.findIndex((p) => p === selectedPeriod))}
+              onChange={(v) => setSelectedPeriod(repairPeriods[parseInt(v)] ?? null)}
+              options={repairPeriods.map((p, i) => ({
+                value: String(i),
+                label: p.before ? t("beforeRepair", { date: fmtDate(p.before) }) : t("currentlyPeriod"),
+              }))}
+              className="w-44"
+            />
           )}
         </div>
       )}

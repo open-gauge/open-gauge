@@ -15,6 +15,32 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.4.0
+
+### Hinzugefügt
+
+- **Gemeinsame `Select`- und `DatePicker`-Komponenten sowie eine App-weite Vereinheitlichung der
+  numerischen Eingabefelder.** [UI.md](https://github.com/open-gauge/open-gauge/blob/main/UI.md)
+  definiert nun einheitliche Breitenstufen und ein einheitliches Verhalten für alle numerischen
+  Felder, Dropdowns und Datumsfelder in der Anwendung:
+  - **Numerische Felder** — die `NumberInput`-Komponente mit Auf/Ab-Pfeilen (zuvor nur in Schritt 3
+    des Kalibrierungsassistenten verwendet) wird jetzt App-weit eingesetzt, mit einer Breite, die
+    sich am Wert statt am Label orientiert (`w-16` bis zu einer Obergrenze von `w-32`).
+  - **Dropdowns** — eine neue gemeinsame `Select`-Komponente ersetzt die mehreren fast identischen,
+    seitenspezifischen `<select>`-Wrapper. Sie bleibt ein natives `<select>` (volle
+    Tastaturnavigation, mobile Auswahl, Screenreader-Unterstützung) mit einem neu gestalteten Pfeil;
+    das Feld ist auf eine Breitenstufe begrenzt (`w-20` bis zu einer Obergrenze von `w-64`) und
+    kürzt lange Labels mit einem nativen Tooltip, während die native Optionsliste weiterhin
+    automatisch an die breiteste Option angepasst wird.
+  - **Datumsauswahl** — eine neue gemeinsame `DatePicker`-Komponente ersetzt das native
+    `<input type="date">` durch einen im App-Design gehaltenen Kalender-Popover (Monatsnavigation,
+    `og-accent`-Markierungen für den ausgewählten Tag und heute, sowie eine
+    Monats-/Jahres-Schnellauswahl) — ein Datum wird immer über den Kalender ausgewählt, nie
+    eingetippt, wodurch sprachabhängige Mehrdeutigkeiten im Datumsformat entfallen.
+  - Angewendet auf alle Bildschirme, die zuvor ein eigenes numerisches Feld, `<select>` oder
+    Datumsfeld selbst gebaut hatten (Administration, Verfahren, Standorte, Assets, Asset-Detail,
+    Kalibrierungsassistent, Health-Tab, Interface-Tab, Organisationsdetail).
+
 ## 4.3.0
 
 ### Hinzugefügt

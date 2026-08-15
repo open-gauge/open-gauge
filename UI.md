@@ -268,15 +268,23 @@ instead of a raw `<input type="checkbox">`:
 
 A numeric input (a coefficient, a tolerance, a coverage factor, a percentage) rarely needs more
 than 4-6 characters of width — sizing its column to a full-width label instead of the number it
-actually holds is a common source of "why is this field so wide" complaints. Piloted in the
-Calibration Wizard's Step 3 (Uncertainty calculation / Conformity assessment panels); apply the
-same pattern wherever else a numeric field is added or reworked.
+actually holds is a common source of "why is this field so wide" complaints. This is an app-wide
+rule, not a one-off: every numeric field uses the shared `NumberInput` component below and the
+width tiers in this section, not just the screen it was first piloted on (the Calibration
+Wizard's Step 3 Uncertainty calculation / Conformity assessment panels).
 
 ### Sizing
 
-- Size the input to the content, not the label. A short field (a percentage, a coverage factor, a
-  small coefficient) fits comfortably in `w-16`–`w-20`; only widen it if the value genuinely needs
-  more digits.
+- Size the input to the content, not the label. Pick the narrowest tier that comfortably fits the
+  value; only go wider if it genuinely needs more digits.
+
+  | Tier | Width | Use for |
+  |---|---|---|
+  | `w-16` | ~4 chars | Small integers — a pin number, a polynomial order, a step count |
+  | `w-20` | ~5 chars | The default — a percentage, a coverage factor, a small coefficient, a tolerance |
+  | `w-24` | ~6 chars | Values that regularly run 3-4 digits — a calibration interval in months, a range bound |
+  | `w-32` | ~8 chars | The ceiling — a coordinate, a coefficient with several decimal places. Nothing goes wider than this; if a value needs more room than `w-32` gives, that's a sign it belongs in a text field with a unit suffix, not a bare numeric input |
+
 - Let the label's own column drive its width (`w-20`–`w-40` depending on how much else shares the
   row — a toggle switch, a refresh icon), independent of the input's width below it.
 
@@ -315,19 +323,93 @@ Use the shared `NumberInput` component (`@/components/number-input`) instead of 
 - Pass `invalid` to switch to the error border/ring (matches `IB_ERR`), `disabled`/`readOnly` to
   hide the buttons and dim the field, and `className` to set the width (e.g. `className="w-20"`).
 
-**Rule: never render a raw `<input type="number">` in a place with a visible spinner requirement
-— use `NumberInput`.** A plain `<input type="number">` is still fine where no visual
-increment/decrement affordance is needed at all (rare — most numeric fields benefit from it).
+**Rule: never render a raw `<input type="number">` — use `NumberInput`.**
 
-### Native form controls
+---
 
-Some native controls (date inputs, in particular) are worth keeping — they're accessible and
-well-tested, and a bespoke calendar widget is a lot of surface area to maintain for little benefit.
-What they *do* need is to stop looking like they fell out of the OS: `apps/web/src/app/globals.css`
-recolors the date input's calendar icon per theme via `color-scheme` (a light icon on a dark
-background and vice versa, no filter hacks) — this applies automatically to every
-`<input type="date">` in the app, no per-field change needed. Border, radius, and focus ring
-already come from the screen's own `IB`/`IB_OK` classes, same as every other input.
+## Dropdown / Select Inputs
+
+Every screen used to hand-roll its own `<select>` wrapper (`EditSelect`, `WSelect`, `FSelect` —
+near-identical copies with the same input classes redeclared per file). Use the shared `Select`
+component (`@/components/select`) instead:
+
+```tsx
+<Select
+  value={value}
+  onChange={setValue}
+  options={[{ value: "mm", label: "Millimeters" }, { value: "in", label: "Inches" }]}
+  placeholder="Select…"
+  className="w-40"       // width tier — see below; omit for the w-full default
+/>
+```
+
+- Renders a real native `<select>` — not a custom popover — so keyboard navigation, the mobile
+  picker, and screen-reader behavior all come for free. Only the trigger is restyled: the native
+  arrow is swapped for a theme-aware chevron, matching the app's icon system instead of the OS's.
+- Pass `invalid` to switch to the error border/ring (matches `IB_ERR`), `disabled` to dim the
+  field, and `className` to set the width tier below.
+
+### Sizing
+
+- The trigger caps at `max-w-64` unconditionally — a select never grows wider than that regardless
+  of `className`. Pick the narrowest tier that fits the *typical* option, not the longest possible
+  one:
+
+  | Tier | Width | Use for |
+  |---|---|---|
+  | `w-20` | ~5 chars | A unit or short code — `mm`, `kg`, `%FS`, an RMS/peak toggle |
+  | `w-32` | ~8 chars | A short fixed category — calibration status, purpose, method |
+  | `w-44` | ~11 chars | A medium label — physical quantity, technology, role |
+  | `w-64` | ceiling | Long, unpredictable content — a location path, an organization or user name |
+
+- **The trigger truncates; the option list doesn't.** Once the selected label overflows the
+  trigger's width it ellipsizes (`text-overflow: ellipsis`) with the full text available as a
+  native `title` tooltip on hover — but the *popup* list is the browser's own native rendering, so
+  it already sizes itself to fit the widest option regardless of how narrow the trigger is. There
+  is nothing to configure for this — a `w-20` unit dropdown can still list options like "Pounds per
+  square inch" without truncating them in the list.
+
+**Rule: never render a raw `<select>` — use `Select`.**
+
+---
+
+## Date Picker
+
+Use the shared `DatePicker` component (`@/components/date-picker`) instead of a raw
+`<input type="date">`:
+
+```tsx
+<DatePicker
+  value={state.calibration_date}   // ISO "YYYY-MM-DD", same shape a native date input uses
+  onChange={set("calibration_date")}
+  min="2020-01-01"                 // optional ISO bounds
+  invalid={!!error}
+/>
+```
+
+A field styled like every other input — border, radius, and focus ring from the same tokens,
+plus a calendar icon on the right — that opens a popover calendar on click instead of the
+browser's native date picker:
+
+- **Month view** — a `‹ Month YYYY ›` header (click the label to jump to month/year selection) and
+  a 7-column day grid with locale-aware single-letter weekday headers. The selected day is a
+  filled `bg-og-accent` circle; today (when not selected) is an outlined `border-og-accent`
+  circle; a `Today` shortcut sits below the grid.
+  <br>*Colors: selected fill and today's outline both use `bg-og-accent`/`border-og-accent` (not a
+  fixed purple) so the picker follows the app's theme, including dark mode.*
+  <br>*Superseded design decision — the previous approach kept the native `<input type="date">` and
+  only recolored its calendar icon via `color-scheme` in `globals.css`. That's no longer used: it
+  couldn't be styled to look like the rest of the app (native OS calendar chrome), which is exactly
+  what this component replaces it for.*
+- **Month/year view** — a 12-month grid with year `‹ ›` navigation, for jumping across years
+  without stepping through every month in between.
+- The field itself is a button, not an editable text box — a date is always picked from the
+  calendar, never typed. This sidesteps locale date-format ambiguity (`07/10/2024`: July 10th, or
+  the 7th of October?) rather than adding input-mask parsing for it.
+- Pass `min`/`max` (ISO strings) to disable out-of-range days in the grid; `invalid` for the error
+  border/ring; `disabled`/`readOnly` to dim the field and suppress the popover.
+
+**Rule: never render a raw `<input type="date">` — use `DatePicker`.**
 
 ---
 
@@ -385,5 +467,8 @@ mind — don't reintroduce a native/unstyled scrollbar with inline styles or a c
 - Render a raw `<input type="checkbox">` — use the shared `ToggleSwitch` component
 - Size a numeric input's column to its label instead of its content — shorten the label first,
   then cap its width and let it truncate (with a tooltip) for whatever's left over
-- Render a raw `<input type="number">` where a visible increment/decrement affordance is
-  expected — use the shared `NumberInput` component
+- Render a raw `<input type="number">` — use the shared `NumberInput` component
+- Render a raw `<select>`, or a local per-file select wrapper — use the shared `Select` component
+- Render a raw `<input type="date">` — use the shared `DatePicker` component
+- Size a numeric input, select, or date picker wider than its documented tier/ceiling
+  (`w-32` for numeric inputs, `w-64` for selects and date pickers)

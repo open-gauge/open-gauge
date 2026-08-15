@@ -28,6 +28,7 @@ import { Avatar } from "@/components/avatar";
 import { UserSummary } from "@/components/user-summary";
 import { ToggleSwitch } from "@/components/toggle-switch";
 import { Tooltip } from "@/components/tooltip";
+import { Select } from "@/components/select";
 import { CERTIFICATE_DOCS_LINKS } from "@/lib/docs-links";
 import {
   addMembers,
@@ -621,10 +622,12 @@ export default function OrganizationDetailClient() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs text-gray-400">{t("location")}</label>
-                      <select value={form?.location_id ?? ""} onChange={(e) => setForm((f) => f && { ...f, location_id: e.target.value })} className={`${IB} ${IB_OK}`}>
-                        <option value="">{t("none")}</option>
-                        {locations.map((l) => <option key={l.id} value={l.id}>{l.path}</option>)}
-                      </select>
+                      <Select
+                        value={form?.location_id ?? ""}
+                        onChange={(v) => setForm((f) => f && { ...f, location_id: v })}
+                        options={locations.map((l) => ({ value: l.id, label: l.path }))}
+                        placeholder={t("none")}
+                      />
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs text-gray-400">{t("email")}</label>
@@ -747,14 +750,15 @@ export default function OrganizationDetailClient() {
                         <UserSummary userId={m.user_id} name={m.name} email={m.email} pictureUrl={m.profile_picture_url} className="flex-1" />
                         {org.can_manage && editing ? (
                           <div className="flex items-center gap-2 shrink-0">
-                            <select
+                            <Select
                               value={m.role}
-                              onChange={(e) => handleRoleChange(m.user_id, e.target.value as OrgRole)}
-                              className="px-2 py-1 text-xs rounded-lg border border-og-border-md bg-og-surface text-og-text"
-                            >
-                              <option value="member">{translateDynamic(tOrgRole, "member")}</option>
-                              <option value="admin">{translateDynamic(tOrgRole, "admin")}</option>
-                            </select>
+                              onChange={(v) => handleRoleChange(m.user_id, v as OrgRole)}
+                              options={[
+                                { value: "member", label: translateDynamic(tOrgRole, "member") },
+                                { value: "admin", label: translateDynamic(tOrgRole, "admin") },
+                              ]}
+                              className="w-28"
+                            />
                             <button
                               type="button"
                               onClick={() => handleRemoveMember(m.user_id)}

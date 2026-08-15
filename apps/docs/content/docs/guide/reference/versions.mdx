@@ -12,6 +12,29 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.4.0
+
+### Added
+
+- **Shared `Select` and `DatePicker` components, and app-wide numeric input standardization.**
+  [UI.md](https://github.com/open-gauge/open-gauge/blob/main/UI.md) now defines consistent width
+  tiers and behavior for every numeric input, dropdown, and date field in the app:
+  - **Numeric inputs** — the chevron-button `NumberInput` component (previously only used in the
+    Calibration Wizard's Step 3) is now used app-wide, sized to the value rather than the label
+    (`w-16` to a `w-32` ceiling).
+  - **Dropdowns** — a new shared `Select` component replaces the several near-duplicate per-page
+    `<select>` wrappers. It stays a native `<select>` (full keyboard nav, mobile picker,
+    screen-reader support) with a restyled chevron; the trigger caps at a width tier (`w-20` to a
+    `w-64` ceiling) and ellipsizes long labels with a hover tooltip, while the native option
+    list still auto-sizes to the widest option.
+  - **Date pickers** — a new shared `DatePicker` component replaces the native
+    `<input type="date">` with a themed popover calendar (month navigation, `og-accent` day
+    markers, a month/year quick-jump view) — a date is always picked from the calendar, never
+    typed, avoiding locale date-format ambiguity.
+  - Applied across every screen that previously hand-rolled its own numeric input, `<select>`, or
+    date input (admin, procedures, sites, assets, asset detail, calibration wizard, health tab,
+    interface tab, organization detail).
+
 ## 4.3.0
 
 ### Added

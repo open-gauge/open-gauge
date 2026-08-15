@@ -28,6 +28,8 @@ import {
   XIcon,
 } from "@/components/icons";
 import { ToggleSwitch } from "@/components/toggle-switch";
+import { Select } from "@/components/select";
+import { NumberInput } from "@/components/number-input";
 import {
   createProcedure,
   deleteProcedure,
@@ -357,13 +359,12 @@ function StepEditorRow({ step, index, total, onChange, onRemove, onMoveUp, onMov
         <div className="flex items-center gap-3">
           <span className={LABEL_CLS}>{t("duration")}</span>
           <div className="flex items-center gap-2">
-            <input type="number" min={0} max={9999} step="any" value={displayDurValue}
-              onChange={(e) => handleDurChange(e.target.value)}
-              placeholder="0" className={`${INPUT_CLS} w-24`} />
-            <select value={durUnit} onChange={(e) => setDurUnit(e.target.value as DurationUnit)}
-              className={`${INPUT_CLS} w-32`}>
-              {DURATION_UNITS.map((u) => <option key={u} value={u}>{translateDynamic(tUnit, u)}</option>)}
-            </select>
+            <NumberInput min={0} max={9999} value={String(displayDurValue)}
+              onChange={handleDurChange}
+              placeholder="0" className="w-20" />
+            <Select value={durUnit} onChange={(v) => setDurUnit(v as DurationUnit)}
+              options={DURATION_UNITS.map((u) => ({ value: u, label: translateDynamic(tUnit, u) }))}
+              className="w-28" />
           </div>
         </div>
       </div>
@@ -763,9 +764,8 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
             <>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("physicalQuantity")}</p>
-                <select value={draft.physical_quantity} onChange={(e) => setDraftField("physical_quantity", e.target.value)} className={INPUT_CLS}>
-                  {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{translateDynamic(tPhysicalQuantity, q)}</option>)}
-                </select>
+                <Select value={draft.physical_quantity} onChange={(v) => setDraftField("physical_quantity", v)}
+                  options={PHYSICAL_QUANTITIES.map((q) => ({ value: q, label: translateDynamic(tPhysicalQuantity, q) }))} />
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">{t("standard")}</p>
@@ -1511,9 +1511,8 @@ function NewProcedureModal({ procedures, canImport, onClose, onCreate }: NewProc
             </div>
             <div>
               <label className="block text-xs font-semibold text-og-text mb-1">{t("physicalQuantity")}</label>
-              <select value={newForm.physical_quantity} onChange={(e) => setNewForm((f) => ({ ...f, physical_quantity: e.target.value }))} className={inputCls(false)}>
-                {PHYSICAL_QUANTITIES.map((q) => <option key={q} value={q}>{translateDynamic(tPhysicalQuantity, q)}</option>)}
-              </select>
+              <Select value={newForm.physical_quantity} onChange={(v) => setNewForm((f) => ({ ...f, physical_quantity: v }))}
+                options={PHYSICAL_QUANTITIES.map((q) => ({ value: q, label: translateDynamic(tPhysicalQuantity, q) }))} />
             </div>
             {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">{error}</p>}
             <div className="flex justify-between items-center pt-1">
@@ -1533,14 +1532,17 @@ function NewProcedureModal({ procedures, canImport, onClose, onCreate }: NewProc
           <form onSubmit={handleCreateCopy} className="p-6 space-y-4">
             <div>
               <label className="block text-xs font-semibold text-og-text mb-1">{t("copyFrom")}</label>
-              <select value={sourceId} onChange={(e) => {
-                const id = e.target.value; setSourceId(id);
-                const src = procedures.find((p) => p.id === id);
-                if (src) { setCopyName(t("copyOf", { name: src.name })); setCopyProcId(""); }
-              }} className={inputCls(!!copyErrors.source)}>
-                <option value="">{t("selectProcedure")}</option>
-                {procedures.map((p) => <option key={p.id} value={p.id}>{p.proc_id ? `[${p.proc_id}] ` : ""}{p.name}</option>)}
-              </select>
+              <Select
+                value={sourceId}
+                onChange={(id) => {
+                  setSourceId(id);
+                  const src = procedures.find((p) => p.id === id);
+                  if (src) { setCopyName(t("copyOf", { name: src.name })); setCopyProcId(""); }
+                }}
+                options={procedures.map((p) => ({ value: p.id, label: `${p.proc_id ? `[${p.proc_id}] ` : ""}${p.name}` }))}
+                placeholder={t("selectProcedure")}
+                invalid={!!copyErrors.source}
+              />
               {copyErrors.source && <p className="mt-1 text-xs text-red-500">{copyErrors.source}</p>}
             </div>
             <div>
