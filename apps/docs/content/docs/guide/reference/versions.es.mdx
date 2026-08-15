@@ -14,6 +14,26 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.6.1
+
+### Corregido
+
+- **Un modelo declarado con una fórmula personalizada nunca podía guardarse.** El botón "Confirmar
+  y guardar" (y "Siguiente" al salir del Paso 2) del asistente de calibración permanecía
+  permanentemente deshabilitado para un modelo declarado directamente ("Modelo (función de
+  transferencia)") que usara una fórmula personalizada en lugar de un polinomio — una
+  comprobación residual dependía de un resultado de análisis que la eliminación de estadísticas
+  ficticias de la 4.6.0 dejó de producir. La posibilidad de guardar en este modo ahora depende
+  únicamente de la propia validación de fórmula/rango del asistente, que ya cubre correctamente
+  el caso de la fórmula personalizada.
+- **Las calibraciones Como se encontró/Como se dejó construidas con un método Referencia vs.
+  Indicado mostraban la tabla de datos incorrecta.** Cuando el método de entrada subyacente era
+  Referencia vs. Indicado (sin función de transferencia, sin ajuste de curva), la tabla de datos
+  de la calibración guardada seguía etiquetando la columna de lectura como "Medido" y mostraba
+  una columna "Ajustado" — ambas pertenecen a la variante con ajuste de curva. Ahora dice
+  "Indicado" y omite "Ajustado" en este caso, igual que la tabla del modo Referencia vs. Indicado
+  simple y el propio Paso 3 del asistente.
+
 ## 4.6.0
 
 ### Añadido

@@ -9,6 +9,23 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.6.1
+
+### Fixed
+
+- **A declared model using a custom formula could never be saved.** The calibration wizard's
+  "Confirm & Save" (and "Next" out of Step 2) stayed permanently disabled for a directly-declared
+  model ("Model (transfer function)") using a custom formula, instead of a polynomial — a
+  leftover check depended on an analysis result that the 4.6.0 fake-statistics removal stopped
+  producing. Save-eligibility for this mode now depends only on the wizard's own formula/range
+  validation, which already covers the custom-formula case correctly.
+- **As-Found/As-Left calibrations built from a Reference vs. Indicated method showed the wrong
+  data table.** When the underlying input method was Reference vs. Indicated (no transfer
+  function, no curve fit), the saved calibration's data table still labeled the reading column
+  "Measured" and showed a "Fitted" column — both belong to the curve-fit variant. It now reads
+  "Indicated" and omits "Fitted" for this case, matching the plain Reference vs. Indicated mode's
+  table and the wizard's own Step 3.
+
 ## 4.6.0
 
 ### Added

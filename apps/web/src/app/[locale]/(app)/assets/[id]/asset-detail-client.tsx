@@ -1906,6 +1906,13 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 
   const referenceUnit = points[0]?.reference_unit ?? "";
   const measuredUnit = points[0]?.measured_unit ?? "";
+  // "Indicated" column / no Fitted column applies to reference_vs_indicated
+  // and to the skip-fit variant of reference_vs_as_found_as_left (same
+  // no-transfer-function case hasModel() identifies elsewhere in this file).
+  const isIndicatedStyle = !!selectedCal && (
+    selectedCal.data_entry_mode === "reference_vs_indicated"
+    || (selectedCal.data_entry_mode === "reference_vs_as_found_as_left" && !hasModel(selectedCal))
+  );
 
   return (
     <>
@@ -2407,9 +2414,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                       <tr className="border-b border-og-border bg-og-surface-alt">
                         {[
                           "#",
-                          `${selectedCal.data_entry_mode === "reference_vs_indicated" ? t("indicated") : t("measured")}${measuredUnit ? ` (${measuredUnit})` : ""}`,
+                          `${isIndicatedStyle ? t("indicated") : t("measured")}${measuredUnit ? ` (${measuredUnit})` : ""}`,
                           `${t("reference")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
-                          ...(selectedCal.data_entry_mode === "reference_vs_indicated" ? [] : [`${t("fitted")}${referenceUnit ? ` (${referenceUnit})` : ""}`]),
+                          ...(isIndicatedStyle ? [] : [`${t("fitted")}${referenceUnit ? ` (${referenceUnit})` : ""}`]),
                           `${t("residual")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
                           t("residualPercent"),
                         ].map((h) => (
@@ -2423,7 +2430,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                           <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
                           <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.measured_value)}</td>
                           <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.reference_value)}</td>
-                          {selectedCal.data_entry_mode !== "reference_vs_indicated" && (
+                          {!isIndicatedStyle && (
                             <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.calculated_value)}</td>
                           )}
                           <td className={`px-3 py-1.5 font-mono ${selectedCal.rmse != null && Math.abs(pt.residual_abs ?? 0) > selectedCal.rmse * 2 ? "text-amber-400 dark:text-amber-300" : "text-og-text"}`}>

@@ -15,6 +15,26 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.6.1
+
+### Corrigé
+
+- **Un modèle déclaré utilisant une formule personnalisée ne pouvait jamais être enregistré.** Le
+  bouton « Confirmer et enregistrer » (et « Suivant » en quittant l'étape 2) de l'assistant de
+  calibration restait en permanence désactivé pour un modèle déclaré directement
+  (« Modèle (fonction de transfert) ») utilisant une formule personnalisée plutôt qu'un polynôme
+  — une vérification résiduelle dépendait d'un résultat d'analyse que la suppression des
+  statistiques fictives en 4.6.0 avait cessé de produire. La possibilité d'enregistrer dans ce
+  mode ne dépend désormais que de la propre validation formule/plage de l'assistant, qui couvre
+  déjà correctement le cas de la formule personnalisée.
+- **Les calibrations Avant/Après réparation construites avec une méthode Référence vs. Indiqué
+  affichaient le mauvais tableau de données.** Lorsque la méthode de saisie sous-jacente était
+  Référence vs. Indiqué (pas de fonction de transfert, pas d'ajustement de courbe), le tableau de
+  données de la calibration enregistrée étiquetait toujours la colonne de lecture « Mesuré » et
+  affichait une colonne « Ajusté » — les deux appartiennent à la variante avec ajustement de
+  courbe. Il affiche désormais « Indiqué » et omet « Ajusté » dans ce cas, comme le tableau du
+  mode Référence vs. Indiqué simple et l'étape 3 de l'assistant elle-même.
+
 ## 4.6.0
 
 ### Ajouté

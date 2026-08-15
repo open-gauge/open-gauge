@@ -15,6 +15,26 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.6.1
+
+### Behoben
+
+- **Ein deklariertes Modell mit einer benutzerdefinierten Formel konnte nie gespeichert werden.**
+  „Bestätigen & speichern" (und „Weiter" beim Verlassen von Schritt 2) des
+  Kalibrierungsassistenten blieb für ein direkt deklariertes Modell („Modell
+  (Übertragungsfunktion)") mit einer benutzerdefinierten Formel statt eines Polynoms dauerhaft
+  deaktiviert — eine verbliebene Prüfung hing von einem Analyseergebnis ab, das die Entfernung
+  der erfundenen Statistiken in 4.6.0 nicht mehr erzeugte. Die Speicherbarkeit hängt in diesem
+  Modus jetzt nur noch von der eigenen Formel-/Bereichsvalidierung des Assistenten ab, die den
+  Fall der benutzerdefinierten Formel bereits korrekt abdeckt.
+- **Vorher/Nachher-Kalibrierungen (As-Found/As-Left), die mit der Methode Referenz vs. Angezeigt
+  erstellt wurden, zeigten die falsche Datentabelle.** Wenn die zugrunde liegende Eingabemethode
+  Referenz vs. Angezeigt war (keine Übertragungsfunktion, keine Kurvenanpassung), beschriftete
+  die Datentabelle der gespeicherten Kalibrierung die Messwertspalte weiterhin mit „Gemessen" und
+  zeigte eine Spalte „Angepasst" — beides gehört zur Variante mit Kurvenanpassung. Sie zeigt jetzt
+  „Angezeigt" und lässt „Angepasst" in diesem Fall aus, passend zur Tabelle des einfachen Modus
+  Referenz vs. Angezeigt und zu Schritt 3 des Assistenten selbst.
+
 ## 4.6.0
 
 ### Hinzugefügt
