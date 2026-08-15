@@ -15,6 +15,22 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.6.2
+
+### Behoben
+
+- **Der erste Administrator eines frischen Deployments konnte nie einen Standort anlegen, selbst
+  nachdem er eine Organisation erstellt hatte.** Das Formular „Neuer Standort" ermittelte die
+  Organisation des Nutzers durch Auslesen von `organization_id` aus `GET /users/me` — ein Feld,
+  das in der Nutzerantwort nicht mehr existiert, seit die Organisationsmitgliedschaft in die
+  Many-to-many-Tabelle `OrganizationMember` verschoben wurde. Die Abfrage lieferte immer leer
+  zurück, sodass das Formular dauerhaft „Ihre Organisation konnte nicht ermittelt werden. Wenden
+  Sie sich an einen Administrator." anzeigte, ohne eine Möglichkeit fortzufahren — selbst für
+  einen Nutzer, der inzwischen eine Organisation erstellt und sich ihr angeschlossen hatte. Das
+  Formular ruft jetzt die tatsächlichen Mitgliedschaften des Nutzers ab (`GET
+  /organizations?mine=true`) und bietet eine Organisationsauswahl an, dasselbe Muster, das das
+  Formular zur Anlage von Assets bereits verwendet.
+
 ## 4.6.1
 
 ### Behoben

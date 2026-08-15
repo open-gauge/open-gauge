@@ -56,6 +56,9 @@
     "codePlaceholder": "p. ex. LAB-01",
     "parentLocation": "Emplacement parent",
     "none": "Aucun (racine)",
+    "organization": "Organisation",
+    "selectOrganization": "Sélectionner une organisation…",
+    "noOrganizations": "Vous n'êtes membre d'aucune organisation pour le moment — créez-en une ou rejoignez-en une d'abord.",
     "address": "Adresse",
     "addressPlaceholder": "Adresse postale",
     "latitude": "Latitude",
@@ -66,7 +69,7 @@
     "create": "Créer l'emplacement",
     "nameRequired": "Le nom est requis",
     "typeRequired": "Le type est requis",
-    "orgError": "Impossible de déterminer votre organisation. Contactez un administrateur.",
+    "organizationRequired": "L'organisation est requise",
     "createFailed": "Échec de la création de l'emplacement"
   },
   "page": {

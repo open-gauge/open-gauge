@@ -32,12 +32,13 @@ import {
 import {
   createLocation,
   deleteLocation,
-  getMyOrganizationId,
   listAllLocations,
   updateLocation,
 } from "@/services/location.service";
 import type { LocationUpdateBody } from "@/services/location.service";
+import { listMyOrganizations } from "@/services/organization.service";
 import type { LocationItem, LocationTreeNode } from "@/types/location";
+import type { OrganizationListItem } from "@/types/organization";
 import { ToggleSwitch } from "@/components/toggle-switch";
 import { Select } from "@/components/select";
 import { NumberInput } from "@/components/number-input";
@@ -779,13 +780,14 @@ interface NewLocForm {
   latitude: string;
   longitude: string;
   parent_location_id: string;
+  organization_id: string;
   is_calibration_lab: boolean;
 }
 
 const EMPTY_NEW_FORM: NewLocForm = {
   name: "", location_type: "", description: "",
   code: "", address: "", latitude: "", longitude: "",
-  parent_location_id: "", is_calibration_lab: false,
+  parent_location_id: "", organization_id: "", is_calibration_lab: false,
 };
 
 function NewLocationForm({
@@ -802,6 +804,11 @@ function NewLocationForm({
   const [form, setForm] = useState<NewLocForm>(EMPTY_NEW_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [myOrgs, setMyOrgs] = useState<OrganizationListItem[]>([]);
+
+  useEffect(() => {
+    listMyOrganizations().then(setMyOrgs).catch(() => {});
+  }, []);
 
   const pathMap = useMemo(() => buildPathMap(allLocations), [allLocations]);
   const parentOptions = useMemo(
@@ -823,18 +830,17 @@ function NewLocationForm({
   async function handleCreate() {
     if (!form.name.trim()) { setError(t("nameRequired")); return; }
     if (!form.location_type) { setError(t("typeRequired")); return; }
+    if (!form.organization_id) { setError(t("organizationRequired")); return; }
     setError(null);
     setSaving(true);
     try {
-      const orgId = await getMyOrganizationId();
-      if (!orgId) { setError(t("orgError")); return; }
       const parseNum = (s: string): number | null => {
         if (!s.trim()) return null;
         const n = parseFloat(s);
         return isNaN(n) ? null : n;
       };
       await createLocation({
-        organization_id: orgId,
+        organization_id: form.organization_id,
         name: form.name.trim(),
         location_type: form.location_type,
         description: form.description.trim() || null,
@@ -886,6 +892,19 @@ function NewLocationForm({
             options={locationTypeOptions}
             required
           />
+        </div>
+        <div className="space-y-1">
+          <FSelect
+            label={t("organization")}
+            value={form.organization_id}
+            onChange={field("organization_id")}
+            options={myOrgs.map((o) => ({ value: o.id, label: o.name }))}
+            placeholder={t("selectOrganization")}
+            required
+          />
+          {myOrgs.length === 0 && (
+            <p className="text-[10px] text-gray-400">{t("noOrganizations")}</p>
+          )}
         </div>
         <FTextArea
           label={t("description")}

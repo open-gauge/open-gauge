@@ -12,6 +12,20 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.6.2
+
+### Fixed
+
+- **A fresh deployment's first admin could never create a location, even after creating an
+  organization.** The "New location" form determined the caller's organization by reading
+  `organization_id` off `GET /users/me` — a field that no longer exists on the user response
+  since org membership moved to the many-to-many `OrganizationMember` table. The lookup always
+  came back empty, so the form permanently showed "Could not determine your organization. Contact
+  an admin." with no way to proceed, even for a user who had since created and joined an
+  organization. The form now fetches the caller's actual memberships (`GET
+  /organizations?mine=true`) and offers an Organization picker, the same pattern already used by
+  the asset creation form.
+
 ## 4.6.1
 
 ### Fixed

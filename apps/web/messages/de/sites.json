@@ -56,6 +56,9 @@
     "codePlaceholder": "z. B. LAB-01",
     "parentLocation": "Übergeordneter Standort",
     "none": "Keiner (Wurzel)",
+    "organization": "Organisation",
+    "selectOrganization": "Organisation auswählen…",
+    "noOrganizations": "Sie sind noch in keiner Organisation Mitglied — erstellen oder treten Sie zuerst einer bei.",
     "address": "Adresse",
     "addressPlaceholder": "Straße und Hausnummer",
     "latitude": "Breitengrad",
@@ -66,7 +69,7 @@
     "create": "Standort erstellen",
     "nameRequired": "Name ist erforderlich",
     "typeRequired": "Typ ist erforderlich",
-    "orgError": "Ihre Organisation konnte nicht ermittelt werden. Wenden Sie sich an einen Administrator.",
+    "organizationRequired": "Organisation ist erforderlich",
     "createFailed": "Standort konnte nicht erstellt werden"
   },
   "page": {

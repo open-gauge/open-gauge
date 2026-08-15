@@ -73,10 +73,3 @@ export async function deleteLocation(id: string): Promise<void> {
     headers: tokenHeader(),
   });
 }
-
-export async function getMyOrganizationId(): Promise<string | null> {
-  const me = await apiFetch<{ organization_id: string | null }>("/api/v1/users/me", {
-    headers: tokenHeader(),
-  });
-  return me.organization_id;
-}

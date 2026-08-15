@@ -15,6 +15,21 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.6.2
+
+### Corrigé
+
+- **Le premier administrateur d'une installation neuve ne pouvait jamais créer d'emplacement,
+  même après avoir créé une organisation.** Le formulaire « Nouvel emplacement » déterminait
+  l'organisation de l'utilisateur en lisant `organization_id` depuis `GET /users/me` — un champ
+  qui n'existe plus dans la réponse utilisateur depuis que l'appartenance à une organisation est
+  passée par la table many-to-many `OrganizationMember`. La recherche revenait toujours vide, si
+  bien que le formulaire affichait en permanence « Impossible de déterminer votre organisation.
+  Contactez un administrateur. » sans aucun moyen de continuer, même pour un utilisateur ayant
+  entre-temps créé une organisation et l'ayant rejointe. Le formulaire récupère désormais les
+  véritables adhésions de l'utilisateur (`GET /organizations?mine=true`) et propose un
+  sélecteur d'organisation, le même modèle déjà utilisé par le formulaire de création d'actif.
+
 ## 4.6.1
 
 ### Corrigé

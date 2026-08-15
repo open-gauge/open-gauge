@@ -56,6 +56,9 @@
     "codePlaceholder": "e.g. LAB-01",
     "parentLocation": "Parent Location",
     "none": "None (root)",
+    "organization": "Organization",
+    "selectOrganization": "Select an organization…",
+    "noOrganizations": "You're not a member of any organization yet — create or join one first.",
     "address": "Address",
     "addressPlaceholder": "Street address",
     "latitude": "Latitude",
@@ -66,7 +69,7 @@
     "create": "Create location",
     "nameRequired": "Name is required",
     "typeRequired": "Type is required",
-    "orgError": "Could not determine your organization. Contact an admin.",
+    "organizationRequired": "Organization is required",
     "createFailed": "Failed to create location"
   },
   "page": {

@@ -14,6 +14,21 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.6.2
+
+### Corregido
+
+- **El primer administrador de una instalación nueva nunca podía crear una ubicación, ni
+  siquiera después de crear una organización.** El formulario "Nueva ubicación" determinaba la
+  organización del usuario leyendo `organization_id` de `GET /users/me` — un campo que ya no
+  existe en la respuesta del usuario, porque la pertenencia a la organización se trasladó a la
+  tabla muchos-a-muchos `OrganizationMember`. La búsqueda siempre devolvía vacío, así que el
+  formulario mostraba permanentemente "No se pudo determinar tu organización. Contacta con un
+  administrador." sin ninguna forma de continuar, incluso para un usuario que ya había creado y
+  se había unido a una organización. Ahora el formulario obtiene las membresías reales del
+  usuario (`GET /organizations?mine=true`) y ofrece un selector de organización, el mismo patrón
+  que ya usa el formulario de creación de activos.
+
 ## 4.6.1
 
 ### Corregido
