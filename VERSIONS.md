@@ -17,10 +17,13 @@ fixes and incremental additions that landed between each minor version.
   - **Interface** — an Electrical panel (uploadable connector image + an editable pinout table
     with pin number, multi-color wire swatches, signal name with a common-name suggestion list,
     and description) and a Mechanical panel (uploadable drawing + an editable mounting-points
-    table: point label, type, torque spec, description). Each panel has its own independent
-    Edit/Save/Cancel, separate from the Overview tab's edit mode. The Electrical panel adds a
-    **Mapping** dialog to place each pin's marker on the connector image by clicking it (click
-    again to remove); mapping coordinates live on the same pinout row and save with it.
+    table: point label, type, torque spec, description). Both panels are read-only until the
+    page's own Edit button is used — the same shared Edit/Save/Cancel as the Overview tab, with
+    `pinout_table`/`mechanical_table` folded into the same edit form; only image upload/removal
+    stays immediate, like the asset picture. The Electrical panel adds a **Mapping** dialog to
+    place each pin's marker on the connector image by clicking it while editing (click again to
+    remove); outside of edit mode, hovering a pinout row previews its marker inline, and clicking
+    the image opens the same dialog read-only. Mapping coordinates live on the same pinout row.
   - **CAD** — a per-asset file manager for CAD models (STL, STEP, STP, IGES, IGS, BREP; 50MB cap)
     with a live 3D preview: STL renders directly via `three`, STEP/IGES/BREP are triangulated
     in-browser by `occt-import-js` (an OpenCascade WASM build), so no file is ever converted

@@ -35,7 +35,7 @@ import { PhaseChart } from "@/components/phase-chart";
 import { useAuth } from "@/lib/auth-context";
 import { getOrganization, listMyOrganizations } from "@/services/organization.service";
 import type { Organization, OrganizationListItem } from "@/types/organization";
-import type { AssetProfile, AssetUpdateRequest, LocationOption, SensorChannelUpdateInput } from "@/types/asset";
+import type { AssetProfile, AssetUpdateRequest, LocationOption, MechanicalRow, PinoutRow, SensorChannelUpdateInput } from "@/types/asset";
 import type { CalibrationPoint, CalibrationRecord, FrequencyResponsePoint, PhaseChartPoint, SensitivityChartPoint } from "@/types/calibration";
 import type { AuditLogEntry } from "@/types/audit_log";
 import type { StoredFile } from "@/types/stored_file";
@@ -271,7 +271,7 @@ interface EditChannelForm {
   calibration_role: boolean;  // checkbox: true = "reference" standard
 }
 
-interface EditFormState {
+export interface EditFormState {
   asset_id: string;
   name: string;
   description: string;
@@ -299,6 +299,8 @@ interface EditFormState {
   warranty_expiry_date: string;
   notes: string;
   sensor_channels: EditChannelForm[];
+  pinout_table: PinoutRow[];
+  mechanical_table: MechanicalRow[];
 }
 
 function s(v: string | number | null | undefined): string {
@@ -365,6 +367,8 @@ function profileToForm(profile: AssetProfile): EditFormState {
         calibration_role: ch.calibration_role === "reference",
       };
     }),
+    pinout_table: (profile.pinout_table ?? []).map((r) => ({ ...r, wire_colors: r.wire_colors ? [...r.wire_colors] : null })),
+    mechanical_table: (profile.mechanical_table ?? []).map((r) => ({ ...r })),
   };
 }
 
@@ -439,6 +443,8 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
     warranty_expiry_date: orNull(form.warranty_expiry_date),
     notes: orNull(form.notes),
     sensor_channels: channels,
+    pinout_table: form.pinout_table,
+    mechanical_table: form.mechanical_table,
   };
 }
 
@@ -3742,10 +3748,17 @@ export default function AssetDetailClient() {
             />
           )}
           {activeTab === "interface" && (
-            <InterfaceTab assetId={id} profile={profile} canEdit={user.role !== "viewer"} onProfileUpdate={setProfile} />
+            <InterfaceTab
+              assetId={id}
+              profile={profile}
+              isEditing={isEditing}
+              form={editForm}
+              onChange={handleFormChange}
+              onProfileUpdate={setProfile}
+            />
           )}
           {activeTab === "cad" && (
-            <CadTab assetId={id} canEdit={user.role !== "viewer"} />
+            <CadTab assetId={id} isEditing={isEditing} />
           )}
           {activeTab === "health" && (
             <HealthTab assetId={id} profile={profile} />

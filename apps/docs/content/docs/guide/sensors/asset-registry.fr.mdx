@@ -118,10 +118,13 @@ l'actif, et de `pinout_image_id`, qui est modifiable depuis l'onglet Interface (
 
 ## Onglet Interface
 
-L'onglet **Interface** documente les connexions physiques d'un actif sous la forme de deux panneaux
-indépendants, **Électrique** et **Mécanique**, chacun avec son propre Modifier/Enregistrer/Annuler —
-distinct du mode d'édition de l'onglet Aperçu, de sorte que la mise à jour d'un brochage ne nécessite pas
-de toucher au reste des champs de l'actif.
+L'onglet **Interface** documente les connexions physiques d'un actif sous la forme de deux panneaux,
+**Électrique** et **Mécanique**. Les deux sont en lecture seule tant que le bouton **Modifier** propre à
+la page (en haut de la page, partagé avec l'onglet Aperçu) n'a pas été cliqué — il n'y a pas de contrôle
+d'édition distinct par panneau. Les tableaux de brochage et de points de fixation sont enregistrés avec
+le reste des champs de l'actif via le bouton **Enregistrer les modifications** de la page ; seuls le
+téléversement et la suppression de l'image du connecteur/du plan prennent effet immédiatement, comme pour
+la photo de l'actif.
 
 ### Électrique
 
@@ -154,7 +157,9 @@ de toucher au reste des champs de l'actif.
 
 L'onglet **CAO** est un gestionnaire de fichiers CAO par actif — STL, STEP, STP, IGES, IGS et BREP, jusqu'à
 50 Mo chacun — avec un aperçu 3D en direct du fichier sélectionné dans la liste. Tout fichier téléversé
-peut également être téléchargé tel quel.
+peut également être téléchargé tel quel. La zone de dépôt n'apparaît que lorsque la page est en mode
+édition (le même bouton **Modifier** en haut de la page que pour les autres onglets) ; consulter et
+télécharger les fichiers existants ne le nécessite pas.
 
 - **STL** s'affiche directement dans le navigateur (three.js) — aucune conversion nécessaire.
 - **STEP, IGES et BREP** sont triangulés dans le navigateur par

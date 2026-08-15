@@ -109,10 +109,13 @@ escritura única `sensor_image_id`/`sensor_schematic_id` establecidas al crear e
 
 ## Pestaña Interfaz
 
-La pestaña **Interfaz** documenta las conexiones físicas de un activo mediante dos paneles independientes,
-**Eléctrico** y **Mecánico**, cada uno con su propio Editar/Guardar/Cancelar — independiente del modo de
-edición de la pestaña Resumen, de modo que actualizar un pinout no requiere tocar el resto de los campos
-del activo.
+La pestaña **Interfaz** documenta las conexiones físicas de un activo mediante dos paneles,
+**Eléctrico** y **Mecánico**. Ambos son de solo lectura hasta que se hace clic en el botón
+**Editar** propio de la página (arriba de la página, compartido con la pestaña Resumen) — no hay
+un control de edición independiente por panel. Las tablas de pinout y de puntos de montaje se
+guardan junto con el resto de los campos del activo mediante el botón **Guardar cambios** de la
+página; solo la subida y eliminación de la imagen del conector/plano tienen efecto inmediato, de
+la misma forma que la foto del activo.
 
 ### Eléctrico
 
@@ -145,7 +148,9 @@ del activo.
 
 La pestaña **CAD** es un gestor de archivos CAD por activo — STL, STEP, STP, IGES, IGS y BREP, hasta 50MB
 cada uno — con una vista previa 3D en vivo del archivo que esté seleccionado en la lista. Todo archivo
-subido también se puede descargar tal cual.
+subido también se puede descargar tal cual. La zona de arrastre para subir archivos solo aparece
+mientras la página está en modo edición (el mismo botón **Editar** de la parte superior de la página que
+usan las demás pestañas); ver y descargar los archivos existentes no lo requiere.
 
 - **STL** se renderiza directamente en el navegador (three.js) — no necesita conversión.
 - **STEP, IGES y BREP** se triangulan en el navegador mediante

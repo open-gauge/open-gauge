@@ -18,10 +18,11 @@ fixes and incremental additions that landed between each minor version.
 
 - **Asset "Interface" and "CAD" tabs.** An Electrical panel (connector image + pinout table with
   multi-color wire swatches, signal name, description, and a click-to-place pin **Mapping**
-  dialog) and a Mechanical panel (drawing + mounting-points table), each with independent
-  Edit/Save/Cancel — plus a CAD tab for uploading and live-previewing STL/STEP/IGES/BREP files
-  (STL via `three`, the rest triangulated in-browser by the `occt-import-js` OpenCascade WASM
-  build). See [Asset registry → Interface tab](../sensors/asset-registry.mdx#interface-tab) and
+  dialog) and a Mechanical panel (drawing + mounting-points table), both read-only until the
+  page's own Edit button is used — plus a CAD tab for uploading and live-previewing
+  STL/STEP/IGES/BREP files (STL via `three`, the rest triangulated in-browser by the
+  `occt-import-js` OpenCascade WASM build), whose upload drop zone works the same way. See
+  [Asset registry → Interface tab](../sensors/asset-registry.mdx#interface-tab) and
   [→ CAD tab](../sensors/asset-registry.mdx#cad-tab).
 
 ### Fixed

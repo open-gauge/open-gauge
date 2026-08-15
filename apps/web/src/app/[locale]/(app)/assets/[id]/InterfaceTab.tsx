@@ -3,16 +3,16 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { AssetProfile, MechanicalRow, PinoutRow } from "@/types/asset";
+import type { EditFormState } from "./asset-detail-client";
 import {
   uploadAssetPinoutImage,
   deleteAssetPinoutImage,
   uploadAssetMechanicalImage,
   deleteAssetMechanicalImage,
-  updateAsset,
   getAssetProfile,
 } from "@/services/asset.service";
 import { WireColorPicker } from "@/components/wire-color-picker";
-import { CameraIcon, CheckIcon, EditIcon, MapPinIcon, PlusIcon, TrashIcon, XIcon } from "@/components/icons";
+import { CameraIcon, MapPinIcon, PlusIcon, TrashIcon, XIcon } from "@/components/icons";
 
 const COMMON_SIGNAL_NAMES = [
   "GND", "VCC", "VDD", "+5V", "+3.3V", "+12V", "-12V",
@@ -20,47 +20,13 @@ const COMMON_SIGNAL_NAMES = [
   "EN", "RST", "NC", "A+", "A-", "B+", "B-", "SHIELD",
 ];
 
-function deepCopyPinout(rows: PinoutRow[] | null): PinoutRow[] {
-  return rows ? rows.map((r) => ({ ...r, wire_colors: r.wire_colors ? [...r.wire_colors] : null })) : [];
-}
-
-function deepCopyMechanical(rows: MechanicalRow[] | null): MechanicalRow[] {
-  return rows ? rows.map((r) => ({ ...r })) : [];
-}
-
 const INPUT_CLS =
   "w-full px-2 py-1.5 rounded-md border border-og-border-md text-xs text-og-text bg-og-surface focus:outline-hidden focus:ring-1 focus:ring-og-accent/40 focus:border-og-accent/60 transition-colors";
 
-function PanelHeader({
-  title, isEditing, saving, onEdit, onCancel, onSave, canEdit,
-}: {
-  title: string; isEditing: boolean; saving: boolean; canEdit: boolean;
-  onEdit: () => void; onCancel: () => void; onSave: () => void;
-}) {
-  const t = useTranslations("assets.interface");
+function PanelHeader({ title }: { title: string }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-og-border">
       <p className="text-xs font-semibold text-og-text uppercase tracking-wide">{title}</p>
-      {canEdit && (
-        isEditing ? (
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onCancel} disabled={saving}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50">
-              <XIcon size={12} />{t("cancel")}
-            </button>
-            <button type="button" onClick={onSave} disabled={saving}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50">
-              {saving ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CheckIcon size={12} />}
-              {saving ? t("saving") : t("save")}
-            </button>
-          </div>
-        ) : (
-          <button type="button" onClick={onEdit}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-            <EditIcon size={12} />{t("edit")}
-          </button>
-        )
-      )}
     </div>
   );
 }
@@ -249,48 +215,23 @@ function MappingModal({
 // Electrical panel
 // ---------------------------------------------------------------------------
 
-function ElectricalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
-  assetId: string; profile: AssetProfile; canEdit: boolean; onProfileUpdate: (p: AssetProfile) => void;
-}) {
+interface PanelProps {
+  assetId: string;
+  profile: AssetProfile;
+  isEditing: boolean;
+  form: EditFormState | null;
+  onChange: (form: EditFormState) => void;
+  onProfileUpdate: (p: AssetProfile) => void;
+}
+
+function ElectricalPanel({ assetId, profile, isEditing, form, onChange, onProfileUpdate }: PanelProps) {
   const t = useTranslations("assets.interface");
   const datalistId = `signal-names-${assetId}`;
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<PinoutRow[]>(() => deepCopyPinout(profile.pinout_table));
-  const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [mappingOpen, setMappingOpen] = useState(false);
   const [mappingReadOnly, setMappingReadOnly] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<number | null>(null);
-
-  function startEdit() {
-    setDraft(deepCopyPinout(profile.pinout_table));
-    setIsEditing(true);
-    setError(null);
-  }
-
-  function cancelEdit() {
-    setDraft(deepCopyPinout(profile.pinout_table));
-    setIsEditing(false);
-    setError(null);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      await updateAsset(assetId, { pinout_table: draft });
-      // The PUT response is the slim AssetResponse shape, not the enriched
-      // profile (organization/location/calibration-status fields) — reload
-      // the full profile rather than trusting it directly.
-      onProfileUpdate(await getAssetProfile(assetId));
-      setIsEditing(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("saveFailed"));
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function handleImageUpload(file: File) {
     setImageUploading(true);
@@ -298,7 +239,7 @@ function ElectricalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
       await uploadAssetPinoutImage(assetId, file);
       onProfileUpdate(await getAssetProfile(assetId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("imageUploadFailed"));
+      setImageError(e instanceof Error ? e.message : t("imageUploadFailed"));
     } finally {
       setImageUploading(false);
     }
@@ -310,28 +251,36 @@ function ElectricalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
       await deleteAssetPinoutImage(assetId);
       onProfileUpdate(await getAssetProfile(assetId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("imageUploadFailed"));
+      setImageError(e instanceof Error ? e.message : t("imageUploadFailed"));
     } finally {
       setImageUploading(false);
     }
   }
 
   function addRow() {
-    const nextPin = draft.length > 0 ? Math.max(...draft.map((r) => r.pin_number)) + 1 : 1;
-    setDraft([...draft, { pin_number: nextPin, signal_name: "", wire_colors: null, description: "", x: null, y: null }]);
+    if (!form) return;
+    const nextPin = form.pinout_table.length > 0 ? Math.max(...form.pinout_table.map((r) => r.pin_number)) + 1 : 1;
+    onChange({ ...form, pinout_table: [...form.pinout_table, { pin_number: nextPin, signal_name: "", wire_colors: null, description: "", x: null, y: null }] });
   }
 
   function updateRow(i: number, row: PinoutRow) {
-    const next = [...draft];
+    if (!form) return;
+    const next = [...form.pinout_table];
     next[i] = row;
-    setDraft(next);
+    onChange({ ...form, pinout_table: next });
   }
 
   function removeRow(i: number) {
-    setDraft(draft.filter((_, j) => j !== i));
+    if (!form) return;
+    onChange({ ...form, pinout_table: form.pinout_table.filter((_, j) => j !== i) });
   }
 
-  const rows = isEditing ? draft : (profile.pinout_table ?? []);
+  function setMappingRows(rows: PinoutRow[]) {
+    if (!form) return;
+    onChange({ ...form, pinout_table: rows });
+  }
+
+  const rows = isEditing && form ? form.pinout_table : (profile.pinout_table ?? []);
   const hasRows = rows.length > 0;
   const hoveredRow = !isEditing && hoveredPin != null ? rows.find((r) => r.pin_number === hoveredPin) : undefined;
   const hoverMarker = hoveredRow && hoveredRow.x != null && hoveredRow.y != null ? (
@@ -350,12 +299,11 @@ function ElectricalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
 
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
-      <PanelHeader title={t("electrical")} isEditing={isEditing} saving={saving} canEdit={canEdit}
-        onEdit={startEdit} onCancel={cancelEdit} onSave={handleSave} />
+      <PanelHeader title={t("electrical")} />
       <div className="p-4">
-        {error && (
+        {imageError && (
           <p className="mb-3 text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">
-            {error}
+            {imageError}
           </p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
@@ -463,8 +411,8 @@ function ElectricalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
       {mappingOpen && profile.pinout_image_url && (
         <MappingModal
           imageUrl={profile.pinout_image_url}
-          rows={isEditing ? draft : rows}
-          onChange={isEditing ? setDraft : () => {}}
+          rows={rows}
+          onChange={isEditing && form ? setMappingRows : () => {}}
           onClose={() => setMappingOpen(false)}
           readOnly={mappingReadOnly}
         />
@@ -477,41 +425,10 @@ function ElectricalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
 // Mechanical panel
 // ---------------------------------------------------------------------------
 
-function MechanicalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
-  assetId: string; profile: AssetProfile; canEdit: boolean; onProfileUpdate: (p: AssetProfile) => void;
-}) {
+function MechanicalPanel({ assetId, profile, isEditing, form, onChange, onProfileUpdate }: PanelProps) {
   const t = useTranslations("assets.interface");
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<MechanicalRow[]>(() => deepCopyMechanical(profile.mechanical_table));
-  const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  function startEdit() {
-    setDraft(deepCopyMechanical(profile.mechanical_table));
-    setIsEditing(true);
-    setError(null);
-  }
-
-  function cancelEdit() {
-    setDraft(deepCopyMechanical(profile.mechanical_table));
-    setIsEditing(false);
-    setError(null);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
-    try {
-      await updateAsset(assetId, { mechanical_table: draft });
-      onProfileUpdate(await getAssetProfile(assetId));
-      setIsEditing(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("saveFailed"));
-    } finally {
-      setSaving(false);
-    }
-  }
+  const [imageError, setImageError] = useState<string | null>(null);
 
   async function handleImageUpload(file: File) {
     setImageUploading(true);
@@ -519,7 +436,7 @@ function MechanicalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
       await uploadAssetMechanicalImage(assetId, file);
       onProfileUpdate(await getAssetProfile(assetId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("imageUploadFailed"));
+      setImageError(e instanceof Error ? e.message : t("imageUploadFailed"));
     } finally {
       setImageUploading(false);
     }
@@ -531,37 +448,39 @@ function MechanicalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
       await deleteAssetMechanicalImage(assetId);
       onProfileUpdate(await getAssetProfile(assetId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("imageUploadFailed"));
+      setImageError(e instanceof Error ? e.message : t("imageUploadFailed"));
     } finally {
       setImageUploading(false);
     }
   }
 
   function addRow() {
-    setDraft([...draft, { point_label: "", type: "", torque_spec: "", description: "" }]);
+    if (!form) return;
+    onChange({ ...form, mechanical_table: [...form.mechanical_table, { point_label: "", type: "", torque_spec: "", description: "" }] });
   }
 
   function updateRow(i: number, row: MechanicalRow) {
-    const next = [...draft];
+    if (!form) return;
+    const next = [...form.mechanical_table];
     next[i] = row;
-    setDraft(next);
+    onChange({ ...form, mechanical_table: next });
   }
 
   function removeRow(i: number) {
-    setDraft(draft.filter((_, j) => j !== i));
+    if (!form) return;
+    onChange({ ...form, mechanical_table: form.mechanical_table.filter((_, j) => j !== i) });
   }
 
-  const rows = isEditing ? draft : (profile.mechanical_table ?? []);
+  const rows = isEditing && form ? form.mechanical_table : (profile.mechanical_table ?? []);
   const hasRows = rows.length > 0;
 
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
-      <PanelHeader title={t("mechanical")} isEditing={isEditing} saving={saving} canEdit={canEdit}
-        onEdit={startEdit} onCancel={cancelEdit} onSave={handleSave} />
+      <PanelHeader title={t("mechanical")} />
       <div className="p-4">
-        {error && (
+        {imageError && (
           <p className="mb-3 text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">
-            {error}
+            {imageError}
           </p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
@@ -659,18 +578,23 @@ function MechanicalPanel({ assetId, profile, canEdit, onProfileUpdate }: {
 interface InterfaceTabProps {
   assetId: string;
   profile: AssetProfile;
-  canEdit: boolean;
+  isEditing: boolean;
+  form: EditFormState | null;
+  onChange: (form: EditFormState) => void;
   onProfileUpdate: (p: AssetProfile) => void;
 }
 
 /** Interface tab — electrical (connector image + pinout + mapping) and
- * mechanical (drawing + mounting points) panels. Each panel manages its own
- * local edit/save state, independent of the page's Overview edit mode. */
-export function InterfaceTab({ assetId, profile, canEdit, onProfileUpdate }: InterfaceTabProps) {
+ * mechanical (drawing + mounting points) panels. Editing is driven entirely
+ * by the page's own Edit/Save/Cancel (in the header above) — pinout_table
+ * and mechanical_table are just two more fields on the shared edit form,
+ * same as every Overview field. Only image upload/removal is immediate
+ * (matching the asset picture), independent of Save. */
+export function InterfaceTab({ assetId, profile, isEditing, form, onChange, onProfileUpdate }: InterfaceTabProps) {
   return (
     <div className="space-y-4">
-      <ElectricalPanel assetId={assetId} profile={profile} canEdit={canEdit} onProfileUpdate={onProfileUpdate} />
-      <MechanicalPanel assetId={assetId} profile={profile} canEdit={canEdit} onProfileUpdate={onProfileUpdate} />
+      <ElectricalPanel assetId={assetId} profile={profile} isEditing={isEditing} form={form} onChange={onChange} onProfileUpdate={onProfileUpdate} />
+      <MechanicalPanel assetId={assetId} profile={profile} isEditing={isEditing} form={form} onChange={onChange} onProfileUpdate={onProfileUpdate} />
     </div>
   );
 }

@@ -111,10 +111,13 @@ von `pinout_image_id`, das über den Reiter Schnittstelle bearbeitet werden kann
 
 ## Reiter Schnittstelle
 
-Der Reiter **Schnittstelle** dokumentiert die physischen Anschlüsse einer Anlage in zwei unabhängigen
-Bereichen, **Elektrisch** und **Mechanisch**, jeweils mit eigenem Bearbeiten/Speichern/Abbrechen —
-getrennt vom Bearbeitungsmodus des Reiters Übersicht, sodass die Aktualisierung eines Pinouts nicht
-erfordert, die übrigen Felder der Anlage anzufassen.
+Der Reiter **Schnittstelle** dokumentiert die physischen Anschlüsse einer Anlage in zwei Bereichen,
+**Elektrisch** und **Mechanisch**. Beide sind schreibgeschützt, bis die seiteneigene Schaltfläche
+**Bearbeiten** (oben auf der Seite, gemeinsam mit dem Reiter Übersicht) angeklickt wird — es gibt keine
+separate Bearbeitungssteuerung pro Bereich. Die Pinout- und die Befestigungspunkte-Tabelle werden
+zusammen mit den übrigen Feldern der Anlage über die Schaltfläche **Änderungen speichern** der Seite
+gespeichert; nur das Hochladen und Entfernen des Stecker-/Zeichnungsbilds wirkt sich sofort aus, genau
+wie beim Anlagenbild.
 
 ### Elektrisch
 
@@ -148,7 +151,9 @@ erfordert, die übrigen Felder der Anlage anzufassen.
 
 Der Reiter **CAD** ist eine anlagenbezogene Dateiverwaltung für CAD-Modelle — STL, STEP, STP, IGES, IGS und
 BREP, bis zu 50MB je Datei — mit einer Live-3D-Vorschau der jeweils in der Liste ausgewählten Datei. Jede
-hochgeladene Datei kann außerdem unverändert heruntergeladen werden.
+hochgeladene Datei kann außerdem unverändert heruntergeladen werden. Der Upload-Bereich erscheint nur im
+Bearbeitungsmodus der Seite (dieselbe Schaltfläche **Bearbeiten** oben auf der Seite wie bei den anderen
+Reitern) — zum Ansehen und Herunterladen vorhandener Dateien ist er nicht erforderlich.
 
 - **STL** wird direkt im Browser gerendert (three.js) — keine Konvertierung erforderlich.
 - **STEP, IGES und BREP** werden im Browser von [occt-import-js](https://github.com/kovacsv/occt-import-js)

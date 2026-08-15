@@ -110,10 +110,12 @@ the rest of the asset's fields. The picture is stored in MinIO like any other at
 
 ## Interface tab
 
-The **Interface** tab documents an asset's physical connections as two independent panels,
-**Electrical** and **Mechanical**, each with its own Edit/Save/Cancel — separate from the
-Overview tab's edit mode, so updating a pinout doesn't require touching the rest of the asset's
-fields.
+The **Interface** tab documents an asset's physical connections as two panels, **Electrical**
+and **Mechanical**. Both are read-only until the page's own **Edit** button (top of the page,
+shared with the Overview tab) is clicked — there's no separate edit control per panel. The pinout
+and mounting-points tables save together with the rest of the asset's fields via the page's
+**Save changes** button; only the connector/drawing image upload and removal take effect
+immediately, the same way the asset picture does.
 
 ### Electrical
 
@@ -145,7 +147,9 @@ fields.
 
 The **CAD** tab is a per-asset file manager for CAD models — STL, STEP, STP, IGES, IGS, and BREP,
 up to 50MB each — with a live 3D preview of whichever file is selected in the list. Every uploaded
-file can also be downloaded as-is.
+file can also be downloaded as-is. The upload drop zone only appears while the page is in Edit
+mode (the same top-of-page **Edit** button as every other tab); viewing and downloading existing
+files doesn't require it.
 
 - **STL** renders directly in the browser (three.js) — no conversion needed.
 - **STEP, IGES, and BREP** are triangulated in the browser by

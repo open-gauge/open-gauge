@@ -17,12 +17,12 @@ function fmtBytes(bytes: number): string {
 
 interface CadTabProps {
   assetId: string;
-  canEdit: boolean;
+  isEditing: boolean;
 }
 
 /** CAD tab — upload/list/download CAD files, with a live 3D preview for the
  * selected one (STL rendered directly, STEP/IGES/BREP via occt-import-js). */
-export function CadTab({ assetId, canEdit }: CadTabProps) {
+export function CadTab({ assetId, isEditing }: CadTabProps) {
   const t = useTranslations("assets.cad");
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +57,7 @@ export function CadTab({ assetId, canEdit }: CadTabProps) {
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
-    if (canEdit) setIsDragging(true);
+    if (isEditing) setIsDragging(true);
   }
 
   function handleDragLeave(e: React.DragEvent) {
@@ -67,7 +67,7 @@ export function CadTab({ assetId, canEdit }: CadTabProps) {
   async function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
-    if (!canEdit) return;
+    if (!isEditing) return;
     const file = e.dataTransfer.files[0];
     if (file) await handleUpload(file);
   }
@@ -103,7 +103,7 @@ export function CadTab({ assetId, canEdit }: CadTabProps) {
 
   return (
     <div className="space-y-4">
-      {canEdit && (
+      {isEditing && (
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -159,7 +159,7 @@ export function CadTab({ assetId, canEdit }: CadTabProps) {
                     <DownloadIcon size={13} />
                   </a>
                 )}
-                {canEdit && (
+                {isEditing && (
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); handleDelete(f.id); }}
