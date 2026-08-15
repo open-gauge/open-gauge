@@ -14,6 +14,20 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.5.0
+
+### Cambiado
+
+- **La página de Organizaciones se rediseñó como una única pantalla maestro-detalle.** La lista
+  y el detalle solían ser rutas separadas (`/organizations` y `/organizations/{id}`); ahora son
+  una sola página — una barra lateral con búsqueda y filtros (Todas / Internas / Proveedores /
+  Clientes) junto a un panel de detalle, el mismo patrón de dos paneles que ya usa Ubicaciones.
+  Seleccionar una organización actualiza el panel de detalle en el sitio en lugar de navegar a
+  otra página. Los enlaces antiguos y los de las notificaciones a `/organizations/{id}`
+  (incluido el enlace directo `?edit=1` que usan las notificaciones de solicitud de unión) siguen
+  funcionando — ahora redirigen a la página combinada. Sin cambios en la API ni en el modelo de
+  datos.
+
 ## 4.4.2
 
 ### Añadido

@@ -37,6 +37,8 @@
     "loading": "Wird geladen…",
     "loadFailed": "Organisationen konnten nicht geladen werden",
     "empty": "Noch keine Organisationen.",
+    "searchPlaceholder": "Organisationen durchsuchen…",
+    "selectPrompt": "Wählen Sie eine Organisation aus, um ihre Details anzuzeigen.",
     "deleted": "Gelöscht",
     "private": "Privat",
     "filterAll": "Alle",

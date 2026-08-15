@@ -15,6 +15,20 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.5.0
+
+### Geändert
+
+- **Die Organisationen-Seite wurde zu einem einzigen Master-Detail-Bildschirm umgebaut.** Liste
+  und Detailansicht waren früher getrennte Routen (`/organizations` und `/organizations/{id}`);
+  jetzt sind sie eine einzige Seite — eine durchsuchbare, filterbare Seitenleiste (Alle / Intern /
+  Anbieter / Kunden) neben einem Detailbereich, dasselbe Zwei-Panel-Muster, das bereits bei
+  Standorten verwendet wird. Die Auswahl einer Organisation aktualisiert den Detailbereich an
+  Ort und Stelle, statt zu einer anderen Seite zu navigieren. Alte Links und Benachrichtigungs-
+  Links zu `/organizations/{id}` (einschließlich des `?edit=1`-Deep-Links, der von
+  Beitrittsanfrage-Benachrichtigungen verwendet wird) funktionieren weiterhin — sie leiten jetzt
+  auf die zusammengeführte Seite weiter. Keine Änderungen an API oder Datenmodell.
+
 ## 4.4.2
 
 ### Hinzugefügt

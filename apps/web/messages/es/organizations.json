@@ -37,6 +37,8 @@
     "loading": "Cargando…",
     "loadFailed": "Error al cargar las organizaciones",
     "empty": "Aún no hay organizaciones.",
+    "searchPlaceholder": "Buscar organizaciones…",
+    "selectPrompt": "Selecciona una organización para ver sus detalles.",
     "deleted": "Eliminada",
     "private": "Privada",
     "filterAll": "Todas",

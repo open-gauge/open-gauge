@@ -58,7 +58,7 @@ COPY . .
 # request fetch the bundle at runtime instead of having it baked in. Leave
 # at the default (true) for any image meant to run air-gapped.
 ARG WARM_TECTONIC_CACHE=true
-RUN --mount=type=cache,target=/root/.cache/tectonic-bundle-fetch \
+RUN --mount=type=cache,target=/root/.cache/tectonic-bundle-fetch,sharing=locked \
     if [ "$WARM_TECTONIC_CACHE" = "true" ]; then \
       TECTONIC_CACHE_DIR=/root/.cache/tectonic-bundle-fetch python -c "from app.services.latex_service import warm_cache; warm_cache()" && \
       mkdir -p /opt/tectonic-cache && \

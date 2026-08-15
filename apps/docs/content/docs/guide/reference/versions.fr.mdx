@@ -15,6 +15,20 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.5.0
+
+### Modifié
+
+- **La page Organisations a été reconstruite en un seul écran maître-détail.** La liste et le
+  détail étaient auparavant des routes séparées (`/organizations` et `/organizations/{id}`) ;
+  ce sont désormais une seule page — une barre latérale avec recherche et filtres (Toutes /
+  Internes / Fournisseurs / Clients) à côté d'un panneau de détail, le même modèle à deux
+  panneaux déjà utilisé pour les Emplacements. Sélectionner une organisation met à jour le
+  panneau de détail sur place plutôt que de naviguer ailleurs. Les anciens liens et les liens de
+  notification vers `/organizations/{id}` (y compris le lien direct `?edit=1` utilisé par les
+  notifications de demande d'adhésion) continuent de fonctionner — ils redirigent désormais vers
+  la page fusionnée. Aucun changement d'API ni de modèle de données.
+
 ## 4.4.2
 
 ### Ajouté

@@ -9,6 +9,18 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.5.0
+
+### Changed
+
+- **Organizations page rebuilt as a single master-detail screen.** The list and detail views
+  used to be separate routes (`/organizations` and `/organizations/{id}`); they're now one
+  page — a searchable, filterable sidebar (All / Internal / Providers / Customers) next to a
+  detail panel, the same two-panel pattern already used by Locations. Selecting an organization
+  updates the detail panel in place instead of navigating away. Old links and notification links
+  to `/organizations/{id}` (including the `?edit=1` deep link used by join-request
+  notifications) still work — they now forward to the merged page. No API or data model changes.
+
 ## 4.4.2
 
 ### Added

@@ -37,6 +37,8 @@
     "loading": "Chargement…",
     "loadFailed": "Échec du chargement des organisations",
     "empty": "Aucune organisation pour le moment.",
+    "searchPlaceholder": "Rechercher des organisations…",
+    "selectPrompt": "Sélectionnez une organisation pour afficher ses détails.",
     "deleted": "Supprimée",
     "private": "Privée",
     "filterAll": "Toutes",

@@ -37,6 +37,8 @@
     "loading": "Loading…",
     "loadFailed": "Failed to load organizations",
     "empty": "No organizations yet.",
+    "searchPlaceholder": "Search organizations…",
+    "selectPrompt": "Select an organization to view its details.",
     "deleted": "Deleted",
     "private": "Private",
     "filterAll": "All",
