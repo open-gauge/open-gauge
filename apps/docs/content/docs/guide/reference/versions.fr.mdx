@@ -15,6 +15,23 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.4.2
+
+### Ajouté
+
+- **Option de build `WARM_TECTONIC_CACHE` pour l'image `api`.** Le Dockerfile précharge le
+  paquet LaTeX de Tectonic au moment du build afin que la génération de certificats n'ait besoin
+  d'aucun accès réseau à l'exécution (une exigence d'auto-hébergement/isolation réseau) — mais
+  cette récupération unique passe par `relay.fullyjustified.net`, dont on a observé qu'il limite
+  le débit des récupérations répétées avec un code HTTP 429. La récupération s'exécute désormais
+  aussi contre un montage de cache BuildKit, de sorte qu'une fois qu'un build réussit, les
+  reconstructions ultérieures sur le même hôte réutilisent le paquet déjà récupéré au lieu de
+  solliciter à nouveau le réseau. Pour le cas rare où même le premier build est bloqué, mettez
+  `WARM_TECTONIC_CACHE=false` dans `infrastructure/docker/.env` (par défaut `true`) pour
+  ignorer le préchargement — l'image fonctionne toujours, elle récupère simplement le paquet
+  paresseusement à la première génération de certificat plutôt que de l'avoir déjà intégré.
+  Gardez-le à `true` pour tout déploiement réel/isolé du réseau.
+
 ## 4.4.1
 
 ### Corrigé

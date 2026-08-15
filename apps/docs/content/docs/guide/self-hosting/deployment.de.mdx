@@ -54,6 +54,7 @@ einzigen Datei gelesen, [`infrastructure/docker/.env`](https://github.com/open-g
 | `HOST_IP` | web, docs, minio URLs | Hostname/IP, unter dem die App erreichbar ist; wird verwendet, um die untenstehenden URLs abzuleiten. |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `db`, `api` | Postgres-Anmeldeinformationen und Datenbankname. |
 | `SECRET_KEY` | `api` | Signiert Sitzungs-/Auth-Token — **in der Produktion unbedingt ändern**. |
+| `WARM_TECTONIC_CACHE` | `api` (Build-Argument) | Lädt Tectonics LaTeX-Paketbundle beim Build in das Image vor, damit die Zertifikatserstellung zur Laufzeit keinen Netzwerkzugriff benötigt. Für jedes reale/luftgekapselte Deployment auf `true` belassen; nur auf `false` setzen, um eine Ratenbegrenzung des Paket-Mirrors bei lokalen Builds zu umgehen. |
 | `FRONTEND_URL` | `api` | Öffentliche App-URL; wird in generierte QR-Codes und Anlagenetiketten eingebettet — auf Ihre Produktionsdomain verweisen lassen, nicht auf `localhost`. |
 | `CORS_ORIGINS` | `api` | JSON-Array der Ursprünge, die die API aufrufen dürfen (muss Ihre `web`-URL enthalten). |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minio`, `api` | Anmeldeinformationen für den Objektspeicher. |

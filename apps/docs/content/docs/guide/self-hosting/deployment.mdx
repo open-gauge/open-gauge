@@ -54,6 +54,7 @@ single file, [`infrastructure/docker/.env`](https://github.com/open-gauge/open-g
 | `HOST_IP` | web, docs, minio URLs | Hostname/IP the app is reachable at; used to derive the URLs below. |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `db`, `api` | Postgres credentials and database name. |
 | `SECRET_KEY` | `api` | Signs session/auth tokens — **change this in production**. |
+| `WARM_TECTONIC_CACHE` | `api` (build arg) | Pre-fetches Tectonic's LaTeX package bundle into the image at build time so certificate generation needs no network access at runtime. Keep `true` for any real/air-gapped deployment; set `false` only to work around a rate-limited bundle-mirror fetch during local builds. |
 | `FRONTEND_URL` | `api` | Public app URL; encoded into generated QR codes and asset labels — point this at your production domain, not `localhost`. |
 | `CORS_ORIGINS` | `api` | JSON array of origins allowed to call the API (must include your `web` URL). |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minio`, `api` | Object storage credentials. |

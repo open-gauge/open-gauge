@@ -57,6 +57,7 @@ un fichier unique, [`infrastructure/docker/.env`](https://github.com/open-gauge/
 | `HOST_IP` | URLs web, docs, minio | Nom d'hôte/IP où l'application est accessible ; utilisé pour dériver les URLs ci-dessous. |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `db`, `api` | Identifiants Postgres et nom de la base de données. |
 | `SECRET_KEY` | `api` | Signe les jetons de session/authentification — **changez cette valeur en production**. |
+| `WARM_TECTONIC_CACHE` | `api` (argument de build) | Précharge le paquet LaTeX de Tectonic dans l'image au moment du build afin que la génération de certificats n'ait besoin d'aucun accès réseau à l'exécution. Gardez `true` pour tout déploiement réel/isolé du réseau ; ne mettez `false` que pour contourner une limitation de débit du miroir du paquet lors de builds locaux. |
 | `FRONTEND_URL` | `api` | URL publique de l'application ; encodée dans les codes QR générés et les étiquettes d'actifs — pointez ceci vers votre domaine de production, pas vers `localhost`. |
 | `CORS_ORIGINS` | `api` | Tableau JSON des origines autorisées à appeler l'API (doit inclure votre URL `web`). |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minio`, `api` | Identifiants du stockage objet. |

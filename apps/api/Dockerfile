@@ -51,10 +51,21 @@ COPY . .
 # repeated fetches with HTTP 429. The fetched bundle is then copied into the
 # real, image-baked TECTONIC_CACHE_DIR so the shipped container still needs
 # no network at runtime — unchanged from before.
+#
+# WARM_TECTONIC_CACHE=false skips this pre-fetch entirely (e.g. while
+# relay.fullyjustified.net is rate-limiting local builds) — the resulting
+# image still works, it just makes its own first-ever certificate-generation
+# request fetch the bundle at runtime instead of having it baked in. Leave
+# at the default (true) for any image meant to run air-gapped.
+ARG WARM_TECTONIC_CACHE=true
 RUN --mount=type=cache,target=/root/.cache/tectonic-bundle-fetch \
-    TECTONIC_CACHE_DIR=/root/.cache/tectonic-bundle-fetch python -c "from app.services.latex_service import warm_cache; warm_cache()" && \
-    mkdir -p /opt/tectonic-cache && \
-    cp -a /root/.cache/tectonic-bundle-fetch/. /opt/tectonic-cache/
+    if [ "$WARM_TECTONIC_CACHE" = "true" ]; then \
+      TECTONIC_CACHE_DIR=/root/.cache/tectonic-bundle-fetch python -c "from app.services.latex_service import warm_cache; warm_cache()" && \
+      mkdir -p /opt/tectonic-cache && \
+      cp -a /root/.cache/tectonic-bundle-fetch/. /opt/tectonic-cache/; \
+    else \
+      echo "WARM_TECTONIC_CACHE=false — skipping Tectonic bundle pre-fetch; it will be fetched at runtime on first certificate generation instead."; \
+    fi
 
 EXPOSE 8000
 

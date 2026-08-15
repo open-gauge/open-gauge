@@ -15,6 +15,23 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.4.2
+
+### Hinzugefügt
+
+- **Build-Option `WARM_TECTONIC_CACHE` für das `api`-Image.** Das Dockerfile lädt Tectonics
+  LaTeX-Paketbundle beim Build vor, damit die Zertifikatserstellung zur Laufzeit keinen
+  Netzwerkzugriff benötigt (eine Anforderung für Self-Hosting/Air-Gapped-Betrieb) — dieser
+  einmalige Abruf läuft jedoch über `relay.fullyjustified.net`, das wiederholte Abrufe
+  nachweislich mit HTTP 429 ratenbegrenzt. Der Abruf läuft jetzt zusätzlich über einen
+  BuildKit-Cache-Mount, sodass nach einem erfolgreichen Build spätere Rebuilds auf demselben
+  Host das bereits abgerufene Bundle wiederverwenden, statt erneut auf das Netzwerk
+  zuzugreifen. Für den seltenen Fall, dass sogar der erste Build blockiert wird, in
+  `infrastructure/docker/.env` `WARM_TECTONIC_CACHE=false` setzen (Standard `true`), um das
+  Vorladen zu überspringen — das Image funktioniert weiterhin, es lädt das Bundle dann nur bei
+  der ersten Zertifikatserstellung nach statt es bereits eingebacken zu haben. Für jedes
+  reale/luftgekapselte Deployment auf `true` belassen.
+
 ## 4.4.1
 
 ### Behoben

@@ -54,6 +54,7 @@ Cada credencial y URL usada por `infrastructure/docker/docker-compose.yml` se le
 | `HOST_IP` | URLs de web, docs, minio | Nombre de host/IP donde la aplicación es alcanzable; se usa para derivar las URLs de abajo. |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `db`, `api` | Credenciales de Postgres y nombre de la base de datos. |
 | `SECRET_KEY` | `api` | Firma los tokens de sesión/autenticación — **cámbialo en producción**. |
+| `WARM_TECTONIC_CACHE` | `api` (argumento de build) | Precarga el paquete LaTeX de Tectonic en la imagen durante el build para que la generación de certificados no necesite acceso a red en tiempo de ejecución. Mantén `true` para cualquier despliegue real/aislado de red; ponlo en `false` solo para evitar un límite de tasa del mirror del paquete durante builds locales. |
 | `FRONTEND_URL` | `api` | URL pública de la aplicación; codificada en los códigos QR y etiquetas de activos generados — apunta esto a tu dominio de producción, no a `localhost`. |
 | `CORS_ORIGINS` | `api` | Arreglo JSON de orígenes autorizados a llamar a la API (debe incluir la URL de tu `web`). |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minio`, `api` | Credenciales de almacenamiento de objetos. |

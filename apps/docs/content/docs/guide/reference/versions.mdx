@@ -12,6 +12,21 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.4.2
+
+### Added
+
+- **`WARM_TECTONIC_CACHE` build option for the `api` image.** The Dockerfile pre-fetches
+  Tectonic's LaTeX package bundle at build time so certificate generation needs no network
+  access at container runtime (a self-hosted/air-gapped requirement) — but that one-time fetch
+  goes through `relay.fullyjustified.net`, which has been observed rate-limiting repeated
+  fetches with HTTP 429. The fetch now also runs against a BuildKit cache mount, so once one
+  build succeeds, later rebuilds on the same host reuse the cached bundle instead of hitting the
+  network again. For the rare case where even the first build is blocked, set
+  `WARM_TECTONIC_CACHE=false` in `infrastructure/docker/.env` (default `true`) to skip the
+  pre-fetch — the image still works, it just fetches the bundle lazily on first certificate
+  generation instead of having it baked in. Keep it `true` for any real/air-gapped deployment.
+
 ## 4.4.1
 
 ### Fixed
