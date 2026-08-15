@@ -69,7 +69,6 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
-  CopyIcon,
   DownloadIcon,
   EditIcon,
   ExportIcon,
@@ -97,6 +96,7 @@ import { ToggleSwitch } from "@/components/toggle-switch";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { PdfThumbnail } from "@/components/pdf-thumbnail";
 import { StatRow } from "@/components/stat-row";
+import { ModelPanel } from "@/components/calibration-model-panel";
 import { ActivityDiff } from "@/components/activity-diff";
 import { ASSET_DOCS_LINKS, CHAN_DOCS_LINKS, STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { HealthTab } from "./HealthTab";
@@ -1413,22 +1413,6 @@ interface CalibrationTabProps {
   guardBeforeLeavingEdit: (action: () => void) => void;
 }
 
-// Format polynomial equation — coefficients are highest-degree first (numpy convention)
-function formatCalEquation(coefficients: number[], degree: number): string {
-  const SUPERS: Record<number, string> = { 2: "²", 3: "³", 4: "⁴", 5: "⁵" };
-  const parts: string[] = [];
-  for (let exp = 0; exp <= degree; exp++) {
-    const c = coefficients[degree - exp];
-    if (Math.abs(c) < 1e-15) continue;
-    const sign = c < 0 ? (parts.length === 0 ? "−" : " − ") : (parts.length === 0 ? "" : " + ");
-    const absStr = fmtNum(Math.abs(c), 4);
-    if (exp === 0) parts.push(sign + absStr);
-    else if (exp === 1) parts.push(sign + absStr + "·x");
-    else parts.push(sign + absStr + "·x" + (SUPERS[exp] ?? `^${exp}`));
-  }
-  return "f(x) = " + (parts.join("") || "0");
-}
-
 // Whether a saved calibration has an actual formula/coefficients to display
 // an equation for — false for reference_vs_indicated and skip-fit
 // reference_vs_as_found_as_left (no transfer function at all; the curve-fit
@@ -1450,13 +1434,6 @@ function hasModel(cal: CalibrationRecord): boolean {
 // (linearly interpolated) still make a perfectly good curve.
 function hasEvaluableCurve(cal: CalibrationRecord): boolean {
   return hasModel(cal) || cal.model_type === "lookup_table";
-}
-
-function formatCalEquationForModel(cal: CalibrationRecord): string {
-  if (cal.model_type === "custom_formula" && cal.custom_formula) {
-    return `f(x) = ${cal.custom_formula}`;
-  }
-  return formatCalEquation(cal.poly_coefficients ?? [], cal.poly_order ?? 0);
 }
 
 function calResidualColor(residual: number, maxAbsResidual: number): string {
@@ -1695,15 +1672,12 @@ function useCoeffDesc() {
   return desc;
 }
 
-type ResultView = "equation" | "coefficients";
-
 function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrationDeleted, isAdmin, currentUserId, canRegisterCalibration, deepLinkCalId, guardBeforeLeavingEdit }: CalibrationTabProps) {
   const tUncertaintySource = useTranslations("tokens.uncertaintySource");
   const tDecisionRule = useTranslations("tokens.decisionRule");
   const tCalType = useTranslations("tokens.calibrationType");
   const tWizardTips = useTranslations("assets.wizard.tips");
   const t = useTranslations("assets.calibration");
-  const coeffDesc = useCoeffDesc();
   // --- channel logic ---
   const channelIdsWithCals = profile.sensor_channels
     .map((ch) => ch.id)
@@ -1718,8 +1692,6 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const [freqPoints, setFreqPoints] = useState<FrequencyResponsePoint[]>([]);
   const [loadingFreqPoints, setLoadingFreqPoints] = useState(false);
   const [rightView, setRightView] = useState<"chart" | "table">("chart");
-  const [resultView, setResultView] = useState<ResultView>("equation");
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [calLocation, setCalLocation] = useState<LocationItem | null>(null);
   const [calOrganization, setCalOrganization] = useState<Organization | null>(null);
@@ -1740,11 +1712,6 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
     : sourceCals;
 
   const selectedCal = filteredCals.find((c) => c.id === selectedCalId) ?? filteredCals[0] ?? null;
-  // A custom-formula model has no "coefficients" tab — fall back to
-  // "equation" if a previously-selected calibration left resultView stuck
-  // on "coefficients" (state isn't reset on selectedCal change).
-  const effectiveResultView: ResultView =
-    selectedCal?.model_type === "custom_formula" ? "equation" : resultView;
 
   function refetchVoided() {
     getAssetCalibrations(profile.id, true).then(setAllCals).catch(() => {});
@@ -2044,36 +2011,43 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-wrap gap-3">
             <InfoCard
+              className="flex-1 min-w-[160px]"
               label={t("calibrationDate")} value={fmtDate(selectedCal.calibration_date)}
               tooltip={tWizardTips("calibrationDate")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_date}
             />
             <InfoCard
+              className="flex-1 min-w-[160px]"
               label={t("dueDate")} value={selectedCal.due_date ? fmtDate(selectedCal.due_date) : null}
               tooltip={t("tips.dueDate")} tooltipDocsHref={WIZARD_DOCS_LINKS.due_date}
             />
             <InfoCard
+              className="flex-1 min-w-[180px]"
               label={t("registeredBy")}
               value={<UserSummary userId={selectedCal.performed_by_user_id} name={selectedCal.performed_by_name} size={24} />}
               tooltip={tWizardTips("registeredBy")} tooltipDocsHref={WIZARD_DOCS_LINKS.registered_by}
             />
             {selectedCal.checked_by_name && (
               <InfoCard
+                className="flex-1 min-w-[180px]"
                 label={t("checkedBy")}
                 value={<UserSummary userId={selectedCal.checked_by_user_id} name={selectedCal.checked_by_name} size={24} />}
                 tooltip={tWizardTips("checkedBy")} tooltipDocsHref={WIZARD_DOCS_LINKS.checked_by}
               />
             )}
             <InfoCard
+              className="flex-1 min-w-[160px]"
               label={t("calibrationType")} value={translateDynamic(tCalType, selectedCal.calibration_type)}
               tooltip={tWizardTips("calibrationType")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_type}
             />
             <InfoCard
+              className="flex-1 min-w-[160px]"
               label={t("calibrationPurpose")} value={<PurposeTag purpose={selectedCal.calibration_purpose} />}
               tooltip={tWizardTips("calibrationPurpose")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_purpose}
             />
             <InfoCard
+              className="flex-1 min-w-[160px]"
               label={t("calibrationLab")}
               tooltip={tWizardTips("calibrationLab")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_lab}
               value={
@@ -2172,95 +2146,23 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
           (selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
             <div className="space-y-4">
             <div className="flex gap-4 items-start">
-              {/* Left: model / equation panel — skipped when hasModel() is
-                  false: reference_vs_indicated and skip-fit
+              {/* Left: model panel — shared with the wizard's Step 3
+                  (components/calibration-model-panel) so the two views can't
+                  drift out of sync. Skipped when hasModel() is false:
+                  reference_vs_indicated and skip-fit
                   reference_vs_as_found_as_left have no transfer function at
                   all; the curve-fit variant of reference_vs_as_found_as_left
                   has a real model, same as raw_data, and shows this panel. */}
               {(hasModel(selectedCal) || selectedCal.model_type === "lookup_table") && (
                 <div className="w-[40%] shrink-0 space-y-4">
                   {hasModel(selectedCal) && (
-                    <div className="rounded-lg bg-og-surface-alt border border-og-border overflow-hidden">
-                      <div className="flex items-center px-3 pt-2 pb-0 border-b border-og-border gap-0.5">
-                        {(selectedCal.model_type === "custom_formula" ? (["equation"] as const) : (["equation", "coefficients"] as const)).map((v) => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setResultView(v)}
-                            className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-t-md -mb-px capitalize
-                              ${effectiveResultView === v
-                                ? "bg-og-surface border border-og-border text-og-text"
-                                : "text-gray-400 hover:text-og-text"
-                              }`}
-                          >
-                            {v === "equation" ? t("equation") : t("coefficients")}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="px-4 py-3">
-                        {effectiveResultView === "equation" && (
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-wrap min-w-0">
-                              <span className="text-xs font-mono text-og-text">
-                                {formatCalEquationForModel(selectedCal)}
-                              </span>
-                              {(measuredUnit || referenceUnit) && (
-                                <span className="text-[10px] text-gray-400">
-                                  ({measuredUnit} → {referenceUnit})
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const text = `${formatCalEquationForModel(selectedCal)} (${measuredUnit} → ${referenceUnit})`;
-                                navigator.clipboard.writeText(text).then(() => {
-                                  setCopiedKey("equation");
-                                  setTimeout(() => setCopiedKey(null), 1500);
-                                });
-                              }}
-                              title={t("copy")}
-                              className="shrink-0 p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors"
-                            >
-                              {copiedKey === "equation" ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
-                            </button>
-                          </div>
-                        )}
-                        {effectiveResultView === "coefficients" && selectedCal.poly_coefficients && selectedCal.poly_order != null && (
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                            {selectedCal.poly_coefficients
-                              .map((c, i) => ({ exp: selectedCal.poly_order! - i, val: c }))
-                              .reverse()
-                              .map(({ exp, val }) => {
-                                const ck = `coeff:${exp}`;
-                                return (
-                                  <div key={exp} className="flex items-start justify-between gap-2">
-                                    <div>
-                                      <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
-                                        {coeffDesc[exp] ?? t("orderNTerm", { exp })}
-                                      </p>
-                                      <p className="font-mono text-xs text-og-text">{fmtNum(val, 6)}</p>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(fmtNum(val, 6)).then(() => {
-                                          setCopiedKey(ck);
-                                          setTimeout(() => setCopiedKey(null), 1500);
-                                        });
-                                      }}
-                                      title={t("copy")}
-                                      className="shrink-0 mt-3 p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors"
-                                    >
-                                      {copiedKey === ck ? <CheckIcon size={11} /> : <CopyIcon size={11} />}
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <ModelPanel
+                      isPolynomial={selectedCal.model_type !== "custom_formula"}
+                      degree={selectedCal.poly_order ?? 0}
+                      coefficients={selectedCal.poly_coefficients ?? []}
+                      formulaTemplate={selectedCal.model_type === "custom_formula" ? selectedCal.custom_formula : null}
+                      formulaParamValues={null}
+                    />
                   )}
                   {selectedCal.model_type === "lookup_table" && (
                     <div className="rounded-lg bg-og-surface-alt border border-og-border px-4 py-2">
@@ -2276,11 +2178,16 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               {/* Right: statistics / uncertainty budget / conformity */}
               <div className="flex-1 min-w-0 rounded-xl border border-og-border p-4 bg-og-surface-alt space-y-0">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">{t("calibration")}</p>
-                <StatRow label={t("polyDegree")} value={String(selectedCal.poly_order ?? "—")} />
-                {(selectedCal.valid_range_min != null || selectedCal.range_min != null) && (
+                {points.length > 0 && (
                   <StatRow
-                    label={t("validRange")}
-                    value={`${fmtNum(selectedCal.valid_range_min ?? selectedCal.range_min)} – ${fmtNum(selectedCal.valid_range_max ?? selectedCal.range_max)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
+                    label={`${t("validRange")} (${t("measured")})`}
+                    value={`${fmtNum(Math.min(...points.map((p) => p.measured_value)))} – ${fmtNum(Math.max(...points.map((p) => p.measured_value)))}${measuredUnit ? ` ${measuredUnit}` : ""}`}
+                  />
+                )}
+                {selectedCal.valid_range_min != null && (
+                  <StatRow
+                    label={`${t("validRange")} (${t("reference")})`}
+                    value={`${fmtNum(selectedCal.valid_range_min)} – ${fmtNum(selectedCal.valid_range_max)}${referenceUnit ? ` ${referenceUnit}` : ""}`}
                   />
                 )}
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 pt-3 border-t border-og-border mb-2 mt-2">{t("statistics")}</p>

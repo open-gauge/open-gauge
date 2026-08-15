@@ -14,7 +14,7 @@ import {
 } from "@/services/asset.service";
 import {
   evaluateModel, extractFormulaParameters, validateFormulaTemplate,
-  polynomialGeneralFormLatex, formulaToLatex, POLY_LETTERS, computeLinearityDeviation, computeLinearityDeviationAtPoints,
+  computeLinearityDeviation, computeLinearityDeviationAtPoints,
 } from "@/lib/evaluate-model";
 import { listCalibrationLabs } from "@/services/location.service";
 import { listCalibrationLabCandidates } from "@/services/organization.service";
@@ -27,6 +27,7 @@ import { convertMagnitude } from "@/lib/unit-conversion";
 import { useAuth } from "@/lib/auth-context";
 import { STAT_DOCS_LINKS, WIZARD_DOCS_LINKS } from "@/lib/docs-links";
 import { StatRow } from "@/components/stat-row";
+import { ModelPanel } from "@/components/calibration-model-panel";
 import { ToggleSwitch } from "@/components/toggle-switch";
 import { NumberInput } from "@/components/number-input";
 import { Select } from "@/components/select";
@@ -56,31 +57,6 @@ function FieldTooltip({ tooltip, docsHref }: { tooltip?: string; docsHref?: stri
       <InfoIcon size={11} className="text-gray-400 cursor-help" />
     </Tooltip>
   );
-}
-
-// Renders a LaTeX string via KaTeX (dynamically imported — only Step3's
-// Model panel needs it, so it shouldn't inflate every wizard step's bundle).
-// Falls back to the raw LaTeX-ish text on any parse error, since a formula
-// converted from user input (formulaToLatex) isn't guaranteed to be valid.
-function Katex({ math, className }: { math: string; className?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    let cancelled = false;
-    import("katex").then((katexModule) => {
-      if (cancelled || !ref.current) return;
-      try {
-        katexModule.default.render(math, ref.current, { throwOnError: true, displayMode: false });
-      } catch {
-        if (ref.current) ref.current.textContent = math;
-      }
-    });
-    return () => { cancelled = true; };
-  }, [math]);
-  // KaTeX's own CSS doesn't set a color, so its output normally inherits
-  // from the nearest ancestor — but body's default `color` (--foreground)
-  // isn't theme-aware (unlike --og-text), so without an explicit
-  // text-og-text here the formula reads as near-black in dark mode too.
-  return <span ref={ref} className={`text-og-text ${className ?? ""}`} />;
 }
 
 // Content-sized by default (inline-flex), same as before — pass `className`
@@ -3266,71 +3242,6 @@ function residualColor(residual: number, maxAbsResidual: number): string {
   const t = Math.min(Math.abs(residual) / (maxAbsResidual || 1), 1);
   const hue = Math.round(120 * (1 - t)); // green(120) → yellow(60) → red(0)
   return `hsl(${hue},80%,42%)`;
-}
-
-// One labeled LaTeX row of the Model panel below — a small tooltip'd label
-// above a KaTeX-rendered formula, horizontally scrollable since a degree-5
-// polynomial's coefficient list or a long custom formula can overflow the
-// panel's width.
-function ModelRow({ label, tooltip, docsHref, latex }: { label: string; tooltip: string; docsHref?: string; latex: string | null }) {
-  return (
-    <div>
-      <span className="text-[11px] text-gray-400 inline-flex items-center gap-1 mb-1">
-        {label}
-        <FieldTooltip tooltip={tooltip} docsHref={docsHref} />
-      </span>
-      {latex ? <Katex math={latex} className="block text-sm" /> : <span className="text-xs text-gray-400">…</span>}
-    </div>
-  );
-}
-
-// The "Model" panel — three LaTeX-rendered rows: (1) the equation's general
-// shape with letter placeholders instead of numbers, so the *kind* of model
-// is obvious at a glance; (2) the numeric value substituted for each letter;
-// (3) the valid range, both the measured signal's own domain and the
-// physical quantity (reference) range it maps to. Shared by raw_data's
-// Polynomial Fit/Custom Formula methods and model_direct's declared model.
-function ModelPanel({
-  isPolynomial, degree, coefficients, formulaTemplate, formulaParamValues,
-}: {
-  isPolynomial: boolean;
-  degree: number;
-  coefficients: number[];
-  formulaTemplate: string | null;
-  formulaParamValues: Record<string, number> | null;
-}) {
-  const t = useTranslations("assets.wizard");
-  const generalFormLatex = isPolynomial
-    ? polynomialGeneralFormLatex(degree)
-    : (formulaTemplate ? formulaToLatex(formulaTemplate) : null);
-  const coeffPairs: [string, number][] = isPolynomial
-    ? POLY_LETTERS.slice(0, degree + 1).map((letter, i) => [letter, coefficients[i]])
-    : (formulaTemplate && formulaParamValues
-      ? (() => {
-        try {
-          return extractFormulaParameters(formulaTemplate)
-            .filter((name) => formulaParamValues[name] != null)
-            .map((name) => [name, formulaParamValues[name]] as [string, number]);
-        } catch {
-          return [];
-        }
-      })()
-      : []);
-  const coeffLatex = coeffPairs.length > 0
-    ? coeffPairs.map(([letter, value]) => `${letter} = ${fmtN(value)}`).join(",\\ \\ ")
-    : null;
-  return (
-    <div className="px-4 py-3 rounded-lg bg-og-surface-alt border border-og-border space-y-2">
-      <p className="text-xs font-semibold text-og-text">{t("model")}</p>
-      {/* One shared horizontal scroll region for both rows together — two
-          independent overflow-x-auto wrappers (one per row) produced two
-          separate scrollbars for a long custom formula/coefficient list. */}
-      <div className="overflow-x-auto space-y-2">
-        <ModelRow label={t("equation")} tooltip={t("tips.modelGeneralForm")} latex={generalFormLatex} />
-        <ModelRow label={t("modelCoefficients")} tooltip={t("tips.modelCoefficients")} latex={coeffLatex} />
-      </div>
-    </div>
-  );
 }
 
 // The "Method" panel (raw_data's Polynomial Fit/Lookup Table/Custom Formula

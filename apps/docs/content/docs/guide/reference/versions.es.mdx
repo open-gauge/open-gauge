@@ -14,6 +14,26 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.4.1
+
+### Corregido
+
+- **Vista de registro guardado de la pestaña Calibración armonizada con el Paso 3 del asistente.**
+  La pestaña Calibración de la página de detalle del activo se había desviado del panel de
+  análisis del Paso 3 del asistente de calibración que debía reflejar:
+  - El panel del modelo usaba un selector de pestañas Ecuación/Coeficientes hecho a mano con
+    formato de texto plano, en lugar de la ecuación simbólica renderizada con KaTeX y los
+    coeficientes sustituidos del asistente. Ambas vistas ahora comparten el mismo componente
+    `ModelPanel`/`Katex`, de modo que no pueden volver a desviarse.
+  - El panel de estadísticas seguía mostrando una fila "Grado del polinomio" y una única fila
+    combinada de "Rango válido" (solo el dominio de referencia) — ambas eliminadas del panel de
+    estadísticas del asistente en una versión anterior pero nunca actualizadas aquí. Ahora muestra
+    "Rango válido (Medido)" y "Rango válido (Referencia)" como dos filas separadas, igual que en
+    el asistente.
+  - El panel de metadatos (fecha de calibración, fecha de vencimiento, registrado/verificado por,
+    tipo, propósito, laboratorio) usaba una cuadrícula fija de 2 columnas en lugar de fluir
+    horizontalmente por el panel.
+
 ## 4.4.0
 
 ### Añadido

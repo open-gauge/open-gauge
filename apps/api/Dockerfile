@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -39,7 +40,21 @@ COPY . .
 # Pre-warm the Tectonic package cache at build time by compiling the built-in
 # certificate template once with placeholder data, so no network fetch is
 # attempted at container runtime (self-hosted / air-gapped requirement).
-RUN python -c "from app.services.latex_service import warm_cache; warm_cache()"
+#
+# The one-time network fetch of Tectonic's package bundle (~600MB, from
+# relay.fullyjustified.net) runs against a BuildKit cache mount instead of
+# straight into the image layer. That cache persists across `docker build`
+# invocations on this host (independent of Docker's normal layer cache,
+# which is invalidated by any earlier COPY changing), so a rebuild triggered
+# by an unrelated code change reuses the already-fetched bundle instead of
+# hitting the network again — the relay has been observed rate-limiting
+# repeated fetches with HTTP 429. The fetched bundle is then copied into the
+# real, image-baked TECTONIC_CACHE_DIR so the shipped container still needs
+# no network at runtime — unchanged from before.
+RUN --mount=type=cache,target=/root/.cache/tectonic-bundle-fetch \
+    TECTONIC_CACHE_DIR=/root/.cache/tectonic-bundle-fetch python -c "from app.services.latex_service import warm_cache; warm_cache()" && \
+    mkdir -p /opt/tectonic-cache && \
+    cp -a /root/.cache/tectonic-bundle-fetch/. /opt/tectonic-cache/
 
 EXPOSE 8000
 

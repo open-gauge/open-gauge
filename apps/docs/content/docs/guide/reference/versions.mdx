@@ -12,6 +12,24 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.4.1
+
+### Fixed
+
+- **Calibration tab's saved-record view harmonized with the wizard's Step 3.** The asset detail
+  page's Calibration tab had drifted from the calibration wizard's Step 3 analysis panel it was
+  meant to mirror:
+  - The model panel used a hand-rolled Equation/Coefficients tab toggle with plain-text
+    formatting instead of the wizard's KaTeX-rendered symbolic equation + substituted
+    coefficients. Both views now share the same `ModelPanel`/`Katex` component, so they can't
+    drift apart again.
+  - The statistics panel still showed a "Poly degree" row and a single combined "Valid range"
+    row (reference domain only) — both dropped from the wizard's statistics panel in an earlier
+    release but never updated here. Now shows "Valid range (Measured)" and "Valid range
+    (Reference)" as two separate rows, matching the wizard exactly.
+  - The metadata panel (calibration date, due date, registered/checked by, type, purpose, lab)
+    used a fixed 2-column grid instead of flowing horizontally across the panel.
+
 ## 4.4.0
 
 ### Added

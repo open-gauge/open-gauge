@@ -15,6 +15,26 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.4.1
+
+### Behoben
+
+- **Ansicht des gespeicherten Kalibrierdatensatzes im Tab „Kalibrierung" an Schritt 3 des
+  Assistenten angeglichen.** Der Tab „Kalibrierung" auf der Asset-Detailseite war vom
+  Analyse-Panel in Schritt 3 des Kalibrierungsassistenten abgewichen, das er eigentlich
+  widerspiegeln sollte:
+  - Das Modell-Panel verwendete einen handgestrickten Gleichung/Koeffizienten-Tab-Umschalter mit
+    reiner Textformatierung anstelle der mit KaTeX gerenderten symbolischen Gleichung mit
+    eingesetzten Koeffizienten aus dem Assistenten. Beide Ansichten teilen sich jetzt dieselbe
+    `ModelPanel`/`Katex`-Komponente, sodass sie nicht mehr auseinanderdriften können.
+  - Das Statistik-Panel zeigte weiterhin eine Zeile „Polynomgrad" sowie eine einzelne
+    kombinierte Zeile „Gültiger Bereich" (nur Referenzbereich) — beide wurden in einer früheren
+    Version aus dem Statistik-Panel des Assistenten entfernt, hier aber nie aktualisiert. Zeigt
+    jetzt „Gültiger Bereich (Gemessen)" und „Gültiger Bereich (Referenz)" als zwei separate
+    Zeilen an, genau wie im Assistenten.
+  - Das Metadaten-Panel (Kalibrierdatum, Fälligkeitsdatum, Registriert/Geprüft von, Typ, Zweck,
+    Labor) verwendete ein festes 2-Spalten-Raster anstatt horizontal über das Panel zu fließen.
+
 ## 4.4.0
 
 ### Hinzugefügt

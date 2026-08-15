@@ -15,6 +15,26 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.4.1
+
+### Corrigé
+
+- **Vue de l'enregistrement enregistré de l'onglet Calibration harmonisée avec l'étape 3 de
+  l'assistant.** L'onglet Calibration de la page de détail de l'actif s'était éloigné du panneau
+  d'analyse de l'étape 3 de l'assistant de calibration qu'il était censé refléter :
+  - Le panneau du modèle utilisait un sélecteur d'onglets Équation/Coefficients fait à la main
+    avec un formatage en texte brut, au lieu de l'équation symbolique rendue avec KaTeX et des
+    coefficients substitués de l'assistant. Les deux vues partagent désormais le même composant
+    `ModelPanel`/`Katex`, afin qu'elles ne puissent plus diverger.
+  - Le panneau de statistiques affichait encore une ligne « Degré du polynôme » et une seule
+    ligne combinée « Plage valide » (domaine de référence uniquement) — toutes deux supprimées du
+    panneau de statistiques de l'assistant lors d'une version antérieure, mais jamais mises à jour
+    ici. Affiche désormais « Plage valide (Mesuré) » et « Plage valide (Référence) » comme deux
+    lignes distinctes, exactement comme dans l'assistant.
+  - Le panneau de métadonnées (date de calibration, date d'échéance, enregistré/vérifié par,
+    type, objectif, laboratoire) utilisait une grille fixe à 2 colonnes au lieu de s'écouler
+    horizontalement dans le panneau.
+
 ## 4.4.0
 
 ### Ajouté
