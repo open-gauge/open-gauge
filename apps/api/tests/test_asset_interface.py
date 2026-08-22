@@ -334,3 +334,148 @@ class TestExportImportIncludesInterfaceAndCad:
         assert data["asset"]["has_mechanical_image"] is True
         assert len(data["cad_files"]) == 1
         assert data["cad_files"][0]["original_filename"] == "model.stl"
+
+
+class TestDuplicateAssetCopiesFiles:
+    """Regression: duplicating an asset must copy its picture, pinout/mechanical
+    images, mechanical_table, and CAD files to the new asset — and each file must
+    become its own independent storage object, not a shared reference. Sharing
+    would mean deleting/replacing either asset's file deletes it out from under
+    the other (see _copy_asset_file's docstring in api/v1/assets.py)."""
+
+    def test_duplicate_leaves_serial_number_blank_and_skips_calibrations(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        client.put(f"/api/v1/assets/{asset_id}", json={"serial_number": "SN-ORIGINAL"}, headers=auth_headers)
+        client.post(
+            "/api/v1/calibrations",
+            json={
+                "asset_id": asset_id,
+                "calibration_date": "2024-03-15",
+                "due_date": "2025-03-15",
+                "performed_by_name": "Lab Tech",
+            },
+            headers=auth_headers,
+        )
+
+        new_id = make_asset_id()
+        response = client.post(
+            f"/api/v1/assets/{asset_id}/duplicate", json={"new_asset_id": new_id}, headers=auth_headers
+        )
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["serial_number"] is None
+        assert body["name"] == created_asset["name"]
+        assert body["manufacturer"] == created_asset["manufacturer"]
+
+        cals = client.get(f"/api/v1/assets/{body['id']}/calibrations", headers=auth_headers).json()
+        assert cals == []
+
+    def test_duplicate_rejects_existing_asset_id(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        response = client.post(
+            f"/api/v1/assets/{created_asset['id']}/duplicate",
+            json={"new_asset_id": created_asset["asset_id"]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    def test_duplicate_copies_picture_pinout_mechanical_and_table(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("photo.png", b"picture-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        client.post(
+            f"/api/v1/assets/{asset_id}/pinout-image",
+            files={"file": ("connector.png", b"pinout-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        client.post(
+            f"/api/v1/assets/{asset_id}/mechanical-image",
+            files={"file": ("drawing.png", b"mech-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        mech_rows = [{"point_label": "M4-A", "type": "Screw", "torque_spec": "1.2 Nm", "description": ""}]
+        client.put(f"/api/v1/assets/{asset_id}", json={"mechanical_table": mech_rows}, headers=auth_headers)
+        source = client.get(f"/api/v1/assets/{asset_id}", headers=auth_headers).json()
+
+        new_id = make_asset_id()
+        dup = client.post(
+            f"/api/v1/assets/{asset_id}/duplicate", json={"new_asset_id": new_id}, headers=auth_headers
+        ).json()
+
+        assert dup["picture_id"] is not None
+        assert dup["picture_id"] != source["picture_id"]
+        assert dup["picture_url"]
+
+        assert dup["pinout_image_id"] is not None
+        assert dup["pinout_image_id"] != source["pinout_image_id"]
+        assert dup["pinout_image_url"]
+
+        assert dup["mechanical_image_id"] is not None
+        assert dup["mechanical_image_id"] != source["mechanical_image_id"]
+        assert dup["mechanical_image_url"]
+
+        assert dup["mechanical_table"] == mech_rows
+
+    def test_duplicate_copies_cad_files_independently(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        client.post(
+            f"/api/v1/assets/{asset_id}/cad-files",
+            files={"file": ("model.stl", b"solid cube\nendsolid cube\n", "application/octet-stream")},
+            headers=auth_headers,
+        )
+
+        new_id = make_asset_id()
+        dup = client.post(
+            f"/api/v1/assets/{asset_id}/duplicate", json={"new_asset_id": new_id}, headers=auth_headers
+        ).json()
+
+        dup_cad = client.get(f"/api/v1/assets/{dup['id']}/cad-files", headers=auth_headers).json()
+        assert len(dup_cad) == 1
+        assert dup_cad[0]["original_filename"] == "model.stl"
+
+        source_cad = client.get(f"/api/v1/assets/{asset_id}/cad-files", headers=auth_headers).json()
+        assert dup_cad[0]["id"] != source_cad[0]["id"]
+
+    def test_deleting_source_picture_does_not_break_duplicates_picture(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        asset_id = created_asset["id"]
+        client.post(
+            f"/api/v1/assets/{asset_id}/picture",
+            files={"file": ("photo.png", b"picture-bytes", "image/png")},
+            headers=auth_headers,
+        )
+        new_id = make_asset_id()
+        dup = client.post(
+            f"/api/v1/assets/{asset_id}/duplicate", json={"new_asset_id": new_id}, headers=auth_headers
+        ).json()
+
+        response = client.delete(f"/api/v1/assets/{asset_id}/picture", headers=auth_headers)
+        assert response.status_code == 200
+
+        dup_after = client.get(f"/api/v1/assets/{dup['id']}", headers=auth_headers).json()
+        assert dup_after["picture_id"] == dup["picture_id"]
+        assert dup_after["picture_url"]
+
+    def test_duplicate_of_asset_with_no_files_succeeds(
+        self, client: TestClient, auth_headers: dict, created_asset: dict
+    ) -> None:
+        new_id = make_asset_id()
+        response = client.post(
+            f"/api/v1/assets/{created_asset['id']}/duplicate", json={"new_asset_id": new_id}, headers=auth_headers
+        )
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert body["picture_id"] is None
+        assert body["pinout_image_id"] is None
+        assert body["mechanical_image_id"] is None

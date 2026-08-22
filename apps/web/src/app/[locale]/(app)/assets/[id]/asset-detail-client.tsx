@@ -1322,7 +1322,11 @@ function OverviewTab({
                     {ch.bandwidth_hz != null && <SpecRow label={t("bandwidth")} value={`${ch.bandwidth_hz.toLocaleString()} Hz`} tooltip={t("tips.channelBandwidth")} tooltipDocsHref={CHAN_DOCS_LINKS.bandwidth_hz} />}
                     <SpecRow label={t("outputType")} value={ch.output_type ? translateDynamic(tOutputType, ch.output_type) : ch.output_type} tooltip={t("tips.channelOutputType")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
                     {(ch.output_signal_min != null || ch.output_signal_max != null) && (
-                      <SpecRow label={t("outputRange")} value={`${ch.output_signal_min ?? "—"} – ${ch.output_signal_max ?? "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`} tooltip={t("tips.channelOutputRange")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal} />
+                      <SpecRow
+                        label={t("outputRange")}
+                        value={`${ch.output_signal_min != null ? fmtNum(fromSI(ch.output_signal_min, ch.output_signal_unit ?? "")) : "—"} – ${ch.output_signal_max != null ? fmtNum(fromSI(ch.output_signal_max, ch.output_signal_unit ?? "")) : "—"}${ch.output_signal_unit ? " " + ch.output_signal_unit : ""}`}
+                        tooltip={t("tips.channelOutputRange")} tooltipDocsHref={CHAN_DOCS_LINKS.output_signal}
+                      />
                     )}
                     <SpecRow label={t("calMethod")} value={ch.calibration_method_name} tooltip={t("tips.channelCalMethod")} tooltipDocsHref={CHAN_DOCS_LINKS.calibration_method} />
                     <SpecRow label={t("calRole")} value={ch.calibration_role === "reference" ? t("referenceStandard") : null} tooltip={t("tips.channelCalRole")} tooltipDocsHref={CHAN_DOCS_LINKS.calibration_role} />
@@ -2084,7 +2088,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               <p className="text-sm font-semibold text-og-text">{t("recordDetails")}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {selectedCal.status === "pending_approval" && (currentUserId === selectedCal.checked_by_user_id || isAdmin) && (
+              {selectedCal.status === "pending_approval" && currentUserId !== selectedCal.performed_by_user_id && (currentUserId === selectedCal.checked_by_user_id || isAdmin) && (
                 <>
                   <button
                     type="button"
@@ -2638,8 +2642,11 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                     </div>
                   </button>
 
-                  {/* Admin void / restore */}
-                  {isAdmin && (
+                  {/* Admin void / restore — a rejected calibration has
+                      is_active=false too, but it isn't "voided" (status
+                      "void") and can't be restored; only void/valid/pending
+                      records get an action icon here. */}
+                  {isAdmin && cal.status !== "rejected" && (
                     isVoided ? (
                       <button
                         type="button"

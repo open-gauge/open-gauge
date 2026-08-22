@@ -1022,6 +1022,41 @@ class TestCalibrationApproval:
         r = client.post(f"/api/v1/calibrations/{cal['id']}/approve", headers=auth_headers)
         assert r.status_code == 200, r.text
 
+    def test_registrant_cannot_self_approve_even_as_admin(
+        self, client: TestClient, auth_headers: dict, test_user: User, db: Session, asset: dict
+    ) -> None:
+        # The registering user (an admin) names themselves as the assigned
+        # checker too — the admin override must not let them approve their
+        # own calibration; a self-check defeats the point of a checker.
+        payload = _payload_with_checker(asset["id"], test_user)
+        payload["performed_by_user_id"] = str(test_user.id)
+        cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/approve", headers=auth_headers)
+        assert r.status_code == 403
+
+    def test_registrant_cannot_self_reject_even_as_admin(
+        self, client: TestClient, auth_headers: dict, test_user: User, db: Session, asset: dict
+    ) -> None:
+        payload = _payload_with_checker(asset["id"], test_user)
+        payload["performed_by_user_id"] = str(test_user.id)
+        cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/reject", headers=auth_headers)
+        assert r.status_code == 403
+
+    def test_registrant_cannot_self_approve_via_different_admin_override(
+        self, client: TestClient, auth_headers: dict, test_user: User, db: Session, asset: dict
+    ) -> None:
+        # Registered by an admin, checked by someone else — but the
+        # registering admin then tries to use their own admin override to
+        # approve it anyway. Still blocked: the override exists for a
+        # different reviewer to step in, not for the registrant themselves.
+        checker = _make_user(db, UserRole.technician, "Checker")
+        payload = _payload_with_checker(asset["id"], checker)
+        payload["performed_by_user_id"] = str(test_user.id)
+        cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers).json()
+        r = client.post(f"/api/v1/calibrations/{cal['id']}/approve", headers=auth_headers)
+        assert r.status_code == 403
+
     def test_approve_on_non_pending_calibration_is_rejected(
         self, client: TestClient, auth_headers: dict, calibration: dict
     ) -> None:

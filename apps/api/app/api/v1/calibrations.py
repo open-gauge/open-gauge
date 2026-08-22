@@ -55,7 +55,16 @@ def _require_checker_or_admin(current_user: User, cal: Calibration) -> None:
     """Only the specific checker assigned to this calibration may decide it —
     or a global Admin/Super Admin, as an override. Resource-specific, so this
     is a plain function called inline after `cal` is loaded, not a bare
-    Depends(...) (same reason organizations.py's _require_org_admin isn't one)."""
+    Depends(...) (same reason organizations.py's _require_org_admin isn't one).
+
+    The user who registered the calibration can never decide it themselves,
+    even under the admin override — a second reviewer stops meaning anything
+    if the person being checked can also be the checker."""
+    if current_user.id == cal.performed_by_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot approve or reject a calibration you registered yourself",
+        )
     is_admin_override = current_user.role in (UserRole.admin, UserRole.superadmin)
     if not is_admin_override and current_user.id != cal.checked_by_user_id:
         raise HTTPException(

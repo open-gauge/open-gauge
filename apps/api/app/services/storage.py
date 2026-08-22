@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from datetime import timedelta
 
 from minio import Minio
-from minio.commonconfig import ENABLED
+from minio.commonconfig import ENABLED, CopySource
 from minio.deleteobjects import DeleteObject
 from minio.error import S3Error
 from minio.versioningconfig import VersioningConfig
@@ -88,6 +88,23 @@ def delete_file(storage_path: str, bucket: str | None = None) -> None:
         client.remove_object(bucket, storage_path)
     except S3Error:
         pass
+
+
+def copy_file(
+    source_storage_path: str,
+    source_bucket: str,
+    dest_object_path: str,
+    dest_bucket: str | None = None,
+) -> tuple[str, str]:
+    """Server-side copy of an object to a new path/bucket — used when duplicating an
+    asset so its files (picture, interface images, CAD models) become independent
+    objects rather than shared references; deleting or replacing one asset's file must
+    never affect the other's. Returns (bucket, object_path)."""
+    dest_bucket = dest_bucket or settings.minio_bucket
+    client = _upload_client()
+    _ensure_bucket(client, dest_bucket)
+    client.copy_object(dest_bucket, dest_object_path, CopySource(source_bucket, source_storage_path))
+    return dest_bucket, dest_object_path
 
 
 def get_presigned_url(storage_path: str, bucket: str | None = None) -> str:

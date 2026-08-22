@@ -15,6 +15,48 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.7.1
+
+### Behoben
+
+- **Eine abgelehnte Kalibrierung zeigte ein „Wiederherstellen"-Symbol, das immer fehlschlug.**
+  Abgelehnte Kalibrierungen teilen sich `is_active=false` mit annullierten — daher behandelte das
+  admin-exklusive Aktionssymbol in der Kalibrierhistorien-Liste beide gleich und bot bei einem
+  abgelehnten Datensatz eine Wiederherstellen-Aktion an — ein Klick darauf schlug serverseitig
+  immer fehl, da Wiederherstellen nur für annullierte Datensätze gilt. Abgelehnte Datensätze
+  erhalten dort jetzt kein Aktionssymbol mehr (sie waren nie wiederherstellbar — eine korrigierte
+  Kalibrierung ist gemäß der Kalibrierphilosophie in AGENTS.md ein neuer Datensatz).
+- **Der Ausgangssignalbereich eines Kanals zeigte den intern gespeicherten Rohwert statt der vom
+  Benutzer gewählten Einheit.** `output_signal_min`/`max` werden umgerechnet in eine Basiseinheit
+  gespeichert (wie jedes andere %FS-fähige Spezifikationsfeld) und überall sonst für die Anzeige
+  zurückgerechnet — außer in der Zeile „Ausgangsbereich" des Spezifikationen-Panels, die die
+  gespeicherte Rohzahl neben dem für den Benutzer sichtbaren Einheitenlabel anzeigte (z. B. ein
+  4–20-mA-Signal, gespeichert als 0,004–0,02, wurde als „0.004 – 0.02 mA" angezeigt). Sie wird jetzt
+  vor der Anzeige in die gewählte Einheit zurückgerechnet, wie es das Bearbeitungsformular bereits
+  tat.
+- **Ein Administrator konnte seine eigene Kalibrierung genehmigen oder ablehnen.** Die
+  Prüfer-oder-Admin-Autorisierungsprüfung verifizierte nur, dass der Entscheider der zugewiesene
+  Prüfer war oder eine Admin-Rolle besaß — sie prüfte nie, ob er auch die Person war, die die
+  Kalibrierung registriert hatte. Ein zweiter Prüfer verliert seinen Sinn, wenn die geprüfte Person
+  sich selbst genehmigen kann, ob mit Admin-Override oder nicht — der Endpunkt (und die
+  Genehmigen/Ablehnen-Schaltflächen der Oberfläche) weisen jetzt auch zurück, wenn der Registrant
+  über seinen eigenen Datensatz entscheidet.
+- **Das Duplizieren eines Assets kopierte weder Bild, Schnittstellenbilder, mechanische Tabelle
+  noch CAD-Dateien.** Das Asset-Bild wurde überhaupt nicht kopiert, Bild und Tabelle der
+  mechanischen Schnittstelle fehlten komplett, und das Pinout-Bild wurde per *Referenz* kopiert
+  (das Duplikat zeigte auf dieselbe Dateizeile wie das Original) statt als unabhängige Kopie — das
+  Löschen oder Ersetzen des Bildes eines der beiden Assets hätte es auch beim anderen gelöscht. Das
+  Duplizieren kopiert jetzt jede Datei in ein eigenes Speicherobjekt (auch CAD-Dateien, die keine
+  Spalten des Assets sind, werden jetzt kopiert), während Kalibrierhistorie und Seriennummer wie
+  zuvor nicht übernommen werden — ein Duplikat ist der Katalogeintrag einer neuen physischen
+  Einheit, kein Klon ihrer Kalibrierhistorie oder ihres Typenschilds.
+- **Ein Klick auf das Bild der mechanischen Schnittstelle bewirkte nichts.** Jedes andere Bild in
+  der Anwendung öffnet beim Klick ein Vorschau-Modal; für das Bild der mechanischen Schnittstelle
+  war überhaupt kein Klick-Handler verdrahtet. Es öffnet jetzt dasselbe gemeinsame Vorschau-Modal.
+  Das Bild der elektrischen Schnittstelle hatte dieselbe Lücke, wenn keine Pinout-Zeilen zum
+  Zuordnen vorhanden sind (ein Klick öffnet normalerweise das Pin-Zuordnungswerkzeug) — es greift
+  in diesem Fall jetzt ebenfalls auf dasselbe Vorschau-Modal zurück.
+
 ## 4.7.0
 
 ### Hinzugefügt

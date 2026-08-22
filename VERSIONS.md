@@ -9,6 +9,42 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.7.1
+
+### Fixed
+
+- **A rejected calibration showed a "restore" icon that always failed.** Rejected calibrations
+  share `is_active=false` with voided ones, so the calibration history list's
+  admin-only action icon treated the two the same and offered a restore action on a rejected
+  record — clicking it always failed server-side, since restore is void-only. Rejected records no
+  longer get an action icon there (they were never restorable — a corrected calibration is a new
+  record, per the calibration philosophy in AGENTS.md).
+- **A channel's output signal range displayed the raw internally-stored value instead of the
+  user's selected unit.** `output_signal_min`/`max` are stored converted to a base unit (matching
+  every other %FS-capable spec field) and converted back for display everywhere else — except the
+  Specifications panel's "Output range" row, which showed the raw stored number next to the
+  user-facing unit label (e.g. a 4–20 mA signal, stored as 0.004–0.02, showed as "0.004 – 0.02
+  mA"). It now converts back to the selected unit before display, like the edit form already did.
+- **An admin could approve or reject their own calibration.** The checker-or-admin authorization
+  check only verified the decider was the assigned checker or held an admin role — it never
+  checked whether they were also the person who registered the calibration. A second reviewer
+  stops meaning anything if the person being checked can approve themselves, admin override or
+  not, so the endpoint (and the UI's Approve/Reject buttons) now also reject the registrant
+  deciding their own record.
+- **Duplicating an asset didn't copy its picture, interface images, mechanical table, or CAD
+  files.** The asset picture wasn't copied at all, the mechanical interface's picture and table
+  were missing entirely, and the pinout image was copied by *reference* (pointing the duplicate at
+  the source's own file row) rather than as an independent copy — deleting or replacing either
+  asset's picture would have deleted it out from under the other. Duplicating now copies each file
+  to its own storage object (and CAD files, which aren't columns on the asset, are now copied too)
+  while still leaving calibration history and the serial number behind, as before — a duplicate is
+  a new physical unit's catalog entry, not a clone of its calibration record or nameplate.
+- **Clicking the mechanical interface picture did nothing.** Every other picture in the app opens
+  a preview modal on click; the mechanical interface image never had a click handler wired up at
+  all. It now opens the same shared preview modal. The electrical interface image had the same gap
+  when it has no pinout rows to map (clicking normally opens the pin-mapping tool instead) — it now
+  falls back to the same preview modal in that case too.
+
 ## 4.7.0
 
 ### Added

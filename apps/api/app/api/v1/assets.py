@@ -318,6 +318,41 @@ def retire_asset(
     )
 
 
+def _copy_asset_file(
+    db: Session,
+    *,
+    source_file_id: uuid.UUID | None,
+    new_asset_id: uuid.UUID,
+    entity_type: str,
+    uploaded_by: uuid.UUID,
+) -> uuid.UUID | None:
+    """Copy one file-backed asset field (picture/pinout/mechanical image) to its own
+    independent storage object + StoredFile row, rather than pointing the duplicate at
+    the source's — a shared reference would mean deleting or replacing either asset's
+    file deletes it out from under the other. Returns the new file's id, or None if the
+    source had no file set."""
+    if not source_file_id:
+        return None
+    src = file_repo.get_by_id(db, source_file_id)
+    if not src:
+        return None
+    object_path = storage_svc.unique_object_name(f"assets/{new_asset_id}/{entity_type}", src.original_filename)
+    bucket, path = storage_svc.copy_file(src.storage_path, src.bucket, object_path)
+    record = file_repo.create(
+        db,
+        original_filename=src.original_filename,
+        storage_path=path,
+        bucket=bucket,
+        content_type=src.content_type,
+        size_bytes=src.size_bytes,
+        checksum_sha256=src.checksum_sha256,
+        entity_type=entity_type,
+        entity_id=new_asset_id,
+        uploaded_by=uploaded_by,
+    )
+    return record.id
+
+
 @router.post("/{asset_ref}/duplicate", response_model=AssetResponse, status_code=status.HTTP_201_CREATED)
 def duplicate_asset(
     asset_ref: str,
@@ -332,6 +367,40 @@ def duplicate_asset(
     if asset_repo.get_by_asset_id(db, body.new_asset_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Asset ID already exists")
     new_asset = asset_repo.duplicate(db, source=source, new_asset_id=body.new_asset_id, created_by=current_user.id)
+
+    # Files (asset picture, electrical/mechanical interface images, CAD models) are
+    # copied to independent storage objects — calibration history is the one thing
+    # deliberately left behind (asset_repo.duplicate never touches it), and the serial
+    # number is left blank (the new row is a distinct physical unit).
+    picture_id = _copy_asset_file(
+        db, source_file_id=source.picture_id, new_asset_id=new_asset.id,
+        entity_type="asset_picture", uploaded_by=current_user.id,
+    )
+    if picture_id:
+        asset_repo.set_picture(db, new_asset, picture_id)
+
+    pinout_image_id = _copy_asset_file(
+        db, source_file_id=source.pinout_image_id, new_asset_id=new_asset.id,
+        entity_type="asset_pinout_image", uploaded_by=current_user.id,
+    )
+    if pinout_image_id:
+        asset_repo.set_pinout_image(db, new_asset, pinout_image_id)
+
+    mechanical_image_id = _copy_asset_file(
+        db, source_file_id=source.mechanical_image_id, new_asset_id=new_asset.id,
+        entity_type="asset_mechanical_image", uploaded_by=current_user.id,
+    )
+    if mechanical_image_id:
+        asset_repo.set_mechanical_image(db, new_asset, mechanical_image_id)
+
+    for f in file_repo.list_by_entity(db, source.id):
+        if f.entity_type != "asset_cad":
+            continue
+        _copy_asset_file(
+            db, source_file_id=f.id, new_asset_id=new_asset.id,
+            entity_type="asset_cad", uploaded_by=current_user.id,
+        )
+
     audit_log_repo.create(
         db,
         actor_id=current_user.id,

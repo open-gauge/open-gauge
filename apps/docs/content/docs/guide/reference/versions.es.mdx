@@ -14,6 +14,49 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.7.1
+
+### Corregido
+
+- **Una calibración rechazada mostraba un icono de "restaurar" que siempre fallaba.** Las
+  calibraciones rechazadas comparten `is_active=false` con las anuladas, así que el icono de
+  acción exclusivo de administrador en la lista de historial de calibraciones trataba ambas igual
+  y ofrecía una acción de restaurar en un registro rechazado — al hacer clic siempre fallaba en el
+  servidor, ya que restaurar solo aplica a anuladas. Los registros rechazados ya no muestran ningún
+  icono de acción ahí (nunca fueron restaurables — una calibración corregida es un registro nuevo,
+  según la filosofía de calibración de AGENTS.md).
+- **El rango de la señal de salida de un canal mostraba el valor bruto almacenado internamente en
+  vez de la unidad seleccionada por el usuario.** `output_signal_min`/`max` se almacenan
+  convertidos a una unidad base (como cualquier otro campo de especificación con capacidad %FS) y
+  se reconvierten para mostrarlos en todas partes — excepto en la fila "Rango de salida" del panel
+  de Especificaciones, que mostraba el número bruto almacenado junto a la etiqueta de unidad
+  visible para el usuario (p. ej. una señal de 4–20 mA, almacenada como 0.004–0.02, se mostraba
+  como "0.004 – 0.02 mA"). Ahora se reconvierte a la unidad seleccionada antes de mostrarse, igual
+  que ya hacía el formulario de edición.
+- **Un administrador podía aprobar o rechazar su propia calibración.** La comprobación de
+  autorización de verificador-o-administrador solo verificaba que quien decidía fuera el
+  verificador asignado o tuviera un rol de administrador — nunca comprobaba si además era la
+  persona que registró la calibración. Un segundo revisor deja de tener sentido si la persona
+  revisada puede aprobarse a sí misma, con anulación de administrador o sin ella, así que el
+  endpoint (y los botones de Aprobar/Rechazar de la interfaz) ahora también rechazan que el
+  registrante decida sobre su propio registro.
+- **Duplicar un activo no copiaba su imagen, las imágenes de interfaz, la tabla mecánica ni los
+  archivos CAD.** La imagen del activo no se copiaba en absoluto, la imagen y la tabla de la
+  interfaz mecánica faltaban por completo, y la imagen de pinout se copiaba por *referencia*
+  (apuntando el duplicado a la misma fila de archivo del original) en vez de como una copia
+  independiente — eliminar o reemplazar la imagen de cualquiera de los dos activos la habría
+  eliminado también en el otro. Duplicar ahora copia cada archivo a su propio objeto de
+  almacenamiento (y los archivos CAD, que no son columnas del activo, también se copian ahora),
+  manteniendo igual que antes el historial de calibraciones y el número de serie sin copiar — un
+  duplicado es la entrada de catálogo de una nueva unidad física, no un clon de su registro de
+  calibración ni de su placa de identificación.
+- **Al hacer clic en la imagen de la interfaz mecánica no pasaba nada.** Cualquier otra imagen de
+  la aplicación abre una ventana modal de vista previa al hacer clic; la imagen de la interfaz
+  mecánica nunca tuvo un controlador de clic conectado. Ahora abre la misma ventana modal de vista
+  previa compartida. La imagen de la interfaz eléctrica tenía el mismo problema cuando no hay filas
+  de pinout que mapear (normalmente al hacer clic se abre la herramienta de mapeo de pines) —
+  ahora, en ese caso, también recurre a la misma ventana modal de vista previa.
+
 ## 4.7.0
 
 ### Añadido

@@ -13,6 +13,7 @@ import {
 } from "@/services/asset.service";
 import { WireColorPicker } from "@/components/wire-color-picker";
 import { NumberInput } from "@/components/number-input";
+import { ImagePreviewModal } from "@/components/image-preview-modal";
 import { CameraIcon, MapPinIcon, PlusIcon, TrashIcon, XIcon } from "@/components/icons";
 
 const COMMON_SIGNAL_NAMES = [
@@ -233,6 +234,7 @@ function ElectricalPanel({ assetId, profile, isEditing, form, onChange, onProfil
   const [mappingOpen, setMappingOpen] = useState(false);
   const [mappingReadOnly, setMappingReadOnly] = useState(false);
   const [hoveredPin, setHoveredPin] = useState<number | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   async function handleImageUpload(file: File) {
     setImageUploading(true);
@@ -314,7 +316,7 @@ function ElectricalPanel({ assetId, profile, isEditing, form, onChange, onProfil
               imageUrl={profile.pinout_image_url} alt={t("connectorImageAlt")}
               isEditing={isEditing} uploading={imageUploading}
               onUpload={handleImageUpload} onRemove={handleImageRemove}
-              onImageClick={!isEditing && hasRows ? () => openMapping(true) : undefined}
+              onImageClick={!isEditing ? (hasRows ? () => openMapping(true) : () => setPreviewOpen(true)) : undefined}
               overlay={hoverMarker}
             />
             {isEditing && profile.pinout_image_url && hasRows && (
@@ -418,6 +420,14 @@ function ElectricalPanel({ assetId, profile, isEditing, form, onChange, onProfil
           readOnly={mappingReadOnly}
         />
       )}
+      {previewOpen && profile.pinout_image_url && (
+        <ImagePreviewModal
+          src={profile.pinout_image_url}
+          alt={t("connectorImageAlt")}
+          title={t("electrical")}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -430,6 +440,7 @@ function MechanicalPanel({ assetId, profile, isEditing, form, onChange, onProfil
   const t = useTranslations("assets.interface");
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   async function handleImageUpload(file: File) {
     setImageUploading(true);
@@ -489,6 +500,7 @@ function MechanicalPanel({ assetId, profile, isEditing, form, onChange, onProfil
             imageUrl={profile.mechanical_image_url} alt={t("mechanicalImageAlt")}
             isEditing={isEditing} uploading={imageUploading}
             onUpload={handleImageUpload} onRemove={handleImageRemove}
+            onImageClick={!isEditing ? () => setPreviewOpen(true) : undefined}
           />
 
           <div>
@@ -568,6 +580,14 @@ function MechanicalPanel({ assetId, profile, isEditing, form, onChange, onProfil
           </div>
         </div>
       </div>
+      {previewOpen && profile.mechanical_image_url && (
+        <ImagePreviewModal
+          src={profile.mechanical_image_url}
+          alt={t("mechanicalImageAlt")}
+          title={t("mechanical")}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   );
 }

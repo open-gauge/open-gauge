@@ -464,7 +464,13 @@ def get_daq_details(db: Session, asset_pk: uuid.UUID) -> DAQ | None:
 
 
 def duplicate(db: Session, source: Asset, new_asset_id: str, created_by: uuid.UUID) -> Asset:
-    """Create a new asset by copying all metadata and sensor channels from an existing one."""
+    """Create a new asset by copying all metadata and sensor channels from an existing one.
+    Calibration history is deliberately never copied — it belongs to the physical unit
+    being calibrated, not its catalog entry. picture_id/pinout_image_id/mechanical_image_id
+    and CAD files are populated afterwards by the caller (see duplicate_asset in
+    api/v1/assets.py), which copies each file to its own independent storage object rather
+    than sharing the source's — a shared reference would mean deleting or replacing either
+    asset's file deletes it out from under the other."""
     new_asset = Asset(
         asset_id=new_asset_id,
         asset_type=source.asset_type,
@@ -497,7 +503,7 @@ def duplicate(db: Session, source: Asset, new_asset_id: str, created_by: uuid.UU
         warranty_expiry_date=source.warranty_expiry_date,
         notes=source.notes,
         pinout_table=source.pinout_table,
-        pinout_image_id=source.pinout_image_id,
+        mechanical_table=source.mechanical_table,
         sensor_image_id=source.sensor_image_id,
         sensor_schematic_id=source.sensor_schematic_id,
         created_by=created_by,

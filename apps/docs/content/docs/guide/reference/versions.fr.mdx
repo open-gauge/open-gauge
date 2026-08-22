@@ -15,6 +15,50 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.7.1
+
+### Corrigé
+
+- **Une calibration rejetée affichait une icône « restaurer » qui échouait systématiquement.**
+  Les calibrations rejetées partagent `is_active=false` avec les calibrations annulées, donc
+  l'icône d'action réservée aux administrateurs dans la liste d'historique des calibrations
+  traitait les deux cas de la même façon et proposait une action de restauration sur un
+  enregistrement rejeté — cliquer dessus échouait toujours côté serveur, la restauration ne
+  s'appliquant qu'aux calibrations annulées. Les enregistrements rejetés n'affichent désormais plus
+  aucune icône d'action à cet endroit (ils n'ont jamais été restaurables — une calibration corrigée
+  est un nouvel enregistrement, selon la philosophie de calibration d'AGENTS.md).
+- **La plage du signal de sortie d'un canal affichait la valeur brute stockée en interne au lieu
+  de l'unité sélectionnée par l'utilisateur.** `output_signal_min`/`max` sont stockées converties
+  dans une unité de base (comme tout autre champ de spécification pouvant être exprimé en %FS) et
+  reconverties pour l'affichage partout ailleurs — sauf dans la ligne « Plage de sortie » du
+  panneau Spécifications, qui affichait le nombre brut stocké à côté de l'étiquette d'unité visible
+  par l'utilisateur (par ex. un signal 4–20 mA, stocké comme 0,004–0,02, s'affichait « 0.004 – 0.02
+  mA »). Elle est désormais reconvertie dans l'unité sélectionnée avant l'affichage, comme le
+  formulaire d'édition le faisait déjà.
+- **Un administrateur pouvait approuver ou rejeter sa propre calibration.** Le contrôle
+  d'autorisation vérificateur-ou-administrateur vérifiait seulement que le décideur était le
+  vérificateur assigné ou détenait un rôle d'administrateur — il ne vérifiait jamais s'il s'agissait
+  aussi de la personne ayant enregistré la calibration. Un second réviseur perd tout son sens si la
+  personne contrôlée peut s'approuver elle-même, dérogation administrateur ou non — l'endpoint (et
+  les boutons Approuver/Rejeter de l'interface) rejettent désormais aussi le cas où le déclarant
+  décide de son propre enregistrement.
+- **Dupliquer un actif ne copiait ni son image, ni les images d'interface, ni le tableau
+  mécanique, ni les fichiers CAO.** L'image de l'actif n'était pas copiée du tout, l'image et le
+  tableau de l'interface mécanique manquaient entièrement, et l'image de pinout était copiée par
+  *référence* (le duplicata pointait vers la même ligne de fichier que l'actif source) plutôt que
+  comme une copie indépendante — supprimer ou remplacer l'image de l'un des deux actifs l'aurait
+  supprimée chez l'autre également. La duplication copie désormais chaque fichier vers son propre
+  objet de stockage (et les fichiers CAO, qui ne sont pas des colonnes de l'actif, sont eux aussi
+  copiés désormais), tout en laissant, comme avant, l'historique de calibration et le numéro de
+  série de côté — un duplicata est la fiche catalogue d'une nouvelle unité physique, pas un clone
+  de son historique de calibration ni de sa plaque signalétique.
+- **Cliquer sur l'image de l'interface mécanique ne faisait rien.** Toute autre image de
+  l'application ouvre une fenêtre modale d'aperçu au clic ; l'image de l'interface mécanique n'avait
+  jamais eu de gestionnaire de clic. Elle ouvre désormais la même fenêtre modale d'aperçu partagée.
+  L'image de l'interface électrique avait la même lacune lorsqu'il n'y a aucune ligne de pinout à
+  cartographier (le clic ouvre normalement l'outil de cartographie des broches) — elle revient
+  désormais elle aussi à la même fenêtre modale d'aperçu dans ce cas.
+
 ## 4.7.0
 
 ### Ajouté
