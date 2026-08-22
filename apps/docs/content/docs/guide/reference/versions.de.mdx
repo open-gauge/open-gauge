@@ -15,6 +15,44 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.8.0
+
+### Geändert
+
+- **Die Detailansicht einer gespeicherten Nachschlagetabellen-Kalibrierung stimmte nicht mit der
+  eigenen Überprüfung des Assistenten für dieselben Daten überein.** Das Panel „Allgemein" im
+  Kalibrierungs-Tab zeigte eine Platzhalter-„Modell"-Gleichungsbeschriftung (eine
+  Nachschlagetabelle hat keine Formel), gefolgt vom generischen Layout für
+  Anpassungsstatistik/Unsicherheit/Konformität, das für einen exakten Interpolanten größtenteils
+  bedeutungslos ist (siehe die eigene Dokumentation der Kalibriermethode). Es zeigt nun dasselbe
+  Layout, das Schritt 3 des Assistenten bereits für diese Methode verwendet: die Nachschlagetabelle
+  selbst (links, 50 % Breite) neben der Messwert-vs-Referenz-Kurve und ihrem
+  Linearitätsabweichungs-Diagramm (rechts, 50 %, gestapelt), mit denselben Hover-Tooltips und dem
+  Umschalter abs/%FS.
+
+### Behoben
+
+- **Eine Nachschlagetabellen-Kalibrierung konnte mehrere Messwerte für denselben Referenzpunkt
+  auflisten.** Wiederholte Messungen bei (oder nahe) demselben nominalen Referenzwert wurden
+  unverändert als separate Zeilen gespeichert, wodurch die gelieferte Tabelle umständlich als
+  tatsächliche Nachschlagetabelle zu verwenden war. Referenzwerte innerhalb von 1 % der eigenen
+  Referenzspanne der Kalibrierung zueinander werden nun als derselbe Prüfpunkt behandelt und vor
+  der Modellerstellung zu einer einzigen Zeile zusammengefasst (Referenz und Messwert werden beide
+  gemittelt); die Tabelle wird stets mit aufsteigend sortierten Referenzwerten geliefert.
+- **Der abs/%FS-Umschalter im Linearitätsabweichungs- und im Residuen-Diagramm überlagerte die
+  dargestellten Punkte.** Der Umschalter war absolut über der oberen linken Ecke des Diagramms
+  positioniert, ohne dass dafür Platz reserviert war, wodurch Punkte nahe dem oberen Rand des
+  Diagramms verdeckt wurden — in Schritt 3 des Assistenten und, da beide Diagramme mit ihm geteilt
+  werden, auch auf der Kalibrierungs-Detailseite. Beide Diagramme reservieren nun einen Rand
+  oberhalb der Plotfläche für den Umschalter.
+- **Das Messwert-vs-Referenz-Diagramm einer Nachschlagetabelle färbte Punkte nach Residuum, mit
+  einer Farbverlaufslegende, obwohl ihre Residuen konstruktionsbedingt stets ~0 sind.** Der
+  Farbverlauf (und die ihn erklärende Legende) ist bei einer echten Anpassung sinnvoll, wo er
+  zeigt, welche Punkte den größten Fehler verursacht haben, hat aber bei einem exakten
+  Interpolanten nichts zu zeigen. Die Punkte einer Nachschlagetabelle werden nun in einer
+  einheitlichen Akzentfarbe dargestellt, passend zur verbindenden Linie, ohne Farbverlaufslegende —
+  sowohl in Schritt 3 des Assistenten als auch auf der Kalibrierungs-Detailseite.
+
 ## 4.7.1
 
 ### Behoben

@@ -12,6 +12,39 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.8.0
+
+### Changed
+
+- **A saved Lookup Table calibration's detail view didn't match the wizard's own review of the
+  same data.** The calibration tab's "General" panel showed a placeholder "Model" equation label
+  (a lookup table has no formula) followed by the generic fit-statistics/uncertainty/conformity
+  layout, most of which is meaningless for an exact interpolant (see the calibration method's own
+  docs). It now shows the same layout Step 3 of the wizard already uses for this method: the
+  lookup table itself (left, 50% width) alongside the Measured-vs-Reference curve and its
+  linearity deviation chart (right, 50%, stacked), with the same hover tooltips and abs/%FS toggle.
+
+### Fixed
+
+- **A Lookup Table calibration could list several measured values for what was really the same
+  reference point.** Repeated readings at (or near) the same nominal reference value were stored
+  as separate rows verbatim, making the delivered table awkward to actually use as a lookup table.
+  Reference values within 1% of the calibration's own reference span of each other are now treated
+  as the same test point and collapsed into a single row (reference and measured both averaged)
+  before the model is built, and the table is always delivered with reference values in ascending
+  order.
+- **The abs/%FS toggle on the linearity deviation and residuals charts overlapped the plotted
+  points.** The toggle was absolutely positioned over the top-left of the chart with no space
+  reserved for it, obscuring points near the top of the plot — on Step 3 of the wizard and, since
+  both charts are shared with it, the calibration detail page too. Both charts now reserve margin
+  above the plotted area for the toggle.
+- **A Lookup Table's Measured-vs-Reference chart colored points by residual, with a gradient
+  legend, even though its residuals are always ~0 by construction.** The color gradient (and the
+  legend explaining it) is meaningful for a real fit, where it highlights which points drove the
+  worst error, but has nothing to show for an exact interpolant. Lookup Table's points now render
+  in a single accent color, matching the line connecting them, with no gradient legend — in both
+  the wizard's Step 3 and the calibration detail page.
+
 ## 4.7.1
 
 ### Fixed

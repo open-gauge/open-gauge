@@ -82,6 +82,10 @@ export function LinearityDeviationChart({
 
       const layout: Partial<Plotly.Layout> = {
         ...PLOTLY_DARK_LAYOUT_BASE,
+        // Extra top margin (vs. the shared 10px default) reserves room for
+        // the abs/pct toggle overlaid at top-left, so it doesn't sit on top
+        // of the plotted points/y-axis ticks.
+        margin: { ...PLOTLY_DARK_LAYOUT_BASE.margin, t: 34 },
         xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`${measuredLabel}${measuredUnit ? ` (${measuredUnit})` : ""}`) },
         yaxis: {
           ...PLOTLY_AXIS_BASE,

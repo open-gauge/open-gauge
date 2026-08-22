@@ -17,7 +17,12 @@ un conjunto de estadísticas de regresión estándar que describen qué tan buen
   error máximo, no linealidad, el [presupuesto de incertidumbre](./uncertainty-budget.mdx) y la
   [comprobación de conformidad](./decision-rules.mdx) se omiten todos — ninguno de ellos tiene
   sentido frente a residuos que son trivialmente cero en cada punto ingresado. En su lugar, Open
-  Gauge reporta la [desviación de linealidad](#linearity-deviation) — ver más abajo.
+  Gauge reporta la [desviación de linealidad](#linearity-deviation) — ver más abajo. Antes de
+  construir el modelo, los puntos ingresados cuyos valores de referencia estén dentro del 1% del
+  intervalo de referencia propio de la calibración entre sí se tratan como lecturas repetidas del
+  mismo punto de prueba y se combinan en una sola fila (se promedian tanto la referencia como el
+  valor medido) — una tabla de consulta entregada lista un solo valor medido por referencia, no
+  varios. La tabla final siempre se muestra con los valores de referencia en orden ascendente.
 - **Fórmula personalizada** — escribe una fórmula con parámetros libres, p. ej. `a*x*sin(x) + b`
   (todo lo que no sea `x` ni los nombres de función permitidos se trata como un parámetro a
   ajustar — consulta [Sintaxis de fórmula personalizada](./custom-formulas.mdx)), y Open Gauge

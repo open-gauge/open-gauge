@@ -18,7 +18,13 @@ ensemble de statistiques de régression standard décrivant la qualité de ce mo
   [budget d'incertitude](./uncertainty-budget.mdx) et la
   [vérification de conformité](./decision-rules.mdx) sont tous ignorés — aucun d'eux n'est
   pertinent face à des résidus qui sont trivialement nuls à chaque point saisi. Open Gauge rapporte
-  à la place l'[écart de linéarité](#linearity-deviation) — voir ci-dessous.
+  à la place l'[écart de linéarité](#linearity-deviation) — voir ci-dessous. Avant de construire le
+  modèle, les points saisis dont les valeurs de référence sont à moins de 1 % de l'étendue de
+  référence propre à la calibration les uns des autres sont traités comme des lectures répétées du
+  même point d'essai et regroupés en une seule ligne (référence et valeur mesurée toutes deux
+  moyennées) — une table de correspondance livrée liste une seule valeur mesurée par référence, pas
+  plusieurs. La table finale est toujours affichée avec les valeurs de référence en ordre
+  croissant.
 - **Formule personnalisée** — écrivez une forme de formule avec des paramètres libres, par ex.
   `a*x*sin(x) + b` (tout ce qui n'est ni `x` ni un nom de fonction autorisé est traité comme un
   paramètre à ajuster — voir [Syntaxe des formules personnalisées](./custom-formulas.mdx)), et

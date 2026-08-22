@@ -63,6 +63,10 @@ export function ResidualsChart({
 
       const layout: Partial<Plotly.Layout> = {
         ...PLOTLY_DARK_LAYOUT_BASE,
+        // Extra top margin (vs. the shared 10px default) reserves room for
+        // the abs/pct toggle overlaid at top-left, so it doesn't sit on top
+        // of the plotted points/y-axis ticks.
+        margin: { ...PLOTLY_DARK_LAYOUT_BASE.margin, t: 34 },
         xaxis: { ...PLOTLY_AXIS_BASE, title: axisTitle(`${referenceLabel}${referenceUnit ? ` (${referenceUnit})` : ""}`) },
         yaxis: {
           ...PLOTLY_AXIS_BASE,

@@ -15,6 +15,45 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.8.0
+
+### Changé
+
+- **La vue de détail d'une calibration Table de correspondance enregistrée ne correspondait pas à
+  la propre revue de l'assistant sur les mêmes données.** Le panneau « Général » de l'onglet
+  calibration affichait une étiquette d'équation « Modèle » de remplissage (une table de
+  correspondance n'a pas de formule) suivie de la mise en page générique des statistiques
+  d'ajustement/incertitude/conformité, dont la majeure partie n'a pas de sens pour un interpolant
+  exact (voir la documentation propre à la méthode de calibration). Elle affiche désormais la même
+  mise en page que l'étape 3 de l'assistant utilise déjà pour cette méthode : la table de
+  correspondance elle-même (gauche, 50 % de largeur) à côté de la courbe Mesuré-vs-Référence et de
+  son graphique d'écart de linéarité (droite, 50 %, empilés), avec les mêmes infobulles au survol
+  et le même interrupteur abs/%FS.
+
+### Corrigé
+
+- **Une calibration Table de correspondance pouvait lister plusieurs valeurs mesurées pour ce qui
+  était en réalité le même point de référence.** Les lectures répétées à (ou près de) la même
+  valeur de référence nominale étaient stockées telles quelles comme des lignes séparées, rendant
+  la table livrée peu pratique à utiliser comme une véritable table de correspondance. Les valeurs
+  de référence à moins de 1 % de l'étendue de référence propre à la calibration les unes des autres
+  sont désormais traitées comme le même point d'essai et regroupées en une seule ligne (référence
+  et valeur mesurée toutes deux moyennées) avant la construction du modèle, et la table est
+  toujours livrée avec les valeurs de référence en ordre croissant.
+- **L'interrupteur abs/%FS des graphiques d'écart de linéarité et de résidus chevauchait les points
+  tracés.** L'interrupteur était positionné en absolu au-dessus du coin supérieur gauche du
+  graphique sans espace réservé, masquant les points proches du haut du graphique — à l'étape 3 de
+  l'assistant et, ces deux graphiques étant partagés avec elle, sur la page de détail de la
+  calibration également. Les deux graphiques réservent désormais une marge au-dessus de la zone
+  tracée pour l'interrupteur.
+- **Le graphique Mesuré-vs-Référence d'une Table de correspondance colorait les points selon le
+  résidu, avec une légende de dégradé, alors que ses résidus sont toujours ~0 par construction.**
+  Le dégradé de couleur (et la légende qui l'explique) est pertinent pour un ajustement réel, où il
+  met en évidence les points responsables de la plus grosse erreur, mais n'a rien à montrer pour un
+  interpolant exact. Les points d'une Table de correspondance s'affichent désormais dans une
+  couleur d'accent unique, identique à la ligne qui les relie, sans légende de dégradé — à la fois
+  dans l'étape 3 de l'assistant et sur la page de détail de la calibration.
+
 ## 4.7.1
 
 ### Corrigé

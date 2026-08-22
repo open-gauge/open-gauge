@@ -14,6 +14,44 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.8.0
+
+### Cambiado
+
+- **La vista de detalle de una calibración de Tabla de consulta guardada no coincidía con la
+  propia revisión del asistente sobre los mismos datos.** El panel "General" de la pestaña de
+  calibración mostraba una etiqueta de ecuación "Modelo" de relleno (una tabla de consulta no tiene
+  fórmula) seguida del diseño genérico de estadísticas de ajuste/incertidumbre/conformidad, la
+  mayor parte del cual carece de sentido para un interpolante exacto (consulta la propia
+  documentación del método de calibración). Ahora muestra el mismo diseño que el paso 3 del
+  asistente ya usa para este método: la propia tabla de consulta (izquierda, 50% de ancho) junto a
+  la curva Medido-vs-Referencia y su gráfico de desviación de linealidad (derecha, 50%, apilados),
+  con los mismos tooltips al pasar el cursor y el interruptor abs/%FS.
+
+### Corregido
+
+- **Una calibración de Tabla de consulta podía listar varios valores medidos para lo que en
+  realidad era el mismo punto de referencia.** Las lecturas repetidas en (o cerca de) el mismo
+  valor de referencia nominal se almacenaban como filas separadas tal cual, haciendo que la tabla
+  entregada fuera incómoda de usar como una tabla de consulta real. Los valores de referencia
+  dentro del 1% del intervalo de referencia propio de la calibración entre sí ahora se tratan como
+  el mismo punto de prueba y se combinan en una sola fila (se promedian tanto la referencia como el
+  valor medido) antes de construir el modelo, y la tabla siempre se entrega con los valores de
+  referencia en orden ascendente.
+- **El interruptor abs/%FS de los gráficos de desviación de linealidad y de residuos se superponía
+  a los puntos trazados.** El interruptor estaba posicionado de forma absoluta sobre la parte
+  superior izquierda del gráfico sin espacio reservado para él, ocultando los puntos cercanos a la
+  parte superior del gráfico — en el paso 3 del asistente y, como ambos gráficos se comparten con
+  él, también en la página de detalle de la calibración. Ambos gráficos ahora reservan un margen
+  sobre el área trazada para el interruptor.
+- **El gráfico Medido-vs-Referencia de una Tabla de consulta coloreaba los puntos según el residuo,
+  con una leyenda de degradado, aunque sus residuos son siempre ~0 por construcción.** El
+  degradado de color (y la leyenda que lo explica) es útil para un ajuste real, donde resalta qué
+  puntos causaron el mayor error, pero no tiene nada que mostrar para un interpolante exacto. Los
+  puntos de una Tabla de consulta ahora se muestran en un único color de acento, igual que la línea
+  que los une, sin leyenda de degradado — tanto en el paso 3 del asistente como en la página de
+  detalle de la calibración.
+
 ## 4.7.1
 
 ### Corregido

@@ -3994,6 +3994,10 @@ function Step3({
     if (!div) return;
     let mounted = true;
 
+    // Lookup Table's residuals are ~0 everywhere by construction (an exact
+    // interpolant through its own points) — a residual color gradient has
+    // nothing to show, so its points render in a single accent color
+    // instead (its layout below also has no gradient legend to skip).
     const maxAbs = Math.max(...result.points.map((p) => Math.abs(p.residual_abs ?? 0)), 1e-10);
     const xs = result.points.map((p) => p.measured_value);
     const mn = Math.min(...xs), mx = Math.max(...xs);
@@ -4001,7 +4005,7 @@ function Step3({
     const scatter = result.points.map((p) => ({
       x: p.measured_value,
       y: p.reference_value,
-      color: residualColor(p.residual_abs ?? 0, maxAbs),
+      color: isLookupTable ? COLORS.accent : residualColor(p.residual_abs ?? 0, maxAbs),
       residual: p.residual_abs ?? 0,
       idx: p.point_index,
     }));
@@ -4096,7 +4100,7 @@ function Step3({
     return () => {
       mounted = false;
     };
-  }, [result, measuredUnit, referenceUnit, rightView, curveFitMethod, secondColumnLabel]);
+  }, [result, measuredUnit, referenceUnit, rightView, curveFitMethod, secondColumnLabel, isLookupTable]);
 
   useEffect(() => {
     const div = plotDivRef.current;

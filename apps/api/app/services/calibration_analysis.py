@@ -252,6 +252,45 @@ def _detect_repeatability(ref: np.ndarray, meas: np.ndarray) -> float | None:
     return max_std
 
 
+def _dedupe_lookup_table_points(ref: np.ndarray, meas: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Collapses raw calibration points into one row per unique reference value,
+    for the "lookup_table" calibration_method — a lookup table listing several
+    measured values for what is really the same test point (repeated
+    readings) is hard to use as a lookup table. Two reference values are
+    "close enough to be the same" test point when they're within 1% of the
+    reference span apart; each group's measured (and reference) values are
+    averaged into a single point.
+
+    Points are sorted ascending by reference first, then grouped greedily
+    against each group's lowest member (not the previous point) so a group's
+    total spread never exceeds the 1% threshold. Returns (ref, meas), both
+    sorted ascending by reference and the same length (one row per group).
+    """
+    order = np.argsort(ref)
+    sorted_ref = ref[order]
+    sorted_meas = meas[order]
+    threshold = float(sorted_ref[-1] - sorted_ref[0]) * 0.01
+
+    group_refs: list[float] = []
+    group_meas: list[float] = []
+    cur_ref = [sorted_ref[0]]
+    cur_meas = [sorted_meas[0]]
+    for i in range(1, len(sorted_ref)):
+        if sorted_ref[i] - cur_ref[0] <= threshold:
+            cur_ref.append(sorted_ref[i])
+            cur_meas.append(sorted_meas[i])
+        else:
+            group_refs.append(float(np.mean(cur_ref)))
+            group_meas.append(float(np.mean(cur_meas)))
+            cur_ref = [sorted_ref[i]]
+            cur_meas = [sorted_meas[i]]
+    group_refs.append(float(np.mean(cur_ref)))
+    group_meas.append(float(np.mean(cur_meas)))
+
+    return np.array(group_refs), np.array(group_meas)
+
+
 def _type_b_from_expanded(expanded_value: float, coverage_factor: float) -> float:
     """GUM §4.3.3: a cert/spec states uncertainty as U at coverage factor k -> u = U/k."""
     if coverage_factor <= 0:
@@ -620,6 +659,14 @@ def run_analysis(
         # Evaluating at the training points themselves reproduces them
         # exactly (an interpolant, not an approximation), so residuals here
         # are always ~0 by construction — see the module docstring above.
+        # Repeated/near-duplicate reference readings are first collapsed to
+        # one row per unique reference (see _dedupe_lookup_table_points) so
+        # the delivered lookup table doesn't list several values for the
+        # same test point; every statistic below this point (r_squared,
+        # valid_range, points, ...) is computed on the deduplicated data.
+        ref, meas = _dedupe_lookup_table_points(ref, meas)
+        if len(ref) < 2:
+            raise ValueError("Need at least 2 distinct reference points for a lookup table")
         degree = None
         coeffs, coeffs_cov = None, None
         order = np.argsort(meas)

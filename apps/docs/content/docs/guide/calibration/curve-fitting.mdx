@@ -16,7 +16,12 @@ statistics describing how good that model is.
   [uncertainty budget](./uncertainty-budget.mdx), and the
   [conformity check](./decision-rules.mdx) are all skipped — none of them are meaningful against
   residuals that are trivially zero at every entered point. Instead, Open Gauge reports
-  [linearity deviation](#linearity-deviation) — see below.
+  [linearity deviation](#linearity-deviation) — see below. Before building the model, entered
+  points whose reference values are within 1% of the calibration's own reference span of each
+  other are treated as repeat readings of the same test point and collapsed into a single row
+  (reference and measured both averaged) — a delivered lookup table lists one measured value per
+  reference, not several. The final table is always shown with reference values in ascending
+  order.
 - **Custom Formula** — write a formula shape with free parameters, e.g. `a*x*sin(x) + b`
   (everything besides `x` and the allowed function names is treated as a parameter to fit — see
   [Custom formula syntax](./custom-formulas.mdx)), and Open Gauge fits those parameters to your

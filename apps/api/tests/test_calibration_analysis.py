@@ -10,8 +10,9 @@ import math
 import pytest
 
 from app.services.calibration_analysis import (
-    run_analysis, _aic, _select_degree, predict_with_uncertainty,
+    run_analysis, _aic, _select_degree, predict_with_uncertainty, _dedupe_lookup_table_points,
 )
+import numpy as np
 
 
 # ---------------------------------------------------------------------------
@@ -760,6 +761,80 @@ class TestLookupTableMethod:
         # Type B (reference standard) still combines in normally.
         assert "reference_standard" in [c["source"] for c in result.uncertainty_budget]
         assert result.combined_uncertainty > 0.0
+
+    def test_averages_repeated_readings_at_the_same_reference(self) -> None:
+        # 0 and 100 span a full scale of 100 -> 1% = 1.0. Two readings at
+        # reference=10 (9.9 and 10.1, 0.2 apart) are well within that band and
+        # should collapse into a single averaged point instead of two entries.
+        result = run_analysis(
+            reference_values=[0.0, 10.0, 10.0, 100.0],
+            measured_values=[0.0, 9.9, 10.1, 100.0],
+            reference_unit="kPa", measured_unit="kPa",
+            calibration_method="lookup_table",
+        )
+        assert len(result.points) == 3
+        assert [pt.reference_value for pt in result.points] == pytest.approx([0.0, 10.0, 100.0])
+        assert result.points[1].measured_value == pytest.approx(10.0)
+
+    def test_keeps_reference_values_further_apart_than_one_percent_fs(self) -> None:
+        # 2.0 apart on the same 0-100 span is well outside the 1% (1.0) band
+        # -> both points must survive as distinct rows.
+        result = run_analysis(
+            reference_values=[0.0, 10.0, 12.0, 100.0],
+            measured_values=[0.0, 10.0, 12.0, 100.0],
+            reference_unit="kPa", measured_unit="kPa",
+            calibration_method="lookup_table",
+        )
+        assert len(result.points) == 4
+
+    def test_delivered_points_are_sorted_ascending_by_reference(self) -> None:
+        result = run_analysis(
+            reference_values=[30.0, 0.0, 20.0, 10.0],
+            measured_values=[30.1, 0.1, 19.8, 10.2],
+            reference_unit="°C", measured_unit="°C",
+            calibration_method="lookup_table",
+        )
+        refs = [pt.reference_value for pt in result.points]
+        assert refs == sorted(refs)
+
+    def test_raises_when_all_references_collapse_to_one_point(self) -> None:
+        # Exact-duplicate references (span=0, so even a 0-width threshold
+        # still merges them) collapse to a single lookup row — not enough to
+        # build a table from.
+        with pytest.raises(ValueError):
+            run_analysis(
+                reference_values=[10.0, 10.0, 10.0],
+                measured_values=[10.0, 10.05, 9.95],
+                reference_unit="°C", measured_unit="°C",
+                calibration_method="lookup_table",
+            )
+
+
+class TestDedupeLookupTablePoints:
+    def test_averages_within_one_percent_threshold(self) -> None:
+        ref, meas = _dedupe_lookup_table_points(
+            np.array([0.0, 10.0, 10.0, 100.0]),
+            np.array([0.0, 9.9, 10.1, 100.0]),
+        )
+        assert ref.tolist() == pytest.approx([0.0, 10.0, 100.0])
+        assert meas.tolist() == pytest.approx([0.0, 10.0, 100.0])
+
+    def test_group_spread_never_exceeds_threshold_from_its_first_member(self) -> None:
+        # Span is 0-10 -> 1% threshold = 0.1. Chained points 0.05 apart
+        # (0.00, 0.05, 0.10, ...) must not all merge into one giant group via
+        # transitive drift — grouping compares against each group's first
+        # (lowest) member, not the previous point.
+        refs = np.array([0.0, 0.05, 0.10, 10.0])
+        meas = np.array([0.0, 0.05, 0.10, 10.0])
+        out_ref, _ = _dedupe_lookup_table_points(refs, meas)
+        assert len(out_ref) == 2
+
+    def test_unsorted_input_returns_ascending_output(self) -> None:
+        ref, meas = _dedupe_lookup_table_points(
+            np.array([20.0, 0.0, 10.0]),
+            np.array([20.0, 0.0, 10.0]),
+        )
+        assert ref.tolist() == [0.0, 10.0, 20.0]
 
 
 class TestCustomFormulaMethod:

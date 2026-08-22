@@ -66,7 +66,8 @@ import {
 } from "@/lib/sensor-options";
 import { toSI, fromSI } from "@/lib/unit-conversion";
 import { roundToSigFigs } from "@/lib/uncertainty-format";
-import { evaluateModel } from "@/lib/evaluate-model";
+import { evaluateModel, computeLinearityDeviation, computeLinearityDeviationAtPoints } from "@/lib/evaluate-model";
+import { LinearityDeviationChart } from "@/components/linearity-deviation-chart";
 import { ConfirmModal } from "@/components/confirm-modal";
 import {
   CheckIcon,
@@ -1616,6 +1617,11 @@ function CalibrationChart({
     if (!div || points.length === 0 || !hasEvaluableCurve(cal)) return;
     let mounted = true;
 
+    // Lookup Table's residuals are ~0 everywhere by construction (an exact
+    // interpolant through its own points) — a residual color gradient has
+    // nothing to show, so its points render in a single accent color
+    // instead (and skip the gradient legend below).
+    const isLookupTable = cal.model_type === "lookup_table";
     const maxAbs = Math.max(...points.map((p) => Math.abs(p.residual_abs ?? 0)), 1e-10);
     const xs = points.map((p) => p.measured_value);
     const mn = Math.min(...xs), mx = Math.max(...xs);
@@ -1623,7 +1629,7 @@ function CalibrationChart({
     const scatter = points.map((p) => ({
       x: p.measured_value,
       y: p.reference_value,
-      color: calResidualColor(p.residual_abs ?? 0, maxAbs),
+      color: isLookupTable ? COLORS.accent : calResidualColor(p.residual_abs ?? 0, maxAbs),
       residual: p.residual_abs ?? 0,
       idx: p.point_index,
     }));
@@ -1719,19 +1725,86 @@ function CalibrationChart({
 
   return (
     <div className={`rounded-xl border border-og-border bg-og-surface relative overflow-hidden ${className ?? ""}`}>
-      <div className="absolute bottom-16 right-3 z-20 pointer-events-none">
-        <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
-          <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 rounded-xs" style={{ height: 44, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
-            <div className="flex flex-col justify-between h-11 text-[10px] text-gray-400">
-              <span>High</span>
-              <span>Low</span>
+      {cal.model_type !== "lookup_table" && (
+        <div className="absolute bottom-16 right-3 z-20 pointer-events-none">
+          <div className="bg-og-surface border border-og-border rounded-lg px-2 py-1.5 shadow-xs">
+            <p className="text-[9px] text-gray-400 font-medium uppercase tracking-wide mb-1">Residual</p>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 rounded-xs" style={{ height: 44, background: "linear-gradient(to bottom, hsl(0,80%,42%), hsl(60,80%,42%), hsl(120,80%,42%))" }} />
+              <div className="flex flex-col justify-between h-11 text-[10px] text-gray-400">
+                <span>High</span>
+                <span>Low</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       <div ref={plotDivRef} style={{ height: "100%", width: "100%" }} />
+    </div>
+  );
+}
+
+// A lookup_table calibration has no formula/coefficients to show a Model
+// panel for — its own points *are* the model (see hasEvaluableCurve). Mirrors
+// the wizard's Step 3 Lookup Table results block: the calibration's own
+// points table (left, 50%) alongside the interpolated Measured-vs-Reference
+// curve and its linearity deviation from an ideal straight line (right, 50%,
+// stacked), instead of the generic Model + statistics/uncertainty layout.
+function LookupTableDetailPanel({
+  cal, points, measuredUnit, referenceUnit,
+}: {
+  cal: CalibrationRecord;
+  points: CalibrationPoint[];
+  measuredUnit: string;
+  referenceUnit: string;
+}) {
+  const t = useTranslations("assets.calibration");
+  if (points.length === 0) return null;
+  return (
+    <div className="flex gap-4">
+      <div className="w-1/2 shrink-0 rounded-xl border border-og-border overflow-hidden" style={{ maxHeight: 440, overflowY: "auto" }}>
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-og-border bg-og-surface-alt">
+              {[
+                "#",
+                `${t("measured")}${measuredUnit ? ` (${measuredUnit})` : ""}`,
+                `${t("reference")}${referenceUnit ? ` (${referenceUnit})` : ""}`,
+              ].map((h) => (
+                <th key={h} className="text-left px-3 py-2 text-gray-400 font-medium whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {points.map((pt) => (
+              <tr key={pt.point_index} className="border-b border-og-border last:border-b-0 hover:bg-og-surface-alt/50 transition-colors">
+                <td className="px-3 py-1.5 font-mono text-gray-400">{pt.point_index + 1}</td>
+                <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.measured_value)}</td>
+                <td className="px-3 py-1.5 font-mono text-og-text">{fmtNum(pt.reference_value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col gap-3" style={{ minHeight: 440 }}>
+        <CalibrationChart
+          className="flex-1 min-h-0"
+          cal={cal}
+          points={points}
+          measuredUnit={measuredUnit}
+          referenceUnit={referenceUnit}
+        />
+        <LinearityDeviationChart
+          className="flex-1 min-h-0"
+          points={computeLinearityDeviation(points.map((p) => ({ x: p.measured_value, y: p.reference_value })))}
+          markerPoints={computeLinearityDeviationAtPoints(points.map((p) => ({ x: p.measured_value, y: p.reference_value })))}
+          measuredUnit={measuredUnit}
+          referenceUnit={referenceUnit}
+          measuredLabel={t("measured")}
+          deviationLabel={t("linearityDeviation")}
+          deviationPercentLabel={t("linearityDeviationPercent")}
+        />
+      </div>
     </div>
   );
 }
@@ -2292,7 +2365,20 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
               modes always have *something* (a declared model, or real
               fit-free residual statistics). */}
           {selectedCal.data_entry_mode !== "frequency_response" && selectedCal.data_entry_mode !== "model_direct" && (
-          (selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
+          selectedCal.model_type === "lookup_table" ? (
+            // Lookup Table has no formula/coefficients to show a Model panel
+            // for — its own points are the model. Mirrors the wizard's Step
+            // 3 Lookup Table results block instead of the generic Model +
+            // statistics layout below.
+            loadingPoints ? (
+              <div className="flex items-center justify-center text-gray-400 gap-2 text-xs py-10">
+                <span className="w-4 h-4 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+                {t("loadingData")}
+              </div>
+            ) : (
+              <LookupTableDetailPanel cal={selectedCal} points={points} measuredUnit={measuredUnit} referenceUnit={referenceUnit} />
+            )
+          ) : (selectedCal.data_entry_mode !== "raw_data" || hasEvaluableCurve(selectedCal)) ? (
             <div className="space-y-4">
             <div className="space-y-4">
               {/* Model panel — full width, stacked above the statistics
@@ -2302,27 +2388,17 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                   reference_vs_indicated and skip-fit
                   reference_vs_as_found_as_left have no transfer function at
                   all; the curve-fit variant of reference_vs_as_found_as_left
-                  has a real model, same as raw_data, and shows this panel. */}
-              {(hasModel(selectedCal) || selectedCal.model_type === "lookup_table") && (
-                <div className="space-y-4">
-                  {hasModel(selectedCal) && (
-                    <ModelPanel
-                      isPolynomial={selectedCal.model_type !== "custom_formula"}
-                      degree={selectedCal.poly_order ?? 0}
-                      coefficients={selectedCal.poly_coefficients ?? []}
-                      formulaTemplate={selectedCal.model_type === "custom_formula" ? selectedCal.custom_formula : null}
-                      formulaParamValues={null}
-                    />
-                  )}
-                  {selectedCal.model_type === "lookup_table" && (
-                    <div className="rounded-lg bg-og-surface-alt border border-og-border px-4 py-2">
-                      <span className="text-[11px] text-gray-400 mr-2">{t("equation")}</span>
-                      <span className="text-xs font-mono text-og-text">
-                        {t("lookupTableEquationLabel", { count: points.length })}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  has a real model, same as raw_data, and shows this panel.
+                  Lookup Table never reaches this branch — see the
+                  LookupTableDetailPanel short-circuit above. */}
+              {hasModel(selectedCal) && (
+                <ModelPanel
+                  isPolynomial={selectedCal.model_type !== "custom_formula"}
+                  degree={selectedCal.poly_order ?? 0}
+                  coefficients={selectedCal.poly_coefficients ?? []}
+                  formulaTemplate={selectedCal.model_type === "custom_formula" ? selectedCal.custom_formula : null}
+                  formulaParamValues={null}
+                />
               )}
 
               <div className="flex gap-4 items-stretch">
@@ -2496,6 +2572,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
             <p className="text-sm text-gray-400">{t("noPolyModel")}</p>
           )
           )}
+
 
           {/* As-found diagnostic panel — data_entry_mode=reference_vs_as_found_as_left
               only. As-left (shown above, in the record's primary columns) is

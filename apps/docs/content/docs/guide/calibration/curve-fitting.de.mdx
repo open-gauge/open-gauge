@@ -19,6 +19,11 @@ Standard-Regressionsstatistiken aus, die beschreiben, wie gut dieses Modell ist.
   [Konformitätsprüfung](./decision-rules.mdx) allesamt übersprungen — keines davon ist
   aussagekräftig gegenüber Residuen, die an jedem eingegebenen Punkt trivialerweise null sind.
   Stattdessen gibt Open Gauge die [Linearitätsabweichung](#linearity-deviation) an — siehe unten.
+  Vor dem Erstellen des Modells werden eingegebene Punkte, deren Referenzwerte innerhalb von 1 %
+  der eigenen Referenzspanne der Kalibrierung zueinander liegen, als wiederholte Messungen desselben
+  Prüfpunkts behandelt und zu einer einzigen Zeile zusammengefasst (Referenz und Messwert werden
+  beide gemittelt) — eine gelieferte Nachschlagetabelle listet einen Messwert pro Referenz, nicht
+  mehrere. Die endgültige Tabelle wird stets mit aufsteigend sortierten Referenzwerten angezeigt.
 - **Benutzerdefinierte Formel** — schreiben Sie eine Formelform mit freien Parametern, z. B.
   `a*x*sin(x) + b` (alles außer `x` und den erlaubten Funktionsnamen wird als anzupassender
   Parameter behandelt — siehe [Syntax für benutzerdefinierte Formeln](./custom-formulas.mdx)), und
