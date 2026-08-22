@@ -89,6 +89,13 @@ class AnalyzeRequest(BaseModel):
     confidence_level: float = 95.0
     channel_accuracy_value: float | None = None
     channel_accuracy_type: str | None = None
+    # The sensor channel's own declared measurement range (already in
+    # reference units) — "full scale" for channel_accuracy_type=
+    # "percent_of_full_scale" means this range, not the span of reference
+    # values this particular calibration happened to test. See
+    # _apply_decision_rule.
+    channel_range_min: float | None = None
+    channel_range_max: float | None = None
     decision_rule: str = "simple_acceptance"
     # The wizard's editable Tolerance box (already converted to reference
     # units client-side) — when set, overrides channel_accuracy_value/type

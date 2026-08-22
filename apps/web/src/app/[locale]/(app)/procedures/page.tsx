@@ -1664,6 +1664,7 @@ export default function ProceduresPage() {
   const tPhysicalQuantity = useTranslations("tokens.physicalQuantity");
   const router = useRouter();
   const searchParams = useSearchParams();
+  const initialId = searchParams.get("id");
   const { user } = useAuth();
   const canEdit = user.role !== "viewer";
   const isAdmin = user.role === "admin" || user.role === "superadmin";
@@ -1686,7 +1687,17 @@ export default function ProceduresPage() {
   }
 
   useEffect(() => {
-    reloadProcedures();
+    setLoading(true);
+    listProcedures(search || undefined)
+      .then((data) => {
+        setProcedures(data);
+        // Deep-linked from a calibration record's "Procedure" field
+        // (/procedures?id=<uuid>) — select it instead of the first row.
+        const deepLinked = initialId ? data.find((p) => p.id === initialId) : undefined;
+        if (deepLinked) setSelected(deepLinked);
+        else if (data.length > 0) setSelected(data[0]);
+      })
+      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

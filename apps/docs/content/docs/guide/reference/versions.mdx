@@ -12,6 +12,40 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.7.0
+
+### Added
+
+- **Calibration record detail links the reference standard and procedure.** The "General" panel
+  on a calibration record now shows the Reference standard (linking to the reference asset's
+  detail page) and Procedure (linking to it in the Procedures register) used for an internal-lab
+  calibration — previously stored on the record but not surfaced anywhere in the UI. The
+  Procedures register also accepts a deep link (`/procedures?id=<uuid>`) to pre-select a specific
+  procedure, the same convention Sites already supports.
+
+### Changed
+
+- **Calibration purpose in the General panel now reads like the other fields.** It previously
+  rendered as a small colored tag (matching the calibration history nav list, where the tag saves
+  space); in the General panel, where every other field is plain text, that stood out
+  inconsistently. It's now plain translated text there — the nav list's tag is unchanged.
+- **The "Download Certificate" button no longer shows a template-picker chevron for calibrations
+  with an uploaded certificate.** An uploaded PDF certificate is served as-is on download — there's
+  no template to choose — so the split-button's dropdown (which only ever lists certificate
+  *generation* templates) no longer renders for that case.
+
+### Fixed
+
+- **A calibration's %FS tolerance was checked against the wrong "full scale."** When a sensor
+  channel's accuracy spec is expressed as "% of Full Scale," conformity (pass/fail) is supposed to
+  compare the max error against that percentage of the *channel's own declared measurement range*.
+  The wizard's default Tolerance box already got this right, but clearing that box (or calling
+  `POST /calibrations/analyze` directly) fell back to computing "full scale" from the span of
+  *this calibration's own reference values* instead — silently different whenever the tested range
+  didn't match the sensor's full nominal range. `/analyze` now accepts the channel's own range
+  (`channel_range_min`/`channel_range_max`, sent by the wizard) and uses it for this case, falling
+  back to the previous behavior when it isn't supplied.
+
 ## 4.6.2
 
 ### Fixed

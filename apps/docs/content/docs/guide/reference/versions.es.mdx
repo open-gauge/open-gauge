@@ -14,6 +14,44 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.7.0
+
+### Añadido
+
+- **El detalle de un registro de calibración enlaza el patrón de referencia y el procedimiento.**
+  El panel "General" de un registro de calibración ahora muestra el Patrón de referencia (con
+  enlace a la página de detalle del activo de referencia) y el Procedimiento (con enlace en el
+  registro de Procedimientos) usados en una calibración de laboratorio interno — antes se
+  guardaban en el registro pero no se mostraban en ningún lugar de la interfaz. El registro de
+  Procedimientos también admite un enlace directo (`/procedures?id=<uuid>`) para preseleccionar un
+  procedimiento concreto, la misma convención que ya usa Sitios.
+
+### Cambiado
+
+- **El propósito de la calibración en el panel General ahora se muestra como los demás campos.**
+  Antes se mostraba como una pequeña etiqueta de color (igual que en la lista de historial de
+  calibraciones, donde la etiqueta ahorra espacio); en el panel General, donde todos los demás
+  campos son texto plano, esto desentonaba. Ahora es texto plano traducido allí — la etiqueta de
+  la lista de historial no cambia.
+- **El botón "Descargar certificado" ya no muestra la flecha del selector de plantilla en
+  calibraciones con un certificado subido.** Un certificado PDF subido se sirve tal cual al
+  descargarlo — no hay plantilla que elegir — así que el desplegable del botón dividido (que solo
+  lista plantillas de *generación* de certificados) ya no aparece en ese caso.
+
+### Corregido
+
+- **La tolerancia %FS de una calibración se comparaba contra la "escala completa" incorrecta.**
+  Cuando la especificación de exactitud de un canal del sensor se expresa como "% de escala
+  completa," la conformidad (aprobado/rechazado) debe comparar el error máximo contra ese
+  porcentaje del *rango de medición propio y declarado del canal*. El cuadro de Tolerancia por
+  defecto del asistente ya lo hacía correctamente, pero vaciar ese cuadro (o llamar directamente a
+  `POST /calibrations/analyze`) recurría a calcular la "escala completa" a partir del rango de los
+  valores de referencia *de esta calibración en concreto* — con un resultado silenciosamente
+  distinto siempre que el rango probado no coincidiera con el rango nominal completo del sensor.
+  `/analyze` ahora acepta el rango propio del canal (`channel_range_min`/`channel_range_max`,
+  enviado por el asistente) y lo usa en este caso, recurriendo al comportamiento anterior cuando no
+  se proporciona.
+
 ## 4.6.2
 
 ### Corregido

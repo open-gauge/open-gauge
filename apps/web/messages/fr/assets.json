@@ -551,6 +551,8 @@
     "sensitivityResult": "Sensibilité",
     "deviationPercent": "Écart (%)",
     "calibrationLab": "Laboratoire de calibration",
+    "referenceStandard": "Étalon de référence",
+    "procedure": "Procédure",
     "environmentalConditions": "Conditions environnementales",
     "temperature": "Température",
     "humidity": "Humidité",

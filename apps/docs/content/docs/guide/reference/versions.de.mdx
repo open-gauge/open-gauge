@@ -15,6 +15,46 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.7.0
+
+### Hinzugefügt
+
+- **Die Detailansicht eines Kalibrierdatensatzes verlinkt jetzt das Referenznormal und das
+  Verfahren.** Das Panel „Allgemein" eines Kalibrierdatensatzes zeigt jetzt das Referenznormal
+  (mit Link zur Detailseite des Referenz-Assets) und das Verfahren (mit Link im
+  Verfahrensregister), die bei einer internen Laborkalibrierung verwendet wurden — zuvor auf dem
+  Datensatz gespeichert, aber nirgends in der Oberfläche angezeigt. Das Verfahrensregister
+  akzeptiert nun auch einen Deep-Link (`/procedures?id=<uuid>`), um ein bestimmtes Verfahren
+  vorauszuwählen — dieselbe Konvention, die Standorte bereits verwenden.
+
+### Geändert
+
+- **Der Kalibrierzweck im Panel „Allgemein" wird jetzt wie die anderen Felder dargestellt.** Er
+  wurde zuvor als kleines farbiges Tag dargestellt (wie in der Kalibrierhistorien-Liste, wo das
+  Tag Platz spart); im Panel „Allgemein", wo alle anderen Felder reiner Text sind, wirkte das
+  inkonsistent. Dort ist es jetzt übersetzter Klartext — das Tag in der Historien-Liste bleibt
+  unverändert.
+- **Die Schaltfläche „Zertifikat herunterladen" zeigt bei Kalibrierungen mit hochgeladenem
+  Zertifikat keinen Vorlagen-Auswahlpfeil mehr.** Ein hochgeladenes PDF-Zertifikat wird beim
+  Herunterladen unverändert bereitgestellt — es gibt keine Vorlage zur Auswahl — daher wird das
+  Dropdown der geteilten Schaltfläche (das ausschließlich Vorlagen zur Zertifikats-*Erzeugung*
+  auflistet) in diesem Fall nicht mehr angezeigt.
+
+### Behoben
+
+- **Die %FS-Toleranz einer Kalibrierung wurde gegen den falschen „vollen Messbereich" geprüft.**
+  Wenn die Genauigkeitsspezifikation eines Sensorkanals als „% vom vollen Messbereich" angegeben
+  ist, muss die Konformitätsprüfung (bestanden/nicht bestanden) den maximalen Fehler gegen diesen
+  Prozentsatz des *eigenen, deklarierten Messbereichs des Kanals* vergleichen. Das
+  Standard-Toleranzfeld des Assistenten hat das bereits korrekt gemacht, aber das Leeren dieses
+  Feldes (oder ein direkter Aufruf von `POST /calibrations/analyze`) griff stattdessen auf die
+  Berechnung des „vollen Messbereichs" aus der Spanne der Referenzwerte *dieser einen
+  Kalibrierung* zurück — mit einem stillschweigend abweichenden Ergebnis, sobald der getestete
+  Bereich nicht dem vollen Nennbereich des Sensors entsprach. `/analyze` akzeptiert jetzt den
+  eigenen Bereich des Kanals (`channel_range_min`/`channel_range_max`, gesendet vom Assistenten)
+  und verwendet ihn in diesem Fall, mit Rückfall auf das bisherige Verhalten, wenn er nicht
+  angegeben wird.
+
 ## 4.6.2
 
 ### Behoben

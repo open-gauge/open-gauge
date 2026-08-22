@@ -15,6 +15,46 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.7.0
+
+### Ajouté
+
+- **Le détail d'un enregistrement de calibration renvoie vers l'étalon de référence et la
+  procédure.** Le panneau « Général » d'un enregistrement de calibration affiche désormais
+  l'Étalon de référence (avec un lien vers la page de détail de l'actif de référence) et la
+  Procédure (avec un lien dans le registre des Procédures) utilisés pour une calibration en
+  laboratoire interne — auparavant stockés sur l'enregistrement mais jamais affichés dans
+  l'interface. Le registre des Procédures accepte désormais aussi un lien direct
+  (`/procedures?id=<uuid>`) pour présélectionner une procédure précise, la même convention déjà
+  utilisée par Sites.
+
+### Modifié
+
+- **Le motif de calibration dans le panneau Général s'affiche désormais comme les autres champs.**
+  Il s'affichait auparavant sous forme d'une petite étiquette colorée (comme dans la liste
+  d'historique des calibrations, où l'étiquette économise de l'espace) ; dans le panneau Général,
+  où tous les autres champs sont en texte simple, cela détonnait. C'est désormais du texte simple
+  traduit à cet endroit — l'étiquette de la liste d'historique reste inchangée.
+- **Le bouton « Télécharger le certificat » n'affiche plus le chevron du sélecteur de modèle pour
+  les calibrations avec un certificat téléversé.** Un certificat PDF téléversé est fourni tel
+  quel au téléchargement — il n'y a aucun modèle à choisir — donc le menu déroulant du bouton
+  scindé (qui ne liste que des modèles de *génération* de certificat) ne s'affiche plus dans ce
+  cas.
+
+### Corrigé
+
+- **La tolérance %FS d'une calibration était vérifiée par rapport à la mauvaise « pleine
+  échelle ».** Lorsque la spécification de précision d'un canal de capteur est exprimée en « %
+  de la pleine échelle », la conformité (réussite/échec) doit comparer l'erreur maximale à ce
+  pourcentage de *la plage de mesure propre et déclarée du canal*. La case Tolérance par défaut de
+  l'assistant appliquait déjà cela correctement, mais vider cette case (ou appeler directement
+  `POST /calibrations/analyze`) revenait à calculer la « pleine échelle » à partir de l'étendue
+  des valeurs de référence *de cette calibration elle-même* — silencieusement différent chaque
+  fois que la plage testée ne correspondait pas à la pleine plage nominale du capteur. `/analyze`
+  accepte désormais la plage propre du canal (`channel_range_min`/`channel_range_max`, envoyée par
+  l'assistant) et l'utilise dans ce cas, revenant au comportement précédent quand elle n'est pas
+  fournie.
+
 ## 4.6.2
 
 ### Corrigé

@@ -16,6 +16,7 @@ import {
   getCalibrationCertificateUrl,
   getCalibrationFrequencyResponsePoints,
   getCalibrationPoints,
+  getProcedure,
   listCalibrationCertificateTemplates,
   listCalibrationUsers,
   listLocations,
@@ -29,6 +30,7 @@ import {
   uploadAssetPicture,
   voidCalibration,
   type CertificateTemplateOption,
+  type ProcedureDetail,
 } from "@/services/asset.service";
 import { ResidualsChart } from "@/components/residuals-chart";
 import { SensitivityChart } from "@/components/sensitivity-chart";
@@ -1748,6 +1750,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const tUncertaintySource = useTranslations("tokens.uncertaintySource");
   const tDecisionRule = useTranslations("tokens.decisionRule");
   const tCalType = useTranslations("tokens.calibrationType");
+  const tCalPurpose = useTranslations("tokens.calibrationPurpose");
   const tWizardTips = useTranslations("assets.wizard.tips");
   const t = useTranslations("assets.calibration");
   // --- channel logic ---
@@ -1767,6 +1770,8 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
   const [wizardOpen, setWizardOpen] = useState(false);
   const [calLocation, setCalLocation] = useState<LocationItem | null>(null);
   const [calOrganization, setCalOrganization] = useState<Organization | null>(null);
+  const [calReferenceAsset, setCalReferenceAsset] = useState<AssetProfile | null>(null);
+  const [calProcedure, setCalProcedure] = useState<ProcedureDetail | null>(null);
   const [calibrationUsers, setCalibrationUsers] = useState<CalibrationUser[]>([]);
   const [deletingCalId, setDeletingCalId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -1845,6 +1850,18 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
     if (!orgId) { setCalOrganization(null); return; }
     getOrganization(orgId).then(setCalOrganization).catch(() => setCalOrganization(null));
   }, [selectedCal?.calibration_organization_id]);
+
+  useEffect(() => {
+    const refId = selectedCal?.internal_reference_asset_id;
+    if (!refId) { setCalReferenceAsset(null); return; }
+    getAssetProfile(refId).then(setCalReferenceAsset).catch(() => setCalReferenceAsset(null));
+  }, [selectedCal?.internal_reference_asset_id]);
+
+  useEffect(() => {
+    const procId = selectedCal?.internal_procedure_id;
+    if (!procId) { setCalProcedure(null); return; }
+    getProcedure(procId).then(setCalProcedure).catch(() => setCalProcedure(null));
+  }, [selectedCal?.internal_procedure_id]);
 
 
   async function handleVoidCal(calId: string) {
@@ -2093,6 +2110,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 assetTag={profile.asset_id}
                 calibrationVersion={selectedCal.calibration_version}
                 disabled={selectedCal.data_entry_mode === "raw_data" && !hasEvaluableCurve(selectedCal)}
+                hasUploadedCertificate={selectedCal.uploaded_certificate_file_id != null}
               />
             </div>
           </div>
@@ -2139,7 +2157,7 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 tooltip={tWizardTips("calibrationType")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_type}
               />
               <SpecRow
-                label={t("calibrationPurpose")} value={<PurposeTag purpose={selectedCal.calibration_purpose} />}
+                label={t("calibrationPurpose")} value={translateDynamic(tCalPurpose, selectedCal.calibration_purpose)}
                 tooltip={tWizardTips("calibrationPurpose")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_purpose}
               />
               <SpecRow
@@ -2160,6 +2178,28 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                         </Link>
                       ))
                   : null
+                }
+              />
+              <SpecRow
+                label={t("referenceStandard")}
+                tooltip={tWizardTips("referenceAsset")} tooltipDocsHref={WIZARD_DOCS_LINKS.reference_asset}
+                value={
+                  calReferenceAsset && (
+                    <Link href={`/assets/${calReferenceAsset.asset_id}`} className="text-og-accent hover:underline">
+                      {calReferenceAsset.name}
+                    </Link>
+                  )
+                }
+              />
+              <SpecRow
+                label={t("procedure")}
+                tooltip={tWizardTips("calibrationMethod")} tooltipDocsHref={WIZARD_DOCS_LINKS.calibration_method}
+                value={
+                  calProcedure && (
+                    <Link href={`/procedures?id=${calProcedure.id}`} className="text-og-accent hover:underline">
+                      {calProcedure.name}
+                    </Link>
+                  )
                 }
               />
             </div>
@@ -2638,12 +2678,13 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 // ---------------------------------------------------------------------------
 
 function CertificateDownloadButton({
-  calibrationId, assetTag, calibrationVersion, disabled,
+  calibrationId, assetTag, calibrationVersion, disabled, hasUploadedCertificate,
 }: {
   calibrationId: string;
   assetTag: string;
   calibrationVersion: number;
   disabled: boolean;
+  hasUploadedCertificate: boolean;
 }) {
   const t = useTranslations("assets.calibration");
   const [templates, setTemplates] = useState<CertificateTemplateOption[]>([]);
@@ -2654,8 +2695,11 @@ function CertificateDownloadButton({
 
   useEffect(() => {
     setSelectedTemplateId(null);
+    // An uploaded certificate has no template choice — it's downloaded as-is,
+    // so there's nothing to offer in the chevron menu.
+    if (hasUploadedCertificate) { setTemplates([]); return; }
     listCalibrationCertificateTemplates(calibrationId).then(setTemplates).catch(() => setTemplates([]));
-  }, [calibrationId]);
+  }, [calibrationId, hasUploadedCertificate]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -2697,8 +2741,8 @@ function CertificateDownloadButton({
         type="button"
         disabled={disabled || downloading}
         onClick={handleDownload}
-        title={selectedTemplateId ? t("downloadUsing", { template: templates.find((tpl) => tpl.id === selectedTemplateId)?.name ?? t("selectedTemplate") }) : t("downloadUsingDefault")}
-        className="flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-l-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title={hasUploadedCertificate ? undefined : selectedTemplateId ? t("downloadUsing", { template: templates.find((tpl) => tpl.id === selectedTemplateId)?.name ?? t("selectedTemplate") }) : t("downloadUsingDefault")}
+        className={`flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${hasUploadedCertificate ? "rounded-lg" : "rounded-l-lg"}`}
       >
         {downloading ? (
           <span className="inline-block w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
@@ -2707,6 +2751,7 @@ function CertificateDownloadButton({
         )}
         {downloading ? t("generating") : t("downloadCertificate")}
       </button>
+      {!hasUploadedCertificate && (
       <button
         type="button"
         disabled={disabled || downloading}
@@ -2716,7 +2761,8 @@ function CertificateDownloadButton({
       >
         <ChevronDownIcon size={12} />
       </button>
-      {menuOpen && (
+      )}
+      {!hasUploadedCertificate && menuOpen && (
         <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-og-surface border border-og-border rounded-lg shadow-lg py-1">
           <button
             type="button"

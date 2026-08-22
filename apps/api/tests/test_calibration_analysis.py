@@ -254,11 +254,25 @@ class TestDecisionRules:
         assert result.conformity_statement["tolerance_value"] == pytest.approx(0.75)
 
     def test_tolerance_value_is_percent_of_span_for_percent_of_full_scale(self) -> None:
+        # No channel range supplied — falls back to this calibration's own
+        # tested span, same as before channel_range_min/max existed.
         result = run_analysis(
             **_OUTLIER_LINEAR, channel_accuracy_value=2.0, channel_accuracy_type="percent_of_full_scale",
         )
         span = max(_OUTLIER_LINEAR["reference_values"]) - min(_OUTLIER_LINEAR["reference_values"])
         assert result.conformity_statement["tolerance_value"] == pytest.approx(0.02 * span)
+
+    def test_tolerance_value_percent_of_full_scale_uses_channel_range_when_given(self) -> None:
+        # Regression: "full scale" for a percent_of_full_scale spec must be
+        # the sensor channel's own declared range (0-100 here), not the span
+        # of reference values this particular calibration happened to test
+        # (0-50, per _OUTLIER_LINEAR) — those two differ on purpose so a
+        # wrong implementation (using the tested span) would fail this.
+        result = run_analysis(
+            **_OUTLIER_LINEAR, channel_accuracy_value=2.0, channel_accuracy_type="percent_of_full_scale",
+            channel_range_min=0.0, channel_range_max=100.0,
+        )
+        assert result.conformity_statement["tolerance_value"] == pytest.approx(2.0)
 
     def test_tolerance_value_is_none_for_percent_of_reading(self) -> None:
         # percent_of_reading's tolerance varies per point (no single flat

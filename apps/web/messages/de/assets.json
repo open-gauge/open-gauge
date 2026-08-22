@@ -551,6 +551,8 @@
     "sensitivityResult": "Empfindlichkeit",
     "deviationPercent": "Abweichung (%)",
     "calibrationLab": "Kalibrierlabor",
+    "referenceStandard": "Referenznormal",
+    "procedure": "Verfahren",
     "environmentalConditions": "Umgebungsbedingungen",
     "temperature": "Temperatur",
     "humidity": "Feuchtigkeit",

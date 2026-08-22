@@ -122,6 +122,8 @@ def analyze_calibration(
             confidence_level=body.confidence_level,
             channel_accuracy_value=body.channel_accuracy_value,
             channel_accuracy_type=body.channel_accuracy_type,
+            channel_range_min=body.channel_range_min,
+            channel_range_max=body.channel_range_max,
             reference_standard_uncertainty=body.reference_standard_uncertainty,
             reference_standard_coverage_factor=body.reference_standard_coverage_factor,
             resolution=body.resolution,

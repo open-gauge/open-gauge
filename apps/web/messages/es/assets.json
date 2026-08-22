@@ -551,6 +551,8 @@
     "sensitivityResult": "Sensibilidad",
     "deviationPercent": "Desviación (%)",
     "calibrationLab": "Laboratorio de calibración",
+    "referenceStandard": "Patrón de referencia",
+    "procedure": "Procedimiento",
     "environmentalConditions": "Condiciones ambientales",
     "temperature": "Temperatura",
     "humidity": "Humedad",

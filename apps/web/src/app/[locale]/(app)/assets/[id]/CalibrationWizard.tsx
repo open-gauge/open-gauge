@@ -243,6 +243,23 @@ function channelToleranceDefault(
   return convertMagnitude(absolute, baseUnit, referenceUnit, channel.physical_quantity);
 }
 
+// The channel's own measurement range, converted to referenceUnit — sent to
+// /analyze so a channel_accuracy_type="percent_of_full_scale" spec resolves
+// against the sensor's declared range instead of this calibration's own
+// tested span (see calibration_analysis._apply_decision_rule). Null when no
+// range is configured or the unit isn't convertible; the backend then falls
+// back to the tested span, same as before this field existed.
+function channelRangeForAnalysis(
+  channel: { measurement_min: number | null; measurement_max: number | null; unit: string; physical_quantity: string } | undefined,
+  referenceUnit: string,
+): { min: number | null; max: number | null } {
+  if (!channel || channel.measurement_min == null || channel.measurement_max == null) return { min: null, max: null };
+  return {
+    min: convertMagnitude(channel.measurement_min, channel.unit, referenceUnit, channel.physical_quantity),
+    max: convertMagnitude(channel.measurement_max, channel.unit, referenceUnit, channel.physical_quantity),
+  };
+}
+
 // The channel's own datasheet measurement uncertainty, resolved to a single
 // flat magnitude in its own configured unit (or the channel's base unit if
 // it was expressed as %FS) — the default the Uncertainty calculation
@@ -1112,6 +1129,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
+      const channelRange = channelRangeForAnalysis(selectedChannel, referenceUnit);
       const req: AnalyzeRequest = {
         points: vp.map((p) => ({
           reference: parseFloat(p.reference),
@@ -1128,6 +1146,8 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         confidence_level: analyzeParams.confidence_level,
         channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
         channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
+        channel_range_min: channelRange.min,
+        channel_range_max: channelRange.max,
         decision_rule: decisionRule,
         // Type B: instrument resolution is always folded in when known (no
         // double-counting risk — it's a distinct physical effect from fit scatter).
@@ -1198,6 +1218,7 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
+      const channelRange = channelRangeForAnalysis(selectedChannel, referenceUnit);
       const buildReq = (pts: WizardRawPoint[]): AnalyzeRequest => ({
         points: pts.map((p) => ({ reference: parseFloat(p.reference), measured: parseFloat(p.measured) })),
         reference_unit: referenceUnit,
@@ -1211,6 +1232,8 @@ export function CalibrationWizard({ assetId, profile, calibrations, onClose, onS
         confidence_level: analyzeParams.confidence_level,
         channel_accuracy_value: selectedChannel?.accuracy_value ?? null,
         channel_accuracy_type: selectedChannel?.accuracy_type ?? null,
+        channel_range_min: channelRange.min,
+        channel_range_max: channelRange.max,
         decision_rule: afalUncertainty.decisionRule,
         resolution: resolveSpecValue(
           selectedChannel?.resolution ?? null, selectedChannel?.resolution_unit ?? null,

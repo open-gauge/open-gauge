@@ -551,6 +551,8 @@
     "sensitivityResult": "Sensitivity",
     "deviationPercent": "Deviation (%)",
     "calibrationLab": "Calibration Lab",
+    "referenceStandard": "Reference standard",
+    "procedure": "Procedure",
     "environmentalConditions": "Environmental conditions",
     "temperature": "Temperature",
     "humidity": "Humidity",

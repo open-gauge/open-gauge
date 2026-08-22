@@ -411,6 +411,8 @@ def _apply_decision_rule(
     decision_rule: DecisionRule,
     expanded_uncertainty: float,
     tolerance_override: float | None = None,
+    channel_range_min: float | None = None,
+    channel_range_max: float | None = None,
 ) -> tuple[bool, dict]:
     """
     Apply an ISO/IEC 17025 §7.1.3 / §7.8.6-compliant decision rule and return
@@ -434,6 +436,14 @@ def _apply_decision_rule(
     below, including "percent_of_reading"'s per-point tolerances, since an
     explicit number from the user is unambiguous regardless of how the
     channel's own spec is expressed.
+
+    `channel_range_min`/`channel_range_max`, when both given, are the sensor
+    channel's own declared measurement range (already in reference units) —
+    "full scale" for a channel_accuracy_type="percent_of_full_scale" spec
+    means the channel's nominal range, not the span of reference values this
+    particular calibration happened to test. Falls back to `span` (this
+    calibration's own tested range) when the channel's range isn't supplied,
+    preserving the old behavior for callers that don't send it.
     """
     if tolerance_override is not None and tolerance_override > 0:
         guard = 0.0
@@ -478,7 +488,12 @@ def _apply_decision_rule(
         passed = bool(np.all(np.abs(residuals) + guard <= tolerances))
         spec_desc = f"±{channel_accuracy_value}% of reading"
     elif channel_accuracy_type == "percent_of_full_scale":
-        tolerance_value = channel_accuracy_value / 100.0 * span
+        fs_span = (
+            channel_range_max - channel_range_min
+            if channel_range_min is not None and channel_range_max is not None
+            else span
+        )
+        tolerance_value = channel_accuracy_value / 100.0 * fs_span
         passed = bool(max_error + guard <= tolerance_value)
         spec_desc = f"±{channel_accuracy_value}% of full scale"
     else:  # absolute
@@ -517,6 +532,8 @@ def run_analysis(
     include_sensor_nominal_uncertainty: bool = False,
     decision_rule: DecisionRule = "simple_acceptance",
     tolerance_override: float | None = None,
+    channel_range_min: float | None = None,
+    channel_range_max: float | None = None,
 ) -> AnalysisResult:
     """
     Fit a polynomial model to calibration data and compute full statistics.
@@ -678,6 +695,8 @@ def run_analysis(
         channel_accuracy_value, channel_accuracy_type,
         decision_rule, expanded_u,
         tolerance_override=tolerance_override,
+        channel_range_min=channel_range_min,
+        channel_range_max=channel_range_max,
     )
 
     # Build point list
