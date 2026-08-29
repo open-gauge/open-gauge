@@ -1,0 +1,82 @@
+---
+title: Document Templates
+description: A WYSIWYG editor for designing reusable calibration certificate and procedure layouts.
+---
+
+A **document template** is a reusable layout for a printable document — a calibration
+certificate or a calibration procedure — designed once and populated with real data every time
+it's generated. Manage them from the **Document Templates** page in the sidebar.
+
+This page covers the template editor itself. Generating an actual PDF from a template is a
+separate, later step — a template is the *design*, not the document.
+
+## Two template types
+
+- **Calibration Certificate** — exposes asset, calibration, measurement, coefficient/statistics,
+  uncertainty, technician, laboratory, and certificate-metadata variables.
+- **Calibration Procedure** — exposes equipment, procedure metadata, environmental conditions,
+  steps, acceptance criteria, safety instructions, technician, approval, and revision-history
+  variables.
+
+Only the variables relevant to a template's type are shown while editing it.
+
+## The editor layout
+
+The editor is a three-panel desktop layout, not a scrolling web page — the center panel renders
+the document as a physical A4 (or Letter) page, at the same proportions it will eventually print
+at.
+
+- **Tools** (left) — click or drag an element onto the page to insert it: text (heading,
+  paragraph, divider, page break), data (variable, table, measurement table, key/value field),
+  technical (equation, graph, calibration data plot, image, QR code, signature, date, page
+  number), and layout (columns, spacer, section, header, footer).
+- **Page canvas** (center) — click any text to edit it in place; a contextual formatting toolbar
+  (font, size, bold/italic/underline, alignment, color, highlight, line/paragraph spacing, lists)
+  appears above the page while a text block is selected. A block's own structured settings (a
+  table's rows/columns, a graph's axes, a QR code's payload, …) are edited from the **Block** tab
+  on the right.
+- **Variables** (right) — search or browse every variable available for the template's type,
+  grouped by category (Asset, Calibration, Calibration Results, Measurements, Organization,
+  User/Technician, Dates, …). Clicking one inserts it into the selected text block, or appends a
+  new paragraph if nothing is selected. A collection variable (e.g. Measurements) is shown apart
+  from scalar variables and can be inserted as a ready-made repeating table.
+
+## Template vs. Preview Data mode
+
+Switch between **Template** mode — showing raw `{{ variable }}` tokens — and **Preview Data**
+mode, which substitutes every token with realistic sample values (e.g. `{{asset.id}}` →
+`OG-000123`) so you can see roughly what a generated document will look like before any real
+calibration exists. A repeating table bound to a collection variable renders one sample row per
+sample data point in Preview mode.
+
+## The document model
+
+A template's content is stored as structured JSON — an array of typed **blocks** (`heading`,
+`table`, `equation`, `qr_code`, …), each with its own properties — never as an HTML string. This
+keeps the editor's output reproducible by a future server-side PDF renderer, which will walk the
+same block tree the browser draws rather than trying to reinterpret arbitrary HTML/CSS.
+
+Page layout (size, orientation, margins, default typography) and the repeating header/footer are
+document-level settings, edited from the **Document** tab on the right — header and footer
+content repeats on every page a generated PDF produces.
+
+## Versioning and publishing
+
+A template's history works like calibration history: **immutable and traceable**.
+
+- A new template starts as **version 1, draft** — editable, autosaved as you work.
+- **Publish** freezes that version. A published template can no longer be edited in place —
+  it may already have been used to generate real certificates.
+- Editing a published template branches a new **draft** version (version + 1) in the same
+  template group; publishing that draft supersedes the previous one. If a draft already exists,
+  editing again reopens that same draft rather than creating another one.
+- **Duplicate** instead creates a brand-new, independent template (its own version history)
+  pre-filled with the source version's content — for starting a variant rather than continuing
+  the same one.
+- **Archive** hides a template from the default list without deleting its history.
+
+## Images
+
+Images (a company logo, an accreditation mark, a diagram) are uploaded per template and stored as
+file references — an image block holds a `file_id` and a resolved preview URL, not an embedded
+copy of the file's bytes.

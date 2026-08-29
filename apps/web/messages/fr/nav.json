@@ -5,6 +5,7 @@
   "assetRegistry": "Registre des actifs",
   "locations": "Emplacements",
   "procedures": "Procédures",
+  "templates": "Modèles de documents",
   "organizations": "Organisations",
   "activity": "Activité",
   "settings": "Paramètres",
@@ -19,7 +20,8 @@
   "newMenu": {
     "new": "Nouveau",
     "newAsset": "Nouvel actif",
-    "newProcedure": "Nouvelle procédure"
+    "newProcedure": "Nouvelle procédure",
+    "newTemplate": "Nouveau modèle"
   },
   "userMenu": {
     "adminPanel": "Panneau d'administration",

@@ -15,6 +15,27 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.9.0
+
+### Hinzugefügt
+
+- **Ein neuer Bereich Dokumentvorlagen zum Gestalten von Kalibrierzertifikat- und
+  -verfahrenslayouts.** Ein dreispaltiger WYSIWYG-Editor (Werkzeuge / A4-Seitenfläche /
+  Variablen) lässt Admins wiederverwendbare, strukturierte Dokumentvorlagen erstellen —
+  Überschriften, Absätze, Tabellen (einschließlich einer sich wiederholenden Zeilenbindung an
+  eine Datensammlung wie Messwerte), eine eigene Messwerttabelle, Schlüssel/Wert-Felder,
+  LaTeX-Gleichungen, Kalibrierdiagramme, Bilder, QR-Codes, Unterschriftsblöcke, Daten,
+  Seitenzahlen, Spalten und Abschnittsumbrüche — per Ziehen-und-Ablegen oder Klick zum Einfügen
+  aus dem Werkzeugpanel, mit einer kontextabhängigen Textformatierungsleiste und einem
+  durchsuchbaren Variablen-Browser, der auf den Vorlagentyp (Zertifikat oder Verfahren)
+  beschränkt ist. Ein "Vorschaudaten"-Modus ersetzt jeden `{{ variable }}`-Platzhalter durch
+  realistische Beispielwerte, sodass das endgültige Erscheinungsbild der Vorlage erkennbar ist,
+  bevor überhaupt echte Daten existieren. Vorlagen werden wie der Kalibrierverlauf versioniert:
+  eine veröffentlichte Version ist unveränderlich, und sie zu bearbeiten verzweigt eine neue
+  Entwurfsversion, statt sie direkt zu ändern. Dies liefert den Editor, sein strukturiertes
+  JSON-Dokumentmodell sowie die serverseitige Persistenz/Versionierung — die PDF-Erzeugung aus
+  einer Vorlage ist eine separate, spätere Aufgabe.
+
 ## 4.8.0
 
 ### Geändert

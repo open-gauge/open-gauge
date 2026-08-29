@@ -17,6 +17,7 @@
     "sensors",
     "locations",
     "procedures",
+    "templates",
     "---Kalibrierung---",
     "calibration",
     "health-scoring",

@@ -1,0 +1,91 @@
+---
+title: Plantillas de documentos
+description: Un editor WYSIWYG para diseñar diseños reutilizables de certificados y procedimientos de calibración.
+---
+
+Una **plantilla de documento** es un diseño reutilizable para un documento imprimible —un
+certificado de calibración o un procedimiento de calibración— diseñado una sola vez y completado
+con datos reales cada vez que se genera. Gestiónalas desde la página **Plantillas de documentos**
+en la barra lateral.
+
+Esta página describe el propio editor de plantillas. Generar un PDF real a partir de una plantilla
+es un paso posterior independiente: una plantilla es el *diseño*, no el documento.
+
+## Dos tipos de plantilla
+
+- **Certificado de Calibración** — expone variables de activo, calibración, mediciones,
+  coeficientes/estadísticas, incertidumbre, técnico, laboratorio y metadatos del certificado.
+- **Procedimiento de Calibración** — expone variables de equipo, metadatos del procedimiento,
+  condiciones ambientales, pasos, criterios de aceptación, instrucciones de seguridad, técnico,
+  aprobación e historial de revisiones.
+
+Solo se muestran las variables relevantes para el tipo de la plantilla mientras se edita.
+
+## El diseño del editor
+
+El editor es un diseño de escritorio de tres paneles, no una página web con desplazamiento: el
+panel central renderiza el documento como una página física A4 (o Carta), en las mismas
+proporciones con las que eventualmente se imprimirá.
+
+- **Herramientas** (izquierda) — haz clic o arrastra un elemento a la página para insertarlo:
+  texto (encabezado, párrafo, línea horizontal, salto de página), datos (variable, tabla, tabla
+  de mediciones, campo clave/valor), técnico (ecuación, gráfico, gráfico de datos de calibración,
+  imagen, código QR, firma, fecha, número de página) y diseño (columnas, espaciador, sección,
+  encabezado de página, pie de página).
+- **Lienzo de página** (centro) — haz clic en cualquier texto para editarlo en el lugar; una
+  barra de formato contextual (fuente, tamaño, negrita/cursiva/subrayado, alineación, color,
+  resaltado, interlineado/espaciado de párrafo, listas) aparece sobre la página mientras un
+  bloque de texto está seleccionado. La configuración estructurada propia de un bloque (las
+  filas/columnas de una tabla, los ejes de un gráfico, el contenido de un código QR, …) se edita
+  desde la pestaña **Bloque** a la derecha.
+- **Variables** (derecha) — busca o explora cada variable disponible para el tipo de la
+  plantilla, agrupadas por categoría (Activo, Calibración, Resultados de Calibración,
+  Mediciones, Organización, Usuario/Técnico, Fechas, …). Hacer clic en una la inserta en el
+  bloque de texto seleccionado, o agrega un nuevo párrafo si no hay nada seleccionado. Una
+  variable de colección (p. ej. Mediciones) se muestra aparte de las variables escalares y puede
+  insertarse como una tabla repetitiva ya lista.
+
+## Modo Plantilla vs. Datos de vista previa
+
+Cambia entre el modo **Plantilla** —que muestra los tokens `{{ variable }}` sin resolver— y el
+modo **Datos de vista previa**, que sustituye cada token por valores de ejemplo realistas (p. ej.
+`{{asset.id}}` → `OG-000123`) para que puedas ver aproximadamente cómo se verá un documento
+generado antes de que exista alguna calibración real. Una tabla repetitiva vinculada a una
+variable de colección renderiza una fila de ejemplo por cada punto de datos de ejemplo en modo
+de vista previa.
+
+## El modelo de documento
+
+El contenido de una plantilla se almacena como JSON estructurado —un arreglo de **bloques**
+tipados (`heading`, `table`, `equation`, `qr_code`, …), cada uno con sus propias propiedades—
+nunca como una cadena HTML. Esto mantiene el resultado del editor reproducible por un futuro
+renderizador de PDF del lado del servidor, que recorrerá el mismo árbol de bloques que dibuja el
+navegador en lugar de intentar reinterpretar HTML/CSS arbitrario.
+
+El diseño de página (tamaño, orientación, márgenes, tipografía predeterminada) y el
+encabezado/pie de página repetitivo son configuraciones a nivel de documento, editadas desde la
+pestaña **Documento** a la derecha — el contenido del encabezado y pie de página se repite en
+cada página que produce un PDF generado.
+
+## Versionado y publicación
+
+El historial de una plantilla funciona como el historial de calibración: **inmutable y
+trazable**.
+
+- Una plantilla nueva comienza como **versión 1, borrador** — editable, con guardado automático
+  mientras trabajas.
+- **Publicar** congela esa versión. Una plantilla publicada ya no puede editarse en el lugar —
+  puede que ya se haya usado para generar certificados reales.
+- Editar una plantilla publicada crea una nueva versión de **borrador** (versión + 1) dentro del
+  mismo grupo de plantilla; publicar ese borrador reemplaza al anterior. Si ya existe un
+  borrador, editar de nuevo reabre ese mismo borrador en lugar de crear otro.
+- **Duplicar**, en cambio, crea una plantilla completamente nueva e independiente (con su propio
+  historial de versiones) prellenada con el contenido de la versión de origen — para comenzar
+  una variante en lugar de continuar la misma.
+- **Archivar** oculta una plantilla de la lista predeterminada sin eliminar su historial.
+
+## Imágenes
+
+Las imágenes (un logotipo de empresa, una marca de acreditación, un diagrama) se suben por
+plantilla y se almacenan como referencias a archivos — un bloque de imagen guarda un `file_id` y
+una URL de vista previa resuelta, no una copia incrustada de los bytes del archivo.

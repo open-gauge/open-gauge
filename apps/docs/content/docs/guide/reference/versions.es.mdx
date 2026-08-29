@@ -14,6 +14,27 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.9.0
+
+### Añadido
+
+- **Una nueva sección de Plantillas de documentos para diseñar diseños de certificados y
+  procedimientos de calibración.** Un editor WYSIWYG de tres paneles (Herramientas / lienzo de
+  página A4 / Variables) permite a los administradores crear plantillas de documentos
+  reutilizables y estructuradas — encabezados, párrafos, tablas (incluida una vinculación de fila
+  repetitiva a una colección de datos como las mediciones), una tabla de mediciones dedicada,
+  campos clave/valor, ecuaciones LaTeX, gráficos de calibración, imágenes, códigos QR, bloques de
+  firma, fechas, números de página, columnas y saltos de sección — con arrastrar y soltar o clic
+  para insertar desde el panel de herramientas, una barra de formato de texto contextual y un
+  explorador de variables con búsqueda acotado al tipo de la plantilla (certificado o
+  procedimiento). Un modo "Datos de vista previa" sustituye cada token `{{ variable }}` por
+  valores de ejemplo realistas para que el aspecto final de la plantilla sea evidente antes de
+  que exista algún dato real. Las plantillas se versionan como el historial de calibración: una
+  versión publicada es inmutable, y editarla crea una nueva versión de borrador en lugar de
+  modificarla en el lugar. Esto entrega el editor, su modelo de documento JSON estructurado y la
+  persistencia/versionado en el backend — la generación de PDF a partir de una plantilla es una
+  tarea posterior independiente.
+
 ## 4.8.0
 
 ### Cambiado

@@ -59,6 +59,18 @@ export function DocumentIcon({ size = 16, className }: IconProps = {}) {
   );
 }
 
+/** A page with a layout grid — used for the Document Templates nav entry, distinct from the plain DocumentIcon. */
+export function TemplatesIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="1" width="13" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M4 4h8M4 7h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <rect x="4" y="9.5" width="3.2" height="3" rx="0.6" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="8.8" y="9.5" width="3.2" height="3" rx="0.6" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 /** Waveform / activity pulse. */
 export function ActivityIcon({ size = 16, className }: IconProps = {}) {
   return (
@@ -838,6 +850,306 @@ export function PlugIcon({ size = 16, className }: IconProps = {}) {
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
       <path d="M6 1.5v3M10 1.5v3M4.5 4.5h7v3a3.5 3.5 0 0 1-3.5 3.5 3.5 3.5 0 0 1-3.5-3.5v-3Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M8 11v3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Template editor — tool panel, formatting toolbar, block icons
+// ---------------------------------------------------------------------------
+
+export function TextToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2.5 3h11M8 3v10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HeadingToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M3 2.5v11M11 2.5v11M3 8h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ParagraphToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2.5 4h11M2.5 8h11M2.5 12h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HorizontalLineIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 8h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PageBreakIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="2.5" y="1.5" width="11" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <rect x="2.5" y="9.5" width="11" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M2 8h1.5M5.5 8h1.5M9 8h1.5M12.5 8H14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function VariableIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M5 2.5c-1.4 0-1.8.7-1.8 2v2c0 .9-.4 1.5-1.2 1.5.8 0 1.2.6 1.2 1.5v2c0 1.3.4 2 1.8 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M11 2.5c1.4 0 1.8.7 1.8 2v2c0 .9.4 1.5 1.2 1.5-.8 0-1.2.6-1.2 1.5v2c0 1.3-.4 2-1.8 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function TableToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M1.5 6.5h13M1.5 10.5h13M6 2.5v11M10.3 2.5v11" stroke="currentColor" strokeWidth="1.1" />
+    </svg>
+  );
+}
+
+export function MeasurementTableIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M1.5 6.5h13" stroke="currentColor" strokeWidth="1.1" />
+      <path d="M3.5 11.5 6 9l2 2 3.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function KeyValueIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 4.5h4.5M9.5 4.5H14M2 11.5h4.5M9.5 11.5H14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="8" cy="4.5" r="0.9" fill="currentColor" />
+      <circle cx="8" cy="11.5" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function EquationIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M12.5 2.5h-2c-1 0-1.4.5-1.5 1.5L8 12.5c-.1 1-.5 1.5-1.5 1.5h-1M8.5 8h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 12.5 6 9m0 3.5L2.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function GraphToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 2v12h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.5 10.5 6.5 7l2.5 2 3.5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function CalibrationPlotIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 2v12h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 11.5 12 3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+      <circle cx="5" cy="9.5" r="1" fill="currentColor" />
+      <circle cx="8" cy="7" r="1" fill="currentColor" />
+      <circle cx="11" cy="4.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function ColumnsToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="2.5" width="5.5" height="11" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <rect x="9" y="2.5" width="5.5" height="11" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
+export function SpacerToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 3h12M2 13h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M5 6.5v3M11 6.5v3M8 6.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="1.6 1.6" />
+    </svg>
+  );
+}
+
+export function SectionToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M4.5 2H2.5v3.5M11.5 2h2v3.5M4.5 14H2.5v-3.5M11.5 14h2v-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 8h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function HeaderToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="1.5" width="13" height="13" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M1.5 5h13" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M3.5 3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function FooterToolIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="1.5" y="1.5" width="13" height="13" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M1.5 11h13" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M3.5 13h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PageNumberIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="3" y="1.5" width="10" height="13" rx="1" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M6 11.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// --- Formatting toolbar ---
+
+export function BoldIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M4.5 2.5h4a2.5 2.5 0 0 1 0 5h-4v-5ZM4.5 7.5h4.5a2.5 2.5 0 0 1 0 5h-4.5v-5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function ItalicIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M6.5 2.5h5M4.5 13.5h5M9.5 2.5l-3 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function UnderlineIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M4 2.5v5a4 4 0 0 0 8 0v-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M3 13.5h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AlignLeftIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AlignCenterIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AlignRightIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AlignJustifyIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 3h12M2 6.5h12M2 10h12M2 13.5h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function BulletListIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="2.5" cy="4" r="1" fill="currentColor" />
+      <circle cx="2.5" cy="8" r="1" fill="currentColor" />
+      <circle cx="2.5" cy="12" r="1" fill="currentColor" />
+      <path d="M5.5 4h8M5.5 8h8M5.5 12h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function NumberListIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M5.5 4h8M5.5 8h8M5.5 12h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <text x="1" y="5.3" fontSize="4" fill="currentColor" stroke="none">1</text>
+      <text x="1" y="9.3" fontSize="4" fill="currentColor" stroke="none">2</text>
+      <text x="1" y="13.3" fontSize="4" fill="currentColor" stroke="none">3</text>
+    </svg>
+  );
+}
+
+export function HighlightIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M9.5 2.5 13 6l-6 6-4-.5-.5-4 6-5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M2 14h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function TextColorIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M6 10 8.3 3l2.3 7M6.8 7.7h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 14h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function LineSpacingIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M2 4.5 4 2.5 6 4.5M4 2.5v11M2 11.5l2 2 2-2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.5 4h5M8.5 8h5M8.5 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function RedoIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M12 4.5H6.5a3.5 3.5 0 1 0 0 7H10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 1.5 12 4.5 9 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function DragHandleIcon({ size = 16, className }: IconProps = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="6" cy="3.5" r="1" fill="currentColor" />
+      <circle cx="10" cy="3.5" r="1" fill="currentColor" />
+      <circle cx="6" cy="8" r="1" fill="currentColor" />
+      <circle cx="10" cy="8" r="1" fill="currentColor" />
+      <circle cx="6" cy="12.5" r="1" fill="currentColor" />
+      <circle cx="10" cy="12.5" r="1" fill="currentColor" />
     </svg>
   );
 }

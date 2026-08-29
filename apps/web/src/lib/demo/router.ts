@@ -36,6 +36,7 @@ import type {
   ProcedureDetail,
 } from "@/services/asset.service";
 import type { ProcedureImportPreview, ProcedureImportResponse } from "@/services/procedure.service";
+import { emptyDocument, type Template, type TemplateDocument } from "@/types/template";
 import type { RegisterResult } from "@/services/auth.service";
 import type { LocationCreateBody } from "@/services/location.service";
 import type { LocationItem } from "@/types/location";
@@ -467,6 +468,99 @@ route("POST", "/api/v1/procedures/import/validate", (): ProcedureImportPreview =
   step_count: 0,
   file_count: 0,
 }));
+
+// ---------------------------------------------------------------------------
+// Document templates
+// ---------------------------------------------------------------------------
+
+function docTemplateOr404(id: string): Template {
+  const template = store.getTemplate(id);
+  if (!template) throw new NotFoundError("template not found");
+  return template;
+}
+
+route("GET", "/api/v1/document-templates", ({ qs }) =>
+  store.listLatestTemplates({
+    type: (qs.get("type") as Template["type"] | null) ?? undefined,
+    status: (qs.get("status") as Template["status"] | null) ?? undefined,
+    q: qs.get("q") ?? undefined,
+    includeArchived: bool(qs.get("include_archived")) ?? false,
+  }));
+
+route("POST", "/api/v1/document-templates", ({ body }) => {
+  const input = body as { name: string; description?: string | null; type: Template["type"] };
+  const now = new Date().toISOString();
+  const template: Template = {
+    id: store.genId(),
+    template_group_id: store.genId(),
+    name: input.name,
+    description: input.description ?? null,
+    type: input.type,
+    status: "draft",
+    version: 1,
+    document: emptyDocument(),
+    is_active: true,
+    created_by: store.getDemoUser().id,
+    created_at: now,
+    updated_at: now,
+    published_at: null,
+  };
+  return store.createTemplate(template);
+});
+
+route("GET", "/api/v1/document-templates/:id", ({ params }) => docTemplateOr404(params[0]));
+
+route("GET", "/api/v1/document-templates/:id/versions", ({ params }) => {
+  const template = docTemplateOr404(params[0]);
+  return store.listTemplateVersions(template.template_group_id);
+});
+
+route("PUT", "/api/v1/document-templates/:id", ({ params, body }) => {
+  const template = docTemplateOr404(params[0]);
+  if (template.status !== "draft") {
+    throw new Error("Published templates are immutable. Create a new version to edit this template.");
+  }
+  const patch = body as { name?: string; description?: string | null; document?: TemplateDocument };
+  const updated = store.updateTemplate(params[0], patch);
+  if (!updated) throw new NotFoundError("template not found");
+  return updated;
+});
+
+route("POST", "/api/v1/document-templates/:id/new-version", ({ params }) => {
+  const branched = store.branchNewTemplateVersion(params[0]);
+  if (!branched) throw new NotFoundError("template not found");
+  return branched;
+});
+
+route("POST", "/api/v1/document-templates/:id/publish", ({ params }) => {
+  const template = docTemplateOr404(params[0]);
+  if (template.status !== "draft") throw new Error("Only a draft can be published");
+  return store.publishTemplate(params[0]);
+});
+
+route("POST", "/api/v1/document-templates/:id/archive", ({ params }) => {
+  const template = docTemplateOr404(params[0]);
+  if (template.status === "archived") throw new Error("Template is already archived");
+  return store.archiveTemplate(params[0]);
+});
+
+route("POST", "/api/v1/document-templates/:id/duplicate", ({ params, body }) => {
+  docTemplateOr404(params[0]);
+  const input = body as { name?: string };
+  const clone = store.duplicateTemplate(params[0], input.name ?? undefined);
+  if (!clone) throw new NotFoundError("template not found");
+  return clone;
+});
+
+route("GET", "/api/v1/document-templates/:id/files", ({ params }) => {
+  docTemplateOr404(params[0]);
+  return store.listFilesForEntity("document_template", params[0]);
+});
+
+route("DELETE", "/api/v1/document-templates/:templateId/files/:fileId", ({ params }) => {
+  store.deleteStoredFile(params[1]);
+  return undefined;
+});
 
 // ---------------------------------------------------------------------------
 // Calibrations / procedure lookups nested under /calibrations
@@ -1378,6 +1472,13 @@ export async function demoUpload<T>(path: string, form: FormData, options: Reque
   if (m) {
     const stepIndex = num(req.qs.get("step_index")) ?? null;
     const stored = store.addStoredFile(makeStoredFile("procedure", m[1], stepIndex));
+    return stored as unknown as T;
+  }
+
+  // /api/v1/document-templates/:id/files
+  m = /^\/api\/v1\/document-templates\/([^/]+)\/files$/.exec(req.pathname);
+  if (m) {
+    const stored = store.addStoredFile(makeStoredFile("document_template", m[1]));
     return stored as unknown as T;
   }
 

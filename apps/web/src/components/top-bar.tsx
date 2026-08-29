@@ -267,6 +267,13 @@ export default function TopBar() {
               >
                 {t("newMenu.newProcedure")}
               </button>
+              <button
+                type="button"
+                onClick={() => { setNewMenuOpen(false); router.push("/templates?new=1"); }}
+                className="w-full text-left px-3 py-2 text-xs text-og-text hover:bg-og-surface-alt transition-colors"
+              >
+                {t("newMenu.newTemplate")}
+              </button>
             </div>
           )}
         </div>

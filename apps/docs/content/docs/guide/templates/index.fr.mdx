@@ -1,0 +1,91 @@
+---
+title: Modèles de documents
+description: Un éditeur WYSIWYG pour concevoir des mises en page réutilisables de certificats et procédures de calibration.
+---
+
+Un **modèle de document** est une mise en page réutilisable pour un document imprimable — un
+certificat de calibration ou une procédure de calibration — conçu une seule fois et rempli avec
+des données réelles à chaque génération. Gérez-les depuis la page **Modèles de documents** dans
+la barre latérale.
+
+Cette page décrit l'éditeur de modèles lui-même. Générer un véritable PDF à partir d'un modèle est
+une étape ultérieure distincte : un modèle est la *conception*, pas le document.
+
+## Deux types de modèles
+
+- **Certificat de Calibration** — expose des variables d'actif, de calibration, de mesures, de
+  coefficients/statistiques, d'incertitude, de technicien, de laboratoire et de métadonnées de
+  certificat.
+- **Procédure de Calibration** — expose des variables d'équipement, de métadonnées de procédure,
+  de conditions environnementales, d'étapes, de critères d'acceptation, de consignes de sécurité,
+  de technicien, d'approbation et d'historique de révisions.
+
+Seules les variables pertinentes pour le type du modèle sont affichées lors de son édition.
+
+## La disposition de l'éditeur
+
+L'éditeur est une disposition de bureau à trois panneaux, pas une page web défilante — le panneau
+central affiche le document comme une page physique A4 (ou Lettre), dans les mêmes proportions
+que celles avec lesquelles il sera finalement imprimé.
+
+- **Outils** (gauche) — cliquez ou glissez un élément sur la page pour l'insérer : texte (titre,
+  paragraphe, ligne horizontale, saut de page), données (variable, tableau, tableau de mesures,
+  champ clé/valeur), technique (équation, graphique, tracé des données de calibration, image,
+  code QR, signature, date, numéro de page) et mise en page (colonnes, espaceur, section, en-tête,
+  pied de page).
+- **Toile de la page** (centre) — cliquez sur n'importe quel texte pour le modifier sur place ;
+  une barre d'outils de formatage contextuelle (police, taille, gras/italique/souligné,
+  alignement, couleur, surlignage, interligne/espacement des paragraphes, listes) apparaît
+  au-dessus de la page lorsqu'un bloc de texte est sélectionné. Les propriétés structurées propres
+  à un bloc (les lignes/colonnes d'un tableau, les axes d'un graphique, le contenu d'un code QR,
+  …) se modifient depuis l'onglet **Bloc** à droite.
+- **Variables** (droite) — recherchez ou parcourez chaque variable disponible pour le type du
+  modèle, regroupées par catégorie (Actif, Calibration, Résultats de Calibration, Mesures,
+  Organisation, Utilisateur/Technicien, Dates, …). Cliquer sur l'une l'insère dans le bloc de
+  texte sélectionné, ou ajoute un nouveau paragraphe si rien n'est sélectionné. Une variable de
+  collection (p. ex. Mesures) est affichée séparément des variables scalaires et peut être
+  insérée sous forme de tableau répétitif prêt à l'emploi.
+
+## Mode Modèle vs. Données d'aperçu
+
+Basculez entre le mode **Modèle** — affichant les jetons `{{ variable }}` bruts — et le mode
+**Données d'aperçu**, qui remplace chaque jeton par des valeurs d'exemple réalistes (p. ex.
+`{{asset.id}}` → `OG-000123`) afin que vous puissiez voir approximativement à quoi ressemblera un
+document généré avant même qu'une calibration réelle n'existe. Un tableau répétitif lié à une
+variable de collection affiche une ligne d'exemple par point de données d'exemple en mode aperçu.
+
+## Le modèle de document
+
+Le contenu d'un modèle est stocké sous forme de JSON structuré — un tableau de **blocs** typés
+(`heading`, `table`, `equation`, `qr_code`, …), chacun avec ses propres propriétés — jamais sous
+forme de chaîne HTML. Cela garde le résultat de l'éditeur reproductible par un futur moteur de
+rendu PDF côté serveur, qui parcourra le même arbre de blocs que celui dessiné par le navigateur
+plutôt que d'essayer de réinterpréter du HTML/CSS arbitraire.
+
+La mise en page (taille, orientation, marges, typographie par défaut) et l'en-tête/pied de page
+répétitif sont des paramètres au niveau du document, modifiés depuis l'onglet **Document** à
+droite — le contenu de l'en-tête et du pied de page se répète sur chaque page produite par un PDF
+généré.
+
+## Versionnage et publication
+
+L'historique d'un modèle fonctionne comme l'historique de calibration : **immuable et
+traçable**.
+
+- Un nouveau modèle commence en tant que **version 1, brouillon** — modifiable, enregistré
+  automatiquement au fur et à mesure.
+- **Publier** fige cette version. Un modèle publié ne peut plus être modifié sur place — il a
+  peut-être déjà été utilisé pour générer de véritables certificats.
+- Modifier un modèle publié crée une nouvelle version **brouillon** (version + 1) dans le même
+  groupe de modèle ; publier ce brouillon remplace le précédent. Si un brouillon existe déjà,
+  modifier à nouveau rouvre ce même brouillon plutôt que d'en créer un autre.
+- **Dupliquer** crée à la place un modèle entièrement nouveau et indépendant (avec son propre
+  historique de versions) pré-rempli avec le contenu de la version source — pour démarrer une
+  variante plutôt que de continuer la même.
+- **Archiver** masque un modèle de la liste par défaut sans supprimer son historique.
+
+## Images
+
+Les images (un logo d'entreprise, une marque d'accréditation, un diagramme) sont téléversées par
+modèle et stockées sous forme de références de fichiers — un bloc image contient un `file_id` et
+une URL d'aperçu résolue, pas une copie intégrée des octets du fichier.

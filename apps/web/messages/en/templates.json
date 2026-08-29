@@ -1,0 +1,443 @@
+{
+  "page": {
+    "title": "Document Templates",
+    "count": "{count, plural, one {# template} other {# templates}}",
+    "newTemplate": "New Template",
+    "searchPlaceholder": "Search templates...",
+    "emptyTitle": "No templates yet",
+    "emptyDescription": "Create your first calibration certificate or procedure template.",
+    "filterAll": "All types",
+    "filterAllStatus": "All statuses",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "status": "Status",
+      "version": "Version",
+      "updated": "Last modified"
+    },
+    "actions": {
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "archive": "Archive",
+      "confirmArchive": "Archive this template?",
+      "publish": "Publish"
+    }
+  },
+  "newForm": {
+    "title": "New Template",
+    "name": "Name",
+    "namePlaceholder": "e.g. Standard Calibration Certificate",
+    "description": "Description",
+    "descriptionPlaceholder": "What is this template used for?",
+    "type": "Type",
+    "typeCertificate": "Calibration Certificate",
+    "typeProcedure": "Calibration Procedure",
+    "create": "Create template",
+    "cancel": "Cancel",
+    "nameRequired": "Name is required"
+  },
+  "editor": {
+    "back": "Back to templates",
+    "unsavedChanges": "Unsaved changes",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveDraft": "Save Draft",
+    "templateMode": "Template",
+    "previewMode": "Preview Data",
+    "publish": "Publish",
+    "publishConfirmTitle": "Publish this template?",
+    "publishConfirmDescription": "Publishing freezes this version. Editing it afterwards creates a new draft version.",
+    "confirmPublish": "Confirm publish",
+    "editPublished": "Edit (new version)",
+    "versionLabel": "Version {version}",
+    "properties": "Properties",
+    "variablesTab": "Variables",
+    "propertiesTab": "Block",
+    "documentTab": "Document",
+    "sampleDataset": "Sample dataset",
+    "sampleDatasetDescription": "Preview values shown below are illustrative sample data, not real records.",
+    "willBePopulated": "Filled in automatically when the document is generated.",
+    "insertVariable": "Insert",
+    "searchVariables": "Search variables…",
+    "noVariablesFound": "No variables match your search.",
+    "collectionBadge": "Repeating",
+    "noSelection": "Select a block on the page to edit its properties.",
+    "emptyCanvas": "This template is empty. Add elements from the Tools panel on the left.",
+    "emptyZone": "Drop or insert an element here",
+    "toolsPanel": "Tools",
+    "openTools": "Open tools",
+    "openVariables": "Open variables",
+    "undo": "Undo",
+    "redo": "Redo",
+    "deleteBlock": "Remove block",
+    "dragBlock": "Drag to move",
+    "duplicateBlock": "Duplicate block",
+    "moveUp": "Move up",
+    "moveDown": "Move down"
+  },
+  "document": {
+    "pageSize": "Page size",
+    "a4": "A4",
+    "letter": "Letter",
+    "orientation": "Orientation",
+    "portrait": "Portrait",
+    "landscape": "Landscape",
+    "margins": "Margins (mm)",
+    "marginTop": "Top",
+    "marginRight": "Right",
+    "marginBottom": "Bottom",
+    "marginLeft": "Left",
+    "defaultFont": "Default font",
+    "defaultFontSize": "Default font size",
+    "headerEnabled": "Header enabled",
+    "footerEnabled": "Footer enabled",
+    "headerContent": "Header content",
+    "footerContent": "Footer content",
+    "left": "Left",
+    "center": "Center",
+    "right": "Right",
+    "status": "Status",
+    "version": "Version {version}",
+    "lastModified": "Last modified: {date}"
+  },
+  "tools": {
+    "groupBasic": "Basic",
+    "groupData": "Data",
+    "groupTechnical": "Technical",
+    "groupLayout": "Layout",
+    "heading": "Heading",
+    "paragraph": "Paragraph",
+    "divider": "Horizontal line",
+    "pageBreak": "Page break",
+    "variable": "Variable",
+    "table": "Table",
+    "measurementTable": "Measurement table",
+    "keyValue": "Key/value field",
+    "equation": "Equation",
+    "graph": "Graph/chart",
+    "calibrationPlot": "Calibration data plot",
+    "image": "Image",
+    "qrCode": "QR code",
+    "signature": "Signature",
+    "date": "Date",
+    "pageNumber": "Page number",
+    "columns": "Columns",
+    "spacer": "Spacer",
+    "section": "Section",
+    "header": "Header",
+    "footer": "Footer"
+  },
+  "format": {
+    "fontFamily": "Font",
+    "fontSize": "Size",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "alignLeft": "Align left",
+    "alignCenter": "Align center",
+    "alignRight": "Align right",
+    "alignJustify": "Justify",
+    "textColor": "Text color",
+    "highlight": "Highlight",
+    "lineSpacing": "Line spacing",
+    "paragraphSpacing": "Paragraph spacing",
+    "bulletList": "Bulleted list",
+    "numberedList": "Numbered list"
+  },
+  "blocks": {
+    "common": {
+      "delete": "Remove",
+      "duplicate": "Duplicate",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
+    },
+    "table": {
+      "addRow": "Add row",
+      "removeRow": "Remove row",
+      "addColumn": "Add column",
+      "rows": "Rows",
+      "rowN": "Row {n}",
+      "columnWidths": "Column widths (%)",
+      "columnN": "Column {n}",
+      "auto": "Auto",
+      "cellHint": "Click a cell to align it, merge it with the next one, or set its background.",
+      "headerRow": "Header row",
+      "bordered": "Bordered",
+      "borderColor": "Border color",
+      "clear": "Clear",
+      "repeatFor": "Repeat rows for",
+      "repeatNone": "Don't repeat",
+      "alignLeft": "Left",
+      "alignCenter": "Center",
+      "alignRight": "Right",
+      "mergeRight": "Merge right",
+      "split": "Split",
+      "cellBackground": "Cell background",
+      "clearBackground": "Clear"
+    },
+    "measurementTable": {
+      "columns": "Columns shown"
+    },
+    "keyValue": {
+      "addItem": "Add field",
+      "label": "Label",
+      "variable": "Variable",
+      "columns": "Columns",
+      "empty": "No fields yet — add some from the Block panel."
+    },
+    "equation": {
+      "latex": "LaTeX",
+      "latexPlaceholder": "e.g. y = a_0 + a_1x",
+      "caption": "Caption"
+    },
+    "graph": {
+      "kind": "Chart type",
+      "kindCalibrationCurve": "Calibration curve",
+      "kindReferenceVsMeasured": "Reference vs measured",
+      "kindResidualPlot": "Residual plot",
+      "kindDriftOverTime": "Drift over time",
+      "kindCustom": "Custom",
+      "title": "Title",
+      "xVariable": "X axis variable",
+      "yVariable": "Y axis variable",
+      "secondaryVariable": "Secondary series",
+      "xLabel": "X axis label",
+      "yLabel": "Y axis label",
+      "xUnit": "X unit",
+      "yUnit": "Y unit",
+      "legend": "Show legend",
+      "grid": "Show grid",
+      "width": "Width (mm)",
+      "height": "Height (mm)"
+    },
+    "image": {
+      "upload": "Upload image",
+      "replace": "Replace image",
+      "remove": "Remove",
+      "alt": "Alt text",
+      "width": "Width (mm)",
+      "align": "Alignment"
+    },
+    "qrCode": {
+      "payloadType": "Payload",
+      "assetUrl": "Asset URL",
+      "assetId": "Asset ID",
+      "certificateUrl": "Certificate URL",
+      "certificateId": "Certificate ID",
+      "custom": "Custom text",
+      "variable": "Variable",
+      "customValue": "Text",
+      "size": "Size (mm)",
+      "errorCorrection": "Error correction",
+      "quietZone": "Quiet zone"
+    },
+    "signature": {
+      "mode": "Signer",
+      "preparedBy": "Prepared by",
+      "checkedBy": "Checked by",
+      "label": "Label"
+    },
+    "date": {
+      "variant": "Source",
+      "current": "Current date",
+      "calibration": "Calibration date",
+      "issue": "Certificate issue date",
+      "expiration": "Expiration date",
+      "format": "Format"
+    },
+    "spacer": {
+      "height": "Height (mm)"
+    },
+    "section": {
+      "title": "Section title"
+    },
+    "columns": {
+      "width": "Column widths",
+      "addColumn": "Add column"
+    },
+    "headerFooter": {
+      "left": "Left",
+      "center": "Center",
+      "right": "Right",
+      "enabled": "Show on every page",
+      "height": "Height (mm)"
+    }
+  },
+  "variables": {
+    "categoryLabels": {
+      "asset": "Asset",
+      "calibration": "Calibration",
+      "calibration_results": "Calibration Results",
+      "measurements": "Measurements",
+      "organization": "Organization",
+      "user": "User / Technician",
+      "dates": "Dates",
+      "page": "Page",
+      "equipment": "Equipment",
+      "procedure": "Procedure",
+      "environment": "Environmental Conditions",
+      "steps": "Steps",
+      "acceptance_criteria": "Acceptance Criteria",
+      "safety": "Safety Instructions",
+      "approval": "Approval",
+      "revision_history": "Revision History"
+    },
+    "categoryDescriptions": {
+      "asset": "Filled automatically from the asset record.",
+      "calibration": "Filled automatically from the calibration record.",
+      "calibration_results": "Filled automatically from the calibration's fit results.",
+      "measurements": "Filled automatically from the calibration's measurement points.",
+      "organization": "Filled automatically from your organization's record.",
+      "user": "Filled automatically from the technician's user record.",
+      "dates": "Filled automatically when the document is generated.",
+      "page": "Filled in automatically based on the page it appears on.",
+      "equipment": "Filled automatically from the asset/equipment record.",
+      "procedure": "Filled automatically from the procedure record.",
+      "environment": "Filled automatically from the procedure's environmental conditions.",
+      "steps": "Filled automatically from the procedure's steps.",
+      "acceptance_criteria": "Filled automatically from the procedure's acceptance criteria.",
+      "safety": "Filled automatically from the procedure's safety instructions.",
+      "approval": "Filled automatically from the procedure's approval record.",
+      "revision_history": "Filled automatically from the procedure's revision history."
+    },
+    "collectionLabels": {
+      "asset_channels": "Channels",
+      "measurements": "Measurements",
+      "required_equipment": "Required Equipment",
+      "environmental_conditions": "Environmental Conditions",
+      "steps": "Steps",
+      "acceptance_criteria": "Acceptance Criteria",
+      "safety_instructions": "Safety Instructions",
+      "revision_history": "Revision History"
+    },
+    "labels": {
+      "asset": {
+        "id": "Asset ID",
+        "name": "Asset Name",
+        "serial_number": "Serial Number",
+        "manufacturer": "Manufacturer",
+        "model": "Model",
+        "type": "Asset Type",
+        "description": "Description",
+        "location": "Location",
+        "status": "Status",
+        "public_url": "Asset Public URL"
+      },
+      "channel": {
+        "id": "Channel ID",
+        "physical_quantity": "Physical Quantity",
+        "unit": "Unit",
+        "technology": "Technology",
+        "range_min": "Range Min",
+        "range_max": "Range Max",
+        "measurement_range": "Measurement Range",
+        "accuracy": "Accuracy",
+        "resolution": "Resolution",
+        "uncertainty": "Uncertainty",
+        "output_signal_min": "Output Signal Min",
+        "output_signal_max": "Output Signal Max",
+        "output_signal_unit": "Output Signal Unit",
+        "output_signal_range": "Output Signal Range"
+      },
+      "calibration": {
+        "id": "Calibration ID",
+        "date": "Calibration Date",
+        "next_date": "Next Calibration Date",
+        "type": "Calibration Type",
+        "method": "Calibration Method",
+        "status": "Calibration Status",
+        "laboratory": "Calibration Laboratory",
+        "certificate_number": "Certificate Number",
+        "certificate_url": "Certificate URL",
+        "technician": "Technician",
+        "coefficients": "Calibration Coefficients",
+        "polynomial_order": "Polynomial Order",
+        "statistics": {
+          "r_squared": "R²",
+          "rmse": "RMSE",
+          "max_error": "Maximum Error",
+          "full_scale_error": "Full Scale Error",
+          "non_linearity": "Non-linearity",
+          "hysteresis": "Hysteresis"
+        },
+        "uncertainty": {
+          "combined": "Combined Uncertainty",
+          "expanded": "Expanded Uncertainty"
+        }
+      },
+      "organization": {
+        "name": "Organization Name",
+        "address": "Organization Address",
+        "email": "Organization Email",
+        "website": "Organization Website",
+        "accreditation_number": "Accreditation Number"
+      },
+      "user": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role"
+      },
+      "date": {
+        "current": "Current Date",
+        "calibration": "Calibration Date",
+        "issue": "Certificate Issue Date",
+        "expiration": "Expiration Date"
+      },
+      "page": {
+        "current": "Current Page",
+        "total": "Total Pages"
+      },
+      "equipment": {
+        "asset_type": "Asset Type",
+        "name": "Equipment Name",
+        "model": "Equipment Model"
+      },
+      "procedure": {
+        "number": "Procedure Number",
+        "revision": "Procedure Revision",
+        "title": "Procedure Title",
+        "standard_ref": "Standard Reference"
+      },
+      "approval": {
+        "approver_name": "Approver Name",
+        "approved_date": "Approved Date",
+        "status": "Approval Status"
+      },
+      "measurement": {
+        "index": "Point",
+        "reference": "Reference",
+        "measured": "Measured",
+        "fitted": "Fitted",
+        "residual": "Residual",
+        "uncertainty": "Uncertainty"
+      },
+      "item": {
+        "name": "Name",
+        "model": "Model"
+      },
+      "condition": {
+        "parameter": "Parameter",
+        "value": "Value"
+      },
+      "step": {
+        "index": "Step",
+        "title": "Title",
+        "description": "Description",
+        "duration_min": "Duration (min)"
+      },
+      "criterion": {
+        "label": "Criterion",
+        "limit": "Limit"
+      },
+      "instruction": {
+        "text": "Instruction"
+      },
+      "revision": {
+        "version": "Version",
+        "date": "Date",
+        "author": "Author",
+        "change_reason": "Change Reason"
+      }
+    }
+  }
+}

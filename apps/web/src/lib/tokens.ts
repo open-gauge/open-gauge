@@ -49,6 +49,24 @@ export const CALIBRATION_STATUS_STYLE: Record<string, string> = {
 export const CALIBRATION_STATUSES = ["valid", "due_soon", "expired", "not_calibrated", "retired"] as const;
 
 // ---------------------------------------------------------------------------
+// Document templates (certificate/procedure editor)
+// ---------------------------------------------------------------------------
+export const TEMPLATE_STATUS_STYLE: Record<string, string> = {
+  draft:     "bg-amber-50 text-amber-600 border-amber-100",
+  published: "bg-emerald-50 text-emerald-600 border-emerald-100",
+  archived:  "bg-gray-100 text-gray-400 border-gray-200",
+};
+
+export const TEMPLATE_STATUSES = ["draft", "published", "archived"] as const;
+
+export const TEMPLATE_TYPE_STYLE: Record<string, string> = {
+  certificate: "bg-blue-50 text-blue-600 border-blue-100",
+  procedure:   "bg-purple-50 text-purple-600 border-purple-100",
+};
+
+export const TEMPLATE_TYPES = ["certificate", "procedure"] as const;
+
+// ---------------------------------------------------------------------------
 // Calibration purpose — the tag shown on each calibration history row and in
 // the calibration detail metadata panel (see PurposeTag in asset-detail-client.tsx)
 // ---------------------------------------------------------------------------

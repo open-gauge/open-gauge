@@ -1,0 +1,91 @@
+---
+title: Dokumentvorlagen
+description: Ein WYSIWYG-Editor zum Gestalten wiederverwendbarer Layouts für Kalibrierzertifikate und -verfahren.
+---
+
+Eine **Dokumentvorlage** ist ein wiederverwendbares Layout für ein druckbares Dokument — ein
+Kalibrierzertifikat oder ein Kalibrierverfahren — einmal gestaltet und bei jeder Erstellung mit
+echten Daten befüllt. Verwalten Sie sie über die Seite **Dokumentvorlagen** in der Seitenleiste.
+
+Diese Seite behandelt den Vorlageneditor selbst. Das eigentliche Erzeugen eines PDFs aus einer
+Vorlage ist ein separater, späterer Schritt — eine Vorlage ist der *Entwurf*, nicht das Dokument.
+
+## Zwei Vorlagentypen
+
+- **Kalibrierzertifikat** — stellt Variablen zu Anlage, Kalibrierung, Messwerten,
+  Koeffizienten/Statistiken, Messunsicherheit, Techniker, Labor und Zertifikatsmetadaten bereit.
+- **Kalibrierverfahren** — stellt Variablen zu Ausrüstung, Verfahrensmetadaten,
+  Umgebungsbedingungen, Schritten, Abnahmekriterien, Sicherheitshinweisen, Techniker, Genehmigung
+  und Revisionshistorie bereit.
+
+Beim Bearbeiten werden nur die für den Vorlagentyp relevanten Variablen angezeigt.
+
+## Das Editor-Layout
+
+Der Editor ist ein dreispaltiges Desktop-Layout, keine scrollende Webseite — das mittlere Panel
+stellt das Dokument als physische A4- (oder Letter-)Seite dar, im selben Verhältnis, in dem es
+später gedruckt wird.
+
+- **Werkzeuge** (links) — klicken oder ziehen Sie ein Element auf die Seite, um es einzufügen:
+  Text (Überschrift, Absatz, horizontale Linie, Seitenumbruch), Daten (Variable, Tabelle,
+  Messwerttabelle, Schlüssel/Wert-Feld), Technisch (Gleichung, Diagramm,
+  Kalibrierdatendiagramm, Bild, QR-Code, Unterschrift, Datum, Seitenzahl) und Layout (Spalten,
+  Abstandhalter, Abschnitt, Kopfzeile, Fußzeile).
+- **Seitenfläche** (Mitte) — klicken Sie auf beliebigen Text, um ihn direkt zu bearbeiten; eine
+  kontextabhängige Formatierungsleiste (Schriftart, Größe, Fett/Kursiv/Unterstrichen,
+  Ausrichtung, Farbe, Hervorhebung, Zeilen-/Absatzabstand, Listen) erscheint über der Seite,
+  solange ein Textblock ausgewählt ist. Die strukturierten Eigenschaften eines Blocks selbst (die
+  Zeilen/Spalten einer Tabelle, die Achsen eines Diagramms, der Inhalt eines QR-Codes, …) werden
+  im Tab **Block** rechts bearbeitet.
+- **Variablen** (rechts) — durchsuchen oder durchstöbern Sie jede für den Vorlagentyp verfügbare
+  Variable, gruppiert nach Kategorie (Anlage, Kalibrierung, Kalibrierergebnisse, Messwerte,
+  Organisation, Benutzer/Techniker, Daten, …). Ein Klick fügt sie in den ausgewählten Textblock
+  ein oder hängt einen neuen Absatz an, wenn nichts ausgewählt ist. Eine Sammlungsvariable (z. B.
+  Messwerte) wird getrennt von skalaren Variablen angezeigt und kann als fertige, sich
+  wiederholende Tabelle eingefügt werden.
+
+## Vorlagen- vs. Vorschaudaten-Modus
+
+Wechseln Sie zwischen dem Modus **Vorlage** — der die rohen `{{ variable }}`-Platzhalter zeigt —
+und dem Modus **Vorschaudaten**, der jeden Platzhalter durch realistische Beispielwerte ersetzt
+(z. B. `{{asset.id}}` → `OG-000123`), damit Sie ungefähr sehen können, wie ein erzeugtes Dokument
+aussehen wird, bevor überhaupt eine echte Kalibrierung existiert. Eine an eine Sammlungsvariable
+gebundene, sich wiederholende Tabelle rendert im Vorschaumodus eine Beispielzeile pro
+Beispieldatenpunkt.
+
+## Das Dokumentmodell
+
+Der Inhalt einer Vorlage wird als strukturiertes JSON gespeichert — ein Array typisierter
+**Blöcke** (`heading`, `table`, `equation`, `qr_code`, …), jeder mit eigenen Eigenschaften —
+niemals als HTML-String. Das hält die Ausgabe des Editors reproduzierbar für einen künftigen
+serverseitigen PDF-Renderer, der denselben Blockbaum durchläuft, den der Browser zeichnet,
+anstatt beliebiges HTML/CSS neu interpretieren zu müssen.
+
+Seitenlayout (Größe, Ausrichtung, Ränder, Standardtypografie) sowie die sich wiederholende
+Kopf-/Fußzeile sind dokumentweite Einstellungen, die im Tab **Dokument** rechts bearbeitet werden
+— der Inhalt von Kopf- und Fußzeile wiederholt sich auf jeder Seite eines erzeugten PDFs.
+
+## Versionierung und Veröffentlichung
+
+Der Verlauf einer Vorlage funktioniert wie der Kalibrierverlauf: **unveränderlich und
+nachvollziehbar**.
+
+- Eine neue Vorlage beginnt als **Version 1, Entwurf** — bearbeitbar, während der Arbeit
+  automatisch gespeichert.
+- **Veröffentlichen** friert diese Version ein. Eine veröffentlichte Vorlage kann nicht mehr
+  direkt bearbeitet werden — sie wurde möglicherweise bereits zur Erzeugung echter Zertifikate
+  verwendet.
+- Das Bearbeiten einer veröffentlichten Vorlage verzweigt eine neue **Entwurfs**-Version
+  (Version + 1) innerhalb derselben Vorlagengruppe; das Veröffentlichen dieses Entwurfs löst die
+  vorherige Version ab. Existiert bereits ein Entwurf, öffnet erneutes Bearbeiten denselben
+  Entwurf wieder, statt einen weiteren zu erstellen.
+- **Duplizieren** erstellt stattdessen eine völlig neue, unabhängige Vorlage (mit eigener
+  Versionshistorie), vorausgefüllt mit dem Inhalt der Quellversion — um eine Variante zu
+  beginnen, statt dieselbe fortzusetzen.
+- **Archivieren** blendet eine Vorlage aus der Standardliste aus, ohne ihre Historie zu löschen.
+
+## Bilder
+
+Bilder (ein Firmenlogo, ein Akkreditierungszeichen, ein Diagramm) werden pro Vorlage hochgeladen
+und als Dateiverweise gespeichert — ein Bildblock enthält eine `file_id` und eine aufgelöste
+Vorschau-URL, keine eingebettete Kopie der Datei-Bytes.

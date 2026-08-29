@@ -12,6 +12,24 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.9.0
+
+### Added
+
+- **A new Document Templates section for designing calibration certificate and procedure
+  layouts.** A three-panel WYSIWYG editor (Tools / A4 page canvas / Variables) lets admins build
+  reusable, structured document templates — headings, paragraphs, tables (including a
+  repeating-row binding to a data collection like measurements), a dedicated measurement table,
+  key/value fields, LaTeX equations, calibration graphs, images, QR codes, signature blocks,
+  dates, page numbers, columns, and section breaks — with drag-and-drop or click-to-insert from
+  the tool panel, a contextual text formatting toolbar, and a searchable variable browser scoped
+  to the template's type (certificate vs. procedure). A "Preview Data" mode swaps every `{{
+  variable }}` token for realistic sample values so the template's final look is obvious before
+  any real data exists. Templates are versioned like calibration history: a published version is
+  immutable, and editing it branches a new draft version rather than mutating it in place. This
+  ships the editor, its structured JSON document model, and backend persistence/versioning — PDF
+  generation from a template is a separate, later task.
+
 ## 4.8.0
 
 ### Changed

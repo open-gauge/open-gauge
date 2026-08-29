@@ -5,6 +5,7 @@
   "assetRegistry": "Anlagenregister",
   "locations": "Standorte",
   "procedures": "Verfahren",
+  "templates": "Dokumentvorlagen",
   "organizations": "Organisationen",
   "activity": "Aktivität",
   "settings": "Einstellungen",
@@ -19,7 +20,8 @@
   "newMenu": {
     "new": "Neu",
     "newAsset": "Neue Anlage",
-    "newProcedure": "Neues Verfahren"
+    "newProcedure": "Neues Verfahren",
+    "newTemplate": "Neue Vorlage"
   },
   "userMenu": {
     "adminPanel": "Admin-Bereich",

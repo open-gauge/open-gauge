@@ -15,6 +15,7 @@ import {
   MapPinIcon,
   ProceduresIcon,
   SettingsIcon,
+  TemplatesIcon,
 } from "@/components/icons";
 import { DocsNavTree } from "@/components/docs-nav-tree";
 import { ApiNavTree } from "@/components/api-nav-tree";
@@ -23,7 +24,7 @@ import { APP_VERSION } from "@/lib/version";
 
 interface NavItem {
   href: string;
-  labelKey: "dashboard" | "assetRegistry" | "locations" | "procedures" | "organizations" | "activity" | "settings";
+  labelKey: "dashboard" | "assetRegistry" | "locations" | "procedures" | "templates" | "organizations" | "activity" | "settings";
   icon: React.ReactNode;
 }
 
@@ -32,6 +33,7 @@ const WORKSPACE_NAV: NavItem[] = [
   { href: "/assets",        labelKey: "assetRegistry", icon: <AssetRegistryIcon size={15} /> },
   { href: "/sites",         labelKey: "locations",     icon: <MapPinIcon size={15} /> },
   { href: "/procedures",    labelKey: "procedures",    icon: <ProceduresIcon size={15} /> },
+  { href: "/templates",     labelKey: "templates",     icon: <TemplatesIcon size={15} /> },
   { href: "/organizations", labelKey: "organizations", icon: <BuildingIcon size={15} /> },
   { href: "/activity",      labelKey: "activity",      icon: <ActivityIcon size={15} /> },
 ];

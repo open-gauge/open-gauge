@@ -9,6 +9,7 @@ import type admin from "./messages/en/admin.json";
 import type users from "./messages/en/users.json";
 import type sites from "./messages/en/sites.json";
 import type procedures from "./messages/en/procedures.json";
+import type templates from "./messages/en/templates.json";
 import type organizations from "./messages/en/organizations.json";
 import type auth from "./messages/en/auth.json";
 import type legal from "./messages/en/legal.json";
@@ -26,6 +27,7 @@ type Messages = {
   users: typeof users;
   sites: typeof sites;
   procedures: typeof procedures;
+  templates: typeof templates;
   organizations: typeof organizations;
   auth: typeof auth;
   legal: typeof legal;

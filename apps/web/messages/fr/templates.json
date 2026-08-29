@@ -1,0 +1,443 @@
+{
+  "page": {
+    "title": "Modèles de documents",
+    "count": "{count, plural, one {# modèle} other {# modèles}}",
+    "newTemplate": "Nouveau modèle",
+    "searchPlaceholder": "Rechercher des modèles...",
+    "emptyTitle": "Aucun modèle pour le moment",
+    "emptyDescription": "Créez votre premier modèle de certificat ou de procédure de calibration.",
+    "filterAll": "Tous les types",
+    "filterAllStatus": "Tous les statuts",
+    "columns": {
+      "name": "Nom",
+      "type": "Type",
+      "status": "Statut",
+      "version": "Version",
+      "updated": "Dernière modification"
+    },
+    "actions": {
+      "edit": "Modifier",
+      "duplicate": "Dupliquer",
+      "archive": "Archiver",
+      "confirmArchive": "Archiver ce modèle ?",
+      "publish": "Publier"
+    }
+  },
+  "newForm": {
+    "title": "Nouveau modèle",
+    "name": "Nom",
+    "namePlaceholder": "p. ex. Certificat de Calibration Standard",
+    "description": "Description",
+    "descriptionPlaceholder": "À quoi sert ce modèle ?",
+    "type": "Type",
+    "typeCertificate": "Certificat de Calibration",
+    "typeProcedure": "Procédure de Calibration",
+    "create": "Créer le modèle",
+    "cancel": "Annuler",
+    "nameRequired": "Le nom est obligatoire"
+  },
+  "editor": {
+    "back": "Retour aux modèles",
+    "unsavedChanges": "Modifications non enregistrées",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "saveDraft": "Enregistrer le brouillon",
+    "templateMode": "Modèle",
+    "previewMode": "Données d'aperçu",
+    "publish": "Publier",
+    "publishConfirmTitle": "Publier ce modèle ?",
+    "publishConfirmDescription": "La publication fige cette version. La modifier ensuite créera une nouvelle version brouillon.",
+    "confirmPublish": "Confirmer la publication",
+    "editPublished": "Modifier (nouvelle version)",
+    "versionLabel": "Version {version}",
+    "properties": "Propriétés",
+    "variablesTab": "Variables",
+    "propertiesTab": "Bloc",
+    "documentTab": "Document",
+    "sampleDataset": "Jeu de données d'exemple",
+    "sampleDatasetDescription": "Les valeurs d'aperçu ci-dessous sont des exemples illustratifs, pas des enregistrements réels.",
+    "willBePopulated": "Rempli automatiquement lors de la génération du document.",
+    "insertVariable": "Insérer",
+    "searchVariables": "Rechercher des variables…",
+    "noVariablesFound": "Aucune variable ne correspond à votre recherche.",
+    "collectionBadge": "Répétitif",
+    "noSelection": "Sélectionnez un bloc sur la page pour modifier ses propriétés.",
+    "emptyCanvas": "Ce modèle est vide. Ajoutez des éléments depuis le panneau Outils à gauche.",
+    "emptyZone": "Déposez ou insérez un élément ici",
+    "toolsPanel": "Outils",
+    "openTools": "Ouvrir les outils",
+    "openVariables": "Ouvrir les variables",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "deleteBlock": "Supprimer le bloc",
+    "dragBlock": "Glisser pour déplacer",
+    "duplicateBlock": "Dupliquer le bloc",
+    "moveUp": "Monter",
+    "moveDown": "Descendre"
+  },
+  "document": {
+    "pageSize": "Format de page",
+    "a4": "A4",
+    "letter": "Lettre",
+    "orientation": "Orientation",
+    "portrait": "Portrait",
+    "landscape": "Paysage",
+    "margins": "Marges (mm)",
+    "marginTop": "Haut",
+    "marginRight": "Droite",
+    "marginBottom": "Bas",
+    "marginLeft": "Gauche",
+    "defaultFont": "Police par défaut",
+    "defaultFontSize": "Taille de police par défaut",
+    "headerEnabled": "En-tête activé",
+    "footerEnabled": "Pied de page activé",
+    "headerContent": "Contenu de l'en-tête",
+    "footerContent": "Contenu du pied de page",
+    "left": "Gauche",
+    "center": "Centre",
+    "right": "Droite",
+    "status": "Statut",
+    "version": "Version {version}",
+    "lastModified": "Dernière modification : {date}"
+  },
+  "tools": {
+    "groupBasic": "Basique",
+    "groupData": "Données",
+    "groupTechnical": "Technique",
+    "groupLayout": "Mise en page",
+    "heading": "Titre",
+    "paragraph": "Paragraphe",
+    "divider": "Ligne horizontale",
+    "pageBreak": "Saut de page",
+    "variable": "Variable",
+    "table": "Tableau",
+    "measurementTable": "Tableau de mesures",
+    "keyValue": "Champ clé/valeur",
+    "equation": "Équation",
+    "graph": "Graphique",
+    "calibrationPlot": "Tracé des données de calibration",
+    "image": "Image",
+    "qrCode": "Code QR",
+    "signature": "Signature",
+    "date": "Date",
+    "pageNumber": "Numéro de page",
+    "columns": "Colonnes",
+    "spacer": "Espaceur",
+    "section": "Section",
+    "header": "En-tête",
+    "footer": "Pied de page"
+  },
+  "format": {
+    "fontFamily": "Police",
+    "fontSize": "Taille",
+    "bold": "Gras",
+    "italic": "Italique",
+    "underline": "Souligné",
+    "alignLeft": "Aligner à gauche",
+    "alignCenter": "Centrer",
+    "alignRight": "Aligner à droite",
+    "alignJustify": "Justifier",
+    "textColor": "Couleur du texte",
+    "highlight": "Surlignage",
+    "lineSpacing": "Interligne",
+    "paragraphSpacing": "Espacement des paragraphes",
+    "bulletList": "Liste à puces",
+    "numberedList": "Liste numérotée"
+  },
+  "blocks": {
+    "common": {
+      "delete": "Supprimer",
+      "duplicate": "Dupliquer",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
+    },
+    "table": {
+      "addRow": "Ajouter une ligne",
+      "removeRow": "Supprimer la ligne",
+      "addColumn": "Ajouter une colonne",
+      "rows": "Lignes",
+      "rowN": "Ligne {n}",
+      "columnWidths": "Largeurs des colonnes (%)",
+      "columnN": "Colonne {n}",
+      "auto": "Auto",
+      "cellHint": "Cliquez sur une cellule pour l'aligner, la fusionner avec la suivante ou définir son arrière-plan.",
+      "headerRow": "Ligne d'en-tête",
+      "bordered": "Avec bordures",
+      "borderColor": "Couleur de la bordure",
+      "clear": "Effacer",
+      "repeatFor": "Répéter les lignes pour",
+      "repeatNone": "Ne pas répéter",
+      "alignLeft": "Gauche",
+      "alignCenter": "Centre",
+      "alignRight": "Droite",
+      "mergeRight": "Fusionner à droite",
+      "split": "Scinder",
+      "cellBackground": "Arrière-plan de la cellule",
+      "clearBackground": "Effacer"
+    },
+    "measurementTable": {
+      "columns": "Colonnes affichées"
+    },
+    "keyValue": {
+      "addItem": "Ajouter un champ",
+      "label": "Étiquette",
+      "variable": "Variable",
+      "columns": "Colonnes",
+      "empty": "Aucun champ pour l'instant — ajoutez-en depuis le panneau Bloc."
+    },
+    "equation": {
+      "latex": "LaTeX",
+      "latexPlaceholder": "p. ex. y = a_0 + a_1x",
+      "caption": "Légende"
+    },
+    "graph": {
+      "kind": "Type de graphique",
+      "kindCalibrationCurve": "Courbe de calibration",
+      "kindReferenceVsMeasured": "Référence vs mesuré",
+      "kindResidualPlot": "Tracé des résidus",
+      "kindDriftOverTime": "Dérive dans le temps",
+      "kindCustom": "Personnalisé",
+      "title": "Titre",
+      "xVariable": "Variable de l'axe X",
+      "yVariable": "Variable de l'axe Y",
+      "secondaryVariable": "Série secondaire",
+      "xLabel": "Étiquette de l'axe X",
+      "yLabel": "Étiquette de l'axe Y",
+      "xUnit": "Unité X",
+      "yUnit": "Unité Y",
+      "legend": "Afficher la légende",
+      "grid": "Afficher la grille",
+      "width": "Largeur (mm)",
+      "height": "Hauteur (mm)"
+    },
+    "image": {
+      "upload": "Téléverser une image",
+      "replace": "Remplacer l'image",
+      "remove": "Supprimer",
+      "alt": "Texte alternatif",
+      "width": "Largeur (mm)",
+      "align": "Alignement"
+    },
+    "qrCode": {
+      "payloadType": "Contenu",
+      "assetUrl": "URL de l'actif",
+      "assetId": "ID de l'actif",
+      "certificateUrl": "URL du certificat",
+      "certificateId": "ID du certificat",
+      "custom": "Texte personnalisé",
+      "variable": "Variable",
+      "customValue": "Texte",
+      "size": "Taille (mm)",
+      "errorCorrection": "Correction d'erreur",
+      "quietZone": "Zone de silence"
+    },
+    "signature": {
+      "mode": "Signataire",
+      "preparedBy": "Préparé par",
+      "checkedBy": "Vérifié par",
+      "label": "Étiquette"
+    },
+    "date": {
+      "variant": "Source",
+      "current": "Date actuelle",
+      "calibration": "Date de calibration",
+      "issue": "Date d'émission du certificat",
+      "expiration": "Date d'expiration",
+      "format": "Format"
+    },
+    "spacer": {
+      "height": "Hauteur (mm)"
+    },
+    "section": {
+      "title": "Titre de la section"
+    },
+    "columns": {
+      "width": "Largeurs des colonnes",
+      "addColumn": "Ajouter une colonne"
+    },
+    "headerFooter": {
+      "left": "Gauche",
+      "center": "Centre",
+      "right": "Droite",
+      "enabled": "Afficher sur chaque page",
+      "height": "Hauteur (mm)"
+    }
+  },
+  "variables": {
+    "categoryLabels": {
+      "asset": "Actif",
+      "calibration": "Calibration",
+      "calibration_results": "Résultats de Calibration",
+      "measurements": "Mesures",
+      "organization": "Organisation",
+      "user": "Utilisateur / Technicien",
+      "dates": "Dates",
+      "page": "Page",
+      "equipment": "Équipement",
+      "procedure": "Procédure",
+      "environment": "Conditions Environnementales",
+      "steps": "Étapes",
+      "acceptance_criteria": "Critères d'Acceptation",
+      "safety": "Consignes de Sécurité",
+      "approval": "Approbation",
+      "revision_history": "Historique des Révisions"
+    },
+    "categoryDescriptions": {
+      "asset": "Rempli automatiquement depuis la fiche de l'actif.",
+      "calibration": "Rempli automatiquement depuis la fiche de calibration.",
+      "calibration_results": "Rempli automatiquement depuis les résultats d'ajustement de la calibration.",
+      "measurements": "Rempli automatiquement depuis les points de mesure de la calibration.",
+      "organization": "Rempli automatiquement depuis la fiche de votre organisation.",
+      "user": "Rempli automatiquement depuis la fiche du technicien.",
+      "dates": "Rempli automatiquement lors de la génération du document.",
+      "page": "Rempli automatiquement selon la page sur laquelle il apparaît.",
+      "equipment": "Rempli automatiquement depuis la fiche de l'actif/équipement.",
+      "procedure": "Rempli automatiquement depuis la fiche de la procédure.",
+      "environment": "Rempli automatiquement depuis les conditions environnementales de la procédure.",
+      "steps": "Rempli automatiquement depuis les étapes de la procédure.",
+      "acceptance_criteria": "Rempli automatiquement depuis les critères d'acceptation de la procédure.",
+      "safety": "Rempli automatiquement depuis les consignes de sécurité de la procédure.",
+      "approval": "Rempli automatiquement depuis la fiche d'approbation de la procédure.",
+      "revision_history": "Rempli automatiquement depuis l'historique des révisions de la procédure."
+    },
+    "collectionLabels": {
+      "asset_channels": "Voies",
+      "measurements": "Mesures",
+      "required_equipment": "Équipement Requis",
+      "environmental_conditions": "Conditions Environnementales",
+      "steps": "Étapes",
+      "acceptance_criteria": "Critères d'Acceptation",
+      "safety_instructions": "Consignes de Sécurité",
+      "revision_history": "Historique des Révisions"
+    },
+    "labels": {
+      "asset": {
+        "id": "ID de l'Actif",
+        "name": "Nom de l'Actif",
+        "serial_number": "Numéro de Série",
+        "manufacturer": "Fabricant",
+        "model": "Modèle",
+        "type": "Type d'Actif",
+        "description": "Description",
+        "location": "Emplacement",
+        "status": "Statut",
+        "public_url": "URL Publique de l'Actif"
+      },
+      "channel": {
+        "id": "ID de la Voie",
+        "physical_quantity": "Grandeur Physique",
+        "unit": "Unité",
+        "technology": "Technologie",
+        "range_min": "Plage Min.",
+        "range_max": "Plage Max.",
+        "measurement_range": "Plage de Mesure",
+        "accuracy": "Précision",
+        "resolution": "Résolution",
+        "uncertainty": "Incertitude",
+        "output_signal_min": "Signal de Sortie Min.",
+        "output_signal_max": "Signal de Sortie Max.",
+        "output_signal_unit": "Unité du Signal de Sortie",
+        "output_signal_range": "Plage du Signal de Sortie"
+      },
+      "calibration": {
+        "id": "ID de Calibration",
+        "date": "Date de Calibration",
+        "next_date": "Prochaine Date de Calibration",
+        "type": "Type de Calibration",
+        "method": "Méthode de Calibration",
+        "status": "Statut de Calibration",
+        "laboratory": "Laboratoire de Calibration",
+        "certificate_number": "Numéro de Certificat",
+        "certificate_url": "URL du Certificat",
+        "technician": "Technicien",
+        "coefficients": "Coefficients de Calibration",
+        "polynomial_order": "Ordre du Polynôme",
+        "statistics": {
+          "r_squared": "R²",
+          "rmse": "RMSE",
+          "max_error": "Erreur Maximale",
+          "full_scale_error": "Erreur Pleine Échelle",
+          "non_linearity": "Non-linéarité",
+          "hysteresis": "Hystérésis"
+        },
+        "uncertainty": {
+          "combined": "Incertitude Combinée",
+          "expanded": "Incertitude Élargie"
+        }
+      },
+      "organization": {
+        "name": "Nom de l'Organisation",
+        "address": "Adresse de l'Organisation",
+        "email": "Email de l'Organisation",
+        "website": "Site Web de l'Organisation",
+        "accreditation_number": "Numéro d'Accréditation"
+      },
+      "user": {
+        "name": "Nom",
+        "email": "Email",
+        "role": "Rôle"
+      },
+      "date": {
+        "current": "Date Actuelle",
+        "calibration": "Date de Calibration",
+        "issue": "Date d'Émission du Certificat",
+        "expiration": "Date d'Expiration"
+      },
+      "page": {
+        "current": "Page Actuelle",
+        "total": "Total des Pages"
+      },
+      "equipment": {
+        "asset_type": "Type d'Actif",
+        "name": "Nom de l'Équipement",
+        "model": "Modèle de l'Équipement"
+      },
+      "procedure": {
+        "number": "Numéro de Procédure",
+        "revision": "Révision de la Procédure",
+        "title": "Titre de la Procédure",
+        "standard_ref": "Référence Normative"
+      },
+      "approval": {
+        "approver_name": "Nom de l'Approbateur",
+        "approved_date": "Date d'Approbation",
+        "status": "Statut d'Approbation"
+      },
+      "measurement": {
+        "index": "Point",
+        "reference": "Référence",
+        "measured": "Mesuré",
+        "fitted": "Ajusté",
+        "residual": "Résidu",
+        "uncertainty": "Incertitude"
+      },
+      "item": {
+        "name": "Nom",
+        "model": "Modèle"
+      },
+      "condition": {
+        "parameter": "Paramètre",
+        "value": "Valeur"
+      },
+      "step": {
+        "index": "Étape",
+        "title": "Titre",
+        "description": "Description",
+        "duration_min": "Durée (min)"
+      },
+      "criterion": {
+        "label": "Critère",
+        "limit": "Limite"
+      },
+      "instruction": {
+        "text": "Instruction"
+      },
+      "revision": {
+        "version": "Version",
+        "date": "Date",
+        "author": "Auteur",
+        "change_reason": "Motif du Changement"
+      }
+    }
+  }
+}

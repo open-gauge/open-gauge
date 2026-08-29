@@ -23,6 +23,7 @@ import type { AssetHealthResponse } from "@/types/health";
 import type { LocationItem } from "@/types/location";
 import type { Procedure } from "@/types/procedure";
 import type { StoredFile } from "@/types/stored_file";
+import type { Template, TemplateStatus, TemplateType } from "@/types/template";
 import type { UserProfile, UserSignature } from "@/types/user";
 import type { EmailSettings } from "@/services/admin.service";
 import type {
@@ -133,6 +134,7 @@ interface DemoState {
   notifications?: StoredNotification[];
   notificationPreferences?: StoredNotificationPreference[];
   calibrationFrequencyResponsePoints?: Record<string, FrequencyResponsePoint[]>;
+  templates?: Template[];
 }
 
 const FIXTURE = rawFixture as unknown as DemoState;
@@ -578,6 +580,128 @@ export function deleteProcedure(id: string): void {
   const state = getState();
   state.procedures = state.procedures.filter((p) => p.id !== id);
   persist();
+}
+
+// ---------------------------------------------------------------------------
+// Document templates
+// ---------------------------------------------------------------------------
+
+function templatesState(): Template[] {
+  const state = getState();
+  if (!state.templates) state.templates = [];
+  return state.templates;
+}
+
+export function listLatestTemplates(opts: {
+  type?: TemplateType;
+  status?: TemplateStatus;
+  q?: string;
+  includeArchived?: boolean;
+}): Template[] {
+  const byGroup = new Map<string, Template>();
+  for (const t of templatesState()) {
+    const current = byGroup.get(t.template_group_id);
+    if (!current || t.version > current.version) byGroup.set(t.template_group_id, t);
+  }
+  let latest = Array.from(byGroup.values());
+  if (!opts.includeArchived) latest = latest.filter((t) => t.status !== "archived");
+  if (opts.type) latest = latest.filter((t) => t.type === opts.type);
+  if (opts.status) latest = latest.filter((t) => t.status === opts.status);
+  if (opts.q) {
+    const needle = opts.q.toLowerCase();
+    latest = latest.filter((t) => t.name.toLowerCase().includes(needle));
+  }
+  return latest.sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
+}
+
+export function getTemplate(id: string): Template | undefined {
+  return templatesState().find((t) => t.id === id);
+}
+
+export function listTemplateVersions(templateGroupId: string): Template[] {
+  return templatesState()
+    .filter((t) => t.template_group_id === templateGroupId)
+    .sort((a, b) => b.version - a.version);
+}
+
+export function getDraftInGroup(templateGroupId: string): Template | undefined {
+  return templatesState().find((t) => t.template_group_id === templateGroupId && t.status === "draft");
+}
+
+export function createTemplate(template: Template): Template {
+  templatesState().push(template);
+  persist();
+  return template;
+}
+
+export function updateTemplate(id: string, patch: Partial<Template>): Template | undefined {
+  const template = templatesState().find((t) => t.id === id);
+  if (!template) return undefined;
+  Object.assign(template, patch, { updated_at: nowIso() });
+  persist();
+  return template;
+}
+
+export function publishTemplate(id: string): Template | undefined {
+  const template = templatesState().find((t) => t.id === id);
+  if (!template) return undefined;
+  template.status = "published";
+  template.published_at = nowIso();
+  template.updated_at = nowIso();
+  persist();
+  return template;
+}
+
+export function archiveTemplate(id: string): Template | undefined {
+  const template = templatesState().find((t) => t.id === id);
+  if (!template) return undefined;
+  template.status = "archived";
+  template.updated_at = nowIso();
+  persist();
+  return template;
+}
+
+export function branchNewTemplateVersion(sourceId: string): Template | undefined {
+  const source = getTemplate(sourceId);
+  if (!source) return undefined;
+  const existingDraft = getDraftInGroup(source.template_group_id);
+  if (existingDraft) return existingDraft;
+  const maxVersion = Math.max(...listTemplateVersions(source.template_group_id).map((t) => t.version));
+  const now = nowIso();
+  const clone: Template = {
+    ...source,
+    id: genId(),
+    version: maxVersion + 1,
+    status: "draft",
+    document: cloneValue(source.document),
+    created_at: now,
+    updated_at: now,
+    published_at: null,
+  };
+  return createTemplate(clone);
+}
+
+export function duplicateTemplate(sourceId: string, name?: string): Template | undefined {
+  const source = getTemplate(sourceId);
+  if (!source) return undefined;
+  const now = nowIso();
+  const clone: Template = {
+    ...source,
+    id: genId(),
+    template_group_id: genId(),
+    name: name ?? `${source.name} (copy)`,
+    version: 1,
+    status: "draft",
+    document: cloneValue(source.document),
+    created_at: now,
+    updated_at: now,
+    published_at: null,
+  };
+  return createTemplate(clone);
+}
+
+function cloneValue<T>(value: T): T {
+  return typeof structuredClone === "function" ? structuredClone(value) : (JSON.parse(JSON.stringify(value)) as T);
 }
 
 // ---------------------------------------------------------------------------

@@ -15,6 +15,27 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.9.0
+
+### Ajouté
+
+- **Une nouvelle section Modèles de documents pour concevoir des mises en page de certificats et
+  procédures de calibration.** Un éditeur WYSIWYG à trois panneaux (Outils / toile de page A4 /
+  Variables) permet aux administrateurs de créer des modèles de documents réutilisables et
+  structurés — titres, paragraphes, tableaux (y compris une liaison de ligne répétitive à une
+  collection de données comme les mesures), un tableau de mesures dédié, des champs clé/valeur,
+  des équations LaTeX, des graphiques de calibration, des images, des codes QR, des blocs de
+  signature, des dates, des numéros de page, des colonnes et des sauts de section — avec
+  glisser-déposer ou clic pour insérer depuis le panneau d'outils, une barre de formatage de
+  texte contextuelle et un explorateur de variables consultable, limité au type du modèle
+  (certificat ou procédure). Un mode "Données d'aperçu" remplace chaque jeton `{{ variable }}`
+  par des valeurs d'exemple réalistes afin que l'apparence finale du modèle soit évidente avant
+  même qu'une donnée réelle n'existe. Les modèles sont versionnés comme l'historique de
+  calibration : une version publiée est immuable, et la modifier crée une nouvelle version
+  brouillon plutôt que de la modifier sur place. Cela livre l'éditeur, son modèle de document JSON
+  structuré et la persistance/le versionnage côté serveur — la génération de PDF à partir d'un
+  modèle est une tâche ultérieure distincte.
+
 ## 4.8.0
 
 ### Changé
