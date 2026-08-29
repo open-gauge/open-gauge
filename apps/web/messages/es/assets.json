@@ -168,7 +168,9 @@
     "responseTimeMsPlaceholder": "p. ej. 300",
     "bandwidthHz": "Ancho de banda (Hz)",
     "bandwidthHzPlaceholder": "p. ej. 1000",
-    "referenceStandard": "Patrón de referencia"
+    "referenceStandard": "Patrón de referencia",
+    "defaultReportTemplate": "Plantilla de informe predeterminada",
+    "defaultReportTemplatePlaceholder": "Usar el valor predeterminado de la organización/global"
   },
   "tips": {
     "physicalQuantity": "La magnitud física define el tipo de medición (p. ej., temperatura, presión) y determina las unidades y procedimientos de calibración aplicables. Elige la que mejor corresponda a la medición principal del sensor.",
@@ -579,7 +581,8 @@
     "downloadCertificate": "Descargar certificado",
     "chooseTemplate": "Elegir plantilla de certificado",
     "defaultTemplate": "Plantilla predeterminada",
-    "noCustomTemplates": "No hay plantillas personalizadas disponibles"
+    "noCustomTemplates": "No hay plantillas personalizadas disponibles",
+    "failedToSetTemplate": "Error al establecer la plantilla de informe"
   },
   "files": {
     "title": "Archivos y adjuntos",

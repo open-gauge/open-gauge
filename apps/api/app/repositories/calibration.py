@@ -112,6 +112,24 @@ def reject_calibration(
     return cal
 
 
+def set_report_template(
+    db: Session,
+    cal: Calibration,
+    certificate_template_id: uuid.UUID | None,
+    document_template_id: uuid.UUID | None,
+) -> Calibration:
+    """Set (or clear, if both args are None) this calibration's report template override —
+    takes priority over the sensor's default when generating/downloading its report. Doesn't
+    touch calibration_version or any measurement data, so it isn't a "historical value" in the
+    Calibration Philosophy sense; it only changes which template renders the (already-immutable)
+    data into a PDF."""
+    cal.report_certificate_template_id = certificate_template_id
+    cal.report_document_template_id = document_template_id
+    db.commit()
+    db.refresh(cal)
+    return cal
+
+
 def create_atomic(db: Session, created_by: uuid.UUID, body: CalibrationCreate) -> Calibration:
     """
     Atomically create a Calibration and all CalibrationData rows in one transaction.

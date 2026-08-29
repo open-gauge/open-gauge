@@ -56,6 +56,10 @@ export interface SensorChannelFull {
   calibration_method_id: string | null;
   calibration_method_name: string | null;
   calibration_interval: number | null;
+  default_certificate_template_id: string | null;
+  default_certificate_template_name: string | null;
+  default_document_template_id: string | null;
+  default_document_template_name: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -203,6 +207,8 @@ export interface SensorChannelUpdateInput {
   output_signal_unit?: string | null;
   output_type?: string | null;
   calibration_role?: string | null;
+  default_certificate_template_id?: string | null;
+  default_document_template_id?: string | null;
 }
 
 export interface AssetCreateBody {

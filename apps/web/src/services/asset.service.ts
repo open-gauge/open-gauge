@@ -374,6 +374,7 @@ export async function getCalibrationCertificateUrl(calId: string): Promise<{ url
 export interface CertificateTemplateOption {
   id: string;
   name: string;
+  kind: "certificate" | "document";
 }
 
 export async function listCalibrationCertificateTemplates(calId: string): Promise<CertificateTemplateOption[]> {
@@ -382,11 +383,33 @@ export async function listCalibrationCertificateTemplates(calId: string): Promis
   });
 }
 
-/** Live-generates and downloads the certificate, optionally with a specific template. */
-export async function downloadCalibrationCertificateBlob(calId: string, templateId?: string | null): Promise<Blob> {
-  const qs = templateId ? `?template_id=${encodeURIComponent(templateId)}` : "";
+/** Live-generates and downloads the report, optionally with a specific template (either kind). */
+export async function downloadCalibrationCertificateBlob(
+  calId: string,
+  template?: { id: string; kind: "certificate" | "document" } | null,
+): Promise<Blob> {
+  const qs = !template ? "" : template.kind === "document"
+    ? `?document_template_id=${encodeURIComponent(template.id)}`
+    : `?template_id=${encodeURIComponent(template.id)}`;
   return apiBlob(`/api/v1/calibrations/${calId}/certificate/download${qs}`, {
     headers: tokenHeader(),
+  });
+}
+
+/** Persists (or clears, if both are null) this calibration's report template override — takes
+ * priority over the sensor's default for every future download by any user, until changed. Only
+ * a user with edit rights on the calibration may call this (backend-enforced). */
+export async function setCalibrationReportTemplate(
+  calId: string,
+  template: { id: string; kind: "certificate" | "document" } | null,
+): Promise<void> {
+  await apiFetch(`/api/v1/calibrations/${calId}/report-template`, {
+    method: "PUT",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      certificate_template_id: template?.kind === "certificate" ? template.id : null,
+      document_template_id: template?.kind === "document" ? template.id : null,
+    }),
   });
 }
 

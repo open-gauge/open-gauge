@@ -6,7 +6,11 @@ description: Subir y crear plantillas LaTeX personalizadas para certificados de 
 Un administrador puede reemplazar el diseño de certificado integrado con una plantilla `.tex`
 personalizada — para localización, un diseño diferente, o para coincidir con el formato de certificado
 de un laboratorio acreditado existente — sin tocar ningún código. Las plantillas se gestionan desde
-**Panel de administración → Plantillas de certificado**.
+**Panel de Administración → Plantillas**, junto con las plantillas creadas en el editor en vivo de
+[Plantillas de documentos](../templates/index.mdx) (el botón "Subir LaTeX" de esa página es este
+mismo flujo de subida) — ambos tipos pueden asignarse como plantilla de informe predeterminada de
+un canal de sensor, o como anulación por calibración; ver
+[Asignar una plantilla predeterminada a un canal](../templates/index.mdx#asignar-una-plantilla-predeterminada-a-un-canal).
 
 ## Cómo funciona el renderizado
 
@@ -37,7 +41,7 @@ renderizan todos correctamente sin ningún escapado especial más allá del filt
 
 ## Subir una plantilla
 
-Desde **Panel de administración → Plantillas de certificado**, elige un ámbito (una organización
+Desde **Panel de Administración → Plantillas**, elige un ámbito (una organización
 específica, o *Global* para el respaldo usado por cualquier organización sin su propia plantilla
 predeterminada — las plantillas globales requieren un superadministrador, ya que afectan a cada
 organización), sube el archivo `.tex`, dale un nombre, y opcionalmente márcala como la predeterminada

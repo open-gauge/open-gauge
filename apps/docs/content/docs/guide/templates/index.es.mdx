@@ -5,11 +5,11 @@ description: Un editor WYSIWYG para diseñar diseños reutilizables de certifica
 
 Una **plantilla de documento** es un diseño reutilizable para un documento imprimible —un
 certificado de calibración o un procedimiento de calibración— diseñado una sola vez y completado
-con datos reales cada vez que se genera. Gestiónalas desde la página **Plantillas de documentos**
-en la barra lateral.
-
-Esta página describe el propio editor de plantillas. Generar un PDF real a partir de una plantilla
-es un paso posterior independiente: una plantilla es el *diseño*, no el documento.
+con datos reales cada vez que se genera. Gestiónalas desde **Panel de Administración → Plantillas**,
+junto con las plantillas LaTeX de certificado creadas a mano (ver
+[Plantillas de certificado](../calibration/certificate-templates.mdx)) — el botón "Crear desde
+cero" de esa página abre este editor para una plantilla nueva; la exportación/importación y la
+generación se describen en [Generación de PDF](#generación-de-pdf) más abajo.
 
 ## Dos tipos de plantilla
 
@@ -89,3 +89,45 @@ trazable**.
 Las imágenes (un logotipo de empresa, una marca de acreditación, un diagrama) se suben por
 plantilla y se almacenan como referencias a archivos — un bloque de imagen guarda un `file_id` y
 una URL de vista previa resuelta, no una copia incrustada de los bytes del archivo.
+
+## Exportar e importar
+
+Una plantilla puede exportarse a un archivo JSON portátil (su nombre, descripción, tipo y
+documento completo) y volver a importarse en otro lugar — como un nuevo borrador, con su propio
+historial de versiones independiente — desde **Panel de Administración → Plantillas**. A
+diferencia de una subida `.tex` en bruto, una plantilla exportada recorre este mismo editor de
+ida y vuelta: impórtala, sigue editando, publica. No es LaTeX — eso se genera automáticamente al
+crear el PDF (ver abajo), no algo que redactes o intercambies directamente.
+
+## Generación de PDF
+
+Una plantilla del editor **publicada** puede generar un PDF de informe de calibración real, de la
+misma forma que lo hace una plantilla de certificado `.tex` subida. Internamente, el documento
+JSON estructurado de la plantilla se convierte a LaTeX y se compila con el mismo pipeline de
+[Tectonic](../calibration/certificate-templates.mdx) — sin un motor de PDF separado, sin reglas
+de escape separadas que aprender. Los bloques de ecuación ya almacenan LaTeX en bruto, así que
+pasan directamente; el resto de bloques (texto, tablas, filas repetitivas vinculadas a una
+colección, gráficos, códigos QR, columnas, …) se traducen automáticamente.
+
+Esta resolución solo aplica a las plantillas de tipo **Certificado de Calibración** — una
+plantilla de Procedimiento de Calibración es un documento de referencia estático, no algo que se
+genera por calibración.
+
+### Asignar una plantilla predeterminada a un canal
+
+Abre el editor de un canal de sensor (**Activos → un activo → Resumen → Editar**) y establece
+**Plantilla de informe predeterminada** a cualquier plantilla publicada, de cualquiera de los dos
+tipos (subida `.tex` o creada en el editor). Cada calibración registrada en ese canal la usa a
+menos que se anule individualmente (abajo). Déjala sin definir para recurrir al valor
+predeterminado de la organización, luego al valor predeterminado global, luego a la plantilla
+integrada — la misma cadena que ya usan las [plantillas de certificado](../calibration/certificate-templates.mdx).
+
+### Anular la plantilla para una calibración
+
+En la página de detalle de una calibración, el menú desplegable del botón **Descargar** permite a
+un usuario con permisos de edición (cualquier rol por encima de Visualizador) elegir una plantilla
+específica solo para esa calibración — esta elección se **persiste**, no es un renderizado
+puntual: se convierte en lo que *todos* los usuarios descargan para esa calibración a partir de
+ese momento, hasta que se cambie de nuevo o se borre volviendo a "Plantilla predeterminada". Un
+Visualizador nunca ve este menú — siempre obtiene la plantilla que resuelva la anulación, el
+valor predeterminado del canal o el respaldo de organización/global, sin elección propia.

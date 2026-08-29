@@ -15,6 +15,102 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.13.0
+
+### Ajouté
+
+- **Un graphique des résidus (référence contre résidu) est désormais généré pour tout certificat
+  comportant des données de calibration**, reflétant le `ResidualsChart` de l'application web. Le
+  graphique de courbe ajustée déjà existant (mesuré contre référence avec la ligne d'ajustement)
+  ne se génère désormais que lorsqu'il existe réellement une courbe évaluable à tracer —
+  `poly_coefficients`, une formule personnalisée déclarée, ou une table de correspondance —
+  reproduisant le comportement `hasEvaluableCurve` de l'application web. Une calibration skip_fit
+  (par exemple « Référence contre Indiqué », qui n'a pas de fonction de transfert par
+  conception) obtenait auparavant quand même un nuage de points « Mesuré contre Référence » sans
+  ligne d'ajustement ; elle n'affiche désormais correctement que le graphique des résidus, comme
+  la vue de détail de la calibration.
+
+### Modifié
+
+- **Le champ de contexte `uncertainty_summary_rows` du modèle de certificat est désormais le
+  budget d'incertitude GUM détaillé** — une ligne nommée par contribution réellement applicable
+  (Résidus d'ajustement / Étalon de référence / Résolution / Exactitude nominale du capteur,
+  celles qui ont été fournies), suivie des totaux Combinée (RSS) et Élargie (±) — au lieu d'un
+  résumé condensé Type A / Type B.
+
+### Corrigé
+
+- **`GET /calibrations/{id}/certificate/download` ne rejette plus les calibrations qui n'ont pas
+  de coefficients polynomiaux par conception** (modes skip_fit — « Référence contre Indiqué » et
+  « Référence contre Avant/Après réparation » sans modèle — et les calibrations en table de
+  correspondance, qui n'ajustent aucune courbe, mais qui possèdent toutes de vraies statistiques
+  calculées). La vérification « cette calibration a-t-elle été analysée » de l'endpoint examine
+  désormais `max_error` (calculé pour tout mode analysé) plutôt que `poly_coefficients` (défini
+  uniquement lorsqu'il existe une courbe réelle).
+
+## 4.12.0
+
+### Ajouté
+
+- **Le contexte des modèles de certificat expose désormais le nom légal complet de
+  l'organisation** (`org_legal_name`) aux côtés du nom d'affichage court déjà existant
+  (`org_name`) — `Organization.full_name` était déjà un champ stocké, mais n'était jamais exposé
+  aux modèles de certificat. Se rabat sur `org_name` (et, en l'absence de toute organisation, sur
+  « Open Gauge ») lorsqu'aucun nom légal n'est défini, afin que les modèles souhaitant afficher le
+  nom enregistré/légal (plutôt que le nom de marque plus court) dans un pied de page ou un bloc
+  de signature disposent d'une valeur à utiliser.
+
+## 4.11.0
+
+### Ajouté
+
+- **Les certificats de calibration peuvent désormais afficher une signature « vérifié par » en
+  plus de la signature « préparé par » déjà existante.** `Calibration.checked_by_user_id`/
+  `checked_by_name` étaient déjà enregistrés sur la calibration, mais n'étaient jamais exposés au
+  pipeline des modèles de certificat rédigés à la main (`.tex`) — `certificate_service` résout
+  désormais la signature active de la personne ayant vérifié la calibration, de la même façon
+  qu'il le fait déjà pour la personne l'ayant réalisée, et expose `checked_by_name`/
+  `checked_by_signature_path` dans le contexte du modèle, aux côtés des `performer_name`/
+  `performer_signature_path` déjà existants.
+- **Un résumé compact d'incertitude Type A / Type B / combinée / élargie est désormais disponible
+  pour les modèles de certificat** (`uncertainty_summary_rows`), pour les modèles qui préfèrent
+  afficher le budget GUM condensé en ces quatre totaux nommés plutôt qu'une ligne par source du
+  budget. Le Type A est l'entrée des résidus d'ajustement ; le Type B est la combinaison RSS de
+  toutes les autres entrées — les deux sont dérivés des données `uncertainty_budget` déjà
+  existantes, sans stocker de nouveaux champs.
+
+### Corrigé
+
+- **La spécification de conformité d'une calibration (la tolérance citée à côté d'un énoncé
+  « CONFORMS »/« DOES NOT CONFORM ») est désormais exprimée avec son unité pour les tolérances
+  absolues et celles définies manuellement** (par exemple « ±0.75 °C (absolute) » au lieu de
+  « ±0.75 (absolute) ») — un nombre sans unité sur un certificat est ambigu et n'est pas acceptable
+  dans les unités auxquelles il est associé. Les spécifications en pourcentage (« of reading » /
+  « of full scale ») étaient déjà sans ambiguïté et restent inchangées.
+
+## 4.10.0
+
+### Ajouté
+
+- **Les Modèles de documents fusionnent désormais dans la section Modèles du panneau
+  d'Administration aux côtés des modèles de certificat LaTeX, gagnent l'export/import et — la
+  pièce manquante depuis la 4.9.0 — peuvent réellement générer des rapports de calibration.** La
+  section d'administration "Modèles" (auparavant "Modèles de certificat") liste les deux voies de
+  création côte à côte : téléverser un fichier `.tex`, ou "Créer à partir de zéro" dans l'éditeur
+  en direct ; un modèle de l'éditeur peut être exporté vers un fichier JSON portable et réimporté
+  (fait l'aller-retour par l'éditeur, contrairement à un téléversement `.tex` brut). Un modèle de
+  l'éditeur publié est rendu en PDF en générant du LaTeX à partir de son document JSON structuré
+  et en le compilant avec le pipeline Tectonic existant — réutilisant toute la chaîne d'outils
+  LaTeX (échappement Jinja, rendu d'images `qrcode`/`matplotlib`, signature PAdES) au lieu
+  d'ajouter une nouvelle dépendance PDF. Chaque voie de capteur peut recevoir un modèle de rapport
+  par défaut (l'un ou l'autre type) ; une calibration peut le remplacer individuellement via un
+  sélecteur de modèle sur son bouton de téléchargement, réservé aux utilisateurs ayant les droits
+  de modification — les autres utilisateurs téléchargent toujours le modèle résolu par le
+  remplacement, le défaut du capteur, ou le repli organisation/global, sans sélecteur propre.
+  L'ancienne entrée "Modèles de documents" de la barre latérale et sa page de liste ont disparu
+  (l'éditeur lui-même est inchangé, toujours à `/templates/[id]`) ; une visite à l'ancienne URL de
+  liste redirige vers la section d'administration.
+
 ## 4.9.0
 
 ### Ajouté

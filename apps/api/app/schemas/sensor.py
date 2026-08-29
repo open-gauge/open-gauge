@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SensorChannelCreate(BaseModel):
@@ -36,6 +36,15 @@ class SensorChannelCreate(BaseModel):
     criticality: str | None = None
     calibration_method_id: uuid.UUID | None = None
     calibration_interval: int | None = None
+    # Default report template for this channel's calibrations — at most one of the pair.
+    default_certificate_template_id: uuid.UUID | None = None
+    default_document_template_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _at_most_one_default_template(self) -> "SensorChannelCreate":
+        if self.default_certificate_template_id and self.default_document_template_id:
+            raise ValueError("Set at most one of default_certificate_template_id / default_document_template_id")
+        return self
 
 
 class SensorChannelResponse(SensorChannelCreate):
@@ -45,5 +54,7 @@ class SensorChannelResponse(SensorChannelCreate):
     created_at: datetime
     updated_at: datetime
     calibration_method_name: str | None = None  # resolved via join in _enrich
+    default_certificate_template_name: str | None = None  # resolved via join in _enrich
+    default_document_template_name: str | None = None  # resolved via join in _enrich
 
     model_config = {"from_attributes": True}

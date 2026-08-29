@@ -6,7 +6,12 @@ description: Hochladen und Erstellen benutzerdefinierter LaTeX-Vorlagen für Kal
 Ein Admin kann das eingebaute Zertifikatsdesign durch eine benutzerdefinierte `.tex`-Vorlage
 ersetzen — für Lokalisierung, ein anderes Layout oder um ein bestehendes Zertifikatsformat eines
 akkreditierten Labors nachzubilden — ohne jeglichen Code anzufassen. Vorlagen werden über
-**Admin-Panel → Zertifikatsvorlagen** verwaltet.
+**Admin-Panel → Vorlagen** verwaltet, zusammen mit im Live-Editor der
+[Dokumentvorlagen](../templates/index.mdx) erstellten Vorlagen (die Schaltfläche "LaTeX
+hochladen" auf dieser Seite ist derselbe Upload-Ablauf) — beide Arten können als
+Standard-Berichtsvorlage eines Sensorkanals oder als Überschreibung pro Kalibrierung zugewiesen
+werden; siehe
+[Einem Kanal eine Standardvorlage zuweisen](../templates/index.mdx#einem-kanal-eine-standardvorlage-zuweisen).
 
 ## Wie das Rendering funktioniert
 
@@ -37,7 +42,7 @@ werden, ohne besonderes Escaping über den `latex`-Filter hinaus.
 
 ## Eine Vorlage hochladen
 
-Wählen Sie unter **Admin-Panel → Zertifikatsvorlagen** einen Geltungsbereich (eine bestimmte
+Wählen Sie unter **Admin-Panel → Vorlagen** einen Geltungsbereich (eine bestimmte
 Organisation, oder *Global* für das Fallback, das von jeder Organisation ohne eigene Standardvorlage
 verwendet wird — globale Vorlagen erfordern einen Superadmin, da sie jede Organisation betreffen),
 laden Sie die `.tex`-Datei hoch, geben Sie ihr einen Namen und markieren Sie sie optional als

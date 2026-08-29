@@ -5,7 +5,7 @@
     "administration": "Verwaltung",
     "dashboard": "Übersicht",
     "users": "Benutzer",
-    "certificates": "Zertifikatsvorlagen",
+    "certificates": "Vorlagen",
     "email": "E-Mail"
   },
   "dashboard": {
@@ -77,7 +77,23 @@
     "failedToSave": "Speichern fehlgeschlagen",
     "failedToSetDefault": "Festlegen als Standard fehlgeschlagen",
     "failedToDelete": "Löschen fehlgeschlagen",
-    "failedToUpload": "Hochladen der Vorlage fehlgeschlagen"
+    "failedToUpload": "Hochladen der Vorlage fehlgeschlagen",
+    "kindEditor": "Editor",
+    "editInEditor": "Im Vorlagen-Editor bearbeiten",
+    "duplicate": "Duplizieren",
+    "export": "Exportieren",
+    "createTitle": "Neu erstellen (Live-Editor)",
+    "typeLabel": "Typ",
+    "typeCertificate": "Kalibrierzertifikat",
+    "typeProcedure": "Kalibrierverfahren",
+    "creating": "Wird erstellt…",
+    "createFromScratch": "Vorlage erstellen",
+    "failedToCreate": "Vorlage konnte nicht erstellt werden",
+    "importTitle": "Aus JSON-Datei importieren",
+    "importFileLabel": "Exportierte Vorlage (.json)",
+    "importing": "Wird importiert…",
+    "import": "Importieren",
+    "failedToImport": "Vorlage konnte nicht importiert werden"
   },
   "email": {
     "loading": "Wird geladen…",

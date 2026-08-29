@@ -5,7 +5,7 @@
     "administration": "Administration",
     "dashboard": "Dashboard",
     "users": "Users",
-    "certificates": "Certificate Templates",
+    "certificates": "Templates",
     "email": "Email"
   },
   "dashboard": {
@@ -77,7 +77,23 @@
     "failedToSave": "Failed to save",
     "failedToSetDefault": "Failed to set default",
     "failedToDelete": "Failed to delete",
-    "failedToUpload": "Failed to upload template"
+    "failedToUpload": "Failed to upload template",
+    "kindEditor": "Editor",
+    "editInEditor": "Edit in the template editor",
+    "duplicate": "Duplicate",
+    "export": "Export",
+    "createTitle": "Create from scratch (live editor)",
+    "typeLabel": "Type",
+    "typeCertificate": "Calibration Certificate",
+    "typeProcedure": "Calibration Procedure",
+    "creating": "Creating…",
+    "createFromScratch": "Create template",
+    "failedToCreate": "Failed to create template",
+    "importTitle": "Import from a JSON file",
+    "importFileLabel": "Exported template (.json)",
+    "importing": "Importing…",
+    "import": "Import",
+    "failedToImport": "Failed to import template"
   },
   "email": {
     "loading": "Loading…",

@@ -47,6 +47,14 @@ class Sensor(Base):
     criticality: Mapped[str | None] = mapped_column(String(255), nullable=True)
     calibration_method_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("procedures.id"), nullable=True)
     calibration_interval: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Default report template for this channel's calibrations. At most one of the pair is set
+    # (enforced in the schema layer, not a DB constraint) — see report_template_resolution.py.
+    default_certificate_template_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("certificate_templates.id", ondelete="SET NULL"), nullable=True
+    )
+    default_document_template_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("document_templates.id", ondelete="SET NULL"), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

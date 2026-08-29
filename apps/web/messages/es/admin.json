@@ -5,7 +5,7 @@
     "administration": "Administración",
     "dashboard": "Panel",
     "users": "Usuarios",
-    "certificates": "Plantillas de certificado",
+    "certificates": "Plantillas",
     "email": "Correo"
   },
   "dashboard": {
@@ -77,7 +77,23 @@
     "failedToSave": "Error al guardar",
     "failedToSetDefault": "Error al establecer como predeterminada",
     "failedToDelete": "Error al eliminar",
-    "failedToUpload": "Error al subir la plantilla"
+    "failedToUpload": "Error al subir la plantilla",
+    "kindEditor": "Editor",
+    "editInEditor": "Editar en el editor de plantillas",
+    "duplicate": "Duplicar",
+    "export": "Exportar",
+    "createTitle": "Crear desde cero (editor en vivo)",
+    "typeLabel": "Tipo",
+    "typeCertificate": "Certificado de Calibración",
+    "typeProcedure": "Procedimiento de Calibración",
+    "creating": "Creando…",
+    "createFromScratch": "Crear plantilla",
+    "failedToCreate": "Error al crear la plantilla",
+    "importTitle": "Importar desde un archivo JSON",
+    "importFileLabel": "Plantilla exportada (.json)",
+    "importing": "Importando…",
+    "import": "Importar",
+    "failedToImport": "Error al importar la plantilla"
   },
   "email": {
     "loading": "Cargando…",

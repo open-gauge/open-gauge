@@ -15,6 +15,100 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.13.0
+
+### Hinzugefügt
+
+- **Für jedes Zertifikat mit Kalibrierdaten wird jetzt ein Residuen-Diagramm (Referenz gegen
+  Residuum) erzeugt**, das dem `ResidualsChart` der Web-App entspricht. Das bereits vorhandene
+  Diagramm mit angepasster Kurve (Gemessen gegen Referenz mit Ausgleichslinie) wird jetzt nur noch
+  erzeugt, wenn tatsächlich eine auswertbare Kurve zu zeichnen ist — `poly_coefficients`, eine
+  deklarierte benutzerdefinierte Formel oder eine Nachschlagetabelle — passend zum
+  `hasEvaluableCurve`-Verhalten der Web-App. Eine Skip-Fit-Kalibrierung (z. B. „Referenz gegen
+  Angezeigt", die konstruktionsbedingt keine Übertragungsfunktion hat) erhielt zuvor trotzdem ein
+  „Gemessen gegen Referenz"-Streudiagramm ohne Ausgleichslinie; sie zeigt jetzt korrekt nur noch
+  das Residuen-Diagramm, genau wie die Detailansicht der Kalibrierung.
+
+### Geändert
+
+- **Das Kontextfeld `uncertainty_summary_rows` der Zertifikatsvorlage ist jetzt das
+  aufgeschlüsselte GUM-Unsicherheitsbudget** — eine benannte Zeile je tatsächlich zutreffendem
+  Beitrag (Ausgleichsresiduen / Referenznormal / Auflösung / Nominale Sensorgenauigkeit, je
+  nachdem, was angegeben wurde), gefolgt von den Summen Kombiniert (RSS) und Erweitert (±) —
+  anstelle einer zusammengefassten Typ-A/Typ-B-Übersicht.
+
+### Behoben
+
+- **`GET /calibrations/{id}/certificate/download` lehnt Kalibrierungen nicht mehr ab, die
+  konstruktionsbedingt keine Polynomkoeffizienten haben** (Skip-Fit-Modi — „Referenz gegen
+  Angezeigt" und „Referenz gegen Vor-/Nach-Reparatur" ohne Modell — sowie
+  Nachschlagetabellen-Kalibrierungen, von denen keine eine Kurve anpasst, die aber alle über
+  echte berechnete Statistiken verfügen). Die Prüfung des Endpunkts, ob eine Kalibrierung
+  analysiert wurde, betrachtet jetzt `max_error` (für jeden analysierten Modus berechnet) statt
+  `poly_coefficients` (nur gesetzt, wenn eine echte Kurve existiert).
+
+## 4.12.0
+
+### Hinzugefügt
+
+- **Der Kontext für Zertifikatsvorlagen stellt jetzt den vollständigen rechtlichen Namen der
+  Organisation bereit** (`org_legal_name`) neben dem bereits vorhandenen kurzen Anzeigenamen
+  (`org_name`) — `Organization.full_name` war bereits ein gespeichertes Feld, wurde aber nie an
+  Zertifikatsvorlagen weitergegeben. Fällt auf `org_name` zurück (und, ohne jede Organisation, auf
+  „Open Gauge"), wenn kein rechtlicher Name gesetzt ist, sodass Vorlagen, die den
+  registrierten/rechtlichen Namen (statt des kürzeren Markennamens) in einer Fußzeile oder einem
+  Unterschriftenblock anzeigen möchten, einen Wert zur Verfügung haben.
+
+## 4.11.0
+
+### Hinzugefügt
+
+- **Kalibrierzertifikate können jetzt neben der bereits vorhandenen „Erstellt von"-Signatur auch
+  eine „Geprüft von"-Signatur anzeigen.** `Calibration.checked_by_user_id`/`checked_by_name`
+  wurden bereits an der Kalibrierung erfasst, aber nie an die Pipeline für handgeschriebene
+  (`.tex`) Zertifikatsvorlagen weitergegeben — `certificate_service` löst nun die aktive Signatur
+  der prüfenden Person genauso auf wie bereits für die ausführende Person, und stellt
+  `checked_by_name`/`checked_by_signature_path` im Vorlagenkontext neben den bereits vorhandenen
+  `performer_name`/`performer_signature_path` bereit.
+- **Eine kompakte Zusammenfassung der Messunsicherheit Typ A / Typ B / kombiniert / erweitert
+  steht jetzt für Zertifikatsvorlagen zur Verfügung** (`uncertainty_summary_rows`), für Vorlagen,
+  die das GUM-Budget lieber auf diese vier benannten Summen verdichtet zeigen möchten, statt eine
+  Zeile je Budgetquelle. Typ A ist der Fit-Residuen-Eintrag des Budgets; Typ B ist die
+  RSS-Kombination aller übrigen Einträge — beide werden aus den bereits vorhandenen
+  `uncertainty_budget`-Daten abgeleitet, ohne neue Felder zu speichern.
+
+### Behoben
+
+- **Die Konformitätsspezifikation einer Kalibrierung (die Toleranz, die neben einer
+  „CONFORMS"/„DOES NOT CONFORM"-Aussage angegeben wird) wird jetzt für absolute und manuell
+  überschriebene Toleranzen mit ihrer Einheit ausgedrückt** (z. B. „±0.75 °C (absolute)" statt
+  „±0.75 (absolute)") — eine Zahl ohne Einheit auf einem Zertifikat ist mehrdeutig und in den
+  Einheiten, neben denen sie dargestellt wird, nicht akzeptabel. Prozentbasierte Spezifikationen
+  („of reading" / „of full scale") waren bereits eindeutig und bleiben unverändert.
+
+## 4.10.0
+
+### Hinzugefügt
+
+- **Dokumentvorlagen sind jetzt zusammen mit LaTeX-Zertifikatsvorlagen in den Bereich Vorlagen
+  des Admin-Panels zusammengeführt, erhalten Export/Import und können — das fehlende Teil seit
+  4.9.0 — tatsächlich Kalibrierberichte erzeugen.** Der Admin-Bereich "Vorlagen" (vormals
+  "Zertifikatsvorlagen") listet beide Erstellungswege nebeneinander auf: eine `.tex`-Datei
+  hochladen oder im Live-Editor "Neu erstellen". Eine Editor-Vorlage lässt sich als portable
+  JSON-Datei exportieren und wieder importieren (durchläuft den Editor hin und zurück, anders als
+  ein roher `.tex`-Upload). Eine veröffentlichte Editor-Vorlage wird zu PDF gerendert, indem aus
+  ihrem strukturierten JSON-Dokument LaTeX erzeugt und mit der bestehenden Tectonic-Pipeline
+  kompiliert wird — die gesamte LaTeX-Toolchain wird wiederverwendet (Jinja-Escaping,
+  `qrcode`/`matplotlib`-Bildrendering, PAdES-Signierung), statt eine neue PDF-Abhängigkeit
+  hinzuzufügen. Jedem Sensorkanal kann eine Standard-Berichtsvorlage (beider Art) zugewiesen
+  werden; eine Kalibrierung kann sie einzeln über eine Vorlagenauswahl an ihrem
+  Download-Button überschreiben, beschränkt auf Nutzer mit Bearbeitungsrechten — alle anderen
+  laden stets die Vorlage herunter, die sich aus Override, Sensor-Standard oder
+  Organisations-/globalem Fallback ergibt, ohne eigene Auswahl. Der alte oberste
+  "Dokumentvorlagen"-Eintrag in der Seitenleiste und seine Listenseite sind verschwunden (der
+  Editor selbst bleibt unverändert, weiterhin unter `/templates/[id]`); ein Aufruf der alten
+  Listen-URL leitet in den Admin-Bereich um.
+
 ## 4.9.0
 
 ### Hinzugefügt

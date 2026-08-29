@@ -1,4 +1,4 @@
-import { apiFetch, apiUpload, authHeader } from "@/lib/api";
+import { apiBlob, apiFetch, apiUpload, authHeader } from "@/lib/api";
 import { getToken } from "@/services/auth.service";
 import type { StoredFile } from "@/types/stored_file";
 import type {
@@ -97,4 +97,14 @@ export async function deleteTemplateImage(id: string, fileId: string): Promise<v
     method: "DELETE",
     headers: tokenHeader(),
   });
+}
+
+export async function exportTemplate(id: string): Promise<Blob> {
+  return apiBlob(`/api/v1/document-templates/${id}/export`, { headers: tokenHeader() });
+}
+
+export async function importTemplate(file: File): Promise<Template> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiUpload<Template>(`/api/v1/document-templates/import`, form, { headers: tokenHeader() });
 }

@@ -5,7 +5,7 @@
     "administration": "Administration",
     "dashboard": "Tableau de bord",
     "users": "Utilisateurs",
-    "certificates": "Modèles de certificat",
+    "certificates": "Modèles",
     "email": "E-mail"
   },
   "dashboard": {
@@ -77,7 +77,23 @@
     "failedToSave": "Échec de l'enregistrement",
     "failedToSetDefault": "Échec de la définition par défaut",
     "failedToDelete": "Échec de la suppression",
-    "failedToUpload": "Échec du téléversement du modèle"
+    "failedToUpload": "Échec du téléversement du modèle",
+    "kindEditor": "Éditeur",
+    "editInEditor": "Modifier dans l'éditeur de modèles",
+    "duplicate": "Dupliquer",
+    "export": "Exporter",
+    "createTitle": "Créer à partir de zéro (éditeur en direct)",
+    "typeLabel": "Type",
+    "typeCertificate": "Certificat de Calibration",
+    "typeProcedure": "Procédure de Calibration",
+    "creating": "Création…",
+    "createFromScratch": "Créer le modèle",
+    "failedToCreate": "Échec de la création du modèle",
+    "importTitle": "Importer depuis un fichier JSON",
+    "importFileLabel": "Modèle exporté (.json)",
+    "importing": "Importation…",
+    "import": "Importer",
+    "failedToImport": "Échec de l'importation du modèle"
   },
   "email": {
     "loading": "Chargement…",

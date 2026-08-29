@@ -105,6 +105,10 @@ export interface CalibrationRecord {
   daq_id: string | null;
   calibration_data_id: string | null;
   calibration_location_id: string | null;
+  // Report template override — takes priority over the sensor's default when set. See
+  // PUT /calibrations/{id}/report-template.
+  report_certificate_template_id: string | null;
+  report_document_template_id: string | null;
 
   // Environmental conditions (canonical units: °C, %RH, Pa)
   temperature: number | null;

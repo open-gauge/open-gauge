@@ -23,6 +23,7 @@ from ..models.location import Location
 from ..models.organization import Organization
 from ..models.user import User
 from ..repositories import certificate_template as certtpl_repo
+from ..repositories import document_template as doctpl_repo
 from ..repositories import organization as org_repo
 from ..repositories import stored_file as file_repo
 from ..repositories import user_signature as signature_repo
@@ -249,6 +250,51 @@ def _build_uncertainty_budget_rows(cal: "Calibration") -> list[dict]:
     ]
 
 
+# Display label per uncertainty_budget entry `source` (see
+# calibration_analysis._build_uncertainty_budget) — every source besides
+# fit_residuals is a Type B contribution by construction in this system.
+# Falls back to a humanized version of the raw source key for any future
+# source not listed here, so a new Type B contribution never renders blank.
+_UNCERTAINTY_SOURCE_LABEL = {
+    "fit_residuals": "Fit residuals (Type A)",
+    "reference_standard": "Reference standard (Type B)",
+    "resolution": "Resolution (Type B)",
+    "sensor_nominal_accuracy": "Sensor nominal accuracy (Type B)",
+}
+
+
+def _uncertainty_source_label(source: str) -> str:
+    return _UNCERTAINTY_SOURCE_LABEL.get(source, f"{source.replace('_', ' ').capitalize()} (Type B)")
+
+
+def _build_uncertainty_summary_rows(cal: "Calibration", unit: str) -> list[dict]:
+    """Itemized GUM uncertainty budget — one named row per contribution that
+    actually applies to this calibration (whichever of fit residuals/
+    reference standard/resolution/sensor nominal accuracy were supplied),
+    plus the combined (RSS) and expanded totals. Distinct from
+    `_build_uncertainty_budget_rows` (a generic source/distribution/dof
+    table) and `_build_stat_rows` (which folds combined/expanded into the
+    statistics table) — this is a single self-contained budget table for
+    templates that want one.
+    """
+    rows: list[dict] = []
+    for row in cal.uncertainty_budget or []:
+        if row.get("standard_uncertainty") is None:
+            continue
+        rows.append({
+            "label": _uncertainty_source_label(str(row.get("source", ""))),
+            "value": f"{_fmt(row['standard_uncertainty'], 4)} {unit}".strip(),
+        })
+    if cal.combined_uncertainty is not None:
+        rows.append({"label": "Combined (RSS)", "value": f"{_fmt(cal.combined_uncertainty, 4)} {unit}".strip()})
+    if cal.expanded_uncertainty is not None:
+        # GUM §7.2.6: quote uncertainty to at most 2 significant figures.
+        u_rounded = round_to_sig_figs(cal.expanded_uncertainty, 2)
+        k_str = f" (k={_fmt(cal.coverage_factor, 3)})" if cal.coverage_factor else ""
+        rows.append({"label": "Expanded (±)", "value": f"{u_rounded:g} {unit}{k_str}".strip()})
+    return rows
+
+
 def _build_effective_dof_note(cal: "Calibration") -> str | None:
     if cal.effective_degrees_of_freedom is None:
         return None
@@ -403,9 +449,17 @@ def _build_template_context(
     return {
         "certificate_number": certificate_number,
         "org_name": organization.name if organization else "Open Gauge",
+        # Organization.full_name is an optional registered/legal name, distinct from the
+        # short display "name" used elsewhere (letterheads, etc.) — falls back to "name"
+        # when not set, same as "org_name" falls back to "Open Gauge" when there's no org.
+        "org_legal_name": (
+            (organization.full_name or organization.name) if organization else "Open Gauge"
+        ),
         "org_logo_path": None,
         "performer_name": calibration.performed_by_name or "—",
         "performer_signature_path": None,
+        "checked_by_name": calibration.checked_by_name or None,
+        "checked_by_signature_path": None,
         "calibration_date": _fmt_date(calibration.calibration_date),
         "due_date": _fmt_date(calibration.due_date),
         "version": version,
@@ -433,6 +487,7 @@ def _build_template_context(
         "results_summary": _build_results_summary(calibration, reference_unit),
         "error_summary": _build_error_summary(calibration, reference_unit),
         "uncertainty_budget_rows": _build_uncertainty_budget_rows(calibration),
+        "uncertainty_summary_rows": _build_uncertainty_summary_rows(calibration, reference_unit),
         "effective_dof_note": _build_effective_dof_note(calibration),
         "uncertainty_statement": _build_uncertainty_statement(calibration, reference_unit),
         "conformity": conformity,
@@ -444,12 +499,149 @@ def _build_template_context(
         "reference_unit": reference_unit or "—",
         "qr_path": None,
         "chart_path": None,
+        "residuals_chart_path": None,
         "lab_footer": calibration.external_lab_name or (organization.name if organization else None),
         "chapter": chapter,
         "calibration_id": str(calibration.id)[:8].upper(),
         "generated_date": date.today().isoformat(),
         "calibration_location": calibration_location_name,
     }
+
+
+def _build_document_template_context(
+    asset: "Asset",
+    calibration: "Calibration",
+    points: "list[CalibrationData]",
+    procedure: "Procedure | None",
+    reference_asset: "Asset | None",
+    sensor: "Sensor | None",
+    organization: "Organization | None",
+    version: int,
+    certificate_number: str,
+    app_base_url: str,
+    calibration_location_name: str | None = None,
+) -> dict:
+    """Same underlying data as `_build_template_context`, restructured to the dot-path variable
+    catalog the editor's templates use (`apps/web/src/lib/template-variables.ts`), for real
+    calibration data instead of the editor's sample-preview values. Only covers the categories
+    certificate templates actually expose (asset/channel/calibration/calibration_results/
+    measurements/organization/user/dates/page) — procedure-only categories (equipment, steps,
+    acceptance, ...) don't apply to a per-calibration generated report.
+
+    Reuses `_build_template_context`'s formatted values where the shape lines up, rather than
+    recomputing them, to avoid duplicating its formatting/fallback logic.
+    """
+    flat = _build_template_context(
+        asset, calibration, points, procedure, reference_asset, sensor, organization, version,
+        certificate_number, calibration_location_name,
+    )
+    reference_unit = points[0].reference_unit if points else ""
+
+    measurement_range = "—"
+    if sensor and sensor.measurement_min is not None and sensor.measurement_max is not None:
+        measurement_range = f"{_fmt(sensor.measurement_min, 5)} to {_fmt(sensor.measurement_max, 5)} {sensor.unit or ''}".strip()
+    output_signal_range = "—"
+    if sensor and sensor.output_signal_min is not None and sensor.output_signal_max is not None:
+        output_signal_range = (
+            f"{_fmt(sensor.output_signal_min, 5)} to {_fmt(sensor.output_signal_max, 5)} {sensor.output_signal_unit or ''}"
+        ).strip()
+
+    address_parts = [
+        organization.address_street if organization else None,
+        organization.address_city if organization else None,
+        organization.address_state if organization else None,
+        organization.address_postal_code if organization else None,
+        organization.address_country if organization else None,
+    ]
+    org_address = ", ".join(p for p in address_parts if p) or "—"
+
+    ctx: dict = {
+        "asset.id": flat["asset_id"],
+        "asset.name": flat["asset_name"],
+        "asset.serial_number": flat["asset_serial"],
+        "asset.manufacturer": flat["asset_manufacturer"],
+        "asset.model": flat["asset_model"],
+        "asset.type": flat["asset_type_label"],
+        "asset.description": asset.notes or "—",
+        "asset.location": calibration_location_name or "—",
+        "asset.status": "Active" if asset.is_active else "Inactive",
+        "asset.public_url": f"{app_base_url.rstrip('/')}/assets/{asset.id}",
+        "channel.id": sensor.channel_id if sensor else "—",
+        "channel.physical_quantity": sensor.physical_quantity if sensor else "—",
+        "channel.unit": sensor.unit if sensor else "—",
+        "channel.technology": (sensor.technology or "—") if sensor else "—",
+        "channel.range_min": _fmt(sensor.measurement_min, 5) if sensor else "—",
+        "channel.range_max": _fmt(sensor.measurement_max, 5) if sensor else "—",
+        "channel.measurement_range": measurement_range,
+        "channel.accuracy": _fmt_accuracy(sensor) if sensor else "—",
+        "channel.resolution": _fmt(sensor.resolution, 4) if sensor else "—",
+        "channel.uncertainty": _fmt(sensor.measurement_uncertainty, 4) if sensor else "—",
+        "channel.output_signal_min": _fmt(sensor.output_signal_min, 5) if sensor else "—",
+        "channel.output_signal_max": _fmt(sensor.output_signal_max, 5) if sensor else "—",
+        "channel.output_signal_unit": (sensor.output_signal_unit or "—") if sensor else "—",
+        "channel.output_signal_range": output_signal_range,
+        "calibration.id": flat["calibration_id"],
+        "calibration.date": flat["calibration_date"],
+        "calibration.next_date": flat["due_date"],
+        "calibration.type": flat["calibration_type"],
+        "calibration.method": procedure.name if procedure else "—",
+        "calibration.status": (calibration.status or "—").replace("_", " ").title(),
+        "calibration.laboratory": flat["org_name"],
+        "calibration.certificate_number": certificate_number,
+        "calibration.certificate_url": f"{app_base_url.rstrip('/')}/assets/{asset.id}?calibration={calibration.id}",
+        "calibration.technician": flat["performer_name"],
+        "calibration.coefficients": (
+            ", ".join(f"a_{i}={_fmt(c, 6)}" for i, c in enumerate(reversed(calibration.poly_coefficients or [])))
+            or "—"
+        ),
+        "calibration.polynomial_order": (len(calibration.poly_coefficients) - 1) if calibration.poly_coefficients else 0,
+        "calibration.statistics.r_squared": _fmt(calibration.r_squared, 6) if calibration.r_squared is not None else "—",
+        "calibration.statistics.rmse": f"{_fmt(calibration.rmse, 4)} {reference_unit}".strip() if calibration.rmse is not None else "—",
+        "calibration.statistics.max_error": f"{_fmt(calibration.max_error, 4)} {reference_unit}".strip() if calibration.max_error is not None else "—",
+        "calibration.statistics.full_scale_error": f"{_fmt(calibration.full_scale_error, 4)} %FS" if calibration.full_scale_error is not None else "—",
+        "calibration.statistics.non_linearity": f"{_fmt(calibration.non_linearity, 4)} %FS" if calibration.non_linearity is not None else "—",
+        "calibration.statistics.hysteresis": f"{_fmt(calibration.hysteresis, 4)} {reference_unit}".strip() if calibration.hysteresis is not None else "—",
+        "calibration.uncertainty.combined": f"{_fmt(calibration.combined_uncertainty, 4)} {reference_unit}".strip() if calibration.combined_uncertainty is not None else "—",
+        "calibration.uncertainty.expanded": (
+            f"{_fmt(calibration.expanded_uncertainty, 4)} {reference_unit} (k={_fmt(calibration.coverage_factor, 2)})".strip()
+            if calibration.expanded_uncertainty is not None
+            else "—"
+        ),
+        "organization.name": flat["org_name"],
+        "organization.address": org_address,
+        "organization.email": (organization.email if organization else None) or "—",
+        "organization.website": (organization.website if organization else None) or "—",
+        "organization.accreditation_number": "—",  # not modeled — no field on Organization today
+        "user.name": flat["performer_name"],
+        "user.email": "—",
+        "user.role": "—",
+        "date.current": flat["generated_date"],
+        "date.calibration": flat["calibration_date"],
+        "date.issue": flat["generated_date"],
+        "date.expiration": flat["due_date"],
+        # Internal-only keys (not part of the public variable catalog): resolved by the caller
+        # (generate_certificate_from_document_template) for the "checked_by" signature block.
+        "_checked_by_name": calibration.checked_by_name or "—",
+    }
+
+    # measurement.* repeating rows for the table `repeat` binding. Per-point uncertainty isn't
+    # tracked individually — the calibration's combined uncertainty is repeated per row as the
+    # closest real value available.
+    combined_uncertainty_str = _fmt(calibration.combined_uncertainty, 4) if calibration.combined_uncertainty is not None else "—"
+    ctx["_collections"] = {
+        "measurements": [
+            {
+                "index": row["index"],
+                "reference": row["reference"],
+                "measured": row["measured"],
+                "fitted": row["fit"],
+                "residual": row["residual_abs"],
+                "uncertainty": combined_uncertainty_str,
+            }
+            for row in flat["dataset_rows"]
+        ],
+    }
+    return ctx
 
 
 # ---------------------------------------------------------------------------
@@ -520,6 +712,39 @@ def _render_chart_png(
         spine.set_color("#1b4f64")
         spine.set_linewidth(0.6)
     ax.legend(fontsize=7, frameon=False, loc="best")
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", facecolor="white")
+    plt.close(fig)
+    return buf.getvalue()
+
+
+def _render_residuals_chart_png(reference: list[float], residual: list[float], reference_unit: str) -> bytes:
+    """Residual-vs-reference chart, mirroring the web app's ResidualsChart
+    (reference on x, absolute residual on y, dashed zero line) — see
+    apps/web/src/components/residuals-chart.tsx. Unlike the fitted-curve
+    chart (_render_chart_png, only meaningful when there's an evaluable
+    curve — see generate_certificate's has_evaluable_curve), residuals are
+    always defined, so this chart is generated for every calibration with
+    data, including skip_fit modes (reference_vs_indicated, etc.) that have
+    no transfer function at all.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(6.3, 3.1), dpi=200)
+    x_min, x_max = min(reference), max(reference)
+    ax.axhline(0, color="#9ca3af", linewidth=1.0, linestyle="--", zorder=1)
+    ax.scatter(reference, residual, s=16, color="#1b4f64", zorder=3)
+    unit_suffix = f" ({reference_unit})" if reference_unit else ""
+    ax.set_xlabel(f"Reference{unit_suffix}", fontsize=8)
+    ax.set_ylabel(f"Residual{unit_suffix}", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.grid(True, linewidth=0.4, color="#e5e7eb", zorder=0)
+    for spine in ax.spines.values():
+        spine.set_color("#1b4f64")
+        spine.set_linewidth(0.6)
     fig.tight_layout()
     buf = io.BytesIO()
     fig.savefig(buf, format="png", facecolor="white")
@@ -754,13 +979,37 @@ def generate_certificate(
 
     measured_vals = [float(p.measured_value) for p in points if p.measured_value is not None]
     reference_vals = [float(p.reference_value) for p in points if p.reference_value is not None]
-    if measured_vals and reference_vals:
+    # Mirrors the web app's hasEvaluableCurve (asset-detail-client.tsx): a
+    # skip_fit calibration (reference_vs_indicated, or
+    # reference_vs_as_found_as_left with no model) has no transfer function
+    # to plot, and the web app shows only the residuals chart for those —
+    # drawing a "fit" line there would be fabricating a curve that was never
+    # computed.
+    has_evaluable_curve = bool(calibration.poly_coefficients) or (
+        calibration.model_type == "custom_formula" and bool(calibration.custom_formula)
+    ) or calibration.model_type == "lookup_table"
+    if has_evaluable_curve and measured_vals and reference_vals:
         chart_bytes = _render_chart_png(
             measured_vals, reference_vals, calibration.poly_coefficients or [],
             context["measured_unit"], context["reference_unit"],
         )
         images["chart.png"] = chart_bytes
         context["chart_path"] = "chart.png"
+
+    # Residuals are always defined (even with no transfer function), so this
+    # chart is generated unconditionally whenever there's data — see
+    # _render_residuals_chart_png.
+    residual_pairs = [
+        (float(p.reference_value), float(p.residual_abs))
+        for p in points if p.reference_value is not None and p.residual_abs is not None
+    ]
+    if residual_pairs:
+        residual_refs, residual_vals = zip(*residual_pairs)
+        residuals_bytes = _render_residuals_chart_png(
+            list(residual_refs), list(residual_vals), context["reference_unit"],
+        )
+        images["residuals.png"] = residuals_bytes
+        context["residuals_chart_path"] = "residuals.png"
 
     if organization and organization.logo_file_id:
         logo_bytes = None
@@ -785,6 +1034,16 @@ def generate_certificate(
                 images["signature.png"] = sig_png
                 context["performer_signature_path"] = "signature.png"
 
+    if calibration.checked_by_user_id:
+        sig = signature_repo.get_active(db, calibration.checked_by_user_id)
+        if sig:
+            sig_file = file_repo.get_by_id(db, sig.image_file_id)
+            sig_bytes = storage_svc.download_file(sig_file.storage_path, sig_file.bucket) if sig_file else None
+            sig_png = _normalize_to_png(sig_bytes) if sig_bytes else None
+            if sig_png:
+                images["checked_signature.png"] = sig_png
+                context["checked_by_signature_path"] = "checked_signature.png"
+
     template_source = resolve_template_source(db, organization, template_id=template_id)
     rendered = latex_service.render_template(template_source, context)
     pdf_bytes = latex_service.compile_tex(rendered, images)
@@ -793,6 +1052,85 @@ def generate_certificate(
     # compiled bytes, so it applies identically regardless of which
     # template produced them. organization=None falls back to a single
     # instance-wide signing certificate (see org_signing_key_service).
+    signer_name = organization.name if organization else "Open Gauge (self-hosted instance)"
+    org_key = org_signing_key_service.get_or_create_signing_key(
+        db,
+        organization_id=organization.id if organization else None,
+        subject_common_name=signer_name,
+        created_by=calibration.created_by,
+    )
+    return pdf_signing_service.sign_certificate_pdf(
+        pdf_bytes, org_key, reason=f"Calibration certificate issued by {signer_name}"
+    )
+
+
+def generate_certificate_from_document_template(
+    db: Session,
+    asset: "Asset",
+    calibration: "Calibration",
+    points: "list[CalibrationData]",
+    procedure: "Procedure | None",
+    reference_asset: "Asset | None",
+    sensor: "Sensor | None",
+    version: int,
+    app_base_url: str,
+    document_template_id: uuid.UUID,
+) -> bytes:
+    """Same job as `generate_certificate`, but the source is a published editor (JSON) template
+    instead of a hand-authored .tex upload — generates LaTeX from the document via
+    `document_template_latex.document_to_latex` and compiles it the same way. Shares this
+    function's image-gathering (QR/signatures) and PAdES signing steps for parity between the
+    two template kinds."""
+    from .document_template_latex import collect_image_file_ids, document_to_latex
+
+    template = doctpl_repo.get_by_id(db, document_template_id)
+    if not template or template.status != "published":
+        raise ValueError(f"Document template {document_template_id} not found or not published")
+
+    organization = resolve_organization(db, asset, calibration)
+    certificate_number = f"OG-CAL-{asset.asset_id}-v{version}"
+
+    calibration_location_name = None
+    if calibration.calibration_location_id:
+        location = db.query(Location).filter(Location.id == calibration.calibration_location_id).first()
+        if location:
+            calibration_location_name = location.name
+
+    context = _build_document_template_context(
+        asset, calibration, points, procedure, reference_asset, sensor, organization, version, certificate_number,
+        app_base_url, calibration_location_name=calibration_location_name,
+    )
+
+    performer_user_id = resolve_performer_user_id(db, calibration)
+    if performer_user_id:
+        sig = signature_repo.get_active(db, performer_user_id)
+        if sig:
+            sig_file = file_repo.get_by_id(db, sig.image_file_id)
+            sig_bytes = storage_svc.download_file(sig_file.storage_path, sig_file.bucket) if sig_file else None
+            sig_png = _normalize_to_png(sig_bytes) if sig_bytes else None
+            if sig_png:
+                context["_signature_prepared_by_bytes"] = sig_png
+    if calibration.checked_by_user_id:
+        sig = signature_repo.get_active(db, calibration.checked_by_user_id)
+        if sig:
+            sig_file = file_repo.get_by_id(db, sig.image_file_id)
+            sig_bytes = storage_svc.download_file(sig_file.storage_path, sig_file.bucket) if sig_file else None
+            sig_png = _normalize_to_png(sig_bytes) if sig_bytes else None
+            if sig_png:
+                context["_signature_checked_by_bytes"] = sig_png
+
+    images_by_file_id: dict[str, bytes] = {}
+    for file_id in collect_image_file_ids(template.document):
+        img_file = file_repo.get_by_id(db, uuid.UUID(file_id))
+        img_bytes = storage_svc.download_file(img_file.storage_path, img_file.bucket) if img_file else None
+        img_png = _normalize_to_png(img_bytes) if img_bytes else None
+        if img_png:
+            images_by_file_id[file_id] = img_png
+
+    images: dict[str, bytes] = {}
+    tex_source = document_to_latex(template.document, context, images, images_by_file_id)
+    pdf_bytes = latex_service.compile_tex(tex_source, images)
+
     signer_name = organization.name if organization else "Open Gauge (self-hosted instance)"
     org_key = org_signing_key_service.get_or_create_signing_key(
         db,

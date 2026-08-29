@@ -5,10 +5,10 @@ description: A WYSIWYG editor for designing reusable calibration certificate and
 
 A **document template** is a reusable layout for a printable document — a calibration
 certificate or a calibration procedure — designed once and populated with real data every time
-it's generated. Manage them from the **Document Templates** page in the sidebar.
-
-This page covers the template editor itself. Generating an actual PDF from a template is a
-separate, later step — a template is the *design*, not the document.
+it's generated. Manage them from **Admin Panel → Templates**, alongside hand-authored LaTeX
+certificate templates (see [Certificate templates](../calibration/certificate-templates.mdx)) —
+that page's "Create from scratch" button opens this editor for a new template; export/import and
+generation are covered in [PDF generation](#pdf-generation) below.
 
 ## Two template types
 
@@ -80,3 +80,40 @@ A template's history works like calibration history: **immutable and traceable**
 Images (a company logo, an accreditation mark, a diagram) are uploaded per template and stored as
 file references — an image block holds a `file_id` and a resolved preview URL, not an embedded
 copy of the file's bytes.
+
+## Export and import
+
+A template can be exported to a portable JSON file (its name, description, type, and full
+document) and re-imported elsewhere — as a new draft, its own independent version history — from
+**Admin Panel → Templates**. Unlike a raw `.tex` upload, an exported template round-trips through
+this same editor: import it, keep editing, publish. It isn't LaTeX — that's generated
+automatically at PDF time (see below), not something you author or exchange directly.
+
+## PDF generation
+
+A **published** editor template can generate a real calibration report PDF, the same way an
+uploaded `.tex` certificate template does. Under the hood, the template's structured JSON document
+is converted to LaTeX and compiled with the same [Tectonic](certificate-templates.mdx) pipeline —
+no separate PDF engine, no separate escaping rules to learn. Equation blocks already store raw
+LaTeX, so they pass straight through; every other block (text, tables, repeating rows bound to a
+collection, graphs, QR codes, columns, …) is translated automatically.
+
+This resolution only applies to **Calibration Certificate** templates — a Calibration Procedure
+template is a static reference document, not something generated per calibration.
+
+### Assigning a default template to a channel
+
+Open a sensor channel's editor (**Assets → an asset → Overview → Edit**) and set **Default report
+template** to any published template, of either kind (uploaded `.tex` or editor-authored). Every
+calibration recorded against that channel uses it unless overridden individually (below). Leave
+it unset to fall back to the organization's default, then the global default, then the built-in
+template — the same chain [certificate templates](certificate-templates.mdx) already use.
+
+### Overriding the template for one calibration
+
+On a calibration's detail page, the **Download** button's chevron menu lets a user with edit
+rights (any role above Viewer) pick a specific template for that calibration alone — this choice
+is **persisted**, not a one-off render: it becomes what *every* user downloads for that
+calibration going forward, until changed again or cleared back to "Default template". A Viewer
+never sees this menu — they always get whichever template the override, channel default, or
+org/global fallback resolves to, with no choice of their own.

@@ -1,6 +1,8 @@
+import json
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from ...core.database import get_db
@@ -16,6 +18,7 @@ from ...schemas.document_template import (
     DocumentTemplateListItem,
     DocumentTemplateResponse,
     DocumentTemplateUpdate,
+    _validate_document_shape,
 )
 from ...schemas.stored_file import StoredFileResponse
 from ...services import storage as storage_svc
@@ -98,6 +101,51 @@ def create_document_template(
     return template
 
 
+@router.post(
+    "/import",
+    response_model=DocumentTemplateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Import a document template from an exported JSON file",
+    description="Creates a new draft (its own version history) from a JSON file previously "
+    "produced by GET /{template_id}/export — round-trips through the live editor, unlike a raw "
+    "LaTeX upload (see /certificate-templates for that).",
+)
+async def import_document_template(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> DocumentTemplate:
+    raw = await file.read()
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid JSON file: {e}")
+
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected a JSON object")
+    name = payload.get("name")
+    template_type = payload.get("type")
+    document = payload.get("document")
+    if not name or template_type not in ("certificate", "procedure") or not isinstance(document, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is missing name/type/document")
+    try:
+        _validate_document_shape(document)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    template = template_repo.create(
+        db, name=name, description=payload.get("description"), type=template_type, created_by=current_user.id
+    )
+    template = template_repo.update(db, template, document=document)
+    _audit(
+        db, request, current_user,
+        action="document_template.imported", template=template,
+        after_state={"name": template.name, "type": template.type},
+    )
+    return template
+
+
 @router.get("/{template_id}", response_model=DocumentTemplateResponse, summary="Get a document template version")
 def get_document_template(
     template_id: uuid.UUID,
@@ -105,6 +153,32 @@ def get_document_template(
     _: User = Depends(get_current_user),
 ) -> DocumentTemplate:
     return _get_or_404(db, template_id)
+
+
+@router.get(
+    "/{template_id}/export",
+    summary="Export a document template as a JSON file",
+    description="Downloads this version's name/description/type/document as a JSON file, "
+    "importable again via POST /import — round-trips through the live editor.",
+)
+def export_document_template(
+    template_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Response:
+    template = _get_or_404(db, template_id)
+    payload = {
+        "name": template.name,
+        "description": template.description,
+        "type": template.type,
+        "document": template.document,
+    }
+    filename = f"{template.name.strip().replace(' ', '_') or 'template'}.json"
+    return Response(
+        content=json.dumps(payload, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get(

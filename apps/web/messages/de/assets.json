@@ -168,7 +168,9 @@
     "responseTimeMsPlaceholder": "z. B. 300",
     "bandwidthHz": "Bandbreite (Hz)",
     "bandwidthHzPlaceholder": "z. B. 1000",
-    "referenceStandard": "Referenznormal"
+    "referenceStandard": "Referenznormal",
+    "defaultReportTemplate": "Standard-Berichtsvorlage",
+    "defaultReportTemplatePlaceholder": "Standard der Organisation/global verwenden"
   },
   "tips": {
     "physicalQuantity": "Die physikalische Größe definiert die Art der Messung (z. B. Temperatur, Druck) und bestimmt die anwendbaren Einheiten und Kalibrierverfahren. Wählen Sie diejenige, die am besten zur primären Messung des Sensors passt.",
@@ -579,7 +581,8 @@
     "downloadCertificate": "Zertifikat herunterladen",
     "chooseTemplate": "Zertifikatsvorlage wählen",
     "defaultTemplate": "Standardvorlage",
-    "noCustomTemplates": "Keine benutzerdefinierten Vorlagen verfügbar"
+    "noCustomTemplates": "Keine benutzerdefinierten Vorlagen verfügbar",
+    "failedToSetTemplate": "Berichtsvorlage konnte nicht festgelegt werden"
   },
   "files": {
     "title": "Dateien & Anhänge",

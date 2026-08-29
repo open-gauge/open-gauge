@@ -12,6 +12,91 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.13.0
+
+### Added
+
+- **A residuals chart (reference vs. residual) is now generated for every certificate with
+  calibration data**, mirroring the web app's `ResidualsChart`. The existing fitted-curve chart
+  (measured vs. reference with the fit line) now only generates when there's actually an
+  evaluable curve to draw — `poly_coefficients`, a declared custom formula, or a lookup table —
+  matching the web app's `hasEvaluableCurve` behavior. A skip_fit calibration (e.g. "Reference vs
+  Indicated", which has no transfer function by design) previously still got a "Measured vs
+  Reference" scatter with no fit line; it now correctly shows only the residuals chart, same as
+  the calibration detail view.
+
+### Changed
+
+- **The certificate template's `uncertainty_summary_rows` context field is now the itemized GUM
+  uncertainty budget** — one named row per contribution that actually applies (Fit residuals /
+  Reference standard / Resolution / Sensor nominal accuracy, whichever were supplied), followed
+  by Combined (RSS) and Expanded (±) totals — instead of a collapsed Type A / Type B summary.
+
+### Fixed
+
+- **`GET /calibrations/{id}/certificate/download` no longer rejects calibrations that have no
+  polynomial coefficients by design** (skip_fit modes — "Reference vs Indicated" and "Reference
+  vs As-Found/As-Left" with no model — and Lookup Table calibrations, none of which fit a curve,
+  but all of which have real computed statistics). The endpoint's "has this been analyzed"
+  check now looks at `max_error` (computed for every analyzed mode) instead of
+  `poly_coefficients` (only ever set when there's an actual curve).
+
+## 4.12.0
+
+### Added
+
+- **The certificate template context now exposes an organization's full legal name**
+  (`org_legal_name`) alongside the existing short display name (`org_name`) —
+  `Organization.full_name` was already a stored field but was never surfaced to certificate
+  templates. Falls back to `org_name` (and, with no organization at all, to "Open Gauge") when
+  a legal name isn't set, so templates that want the registered/legal name on a footer or
+  signature block (rather than the shorter branding name) have a value to use.
+
+## 4.11.0
+
+### Added
+
+- **Calibration certificates can now show a "checked by" signature alongside the existing
+  "prepared by" one.** `Calibration.checked_by_user_id`/`checked_by_name` were already recorded on
+  the calibration but were never surfaced to the hand-authored (`.tex`) certificate template
+  pipeline — `certificate_service` now resolves the checked-by user's active signature the same
+  way it already does for the performer, and exposes `checked_by_name`/`checked_by_signature_path`
+  in the template context alongside the existing `performer_name`/`performer_signature_path`.
+- **A compact Type A / Type B / combined / expanded uncertainty summary is now available to
+  certificate templates** (`uncertainty_summary_rows`), for templates that want the GUM budget
+  collapsed to these four named totals instead of one row per itemized budget source. Type A is
+  the fit-residuals budget entry; Type B is the RSS of every other entry — both derived from the
+  existing `uncertainty_budget` data, no new fields stored.
+
+### Fixed
+
+- **A calibration's conformity specification (the tolerance quoted against a "CONFORMS"/"DOES NOT
+  CONFORM" statement) is now expressed with its unit for absolute and manually-overridden
+  tolerances** (e.g. "±0.75 °C (absolute)" instead of "±0.75 (absolute)") — a bare number with no
+  unit on a certificate is ambiguous and not acceptable in the units it's presented alongside.
+  Percent-based specifications ("of reading" / "of full scale") were already unambiguous and are
+  unchanged.
+
+## 4.10.0
+
+### Added
+
+- **Document Templates now merge into the Admin panel's Templates section alongside LaTeX
+  certificate templates, gain export/import, and — the missing piece from 4.9.0 — can actually
+  generate calibration reports.** The admin "Templates" section (formerly "Certificate
+  Templates") lists both authoring paths side by side: upload a `.tex` file, or "Create from
+  scratch" in the live editor; an editor template can be exported to a portable JSON file and
+  re-imported (round-trips through the editor, unlike a raw `.tex` upload). A published editor
+  template is rendered to PDF by generating LaTeX from its structured JSON document and compiling
+  it with the existing Tectonic pipeline — reusing the LaTeX toolchain end to end (Jinja escaping,
+  `qrcode`/`matplotlib` image rendering, PAdES signing) instead of adding a new PDF dependency.
+  Each sensor channel can be given a default report template (either kind); a calibration can
+  override it individually via a template picker on its Download button, restricted to users with
+  edit rights — everyone else always downloads whichever template the override, sensor default, or
+  org/global fallback resolves to, with no picker of their own. The old top-level "Document
+  Templates" sidebar entry and its list page are gone (the editor itself is unchanged, still at
+  `/templates/[id]`); a visit to the old list URL redirects into the admin section.
+
 ## 4.9.0
 
 ### Added

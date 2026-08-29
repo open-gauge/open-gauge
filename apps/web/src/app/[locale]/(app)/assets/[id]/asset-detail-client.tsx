@@ -23,6 +23,7 @@ import {
   rejectCalibration,
   restoreCalibration,
   retireAsset,
+  setCalibrationReportTemplate,
   updateAsset,
   deleteAssetPicture,
   fetchAssetExportBlob,
@@ -37,6 +38,8 @@ import { SensitivityChart } from "@/components/sensitivity-chart";
 import { PhaseChart } from "@/components/phase-chart";
 import { useAuth } from "@/lib/auth-context";
 import { getOrganization, listMyOrganizations } from "@/services/organization.service";
+import { listCertificateTemplates } from "@/services/admin.service";
+import { listTemplates } from "@/services/template.service";
 import type { Organization, OrganizationListItem } from "@/types/organization";
 import type { AssetProfile, AssetUpdateRequest, LocationOption, MechanicalRow, PinoutRow, SensorChannelUpdateInput } from "@/types/asset";
 import type { CalibrationPoint, CalibrationRecord, CalibrationUser, FrequencyResponsePoint, PhaseChartPoint, SensitivityChartPoint } from "@/types/calibration";
@@ -250,6 +253,10 @@ interface EditChannelForm {
   output_signal_unit: string;
   output_type: string;
   calibration_role: boolean;  // checkbox: true = "reference" standard
+  // Encodes which report template is this channel's default, as "certificate:<id>" or
+  // "document:<id>" (or "" for none) — a single Select needs one value even though the two
+  // kinds are separate FK columns on the backend; see templateOptionValue/parseTemplateOption.
+  default_template_option: string;
 }
 
 export interface EditFormState {
@@ -346,6 +353,11 @@ function profileToForm(profile: AssetProfile): EditFormState {
         output_signal_max: s(fromSI(ch.output_signal_max, ch.output_signal_unit ?? "")),
         output_type: s(ch.output_type),
         calibration_role: ch.calibration_role === "reference",
+        default_template_option: ch.default_certificate_template_id
+          ? `certificate:${ch.default_certificate_template_id}`
+          : ch.default_document_template_id
+            ? `document:${ch.default_document_template_id}`
+            : "",
       };
     }),
     pinout_table: (profile.pinout_table ?? []).map((r) => ({ ...r, wire_colors: r.wire_colors ? [...r.wire_colors] : null })),
@@ -394,6 +406,12 @@ function formToUpdate(form: EditFormState): AssetUpdateRequest {
     output_signal_max: numSI(ch.output_signal_max, ch.output_signal_unit),
     output_type: orNull(ch.output_type),
     calibration_role: ch.calibration_role ? "reference" : null,
+    default_certificate_template_id: ch.default_template_option.startsWith("certificate:")
+      ? ch.default_template_option.slice("certificate:".length)
+      : null,
+    default_document_template_id: ch.default_template_option.startsWith("document:")
+      ? ch.default_template_option.slice("document:".length)
+      : null,
   }));
 
   return {
@@ -773,13 +791,14 @@ function OutputUnitSelector({
 // ---------------------------------------------------------------------------
 
 function ChannelEditor({
-  ch, index, onChange, onRemove, errors,
+  ch, index, onChange, onRemove, errors, templateOptions,
 }: {
   ch: EditChannelForm;
   index: number;
   onChange: (updated: EditChannelForm) => void;
   onRemove: () => void;
   errors: Record<string, string>;
+  templateOptions: { value: string; label: string }[];
 }) {
   const t = useTranslations("assets.fields");
   const tOutputType = useTranslations("tokens.outputType");
@@ -894,6 +913,15 @@ function ChannelEditor({
           <InfoIcon size={11} className="text-gray-400 cursor-help shrink-0" />
         </Tooltip>
       </label>
+
+      {/* Default report template — used when a calibration on this channel doesn't override it */}
+      <EditSelect
+        label={t("defaultReportTemplate")}
+        value={ch.default_template_option}
+        onChange={set("default_template_option")}
+        options={templateOptions}
+        placeholder={t("defaultReportTemplatePlaceholder")}
+      />
     </div>
   );
 }
@@ -1003,7 +1031,7 @@ function RetireModal({ assetName, onRetire, onClose }: {
 // ---------------------------------------------------------------------------
 
 function OverviewTab({
-  profile, isEditing, form, onChange, errors, locations, myOrgs,
+  profile, isEditing, form, onChange, errors, locations, myOrgs, templateOptions,
 }: {
   profile: AssetProfile;
   isEditing: boolean;
@@ -1012,6 +1040,7 @@ function OverviewTab({
   errors: Record<string, string>;
   locations: LocationOption[];
   myOrgs: OrganizationListItem[];
+  templateOptions: { value: string; label: string }[];
 }) {
   const tQuantity = useTranslations("tokens.physicalQuantity");
   const tTech = useTranslations("tokens.sensorTechnology");
@@ -1066,6 +1095,7 @@ function OverviewTab({
           response_time_ms: "", bandwidth_hz: "",
           output_signal_min: "", output_signal_max: "", output_signal_unit: "",
           output_type: "", calibration_role: false,
+          default_template_option: "",
         },
       ]);
     }
@@ -1174,6 +1204,7 @@ function OverviewTab({
                     }}
                     onRemove={() => setChannels(form.sensor_channels.filter((_, j) => j !== i))}
                     errors={errors}
+                    templateOptions={templateOptions}
                   />
                 ))}
                 {form.sensor_channels.length === 0 && (
@@ -2188,6 +2219,9 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
                 calibrationVersion={selectedCal.calibration_version}
                 disabled={selectedCal.data_entry_mode === "raw_data" && !hasEvaluableCurve(selectedCal)}
                 hasUploadedCertificate={selectedCal.uploaded_certificate_file_id != null}
+                canEdit={canRegisterCalibration}
+                currentCertificateTemplateId={selectedCal.report_certificate_template_id}
+                currentDocumentTemplateId={selectedCal.report_document_template_id}
               />
             </div>
           </div>
@@ -2763,27 +2797,46 @@ function CalibrationTab({ calibrations, profile, onCalibrationSaved, onCalibrati
 
 function CertificateDownloadButton({
   calibrationId, assetTag, calibrationVersion, disabled, hasUploadedCertificate,
+  canEdit, currentCertificateTemplateId, currentDocumentTemplateId,
 }: {
   calibrationId: string;
   assetTag: string;
   calibrationVersion: number;
   disabled: boolean;
   hasUploadedCertificate: boolean;
+  // Only a user with edit rights can see/use the template override dropdown — everyone else
+  // always downloads whatever it (or, failing that, the channel default) resolves to.
+  canEdit: boolean;
+  currentCertificateTemplateId: string | null;
+  currentDocumentTemplateId: string | null;
 }) {
   const t = useTranslations("assets.calibration");
   const [templates, setTemplates] = useState<CertificateTemplateOption[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<{ id: string; kind: "certificate" | "document" } | null>(
+    currentCertificateTemplateId
+      ? { id: currentCertificateTemplateId, kind: "certificate" }
+      : currentDocumentTemplateId
+        ? { id: currentDocumentTemplateId, kind: "document" }
+        : null,
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [savingOverride, setSavingOverride] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setSelectedTemplateId(null);
+    setSelectedTemplate(
+      currentCertificateTemplateId
+        ? { id: currentCertificateTemplateId, kind: "certificate" }
+        : currentDocumentTemplateId
+          ? { id: currentDocumentTemplateId, kind: "document" }
+          : null,
+    );
     // An uploaded certificate has no template choice — it's downloaded as-is,
     // so there's nothing to offer in the chevron menu.
     if (hasUploadedCertificate) { setTemplates([]); return; }
     listCalibrationCertificateTemplates(calibrationId).then(setTemplates).catch(() => setTemplates([]));
-  }, [calibrationId, hasUploadedCertificate]);
+  }, [calibrationId, hasUploadedCertificate, currentCertificateTemplateId, currentDocumentTemplateId]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -2797,8 +2850,8 @@ function CertificateDownloadButton({
   async function handleDownload() {
     setDownloading(true);
     try {
-      if (selectedTemplateId) {
-        const blob = await downloadCalibrationCertificateBlob(calibrationId, selectedTemplateId);
+      if (selectedTemplate) {
+        const blob = await downloadCalibrationCertificateBlob(calibrationId, selectedTemplate);
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = blobUrl;
@@ -2819,14 +2872,29 @@ function CertificateDownloadButton({
     }
   }
 
+  async function handleSelectOverride(template: { id: string; kind: "certificate" | "document" } | null) {
+    setMenuOpen(false);
+    setSelectedTemplate(template);
+    setSavingOverride(true);
+    try {
+      await setCalibrationReportTemplate(calibrationId, template);
+    } catch {
+      alert(t("failedToSetTemplate"));
+    } finally {
+      setSavingOverride(false);
+    }
+  }
+
+  const showPicker = canEdit && !hasUploadedCertificate;
+
   return (
     <div ref={menuRef} className="relative flex items-stretch shrink-0">
       <button
         type="button"
         disabled={disabled || downloading}
         onClick={handleDownload}
-        title={hasUploadedCertificate ? undefined : selectedTemplateId ? t("downloadUsing", { template: templates.find((tpl) => tpl.id === selectedTemplateId)?.name ?? t("selectedTemplate") }) : t("downloadUsingDefault")}
-        className={`flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${hasUploadedCertificate ? "rounded-lg" : "rounded-l-lg"}`}
+        title={hasUploadedCertificate ? undefined : selectedTemplate ? t("downloadUsing", { template: templates.find((tpl) => tpl.id === selectedTemplate.id)?.name ?? t("selectedTemplate") }) : t("downloadUsingDefault")}
+        className={`flex items-center gap-1.5 pl-3 pr-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${showPicker ? "rounded-l-lg" : "rounded-lg"}`}
       >
         {downloading ? (
           <span className="inline-block w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
@@ -2835,10 +2903,10 @@ function CertificateDownloadButton({
         )}
         {downloading ? t("generating") : t("downloadCertificate")}
       </button>
-      {!hasUploadedCertificate && (
+      {showPicker && (
       <button
         type="button"
-        disabled={disabled || downloading}
+        disabled={disabled || downloading || savingOverride}
         onClick={() => setMenuOpen((v) => !v)}
         title={t("chooseTemplate")}
         className="flex items-center px-1.5 py-1.5 text-gray-600 dark:text-gray-300 border border-l-0 border-og-border-md rounded-r-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2846,26 +2914,26 @@ function CertificateDownloadButton({
         <ChevronDownIcon size={12} />
       </button>
       )}
-      {!hasUploadedCertificate && menuOpen && (
+      {showPicker && menuOpen && (
         <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-og-surface border border-og-border rounded-lg shadow-lg py-1">
           <button
             type="button"
-            onClick={() => { setSelectedTemplateId(null); setMenuOpen(false); }}
+            onClick={() => handleSelectOverride(null)}
             className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
           >
             {t("defaultTemplate")}
-            {selectedTemplateId === null && <CheckIcon size={12} className="text-og-accent shrink-0" />}
+            {selectedTemplate === null && <CheckIcon size={12} className="text-og-accent shrink-0" />}
           </button>
           {templates.length > 0 && <div className="my-1 border-t border-og-border" />}
           {templates.map((tpl) => (
             <button
               key={tpl.id}
               type="button"
-              onClick={() => { setSelectedTemplateId(tpl.id); setMenuOpen(false); }}
+              onClick={() => handleSelectOverride({ id: tpl.id, kind: tpl.kind })}
               className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
             >
               <span className="truncate">{tpl.name}</span>
-              {selectedTemplateId === tpl.id && <CheckIcon size={12} className="text-og-accent shrink-0" />}
+              {selectedTemplate?.id === tpl.id && <CheckIcon size={12} className="text-og-accent shrink-0" />}
             </button>
           ))}
           {templates.length === 0 && (
@@ -3372,6 +3440,7 @@ export default function AssetDetailClient() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [myOrgs, setMyOrgs] = useState<OrganizationListItem[]>([]);
+  const [templateOptions, setTemplateOptions] = useState<{ value: string; label: string }[]>([]);
   const [retireModalOpen, setRetireModalOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -3431,6 +3500,15 @@ export default function AssetDetailClient() {
     setIsEditing(true);
     listLocations().then(setLocations).catch(() => {});
     listMyOrganizations().then(setMyOrgs).catch(() => {});
+    Promise.all([
+      listCertificateTemplates(profile.organization_id ?? undefined),
+      listTemplates({ status: "published" }),
+    ])
+      .then(([cert, doc]) => setTemplateOptions([
+        ...cert.map((tpl) => ({ value: `certificate:${tpl.id}`, label: tpl.name })),
+        ...doc.map((tpl) => ({ value: `document:${tpl.id}`, label: tpl.name })),
+      ]))
+      .catch(() => {});
   }
 
   async function handleRetire(reason?: string) {
@@ -3885,6 +3963,7 @@ export default function AssetDetailClient() {
               errors={editErrors}
               locations={locations}
               myOrgs={myOrgs}
+              templateOptions={templateOptions}
             />
           )}
           {activeTab === "interface" && (

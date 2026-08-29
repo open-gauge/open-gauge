@@ -14,6 +14,101 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.13.0
+
+### Añadido
+
+- **Ahora se genera un gráfico de residuos (referencia frente a residuo) para todo certificado
+  con datos de calibración**, reflejando el `ResidualsChart` de la aplicación web. El gráfico de
+  curva ajustada ya existente (medido frente a referencia con la línea de ajuste) ahora solo se
+  genera cuando realmente hay una curva evaluable que dibujar — `poly_coefficients`, una fórmula
+  personalizada declarada o una tabla de consulta — igualando el comportamiento
+  `hasEvaluableCurve` de la aplicación web. Una calibración skip_fit (por ejemplo, "Referencia
+  frente a Indicado", que no tiene función de transferencia por diseño) antes seguía obteniendo
+  una dispersión "Medido frente a Referencia" sin línea de ajuste; ahora muestra correctamente
+  solo el gráfico de residuos, igual que la vista de detalle de la calibración.
+
+### Cambiado
+
+- **El campo de contexto `uncertainty_summary_rows` de la plantilla de certificado ahora es el
+  presupuesto de incertidumbre GUM detallado** — una fila con nombre por cada contribución que
+  realmente aplica (Residuos del ajuste / Patrón de referencia / Resolución / Exactitud nominal
+  del sensor, las que se hayan proporcionado), seguida de los totales Combinada (RSS) y Expandida
+  (±) — en lugar de un resumen colapsado de Tipo A / Tipo B.
+
+### Corregido
+
+- **`GET /calibrations/{id}/certificate/download` ya no rechaza calibraciones que no tienen
+  coeficientes polinómicos por diseño** (modos skip_fit — "Referencia frente a Indicado" y
+  "Referencia frente a Como-se-encontró/Como-se-dejó" sin modelo — y calibraciones de tabla de
+  consulta, ninguna de las cuales ajusta una curva, pero todas tienen estadísticas reales
+  calculadas). La comprobación de "¿ha sido analizada esta calibración?" del endpoint ahora
+  observa `max_error` (calculado para todo modo analizado) en lugar de `poly_coefficients` (que
+  solo se establece cuando hay una curva real).
+
+## 4.12.0
+
+### Añadido
+
+- **El contexto de las plantillas de certificado ahora expone el nombre legal completo de la
+  organización** (`org_legal_name`) junto al nombre corto ya existente (`org_name`) —
+  `Organization.full_name` ya era un campo almacenado, pero nunca se exponía a las plantillas de
+  certificado. Recurre a `org_name` (y, sin ninguna organización, a "Open Gauge") cuando no hay
+  un nombre legal configurado, de modo que las plantillas que quieran mostrar el nombre
+  registrado/legal (en lugar del nombre corto de marca) en un pie de página o bloque de firma
+  tengan un valor disponible.
+
+## 4.11.0
+
+### Añadido
+
+- **Los certificados de calibración ahora pueden mostrar una firma de "verificado por" junto a la
+  ya existente de "preparado por".** `Calibration.checked_by_user_id`/`checked_by_name` ya se
+  registraban en la calibración, pero nunca se exponían al pipeline de plantillas de certificado
+  redactadas a mano (`.tex`) — `certificate_service` ahora resuelve la firma activa del usuario que
+  verificó la calibración de la misma forma en que ya lo hace para quien la realizó, y expone
+  `checked_by_name`/`checked_by_signature_path` en el contexto de la plantilla junto a los ya
+  existentes `performer_name`/`performer_signature_path`.
+- **Ahora hay disponible un resumen compacto de incertidumbre Tipo A / Tipo B / combinada /
+  expandida para las plantillas de certificado** (`uncertainty_summary_rows`), para plantillas que
+  prefieren mostrar el presupuesto GUM condensado en estos cuatro totales con nombre en lugar de
+  una fila por cada fuente del presupuesto. El Tipo A es la entrada de residuos del ajuste; el
+  Tipo B es la combinación RSS de todas las demás entradas — ambos derivados de los datos ya
+  existentes en `uncertainty_budget`, sin almacenar campos nuevos.
+
+### Corregido
+
+- **La especificación de conformidad de una calibración (la tolerancia citada junto a un mensaje
+  de "CONFORMS"/"DOES NOT CONFORM") ahora se expresa con su unidad para tolerancias absolutas y
+  las sobrescritas manualmente** (por ejemplo, "±0.75 °C (absolute)" en lugar de "±0.75
+  (absolute)") — un número sin unidad en un certificado es ambiguo y no es aceptable en las
+  unidades junto a las que se presenta. Las especificaciones basadas en porcentaje ("of reading" /
+  "of full scale") ya eran inequívocas y no cambian.
+
+## 4.10.0
+
+### Añadido
+
+- **Las Plantillas de documentos ahora se fusionan en la sección Plantillas del panel de
+  Administración junto con las plantillas de certificado LaTeX, incorporan exportación/
+  importación y — la pieza que faltaba desde la 4.9.0 — pueden generar informes de calibración
+  de verdad.** La sección de administración "Plantillas" (antes "Plantillas de certificado")
+  lista ambas vías de creación una junto a la otra: subir un archivo `.tex`, o "Crear desde cero"
+  en el editor en vivo; una plantilla del editor puede exportarse a un archivo JSON portátil y
+  volver a importarse (recorre el editor de ida y vuelta, a diferencia de una subida `.tex` en
+  bruto). Una plantilla del editor publicada se renderiza a PDF generando LaTeX a partir de su
+  documento JSON estructurado y compilándolo con el pipeline de Tectonic ya existente —
+  reutilizando toda la cadena de herramientas LaTeX (escapado con Jinja, renderizado de imágenes
+  con `qrcode`/`matplotlib`, firma PAdES) en lugar de añadir una nueva dependencia de PDF. A cada
+  canal de un sensor se le puede asignar una plantilla de informe predeterminada (de cualquiera
+  de los dos tipos); una calibración puede anularla individualmente mediante un selector de
+  plantilla en su botón de Descargar, restringido a usuarios con permisos de edición — el resto
+  de usuarios siempre descargan la plantilla que resuelva la anulación, el valor predeterminado
+  del sensor o el respaldo de organización/global, sin selector propio. La antigua entrada
+  "Plantillas de documentos" de nivel superior en la barra lateral y su página de listado han
+  desaparecido (el editor en sí no cambia, sigue en `/templates/[id]`); una visita a la antigua
+  URL de listado redirige a la sección de administración.
+
 ## 4.9.0
 
 ### Añadido

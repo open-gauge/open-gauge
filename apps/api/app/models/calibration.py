@@ -82,6 +82,15 @@ class Calibration(Base):
     daq_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("daq.id"), nullable=True)
     calibration_data_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("calibration_data.id"), nullable=True)
     calibration_location_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"), nullable=True)
+    # Per-calibration report template override — takes priority over the sensor's default when
+    # set. At most one of the pair is set (enforced in the schema layer). See
+    # report_template_resolution.py for the full resolution order.
+    report_certificate_template_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("certificate_templates.id", ondelete="SET NULL"), nullable=True
+    )
+    report_document_template_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("document_templates.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Environmental conditions (canonical units: °C, %RH, Pa). Each has an optional
     # uncertainty (± magnitude), stored in the same canonical unit as its value —

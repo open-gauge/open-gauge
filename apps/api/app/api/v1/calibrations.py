@@ -16,6 +16,7 @@ from ...repositories import audit_log as audit_log_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import certificate_template as certtpl_repo
 from ...repositories import stored_file as sf_repo
+from ...repositories import document_template as doctpl_repo
 from ...schemas.calibration import (
     AnalyzeFrequencyResponsePointOut,
     AnalyzeFrequencyResponseRequest,
@@ -25,6 +26,7 @@ from ...schemas.calibration import (
     AnalyzeResponse,
     CalibrationCreate,
     CalibrationPointResponse,
+    CalibrationReportTemplateUpdate,
     CalibrationResponse,
     FrequencyResponsePointResponse,
 )
@@ -560,6 +562,56 @@ async def upload_certificate(
     return cal
 
 
+@router.put("/{cal_id}/report-template", response_model=CalibrationResponse)
+def set_report_template(
+    cal_id: uuid.UUID,
+    payload: CalibrationReportTemplateUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> CalibrationResponse:
+    """Override which template renders this calibration's report — takes priority over the
+    sensor's default. Other users then download the report using this override with no picker
+    of their own (see GET /{cal_id}/certificate-templates and /certificate/download). Send both
+    fields null to clear the override."""
+    cal = cal_repo.get_by_id(db, cal_id)
+    if not cal:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration not found")
+
+    if payload.certificate_template_id:
+        template = certtpl_repo.get_by_id(db, payload.certificate_template_id)
+        if not template or not template.is_active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Certificate template not found or inactive")
+    if payload.document_template_id:
+        doc_template = doctpl_repo.get_by_id(db, payload.document_template_id)
+        if not doc_template or doc_template.status != "published":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Document template not found or not published")
+
+    before_full = {
+        "report_certificate_template_id": str(cal.report_certificate_template_id) if cal.report_certificate_template_id else None,
+        "report_document_template_id": str(cal.report_document_template_id) if cal.report_document_template_id else None,
+    }
+    cal_repo.set_report_template(db, cal, payload.certificate_template_id, payload.document_template_id)
+    after_full = {
+        "report_certificate_template_id": str(payload.certificate_template_id) if payload.certificate_template_id else None,
+        "report_document_template_id": str(payload.document_template_id) if payload.document_template_id else None,
+    }
+    changed_keys = [k for k in before_full if before_full[k] != after_full[k]]
+    if changed_keys:
+        asset = asset_repo.get_by_id(db, cal.asset_id)
+        audit_log_repo.create(
+            db,
+            actor_id=current_user.id,
+            actor_email=current_user.email,
+            action="calibration.report_template_changed",
+            entity_type="calibration",
+            entity_id=cal_id,
+            entity_asset_id=asset.asset_id if asset else None,
+            before_state={k: before_full[k] for k in changed_keys},
+            after_state={k: after_full[k] for k in changed_keys},
+        )
+    return cal
+
+
 @router.get("/{cal_id}/certificate")
 def get_certificate(
     cal_id: uuid.UUID,
@@ -613,9 +665,10 @@ def list_certificate_templates_for_calibration(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[dict]:
-    """List certificate templates available for this calibration's asset —
-    its resolved organization's templates plus global ones. Powers the
-    template picker on the certificate download button."""
+    """List templates available for this calibration's asset — its resolved organization's
+    certificate templates plus global ones, and every published document (editor) template.
+    Powers the template picker on the certificate download button, tagged by `kind` so the
+    frontend knows which download param to send."""
     from ...services.certificate_service import resolve_organization
 
     cal = cal_repo.get_by_id(db, cal_id)
@@ -626,20 +679,26 @@ def list_certificate_templates_for_calibration(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
     organization = resolve_organization(db, asset, cal)
-    templates = certtpl_repo.list_templates(db, organization_id=organization.id if organization else None)
-    return [{"id": str(t.id), "name": t.name} for t in templates]
+    cert_templates = certtpl_repo.list_templates(db, organization_id=organization.id if organization else None)
+    doc_templates = doctpl_repo.list_latest(db, status="published")
+    return [
+        *[{"id": str(t.id), "name": t.name, "kind": "certificate"} for t in cert_templates],
+        *[{"id": str(t.id), "name": t.name, "kind": "document"} for t in doc_templates],
+    ]
 
 
 @router.get("/{cal_id}/certificate/download")
 def download_certificate(
     cal_id: uuid.UUID,
     template_id: uuid.UUID | None = None,
+    document_template_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> Response:
-    """Live-generate and stream the calibration certificate PDF as a direct
-    download, optionally rendered with a specific certificate template
-    instead of the resolved org/global default.
+    """Live-generate and stream the calibration report PDF as a direct download, optionally
+    rendered with a specific template — `template_id` for a certificate (.tex) template,
+    `document_template_id` for a published editor template — instead of the resolved
+    override/default/org/global chain (see report_template_resolution.resolve_report_template).
 
     Unlike GET /certificate, this never reads from or writes to the cached
     calibration_file_id — it's always a fresh, ad-hoc render (needed since a
@@ -666,7 +725,14 @@ def download_certificate(
             headers={"Content-Disposition": f'attachment; filename="{file_rec.original_filename}"'},
         )
 
-    if not cal.poly_coefficients:
+    # poly_coefficients is empty by design for "reference_vs_indicated"/
+    # "reference_vs_as_found_as_left" (no transference function — see
+    # Calibration.data_entry_mode) and model_type="lookup_table" (no fit at
+    # all), so it's not a valid "has this calibration been analyzed at all"
+    # check on its own — max_error is computed for every analyzed mode
+    # (including those), and stays None only for a calibration /analyze has
+    # never been run against.
+    if cal.max_error is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Calibration has no results yet")
 
     asset = asset_repo.get_by_id(db, cal.asset_id)
@@ -674,7 +740,7 @@ def download_certificate(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
     try:
-        pdf_bytes = _build_certificate_pdf(db, cal, template_id=template_id)
+        pdf_bytes = _build_certificate_pdf(db, cal, certificate_template_id=template_id, document_template_id=document_template_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except LatexCompileError as exc:
@@ -694,13 +760,25 @@ def download_certificate(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _build_certificate_pdf(db: Session, cal: "object", template_id: uuid.UUID | None = None) -> bytes:  # type: ignore[type-arg]
-    """Live-render+compile a certificate PDF for a calibration, optionally
-    with a specific template. Shared by the auto-generate-and-cache path
-    (`_generate_and_store_certificate`) and the ad-hoc template-picker
-    download endpoint, which never caches its result."""
+def _build_certificate_pdf(
+    db: Session,
+    cal: "object",  # type: ignore[type-arg]
+    certificate_template_id: uuid.UUID | None = None,
+    document_template_id: uuid.UUID | None = None,
+) -> bytes:
+    """Live-render+compile a report PDF for a calibration. Shared by the auto-generate-and-cache
+    path (`_generate_and_store_certificate`) and the ad-hoc template-picker download endpoint,
+    which never caches its result.
+
+    `certificate_template_id`/`document_template_id`, if given, force that specific template
+    (an explicit ad-hoc choice from the download picker) regardless of kind. With neither given,
+    resolves via `report_template_resolution.resolve_report_template` — the calibration's own
+    override, then the sensor's default, then the existing org/global/built-in fallback — exactly
+    today's behavior when nothing has been assigned."""
     from ...models.calibration import Calibration  # local import to avoid circular
-    from ...services.certificate_service import generate_certificate
+    from ...models.sensor import Sensor
+    from ...services.certificate_service import generate_certificate, generate_certificate_from_document_template
+    from ...services.report_template_resolution import resolve_report_template
 
     assert isinstance(cal, Calibration)
 
@@ -720,11 +798,30 @@ def _build_certificate_pdf(db: Session, cal: "object", template_id: uuid.UUID | 
 
     sensor = None
     if cal.sensor_id:
-        from ...models.sensor import Sensor
         sensor = db.query(Sensor).filter(Sensor.id == cal.sensor_id).first()
+
+    if document_template_id is None and certificate_template_id is None:
+        resolved = resolve_report_template(cal, sensor)
+        if resolved.kind == "document":
+            document_template_id = resolved.template_id
+        else:
+            certificate_template_id = resolved.template_id  # may still be None -> org/global/built-in fallback
 
     # calibration_version is already the correct chronological position by the time
     # the certificate is generated (create_calibration renumbers before calling this).
+    if document_template_id is not None:
+        return generate_certificate_from_document_template(
+            db=db,
+            asset=asset,
+            calibration=cal,
+            points=points,
+            procedure=procedure,  # type: ignore[arg-type]
+            reference_asset=reference_asset,
+            sensor=sensor,
+            version=cal.calibration_version,
+            app_base_url=settings.frontend_url,
+            document_template_id=document_template_id,
+        )
     return generate_certificate(
         db=db,
         asset=asset,
@@ -735,7 +832,7 @@ def _build_certificate_pdf(db: Session, cal: "object", template_id: uuid.UUID | 
         sensor=sensor,
         version=cal.calibration_version,
         app_base_url=settings.frontend_url,
-        template_id=template_id,
+        template_id=certificate_template_id,
     )
 
 

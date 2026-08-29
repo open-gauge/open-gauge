@@ -3,7 +3,7 @@
   "info": {
     "title": "Open Gauge API",
     "description": "Open Gauge API",
-    "version": "3.3.0"
+    "version": "4.9.0"
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -432,13 +432,69 @@
         }
       }
     },
+    "/api/v1/organizations/calibration-lab-candidates": {
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "List Calibration Lab Candidates",
+        "description": "Minimal id+name list of active external organizations of the given\ntype, for the calibration wizard's Calibration Lab picker (External\nAccredited Lab / Customer's Asset types). Deliberately open to any\nnon-Viewer and deliberately minimal — the full organization profile\n(contact, address, VAT) stays Admin/Super-Admin-only via the main\nGET /organizations listing; this endpoint exists so that restriction\ndoesn't block a Technician from picking a lab/customer in the wizard.",
+        "operationId": "list_calibration_lab_candidates_api_v1_organizations_calibration_lab_candidates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "org_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "provider",
+                "customer"
+              ],
+              "type": "string",
+              "title": "Org Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalibrationLabCandidateResponse"
+                  },
+                  "title": "Response List Calibration Lab Candidates Api V1 Organizations Calibration Lab Candidates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations": {
       "get": {
         "tags": [
           "Organizations"
         ],
         "summary": "List Organizations",
-        "description": "Every active organization, name-only for private ones — enough for a\nnon-member to discover a private org exists and request to join it.\n`mine=true` scopes the list to the caller's own active memberships (e.g.\nthe organization picker on asset creation). Super Admin additionally sees\ndeactivated organizations — the only way to reach one, since it's\ninvisible to everyone else.",
+        "description": "Every active organization, name-only for private ones — enough for a\nnon-member to discover a private org exists and request to join it.\n`mine=true` scopes the list to the caller's own active memberships (e.g.\nthe organization picker on asset creation). Super Admin additionally sees\ndeactivated organizations — the only way to reach one, since it's\ninvisible to everyone else. `org_category`/`org_type` filter the list;\nexternal organizations are only ever visible to a global Admin/Super\nAdmin, so a non-admin's request is silently forced to internal-only\nregardless of what it asks for — same style as the is_active forcing\nbelow, never a 403.",
         "operationId": "list_organizations_api_v1_organizations_get",
         "security": [
           {
@@ -475,6 +531,46 @@
               "default": false,
               "title": "Mine"
             }
+          },
+          {
+            "name": "org_category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "internal",
+                    "external"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Org Category"
+            }
+          },
+          {
+            "name": "org_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "provider",
+                    "customer"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Org Type"
+            }
           }
         ],
         "responses": {
@@ -509,7 +605,7 @@
           "Organizations"
         ],
         "summary": "Create Organization",
-        "description": "Any authenticated non-Viewer may create an organization — org creation is\na self-service action independent of the global RBAC role otherwise,\nmirroring Gogs/GitHub, but Viewer is excluded like every other org\nmanagement action. The creator automatically becomes that org's first\nadmin member.",
+        "description": "Any authenticated non-Viewer may create an *internal* organization —\norg creation is a self-service action independent of the global RBAC role\notherwise, mirroring Gogs/GitHub, but Viewer is excluded like every other\norg management action. The creator automatically becomes that org's first\nadmin member. Creating an *external* organization (an admin-managed\ndirectory entry, no members) requires a global Admin/Super Admin.",
         "operationId": "create_organization_api_v1_organizations_post",
         "security": [
           {
@@ -2086,13 +2182,13 @@
         ]
       }
     },
-    "/api/v1/assets/{asset_pk}/profile": {
+    "/api/v1/assets/{asset_ref}/profile": {
       "get": {
         "tags": [
           "Assets"
         ],
         "summary": "Get Asset Profile",
-        "operationId": "get_asset_profile_api_v1_assets__asset_pk__profile_get",
+        "operationId": "get_asset_profile_api_v1_assets__asset_ref__profile_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2100,13 +2196,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2134,13 +2229,13 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}": {
+    "/api/v1/assets/{asset_ref}": {
       "get": {
         "tags": [
           "Assets"
         ],
         "summary": "Get Asset",
-        "operationId": "get_asset_api_v1_assets__asset_pk__get",
+        "operationId": "get_asset_api_v1_assets__asset_ref__get",
         "security": [
           {
             "HTTPBearer": []
@@ -2148,13 +2243,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2186,7 +2280,7 @@
           "Assets"
         ],
         "summary": "Update Asset",
-        "operationId": "update_asset_api_v1_assets__asset_pk__put",
+        "operationId": "update_asset_api_v1_assets__asset_ref__put",
         "security": [
           {
             "HTTPBearer": []
@@ -2194,13 +2288,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2242,7 +2335,7 @@
           "Assets"
         ],
         "summary": "Retire Asset",
-        "operationId": "retire_asset_api_v1_assets__asset_pk__delete",
+        "operationId": "retire_asset_api_v1_assets__asset_ref__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -2250,13 +2343,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           },
           {
@@ -2293,13 +2385,13 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/duplicate": {
+    "/api/v1/assets/{asset_ref}/duplicate": {
       "post": {
         "tags": [
           "Assets"
         ],
         "summary": "Duplicate Asset",
-        "operationId": "duplicate_asset_api_v1_assets__asset_pk__duplicate_post",
+        "operationId": "duplicate_asset_api_v1_assets__asset_ref__duplicate_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2307,13 +2399,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2351,14 +2442,14 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/calibrations": {
+    "/api/v1/assets/{asset_ref}/calibrations": {
       "get": {
         "tags": [
           "Assets"
         ],
         "summary": "List Asset Calibrations",
         "description": "List calibration records for this asset, newest first. Voided calibrations\nare excluded unless include_voided=true.",
-        "operationId": "list_asset_calibrations_api_v1_assets__asset_pk__calibrations_get",
+        "operationId": "list_asset_calibrations_api_v1_assets__asset_ref__calibrations_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2366,13 +2457,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           },
           {
@@ -2416,7 +2506,7 @@
                   "items": {
                     "$ref": "#/components/schemas/CalibrationResponse"
                   },
-                  "title": "Response List Asset Calibrations Api V1 Assets  Asset Pk  Calibrations Get"
+                  "title": "Response List Asset Calibrations Api V1 Assets  Asset Ref  Calibrations Get"
                 }
               }
             }
@@ -2434,13 +2524,14 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/health": {
+    "/api/v1/assets/{asset_ref}/calibration-users": {
       "get": {
         "tags": [
           "Assets"
         ],
-        "summary": "Get Asset Health",
-        "operationId": "get_asset_health_api_v1_assets__asset_pk__health_get",
+        "summary": "List Calibration Users",
+        "description": "Candidate users for the calibration wizard's Registered By / Checked By\ndropdowns: active Technician/Admin/Super Admin members of the asset's\nresolved organization (falling back to the caller's own first\norganization if the asset's can't be resolved, e.g. a brand-new asset\nwith no location yet). Viewers are excluded — they can't register or\ncheck a calibration. The caller themselves is always included even if\norganization resolution comes up empty (e.g. no organization at all\nreachable) — the wizard's Registered By must always have at least one\nselectable option, the person filling it in, or the feature is unusable.",
+        "operationId": "list_calibration_users_api_v1_assets__asset_ref__calibration_users_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2448,13 +2539,64 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalibrationUserResponse"
+                  },
+                  "title": "Response List Calibration Users Api V1 Assets  Asset Ref  Calibration Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{asset_ref}/health": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Get Asset Health",
+        "description": "`after`/`before` scope the calibration history used for drift/stability\nto a date window — powers the Health tab's before/after-repair comparison\n(see GET /{asset_ref}/health/repair-periods for the period boundaries).",
+        "operationId": "get_asset_health_api_v1_assets__asset_ref__health_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
             }
           },
           {
@@ -2472,6 +2614,40 @@
                 }
               ],
               "title": "Sensor Id"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
             }
           }
         ],
@@ -2499,13 +2675,14 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/health/curve-comparison": {
+    "/api/v1/assets/{asset_ref}/health/repair-periods": {
       "get": {
         "tags": [
           "Assets"
         ],
-        "summary": "Get Asset Health Curve Comparison",
-        "operationId": "get_asset_health_curve_comparison_api_v1_assets__asset_pk__health_curve_comparison_get",
+        "summary": "Get Asset Health Repair Periods",
+        "description": "Repair-boundary periods for the Health tab's before/after-repair\ndropdown, derived from this asset's non-voided \"after_repair\" purpose\ncalibrations that have a repair_date set, oldest first. Always includes a\ntrailing \"Currently\" entry (after = the last repair date, or null if\nthere have been no repairs at all).",
+        "operationId": "get_asset_health_repair_periods_api_v1_assets__asset_ref__health_repair_periods_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2513,13 +2690,63 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  },
+                  "title": "Response Get Asset Health Repair Periods Api V1 Assets  Asset Ref  Health Repair Periods Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{asset_ref}/health/curve-comparison": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Get Asset Health Curve Comparison",
+        "operationId": "get_asset_health_curve_comparison_api_v1_assets__asset_ref__health_curve_comparison_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
             }
           },
           {
@@ -2567,13 +2794,13 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/audit-logs": {
+    "/api/v1/assets/{asset_ref}/audit-logs": {
       "get": {
         "tags": [
           "Assets"
         ],
         "summary": "List Asset Audit Logs",
-        "operationId": "list_asset_audit_logs_api_v1_assets__asset_pk__audit_logs_get",
+        "operationId": "list_asset_audit_logs_api_v1_assets__asset_ref__audit_logs_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2581,13 +2808,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           },
           {
@@ -2621,7 +2847,7 @@
                   "items": {
                     "$ref": "#/components/schemas/AuditLogResponse"
                   },
-                  "title": "Response List Asset Audit Logs Api V1 Assets  Asset Pk  Audit Logs Get"
+                  "title": "Response List Asset Audit Logs Api V1 Assets  Asset Ref  Audit Logs Get"
                 }
               }
             }
@@ -2639,13 +2865,13 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/files": {
+    "/api/v1/assets/{asset_ref}/files": {
       "get": {
         "tags": [
           "Assets"
         ],
         "summary": "List Asset Files",
-        "operationId": "list_asset_files_api_v1_assets__asset_pk__files_get",
+        "operationId": "list_asset_files_api_v1_assets__asset_ref__files_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2653,13 +2879,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2673,7 +2898,7 @@
                   "items": {
                     "$ref": "#/components/schemas/StoredFileResponse"
                   },
-                  "title": "Response List Asset Files Api V1 Assets  Asset Pk  Files Get"
+                  "title": "Response List Asset Files Api V1 Assets  Asset Ref  Files Get"
                 }
               }
             }
@@ -2695,7 +2920,7 @@
           "Assets"
         ],
         "summary": "Upload Asset File",
-        "operationId": "upload_asset_file_api_v1_assets__asset_pk__files_post",
+        "operationId": "upload_asset_file_api_v1_assets__asset_ref__files_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2703,13 +2928,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2718,7 +2942,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_asset_file_api_v1_assets__asset_pk__files_post"
+                "$ref": "#/components/schemas/Body_upload_asset_file_api_v1_assets__asset_ref__files_post"
               }
             }
           }
@@ -2747,13 +2971,13 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/files/{file_id}": {
+    "/api/v1/assets/{asset_ref}/files/{file_id}": {
       "delete": {
         "tags": [
           "Assets"
         ],
         "summary": "Delete Asset File",
-        "operationId": "delete_asset_file_api_v1_assets__asset_pk__files__file_id__delete",
+        "operationId": "delete_asset_file_api_v1_assets__asset_ref__files__file_id__delete",
         "security": [
           {
             "HTTPBearer": []
@@ -2761,13 +2985,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           },
           {
@@ -2798,14 +3021,14 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/picture": {
+    "/api/v1/assets/{asset_ref}/picture": {
       "post": {
         "tags": [
           "Assets"
         ],
         "summary": "Upload Asset Picture",
         "description": "Upload or replace the asset's picture (a photo of the physical unit, shown circled on the asset detail header). Replaces and deletes any previous picture.",
-        "operationId": "upload_asset_picture_api_v1_assets__asset_pk__picture_post",
+        "operationId": "upload_asset_picture_api_v1_assets__asset_ref__picture_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2813,13 +3036,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2828,7 +3050,7 @@
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_asset_picture_api_v1_assets__asset_pk__picture_post"
+                "$ref": "#/components/schemas/Body_upload_asset_picture_api_v1_assets__asset_ref__picture_post"
               }
             }
           }
@@ -2862,7 +3084,7 @@
         ],
         "summary": "Delete Asset Picture",
         "description": "Remove the asset's picture, if one is set.",
-        "operationId": "delete_asset_picture_api_v1_assets__asset_pk__picture_delete",
+        "operationId": "delete_asset_picture_api_v1_assets__asset_ref__picture_delete",
         "security": [
           {
             "HTTPBearer": []
@@ -2870,13 +3092,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2904,15 +3125,14 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/export": {
-      "get": {
+    "/api/v1/assets/{asset_ref}/pinout-image": {
+      "post": {
         "tags": [
-          "Assets",
           "Assets"
         ],
-        "summary": "Export an asset",
-        "description": "Export a single asset as a downloadable ZIP archive: asset.yaml with all metadata, channels/DAQ, and full calibration history, plus a media/ folder with the picture, datasheet, pinout/sensor images, attached files, and calibration certificates.",
-        "operationId": "export_asset_api_v1_assets__asset_pk__export_get",
+        "summary": "Upload Asset Pinout Image",
+        "description": "Upload or replace the electrical interface panel's connector image (Interface tab).",
+        "operationId": "upload_asset_pinout_image_api_v1_assets__asset_ref__pinout_image_post",
         "security": [
           {
             "HTTPBearer": []
@@ -2920,13 +3140,377 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_asset_pinout_image_api_v1_assets__asset_ref__pinout_image_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Delete Asset Pinout Image",
+        "description": "Remove the electrical interface panel's connector image, if one is set.",
+        "operationId": "delete_asset_pinout_image_api_v1_assets__asset_ref__pinout_image_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{asset_ref}/mechanical-image": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Upload Asset Mechanical Image",
+        "description": "Upload or replace the mechanical interface panel's drawing/mounting image (Interface tab).",
+        "operationId": "upload_asset_mechanical_image_api_v1_assets__asset_ref__mechanical_image_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_asset_mechanical_image_api_v1_assets__asset_ref__mechanical_image_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Delete Asset Mechanical Image",
+        "description": "Remove the mechanical interface panel's image, if one is set.",
+        "operationId": "delete_asset_mechanical_image_api_v1_assets__asset_ref__mechanical_image_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{asset_ref}/cad-files": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "List Asset Cad Files",
+        "operationId": "list_asset_cad_files_api_v1_assets__asset_ref__cad_files_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StoredFileResponse"
+                  },
+                  "title": "Response List Asset Cad Files Api V1 Assets  Asset Ref  Cad Files Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Upload Asset Cad File",
+        "operationId": "upload_asset_cad_file_api_v1_assets__asset_ref__cad_files_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_asset_cad_file_api_v1_assets__asset_ref__cad_files_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{asset_ref}/cad-files/{file_id}": {
+      "delete": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Delete Asset Cad File",
+        "operationId": "delete_asset_cad_file_api_v1_assets__asset_ref__cad_files__file_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
+            }
+          },
+          {
+            "name": "file_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid",
-              "title": "Asset Pk"
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{asset_ref}/export": {
+      "get": {
+        "tags": [
+          "Assets",
+          "Assets"
+        ],
+        "summary": "Export an asset",
+        "description": "Export a single asset as a downloadable ZIP archive: asset.yaml with all metadata, channels/DAQ, and full calibration history, plus a media/ folder with the picture, datasheet, pinout/sensor images, attached files, and calibration certificates.",
+        "operationId": "export_asset_api_v1_assets__asset_ref__export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Ref"
             }
           }
         ],
@@ -2952,14 +3536,14 @@
         }
       }
     },
-    "/api/v1/assets/{asset_pk}/label": {
+    "/api/v1/assets/{asset_ref}/label": {
       "get": {
         "tags": [
           "Assets"
         ],
         "summary": "Get Asset Label",
         "description": "Generate and return an asset label/sticker in the requested size and format.",
-        "operationId": "get_asset_label_api_v1_assets__asset_pk__label_get",
+        "operationId": "get_asset_label_api_v1_assets__asset_ref__label_get",
         "security": [
           {
             "HTTPBearer": []
@@ -2967,13 +3551,12 @@
         ],
         "parameters": [
           {
-            "name": "asset_pk",
+            "name": "asset_ref",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Asset Pk"
+              "title": "Asset Ref"
             }
           },
           {
@@ -3126,6 +3709,53 @@
         ]
       }
     },
+    "/api/v1/calibrations/analyze-frequency-response": {
+      "post": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "Analyze Frequency Response",
+        "description": "Ephemeral sensitivity analysis for data_entry_mode=frequency_response —\npowers Step 3's live preview. Mirrors /analyze's ephemeral-compute\npattern; the actual save goes through POST /calibrations with\ndata_entry_mode=frequency_response, which recomputes and persists the\nsame result server-side.",
+        "operationId": "analyze_frequency_response_api_v1_calibrations_analyze_frequency_response_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeFrequencyResponseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeFrequencyResponseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/calibrations": {
       "get": {
         "tags": [
@@ -3203,7 +3833,7 @@
           "Calibrations"
         ],
         "summary": "Create Calibration",
-        "description": "Record a new calibration. calibration_version is assigned automatically as\nthe next integer for this asset (or asset/sensor) — always increasing and\nunique, regardless of calibration_date.",
+        "description": "Record a new calibration. calibration_version is assigned automatically as\nthe next integer for this asset (or asset/sensor) — always increasing and\nunique, regardless of calibration_date. Any role but Viewer may record a\ncalibration — Technician, Admin, and Super Admin are all self-service here,\nsame as asset/organization creation.",
         "operationId": "create_calibration_api_v1_calibrations_post",
         "security": [
           {
@@ -3354,7 +3984,71 @@
           "Calibrations"
         ],
         "summary": "List Points",
+        "description": "`role` selects between a calibration's primary dataset (default — the\nofficial points for raw_data/model_direct, or the as-left side of a\nreference_vs_as_found_as_left record) and \"as_found\" (that mode's\ndiagnostic pre-repair dataset).",
         "operationId": "list_points_api_v1_calibrations__cal_id__points_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "primary",
+              "title": "Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalibrationPointResponse"
+                  },
+                  "title": "Response List Points Api V1 Calibrations  Cal Id  Points Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/frequency-response-points": {
+      "get": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "List Frequency Response Points",
+        "description": "The sweep for a data_entry_mode=frequency_response calibration —\nempty for every other mode.",
+        "operationId": "list_frequency_response_points_api_v1_calibrations__cal_id__frequency_response_points_get",
         "security": [
           {
             "HTTPBearer": []
@@ -3380,9 +4074,9 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/CalibrationPointResponse"
+                    "$ref": "#/components/schemas/FrequencyResponsePointResponse"
                   },
-                  "title": "Response List Points Api V1 Calibrations  Cal Id  Points Get"
+                  "title": "Response List Frequency Response Points Api V1 Calibrations  Cal Id  Frequency Response Points Get"
                 }
               }
             }
@@ -3449,13 +4143,245 @@
         }
       }
     },
+    "/api/v1/calibrations/{cal_id}/approve": {
+      "post": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "Approve Calibration",
+        "description": "The assigned checker (or an admin override) approves a pending calibration.",
+        "operationId": "approve_calibration_api_v1_calibrations__cal_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/reject": {
+      "post": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "Reject Calibration",
+        "description": "The assigned checker (or an admin override) rejects a pending calibration.",
+        "operationId": "reject_calibration_api_v1_calibrations__cal_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reason"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/certificate/upload": {
+      "post": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "Upload Certificate",
+        "description": "Attach a user-supplied certificate PDF (OEM / External Accredited Lab\ntypes) — stored separately from the system-generated certificate\n(calibration_file_id) and takes priority over it wherever a certificate is\nserved. PDF-only, validated by both declared content-type and magic bytes.",
+        "operationId": "upload_certificate_api_v1_calibrations__cal_id__certificate_upload_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_certificate_api_v1_calibrations__cal_id__certificate_upload_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calibrations/{cal_id}/report-template": {
+      "put": {
+        "tags": [
+          "Calibrations"
+        ],
+        "summary": "Set Report Template",
+        "description": "Override which template renders this calibration's report — takes priority over the\nsensor's default. Other users then download the report using this override with no picker\nof their own (see GET /{cal_id}/certificate-templates and /certificate/download). Send both\nfields null to clear the override.",
+        "operationId": "set_report_template_api_v1_calibrations__cal_id__report_template_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Cal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalibrationReportTemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/calibrations/{cal_id}/certificate": {
       "get": {
         "tags": [
           "Calibrations"
         ],
         "summary": "Get Certificate",
-        "description": "Return a 1-hour presigned download URL for the calibration certificate PDF.",
+        "description": "Return a 1-hour presigned download URL for the calibration certificate PDF.\nAn uploaded certificate (OEM / External Accredited Lab types) always takes\npriority over the system-generated one when both exist.",
         "operationId": "get_certificate_api_v1_calibrations__cal_id__certificate_get",
         "security": [
           {
@@ -3502,7 +4428,7 @@
           "Calibrations"
         ],
         "summary": "List Certificate Templates For Calibration",
-        "description": "List certificate templates available for this calibration's asset —\nits resolved organization's templates plus global ones. Powers the\ntemplate picker on the certificate download button.",
+        "description": "List templates available for this calibration's asset — its resolved organization's\ncertificate templates plus global ones, and every published document (editor) template.\nPowers the template picker on the certificate download button, tagged by `kind` so the\nfrontend knows which download param to send.",
         "operationId": "list_certificate_templates_for_calibration_api_v1_calibrations__cal_id__certificate_templates_get",
         "security": [
           {
@@ -3555,7 +4481,7 @@
           "Calibrations"
         ],
         "summary": "Download Certificate",
-        "description": "Live-generate and stream the calibration certificate PDF as a direct\ndownload, optionally rendered with a specific certificate template\ninstead of the resolved org/global default.\n\nUnlike GET /certificate, this never reads from or writes to the cached\ncalibration_file_id — it's always a fresh, ad-hoc render (needed since a\none-off \"try this template\" download must not overwrite the canonical\nstored certificate), so it's a little slower but always reflects the\nchosen template exactly.",
+        "description": "Live-generate and stream the calibration report PDF as a direct download, optionally\nrendered with a specific template — `template_id` for a certificate (.tex) template,\n`document_template_id` for a published editor template — instead of the resolved\noverride/default/org/global chain (see report_template_resolution.resolve_report_template).\n\nUnlike GET /certificate, this never reads from or writes to the cached\ncalibration_file_id — it's always a fresh, ad-hoc render (needed since a\none-off \"try this template\" download must not overwrite the canonical\nstored certificate), so it's a little slower but always reflects the\nchosen template exactly. An uploaded certificate (OEM / External Accredited\nLab types) always takes priority — it's streamed back as-is, no template\npicker applies to a file we didn't generate.",
         "operationId": "download_certificate_api_v1_calibrations__cal_id__certificate_download_get",
         "security": [
           {
@@ -3588,6 +4514,23 @@
                 }
               ],
               "title": "Template Id"
+            }
+          },
+          {
+            "name": "document_template_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Template Id"
             }
           }
         ],
@@ -3888,6 +4831,768 @@
         ]
       }
     },
+    "/api/v1/document-templates": {
+      "get": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "List document templates",
+        "description": "Returns the latest version of every template (one row per template group). Filter by `type` (certificate/procedure), `status` (draft/published/archived), or `q` (name search).",
+        "operationId": "list_document_templates_api_v1_document_templates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentTemplateListItem"
+                  },
+                  "title": "Response List Document Templates Api V1 Document Templates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Create a document template",
+        "description": "Creates version 1 of a new template as a draft, with an empty document.",
+        "operationId": "create_document_template_api_v1_document_templates_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/import": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Import a document template from an exported JSON file",
+        "description": "Creates a new draft (its own version history) from a JSON file previously produced by GET /{template_id}/export — round-trips through the live editor, unlike a raw LaTeX upload (see /certificate-templates for that).",
+        "operationId": "import_document_template_api_v1_document_templates_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_document_template_api_v1_document_templates_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/document-templates/{template_id}": {
+      "get": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Get a document template version",
+        "operationId": "get_document_template_api_v1_document_templates__template_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Update a draft document template",
+        "description": "Only the draft version of a template may be edited. A published template is immutable — use `POST /{id}/new-version` to branch a new editable draft off it.",
+        "operationId": "update_document_template_api_v1_document_templates__template_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/export": {
+      "get": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Export a document template as a JSON file",
+        "description": "Downloads this version's name/description/type/document as a JSON file, importable again via POST /import — round-trips through the live editor.",
+        "operationId": "export_document_template_api_v1_document_templates__template_id__export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/versions": {
+      "get": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "List every version of a template's group",
+        "operationId": "list_document_template_versions_api_v1_document_templates__template_id__versions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentTemplateListItem"
+                  },
+                  "title": "Response List Document Template Versions Api V1 Document Templates  Template Id  Versions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/new-version": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Branch a new draft version off a published template",
+        "description": "If a draft already exists in this template's group, returns that existing draft instead of creating another one.",
+        "operationId": "branch_new_version_api_v1_document_templates__template_id__new_version_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/publish": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Publish a draft template",
+        "description": "Publishing freezes this version — it can no longer be edited in place.",
+        "operationId": "publish_document_template_api_v1_document_templates__template_id__publish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/archive": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Archive a document template",
+        "description": "Soft-deletes a template by marking its latest version archived. The template's history is preserved, not removed.",
+        "operationId": "archive_document_template_api_v1_document_templates__template_id__archive_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/duplicate": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Duplicate a document template",
+        "description": "Creates a brand-new, independent template (its own version history) pre-filled with this version's document content.",
+        "operationId": "duplicate_document_template_api_v1_document_templates__template_id__duplicate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTemplateDuplicateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/files": {
+      "get": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "List a template's uploaded images",
+        "operationId": "list_document_template_files_api_v1_document_templates__template_id__files_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StoredFileResponse"
+                  },
+                  "title": "Response List Document Template Files Api V1 Document Templates  Template Id  Files Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Upload an image for use in an image block",
+        "operationId": "upload_document_template_file_api_v1_document_templates__template_id__files_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_template_file_api_v1_document_templates__template_id__files_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/files/{file_id}": {
+      "delete": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Delete a template image",
+        "operationId": "delete_document_template_file_api_v1_document_templates__template_id__files__file_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          },
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/procedures": {
       "get": {
         "tags": [
@@ -4004,6 +5709,148 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/procedures/export/bulk": {
+      "post": {
+        "tags": [
+          "Procedures",
+          "Procedures"
+        ],
+        "summary": "Bulk export procedures",
+        "description": "Export multiple procedures as one ZIP archive, one folder per procedure (metadata + steps + associated step attachments). Admin/superadmin only.",
+        "operationId": "export_procedures_bulk_api_v1_procedures_export_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcedureBulkExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/procedures/import/validate": {
+      "post": {
+        "tags": [
+          "Procedures",
+          "Procedures"
+        ],
+        "summary": "Validate a single-procedure import ZIP",
+        "description": "Check whether a ZIP contains exactly one valid, importable procedure (used by the 'New Procedure → Import from file' flow). Never creates anything — always returns 200 with a `valid` flag rather than an error status, so the UI can show either the procedure preview or a plain 'not a valid procedure' message. Admin/superadmin only.",
+        "operationId": "validate_import_zip_api_v1_procedures_import_validate_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_validate_import_zip_api_v1_procedures_import_validate_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcedureImportPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/procedures/import": {
+      "post": {
+        "tags": [
+          "Procedures",
+          "Procedures"
+        ],
+        "summary": "Import procedures from a ZIP",
+        "description": "Import one or more procedures from a ZIP archive produced by the procedure export feature. Each top-level folder containing a procedure.yaml is imported independently — a failure importing one procedure does not block the others in the same file. Used by both the registry's bulk 'Import' button and the 'New Procedure → Import from file' flow. Admin/superadmin only.",
+        "operationId": "import_procedures_api_v1_procedures_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_procedures_api_v1_procedures_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcedureImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/procedures/{proc_pk}": {
@@ -4135,6 +5982,54 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/procedures/{proc_pk}/export": {
+      "get": {
+        "tags": [
+          "Procedures",
+          "Procedures"
+        ],
+        "summary": "Export a procedure",
+        "description": "Export a single procedure as a downloadable ZIP archive: procedure.yaml with all metadata and steps, plus a media/ folder with the step attachments. Admin/superadmin only.",
+        "operationId": "export_procedure_api_v1_procedures__proc_pk__export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proc_pk",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proc Pk"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -5848,9 +7743,24 @@
             ],
             "title": "Actor Role"
           },
+          "actor_profile_picture_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Profile Picture Url"
+          },
           "action": {
             "type": "string",
             "title": "Action"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
           },
           "entity_asset_id": {
             "anyOf": [
@@ -5863,6 +7773,28 @@
             ],
             "title": "Entity Asset Id"
           },
+          "before_state": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before State"
+          },
+          "after_state": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After State"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -5873,6 +7805,7 @@
         "required": [
           "actor_email",
           "action",
+          "entity_type",
           "entity_asset_id",
           "created_at"
         ],
@@ -5951,6 +7884,133 @@
           "api_version"
         ],
         "title": "AdminSystemResponse"
+      },
+      "AnalyzeFrequencyResponsePointIn": {
+        "properties": {
+          "sweep_index": {
+            "type": "integer",
+            "title": "Sweep Index"
+          },
+          "frequency_value": {
+            "type": "number",
+            "title": "Frequency Value"
+          },
+          "reference_value": {
+            "type": "number",
+            "title": "Reference Value"
+          },
+          "measured_value": {
+            "type": "number",
+            "title": "Measured Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sweep_index",
+          "frequency_value",
+          "reference_value",
+          "measured_value"
+        ],
+        "title": "AnalyzeFrequencyResponsePointIn"
+      },
+      "AnalyzeFrequencyResponsePointOut": {
+        "properties": {
+          "sweep_index": {
+            "type": "integer",
+            "title": "Sweep Index"
+          },
+          "frequency_value": {
+            "type": "number",
+            "title": "Frequency Value"
+          },
+          "reference_value": {
+            "type": "number",
+            "title": "Reference Value"
+          },
+          "measured_value": {
+            "type": "number",
+            "title": "Measured Value"
+          },
+          "sensitivity_value": {
+            "type": "number",
+            "title": "Sensitivity Value"
+          },
+          "deviation_pct": {
+            "type": "number",
+            "title": "Deviation Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sweep_index",
+          "frequency_value",
+          "reference_value",
+          "measured_value",
+          "sensitivity_value",
+          "deviation_pct"
+        ],
+        "title": "AnalyzeFrequencyResponsePointOut"
+      },
+      "AnalyzeFrequencyResponseRequest": {
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyzeFrequencyResponsePointIn"
+            },
+            "type": "array",
+            "minItems": 2,
+            "title": "Points"
+          },
+          "baseline_sweep_index": {
+            "type": "integer",
+            "title": "Baseline Sweep Index"
+          }
+        },
+        "type": "object",
+        "required": [
+          "points",
+          "baseline_sweep_index"
+        ],
+        "title": "AnalyzeFrequencyResponseRequest"
+      },
+      "AnalyzeFrequencyResponseResponse": {
+        "properties": {
+          "gain": {
+            "type": "number",
+            "title": "Gain"
+          },
+          "poly_coefficients": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Poly Coefficients"
+          },
+          "range_min": {
+            "type": "number",
+            "title": "Range Min"
+          },
+          "range_max": {
+            "type": "number",
+            "title": "Range Max"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyzeFrequencyResponsePointOut"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gain",
+          "poly_coefficients",
+          "range_min",
+          "range_max",
+          "points"
+        ],
+        "title": "AnalyzeFrequencyResponseResponse"
       },
       "AnalyzePointIn": {
         "properties": {
@@ -6063,6 +8123,41 @@
             ],
             "title": "Poly Degree"
           },
+          "skip_fit": {
+            "type": "boolean",
+            "title": "Skip Fit",
+            "default": false
+          },
+          "calibration_method": {
+            "type": "string",
+            "title": "Calibration Method",
+            "default": "polynomial_fit"
+          },
+          "custom_formula_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Formula Template"
+          },
+          "custom_formula_params": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Formula Params"
+          },
           "distribution_type": {
             "type": "string",
             "title": "Distribution Type",
@@ -6095,10 +8190,43 @@
             ],
             "title": "Channel Accuracy Type"
           },
+          "channel_range_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Range Min"
+          },
+          "channel_range_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Range Max"
+          },
           "decision_rule": {
             "type": "string",
             "title": "Decision Rule",
             "default": "simple_acceptance"
+          },
+          "tolerance_override_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerance Override Value"
           },
           "reference_standard_uncertainty": {
             "anyOf": [
@@ -6160,7 +8288,14 @@
       "AnalyzeResponse": {
         "properties": {
           "poly_degree": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Poly Degree"
           },
           "coefficients": {
@@ -6191,7 +8326,14 @@
             "title": "Full Scale Error Pct"
           },
           "non_linearity_pct": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Non Linearity Pct"
           },
           "repeatability": {
@@ -6293,6 +8435,31 @@
             },
             "type": "array",
             "title": "Points"
+          },
+          "resolved_custom_formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Custom Formula"
+          },
+          "custom_formula_parameter_values": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Formula Parameter Values"
           }
         },
         "type": "object",
@@ -6681,6 +8848,20 @@
               }
             ],
             "title": "Sensor Schematic Id"
+          },
+          "mechanical_table": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Table"
           },
           "sensor_channels": {
             "anyOf": [
@@ -7507,6 +9688,17 @@
             ],
             "title": "Pinout Image Id"
           },
+          "pinout_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinout Image Url"
+          },
           "sensor_image_id": {
             "anyOf": [
               {
@@ -7530,6 +9722,43 @@
               }
             ],
             "title": "Sensor Schematic Id"
+          },
+          "mechanical_table": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Table"
+          },
+          "mechanical_image_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Image Id"
+          },
+          "mechanical_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Image Url"
           },
           "picture_id": {
             "anyOf": [
@@ -8123,6 +10352,17 @@
             ],
             "title": "Pinout Image Id"
           },
+          "pinout_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinout Image Url"
+          },
           "sensor_image_id": {
             "anyOf": [
               {
@@ -8146,6 +10386,43 @@
               }
             ],
             "title": "Sensor Schematic Id"
+          },
+          "mechanical_table": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Table"
+          },
+          "mechanical_image_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Image Id"
+          },
+          "mechanical_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Image Url"
           },
           "picture_id": {
             "anyOf": [
@@ -8598,6 +10875,20 @@
             ],
             "title": "Pinout Table"
           },
+          "mechanical_table": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanical Table"
+          },
           "sensor_channels": {
             "anyOf": [
               {
@@ -8794,7 +11085,7 @@
         ],
         "title": "Body_import_database_api_v1_admin_database_import_post"
       },
-      "Body_upload_asset_file_api_v1_assets__asset_pk__files_post": {
+      "Body_import_document_template_api_v1_document_templates_import_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -8806,9 +11097,9 @@
         "required": [
           "file"
         ],
-        "title": "Body_upload_asset_file_api_v1_assets__asset_pk__files_post"
+        "title": "Body_import_document_template_api_v1_document_templates_import_post"
       },
-      "Body_upload_asset_picture_api_v1_assets__asset_pk__picture_post": {
+      "Body_import_procedures_api_v1_procedures_import_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -8820,7 +11111,105 @@
         "required": [
           "file"
         ],
-        "title": "Body_upload_asset_picture_api_v1_assets__asset_pk__picture_post"
+        "title": "Body_import_procedures_api_v1_procedures_import_post"
+      },
+      "Body_upload_asset_cad_file_api_v1_assets__asset_ref__cad_files_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_asset_cad_file_api_v1_assets__asset_ref__cad_files_post"
+      },
+      "Body_upload_asset_file_api_v1_assets__asset_ref__files_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_asset_file_api_v1_assets__asset_ref__files_post"
+      },
+      "Body_upload_asset_mechanical_image_api_v1_assets__asset_ref__mechanical_image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_asset_mechanical_image_api_v1_assets__asset_ref__mechanical_image_post"
+      },
+      "Body_upload_asset_picture_api_v1_assets__asset_ref__picture_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_asset_picture_api_v1_assets__asset_ref__picture_post"
+      },
+      "Body_upload_asset_pinout_image_api_v1_assets__asset_ref__pinout_image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_asset_pinout_image_api_v1_assets__asset_ref__pinout_image_post"
+      },
+      "Body_upload_certificate_api_v1_calibrations__cal_id__certificate_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_certificate_api_v1_calibrations__cal_id__certificate_upload_post"
+      },
+      "Body_upload_document_template_file_api_v1_document_templates__template_id__files_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_document_template_file_api_v1_document_templates__template_id__files_post"
       },
       "Body_upload_my_picture_api_v1_users_me_picture_post": {
         "properties": {
@@ -8944,6 +11333,20 @@
         ],
         "title": "Body_validate_import_zip_api_v1_assets_import_validate_post"
       },
+      "Body_validate_import_zip_api_v1_procedures_import_validate_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_validate_import_zip_api_v1_procedures_import_validate_post"
+      },
       "CalendarEvent": {
         "properties": {
           "asset_id": {
@@ -9007,6 +11410,29 @@
             ],
             "title": "Performed By User Id"
           },
+          "checked_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked By User Id"
+          },
+          "checked_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked By Name"
+          },
           "external_lab_name": {
             "anyOf": [
               {
@@ -9044,7 +11470,12 @@
           "calibration_type": {
             "type": "string",
             "title": "Calibration Type",
-            "default": "external"
+            "default": "external_accredited_lab"
+          },
+          "calibration_purpose": {
+            "type": "string",
+            "title": "Calibration Purpose",
+            "default": "routine"
           },
           "calibration_interval": {
             "anyOf": [
@@ -9067,6 +11498,69 @@
               }
             ],
             "title": "Tolerance Criteria"
+          },
+          "data_entry_mode": {
+            "type": "string",
+            "title": "Data Entry Mode",
+            "default": "raw_data"
+          },
+          "model_type": {
+            "type": "string",
+            "title": "Model Type",
+            "default": "polynomial"
+          },
+          "custom_formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Formula"
+          },
+          "as_found_points": {
+            "items": {
+              "$ref": "#/components/schemas/CalibrationPointInline"
+            },
+            "type": "array",
+            "title": "As Found Points"
+          },
+          "as_found_summary": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Found Summary"
+          },
+          "repair_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Date"
+          },
+          "repair_description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Description"
           },
           "internal_reference_asset_id": {
             "anyOf": [
@@ -9103,6 +11597,18 @@
             ],
             "title": "External Lab Certificate Number"
           },
+          "calibration_organization_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Organization Id"
+          },
           "daq_id": {
             "anyOf": [
               {
@@ -9138,6 +11644,17 @@
             ],
             "title": "Temperature"
           },
+          "temperature_uncertainty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Uncertainty"
+          },
           "humidity": {
             "anyOf": [
               {
@@ -9149,6 +11666,17 @@
             ],
             "title": "Humidity"
           },
+          "humidity_uncertainty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Humidity Uncertainty"
+          },
           "pressure": {
             "anyOf": [
               {
@@ -9159,6 +11687,17 @@
               }
             ],
             "title": "Pressure"
+          },
+          "pressure_uncertainty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pressure Uncertainty"
           },
           "poly_order": {
             "anyOf": [
@@ -9206,6 +11745,62 @@
               }
             ],
             "title": "Range Max"
+          },
+          "frequency_response_frequency_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Frequency Unit"
+          },
+          "frequency_response_amplitude_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Amplitude Type"
+          },
+          "frequency_response_offset_enabled": {
+            "type": "boolean",
+            "title": "Frequency Response Offset Enabled",
+            "default": false
+          },
+          "frequency_response_offset_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Offset Unit"
+          },
+          "frequency_response_baseline_sweep_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Baseline Sweep Index"
+          },
+          "frequency_response_points": {
+            "items": {
+              "$ref": "#/components/schemas/FrequencyResponsePointInline"
+            },
+            "type": "array",
+            "title": "Frequency Response Points"
           },
           "r_squared": {
             "anyOf": [
@@ -9481,6 +12076,26 @@
         ],
         "title": "CalibrationEvent"
       },
+      "CalibrationLabCandidateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CalibrationLabCandidateResponse",
+        "description": "A minimal external-organization candidate for the wizard's Calibration Lab\npicker (External Accredited Lab / Customer's Asset types) — deliberately just\nid+name, not the full organization profile (which stays Admin/Super-Admin-only;\nsee GET /organizations/calibration-lab-candidates)."
+      },
       "CalibrationOption": {
         "properties": {
           "id": {
@@ -9564,6 +12179,11 @@
           "measured_unit": {
             "type": "string",
             "title": "Measured Unit"
+          },
+          "point_role": {
+            "type": "string",
+            "title": "Point Role",
+            "default": "primary"
           }
         },
         "type": "object",
@@ -9641,6 +12261,11 @@
             "type": "string",
             "title": "Measured Unit"
           },
+          "point_role": {
+            "type": "string",
+            "title": "Point Role",
+            "default": "primary"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -9662,6 +12287,37 @@
           "created_at"
         ],
         "title": "CalibrationPointResponse"
+      },
+      "CalibrationReportTemplateUpdate": {
+        "properties": {
+          "certificate_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certificate Template Id"
+          },
+          "document_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Template Id"
+          }
+        },
+        "type": "object",
+        "title": "CalibrationReportTemplateUpdate",
+        "description": "Sets or clears this calibration's report template override. Send both fields null to\nclear the override and fall back to the sensor's default / org-global resolution."
       },
       "CalibrationResponse": {
         "properties": {
@@ -9701,6 +12357,29 @@
             "type": "string",
             "title": "Performed By Name"
           },
+          "checked_by_user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked By User Id"
+          },
+          "checked_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked By Name"
+          },
           "external_lab_name": {
             "anyOf": [
               {
@@ -9735,6 +12414,18 @@
             ],
             "title": "Calibration File Id"
           },
+          "uploaded_certificate_file_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded Certificate File Id"
+          },
           "created_by": {
             "type": "string",
             "format": "uuid",
@@ -9761,6 +12452,11 @@
             "type": "string",
             "title": "Calibration Type"
           },
+          "calibration_purpose": {
+            "type": "string",
+            "title": "Calibration Purpose",
+            "default": "routine"
+          },
           "calibration_version": {
             "type": "integer",
             "title": "Calibration Version"
@@ -9786,6 +12482,95 @@
               }
             ],
             "title": "Tolerance Criteria"
+          },
+          "repair_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Date"
+          },
+          "repair_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Description"
+          },
+          "calibration_organization_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Organization Id"
+          },
+          "report_certificate_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Certificate Template Id"
+          },
+          "report_document_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Document Template Id"
+          },
+          "data_entry_mode": {
+            "type": "string",
+            "title": "Data Entry Mode",
+            "default": "raw_data"
+          },
+          "model_type": {
+            "type": "string",
+            "title": "Model Type",
+            "default": "polynomial"
+          },
+          "custom_formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Formula"
+          },
+          "as_found_summary": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Found Summary"
           },
           "internal_reference_asset_id": {
             "anyOf": [
@@ -9869,6 +12654,17 @@
             ],
             "title": "Temperature"
           },
+          "temperature_uncertainty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Uncertainty"
+          },
           "humidity": {
             "anyOf": [
               {
@@ -9880,6 +12676,17 @@
             ],
             "title": "Humidity"
           },
+          "humidity_uncertainty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Humidity Uncertainty"
+          },
           "pressure": {
             "anyOf": [
               {
@@ -9890,6 +12697,17 @@
               }
             ],
             "title": "Pressure"
+          },
+          "pressure_uncertainty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pressure Uncertainty"
           },
           "poly_order": {
             "anyOf": [
@@ -9932,6 +12750,55 @@
               }
             ],
             "title": "Range Max"
+          },
+          "frequency_response_frequency_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Frequency Unit"
+          },
+          "frequency_response_amplitude_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Amplitude Type"
+          },
+          "frequency_response_offset_enabled": {
+            "type": "boolean",
+            "title": "Frequency Response Offset Enabled",
+            "default": false
+          },
+          "frequency_response_offset_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Offset Unit"
+          },
+          "frequency_response_baseline_sweep_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Response Baseline Sweep Index"
           },
           "r_squared": {
             "anyOf": [
@@ -10186,6 +13053,46 @@
               }
             ],
             "title": "Void Reason"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "valid"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
           }
         },
         "type": "object",
@@ -10212,8 +13119,11 @@
           "daq_id",
           "calibration_data_id",
           "temperature",
+          "temperature_uncertainty",
           "humidity",
+          "humidity_uncertainty",
           "pressure",
+          "pressure_uncertainty",
           "poly_order",
           "poly_coefficients",
           "range_min",
@@ -10274,6 +13184,42 @@
           "count"
         ],
         "title": "CalibrationStatusCount"
+      },
+      "CalibrationUserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "profile_picture_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Picture Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "email"
+        ],
+        "title": "CalibrationUserResponse",
+        "description": "A candidate for the calibration wizard's Registered By / Checked By\ndropdowns — an active Technician/Admin/Super Admin member of the asset's\norganization."
       },
       "CertificateTemplateResponse": {
         "properties": {
@@ -11152,6 +14098,258 @@
         ],
         "title": "DistributionItem"
       },
+      "DocumentTemplateCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "certificate",
+              "procedure"
+            ],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DocumentTemplateCreate"
+      },
+      "DocumentTemplateDuplicateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "title": "DocumentTemplateDuplicateRequest"
+      },
+      "DocumentTemplateListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "template_group_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Template Group Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Created By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "template_group_id",
+          "name",
+          "description",
+          "type",
+          "status",
+          "version",
+          "updated_at",
+          "created_by"
+        ],
+        "title": "DocumentTemplateListItem"
+      },
+      "DocumentTemplateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "template_group_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Template Group Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "document": {
+            "type": "object",
+            "title": "Document"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "template_group_id",
+          "name",
+          "description",
+          "type",
+          "status",
+          "version",
+          "document",
+          "is_active",
+          "created_by",
+          "created_at",
+          "updated_at",
+          "published_at"
+        ],
+        "title": "DocumentTemplateResponse"
+      },
+      "DocumentTemplateUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document"
+          }
+        },
+        "type": "object",
+        "title": "DocumentTemplateUpdate"
+      },
       "DriftEvolution": {
         "properties": {
           "points": {
@@ -11463,6 +14661,147 @@
           "email"
         ],
         "title": "ForgotPasswordRequest"
+      },
+      "FrequencyResponsePointInline": {
+        "properties": {
+          "sweep_index": {
+            "type": "integer",
+            "title": "Sweep Index"
+          },
+          "frequency_value": {
+            "type": "number",
+            "title": "Frequency Value"
+          },
+          "reference_value": {
+            "type": "number",
+            "title": "Reference Value"
+          },
+          "measured_value": {
+            "type": "number",
+            "title": "Measured Value"
+          },
+          "offset_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset Value"
+          },
+          "reference_unit": {
+            "type": "string",
+            "title": "Reference Unit"
+          },
+          "measured_unit": {
+            "type": "string",
+            "title": "Measured Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sweep_index",
+          "frequency_value",
+          "reference_value",
+          "measured_value",
+          "reference_unit",
+          "measured_unit"
+        ],
+        "title": "FrequencyResponsePointInline"
+      },
+      "FrequencyResponsePointResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "calibration_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Calibration Id"
+          },
+          "sweep_index": {
+            "type": "integer",
+            "title": "Sweep Index"
+          },
+          "frequency_value": {
+            "type": "number",
+            "title": "Frequency Value"
+          },
+          "reference_value": {
+            "type": "number",
+            "title": "Reference Value"
+          },
+          "measured_value": {
+            "type": "number",
+            "title": "Measured Value"
+          },
+          "offset_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offset Value"
+          },
+          "reference_unit": {
+            "type": "string",
+            "title": "Reference Unit"
+          },
+          "measured_unit": {
+            "type": "string",
+            "title": "Measured Unit"
+          },
+          "sensitivity_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensitivity Value"
+          },
+          "deviation_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deviation Pct"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "calibration_id",
+          "sweep_index",
+          "frequency_value",
+          "reference_value",
+          "measured_value",
+          "offset_value",
+          "reference_unit",
+          "measured_unit",
+          "sensitivity_value",
+          "deviation_pct",
+          "created_at"
+        ],
+        "title": "FrequencyResponsePointResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -12116,6 +15455,110 @@
             "type": "boolean",
             "title": "Private",
             "default": false
+          },
+          "org_category": {
+            "type": "string",
+            "title": "Org Category",
+            "default": "internal"
+          },
+          "org_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Type"
+          },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "vat_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vat Number"
+          },
+          "address_street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Street"
+          },
+          "address_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address City"
+          },
+          "address_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address State"
+          },
+          "address_postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Postal Code"
+          },
+          "address_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Country"
           }
         },
         "type": "object",
@@ -12212,6 +15655,22 @@
             "type": "boolean",
             "title": "Is Active",
             "default": true
+          },
+          "org_category": {
+            "type": "string",
+            "title": "Org Category",
+            "default": "internal"
+          },
+          "org_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Type"
           },
           "is_member": {
             "type": "boolean",
@@ -12350,6 +15809,11 @@
             "format": "date-time",
             "title": "Updated At"
           },
+          "org_category": {
+            "type": "string",
+            "title": "Org Category",
+            "default": "internal"
+          },
           "full_name": {
             "anyOf": [
               {
@@ -12472,6 +15936,105 @@
               }
             ],
             "title": "Member Count"
+          },
+          "org_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Type"
+          },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "vat_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vat Number"
+          },
+          "address_street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Street"
+          },
+          "address_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address City"
+          },
+          "address_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address State"
+          },
+          "address_postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Postal Code"
+          },
+          "address_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Country"
           },
           "is_member": {
             "type": "boolean",
@@ -12618,6 +16181,116 @@
               }
             ],
             "title": "Is Active"
+          },
+          "org_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Category"
+          },
+          "org_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Type"
+          },
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Phone"
+          },
+          "vat_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vat Number"
+          },
+          "address_street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Street"
+          },
+          "address_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address City"
+          },
+          "address_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address State"
+          },
+          "address_postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Postal Code"
+          },
+          "address_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Country"
           }
         },
         "type": "object",
@@ -12747,6 +16420,24 @@
           "limit"
         ],
         "title": "ProcedureAcceptanceCriterion"
+      },
+      "ProcedureBulkExportRequest": {
+        "properties": {
+          "proc_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Proc Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proc_ids"
+        ],
+        "title": "ProcedureBulkExportRequest"
       },
       "ProcedureCreate": {
         "properties": {
@@ -12972,6 +16663,156 @@
           "name"
         ],
         "title": "ProcedureEquipmentItem"
+      },
+      "ProcedureImportPreview": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "proc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proc Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "physical_quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Physical Quantity"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "step_count": {
+            "type": "integer",
+            "title": "Step Count",
+            "default": 0
+          },
+          "file_count": {
+            "type": "integer",
+            "title": "File Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid"
+        ],
+        "title": "ProcedureImportPreview"
+      },
+      "ProcedureImportResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ProcedureImportResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "ProcedureImportResponse"
+      },
+      "ProcedureImportResult": {
+        "properties": {
+          "source_folder": {
+            "type": "string",
+            "title": "Source Folder"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "proc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proc Id"
+          },
+          "new_proc_pk": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Proc Pk"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_folder",
+          "status"
+        ],
+        "title": "ProcedureImportResult"
       },
       "ProcedureMaterialItem": {
         "properties": {
@@ -13968,6 +17809,30 @@
               }
             ],
             "title": "Calibration Interval"
+          },
+          "default_certificate_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Certificate Template Id"
+          },
+          "default_document_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Document Template Id"
           }
         },
         "type": "object",
@@ -14310,6 +18175,30 @@
             ],
             "title": "Calibration Interval"
           },
+          "default_certificate_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Certificate Template Id"
+          },
+          "default_document_template_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Document Template Id"
+          },
           "id": {
             "type": "string",
             "format": "uuid",
@@ -14344,6 +18233,28 @@
               }
             ],
             "title": "Calibration Method Name"
+          },
+          "default_certificate_template_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Certificate Template Name"
+          },
+          "default_document_template_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Document Template Name"
           }
         },
         "type": "object",
@@ -15030,6 +18941,10 @@
     {
       "name": "Certificate Templates",
       "description": "Org-configurable LaTeX templates used to render calibration certificates."
+    },
+    {
+      "name": "Document Templates",
+      "description": "Versioned, structured document templates (calibration certificates and procedures) for the template editor."
     },
     {
       "name": "Procedures",

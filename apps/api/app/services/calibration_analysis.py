@@ -449,6 +449,7 @@ def _apply_decision_rule(
     channel_accuracy_type: str | None,
     decision_rule: DecisionRule,
     expanded_uncertainty: float,
+    reference_unit: str,
     tolerance_override: float | None = None,
     channel_range_min: float | None = None,
     channel_range_max: float | None = None,
@@ -484,6 +485,8 @@ def _apply_decision_rule(
     calibration's own tested range) when the channel's range isn't supplied,
     preserving the old behavior for callers that don't send it.
     """
+    unit_suffix = f" {reference_unit}" if reference_unit else ""
+
     if tolerance_override is not None and tolerance_override > 0:
         guard = 0.0
         if decision_rule == "guard_band_w_uncertainty":
@@ -493,7 +496,7 @@ def _apply_decision_rule(
         passed = bool(max_error + guard <= tolerance_override)
         return passed, {
             "decision_rule": decision_rule,
-            "specification": f"±{tolerance_override} (manual)",
+            "specification": f"±{tolerance_override}{unit_suffix} (manual)",
             "expanded_uncertainty_applied": expanded_uncertainty if decision_rule != "simple_acceptance" else None,
             "tolerance_value": tolerance_override,
             "passed": passed,
@@ -538,7 +541,7 @@ def _apply_decision_rule(
     else:  # absolute
         tolerance_value = channel_accuracy_value
         passed = bool(max_error + guard <= tolerance_value)
-        spec_desc = f"±{channel_accuracy_value} (absolute)"
+        spec_desc = f"±{channel_accuracy_value}{unit_suffix} (absolute)"
 
     return passed, {
         "decision_rule": decision_rule,
@@ -740,7 +743,7 @@ def run_analysis(
     passed, conformity_statement = _apply_decision_rule(
         residuals, ref, max_error, span,
         channel_accuracy_value, channel_accuracy_type,
-        decision_rule, expanded_u,
+        decision_rule, expanded_u, reference_unit,
         tolerance_override=tolerance_override,
         channel_range_min=channel_range_min,
         channel_range_max=channel_range_max,

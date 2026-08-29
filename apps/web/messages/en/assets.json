@@ -168,7 +168,9 @@
     "responseTimeMsPlaceholder": "e.g. 300",
     "bandwidthHz": "Bandwidth (Hz)",
     "bandwidthHzPlaceholder": "e.g. 1000",
-    "referenceStandard": "Reference standard"
+    "referenceStandard": "Reference standard",
+    "defaultReportTemplate": "Default report template",
+    "defaultReportTemplatePlaceholder": "Use the organization/global default"
   },
   "tips": {
     "physicalQuantity": "The physical quantity defines the type of measurement (e.g., temperature, pressure) and determines the applicable units and calibration procedures. Choose the one that best matches the sensor's primary measurement.",
@@ -579,7 +581,8 @@
     "downloadCertificate": "Download Certificate",
     "chooseTemplate": "Choose certificate template",
     "defaultTemplate": "Default template",
-    "noCustomTemplates": "No custom templates available"
+    "noCustomTemplates": "No custom templates available",
+    "failedToSetTemplate": "Failed to set the report template"
   },
   "files": {
     "title": "Files & attachments",

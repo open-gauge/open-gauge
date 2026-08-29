@@ -24,6 +24,7 @@ from app.services.certificate_service import (
     _build_results_summary,
     _build_stat_rows,
     _build_uncertainty_budget_rows,
+    _build_uncertainty_summary_rows,
     _coefficient_name,
     _fmt,
     _fmt_accuracy,
@@ -76,6 +77,42 @@ class TestUncertaintyBudgetRows:
         assert rows[0]["source"] == "fit_residuals"
         assert rows[0]["standard_uncertainty"] == "0.02"
         assert rows[1]["dof"] == "—"
+
+
+class TestUncertaintySummaryRows:
+    def test_empty_when_no_budget_or_totals(self) -> None:
+        cal = _cal(uncertainty_budget=None, combined_uncertainty=None, expanded_uncertainty=None)
+        assert _build_uncertainty_summary_rows(cal, "bar") == []
+
+    def test_named_labels_for_known_sources_plus_totals(self) -> None:
+        budget = [
+            {"source": "fit_residuals", "standard_uncertainty": 0.02},
+            {"source": "reference_standard", "standard_uncertainty": 0.01},
+            {"source": "sensor_nominal_accuracy", "standard_uncertainty": 0.005},
+        ]
+        cal = _cal(uncertainty_budget=budget, combined_uncertainty=0.0234, expanded_uncertainty=0.0468, coverage_factor=2.0)
+        rows = _build_uncertainty_summary_rows(cal, "bar")
+        labels = [r["label"] for r in rows]
+        assert labels == [
+            "Fit residuals (Type A)",
+            "Reference standard (Type B)",
+            "Sensor nominal accuracy (Type B)",
+            "Combined (RSS)",
+            "Expanded (±)",
+        ]
+        # Every value carries its unit.
+        assert all(row["value"].endswith("bar") or "bar" in row["value"] for row in rows)
+        assert "k=2" in rows[-1]["value"]
+
+    def test_unknown_source_falls_back_to_humanized_type_b_label(self) -> None:
+        budget = [{"source": "some_new_source", "standard_uncertainty": 0.01}]
+        rows = _build_uncertainty_summary_rows(_cal(uncertainty_budget=budget), "bar")
+        assert rows[0]["label"] == "Some new source (Type B)"
+
+    def test_skips_row_with_no_standard_uncertainty(self) -> None:
+        budget = [{"source": "fit_residuals", "standard_uncertainty": None}]
+        cal = _cal(uncertainty_budget=budget, combined_uncertainty=None, expanded_uncertainty=None)
+        assert _build_uncertainty_summary_rows(cal, "bar") == []
 
 
 class TestConformity:

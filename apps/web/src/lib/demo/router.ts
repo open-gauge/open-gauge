@@ -591,6 +591,15 @@ route("GET", "/api/v1/calibrations/:id/certificate", ({ params }) => {
 
 route("GET", "/api/v1/calibrations/:id/certificate-templates", () => []);
 
+route("PUT", "/api/v1/calibrations/:id/report-template", ({ params, body }) => {
+  const cal = store.getCalibrationById(params[0]);
+  if (!cal) throw new NotFoundError("calibration not found");
+  const req = body as { certificate_template_id: string | null; document_template_id: string | null };
+  cal.report_certificate_template_id = req.certificate_template_id;
+  cal.report_document_template_id = req.document_template_id;
+  return cal;
+});
+
 route("POST", "/api/v1/calibrations/analyze", ({ body }): unknown => {
   const req = body as AnalyzeRequest;
   const params: AnalyzeCalibrationParams = {
@@ -637,6 +646,8 @@ route("POST", "/api/v1/calibrations", ({ body }) => {
     notes: req.notes ?? null,
     calibration_file_id: null,
     uploaded_certificate_file_id: null,
+    report_certificate_template_id: null,
+    report_document_template_id: null,
     created_by: store.getDemoUser().id,
     created_at: now,
     sensor_id: req.sensor_id ?? null,
@@ -1076,6 +1087,10 @@ route("PUT", "/api/v1/assets/:id", ({ params, body }) => {
         calibration_method_id: prior?.calibration_method_id ?? null,
         calibration_method_name: prior?.calibration_method_name ?? null,
         calibration_interval: prior?.calibration_interval ?? null,
+        default_certificate_template_id: c.default_certificate_template_id ?? prior?.default_certificate_template_id ?? null,
+        default_certificate_template_name: prior?.default_certificate_template_name ?? null,
+        default_document_template_id: c.default_document_template_id ?? prior?.default_document_template_id ?? null,
+        default_document_template_name: prior?.default_document_template_name ?? null,
         is_active: true,
         created_at: prior?.created_at ?? now,
         updated_at: now,

@@ -55,10 +55,21 @@ import {
 } from "@/services/admin.service";
 import { listOrganizations } from "@/services/organization.service";
 import type { OrganizationListItem } from "@/types/organization";
+import {
+  archiveTemplate,
+  createTemplate,
+  duplicateTemplate,
+  exportTemplate,
+  importTemplate,
+  listTemplates,
+} from "@/services/template.service";
+import type { TemplateListItem, TemplateType } from "@/types/template";
 import { ROLE_COLORS } from "@/lib/roles";
+import { TEMPLATE_STATUS_STYLE } from "@/lib/tokens";
 import { translateDynamic } from "@/lib/translate-dynamic";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
+import { CopyIcon, ExportIcon, ImportIcon, TemplatesIcon } from "@/components/icons";
 
 // ---------------------------------------------------------------------------
 // Shared primitives
@@ -567,10 +578,96 @@ function CertificateTemplateRow({
   );
 }
 
+function DocumentTemplateRow({
+  template,
+  onArchived,
+  onDuplicated,
+}: {
+  template: TemplateListItem;
+  onArchived: (id: string) => void;
+  onDuplicated: (created: TemplateListItem) => void;
+}) {
+  const t = useTranslations("admin.certificates");
+  const tStatus = useTranslations("tokens.templateStatus");
+  const router = useRouter();
+  const [archiving, setArchiving] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
+  async function handleExport() {
+    const blob = await exportTemplate(template.id);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${template.name.trim().replace(/\s+/g, "_") || "template"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleDuplicate() {
+    setDuplicating(true);
+    try {
+      onDuplicated(await duplicateTemplate(template.id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : t("failedToCreate"));
+    } finally {
+      setDuplicating(false);
+    }
+  }
+
+  async function handleArchive() {
+    if (!confirm(t("deleteConfirm", { name: template.name }))) return;
+    setArchiving(true);
+    try {
+      await archiveTemplate(template.id);
+      onArchived(template.id);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : t("failedToDelete"));
+    } finally {
+      setArchiving(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="w-10 h-10 shrink-0 rounded-lg bg-og-surface-alt border border-og-border flex items-center justify-center">
+          <TemplatesIcon size={18} className="text-og-accent" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-og-text truncate">{template.name}</p>
+          {template.description && <p className="text-xs text-gray-400 truncate">{template.description}</p>}
+        </div>
+        <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm border ${TEMPLATE_STATUS_STYLE[template.status]}`}>
+          {translateDynamic(tStatus, template.status)}
+        </span>
+        <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-accent/10 text-og-accent">
+          {t("kindEditor")}
+        </span>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={() => router.push(`/templates/${template.id}`)} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("editInEditor")}>
+          <EditIcon size={13} />
+        </button>
+        <button onClick={handleExport} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("export")}>
+          <ExportIcon size={13} />
+        </button>
+        <button onClick={handleDuplicate} disabled={duplicating} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-50" title={t("duplicate")}>
+          <CopyIcon size={13} />
+        </button>
+        <button onClick={handleArchive} disabled={archiving} className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors disabled:opacity-50" title={t("delete")}>
+          <TrashIcon size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] }) {
   const t = useTranslations("admin.certificates");
+  const router = useRouter();
   const [scope, setScope] = useState<string>("global");
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+  const [docTemplates, setDocTemplates] = useState<TemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -580,11 +677,30 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
 
+  const [createName, setCreateName] = useState("");
+  const [createType, setCreateType] = useState<TemplateType>("certificate");
+  const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState("");
+
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importErr, setImportErr] = useState("");
+
   const organizationId = scope === "global" ? undefined : scope;
 
   useEffect(() => {
-    listCertificateTemplates(organizationId)
-      .then((all) => setTemplates(all.filter((tpl) => (organizationId ? tpl.organization_id === organizationId : tpl.organization_id === null))))
+    setLoading(true);
+    Promise.all([
+      listCertificateTemplates(organizationId).then((all) =>
+        all.filter((tpl) => (organizationId ? tpl.organization_id === organizationId : tpl.organization_id === null))
+      ),
+      // Editor templates aren't org-scoped yet — shown regardless of the selected scope.
+      listTemplates({}),
+    ])
+      .then(([cert, doc]) => {
+        setTemplates(cert);
+        setDocTemplates(doc);
+      })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : t("failedToLoad")))
       .finally(() => setLoading(false));
   }, [organizationId, t]);
@@ -609,6 +725,40 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
     }
   }
 
+  async function handleCreate() {
+    if (!createName.trim()) return;
+    setCreating(true);
+    setCreateErr("");
+    try {
+      const created = await createTemplate({ name: createName.trim(), type: createType });
+      router.push(`/templates/${created.id}`);
+    } catch (e: unknown) {
+      setCreateErr(e instanceof Error ? e.message : t("failedToCreate"));
+      setCreating(false);
+    }
+  }
+
+  async function handleImport() {
+    const file = importInputRef.current?.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportErr("");
+    try {
+      const created = await importTemplate(file);
+      setDocTemplates((prev) => [{ ...created, description: created.description ?? null }, ...prev]);
+      if (importInputRef.current) importInputRef.current.value = "";
+    } catch (e: unknown) {
+      setImportErr(e instanceof Error ? e.message : t("failedToImport"));
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  const rows = [
+    ...templates.map((tpl) => ({ kind: "certificate" as const, updatedAt: tpl.updated_at ?? "", data: tpl })),
+    ...docTemplates.map((tpl) => ({ kind: "document" as const, updatedAt: tpl.updated_at, data: tpl })),
+  ].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
@@ -627,28 +777,68 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
         </div>
       </div>
 
-      <div className="px-4 py-4 border-b border-og-border bg-og-surface-alt space-y-3">
-        <p className="text-xs font-semibold text-og-text">
-          {scope === "global" ? t("uploadTitleGlobal") : t("uploadTitleOrg", { org: orgs.find((o) => o.id === scope)?.name ?? "" })}
-        </p>
-        <div className="space-y-1">
-          <label className="text-xs text-gray-400">{t("fileLabel")} <span className="text-red-400">*</span></label>
-          <input ref={fileInputRef} type="file" accept=".tex" className={`${IB} ${IB_OK} py-1.5!`} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 py-4 border-b border-og-border bg-og-surface-alt">
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-og-text">
+            {scope === "global" ? t("uploadTitleGlobal") : t("uploadTitleOrg", { org: orgs.find((o) => o.id === scope)?.name ?? "" })}
+          </p>
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">{t("fileLabel")} <span className="text-red-400">*</span></label>
+            <input ref={fileInputRef} type="file" accept=".tex" className={`${IB} ${IB_OK} py-1.5!`} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">{t("nameLabel")} <span className="text-red-400">*</span></label>
+            <input value={uploadName} onChange={(e) => setUploadName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
+              placeholder={t("namePlaceholder")} />
+          </div>
+          <label className="flex items-center gap-2 text-xs text-gray-400">
+            <ToggleSwitch checked={uploadDefault} onChange={setUploadDefault} />
+            {t("setDefault")}
+          </label>
+          {uploadErr && <p className="text-xs text-red-500">{uploadErr}</p>}
+          <button onClick={handleUpload} disabled={!uploadName.trim() || uploading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+            <UploadCloudIcon size={12} /> {uploading ? t("uploading") : t("upload")}
+          </button>
         </div>
-        <div className="space-y-1">
-          <label className="text-xs text-gray-400">{t("nameLabel")} <span className="text-red-400">*</span></label>
-          <input value={uploadName} onChange={(e) => setUploadName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
-            placeholder={t("namePlaceholder")} />
+
+        <div className="space-y-3 md:border-l md:border-og-border-md md:pl-3">
+          <p className="text-xs font-semibold text-og-text">{t("createTitle")}</p>
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">{t("nameLabel")} <span className="text-red-400">*</span></label>
+            <input value={createName} onChange={(e) => setCreateName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
+              placeholder={t("namePlaceholder")} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">{t("typeLabel")}</label>
+            <Select
+              value={createType}
+              onChange={(v) => setCreateType(v as TemplateType)}
+              options={[
+                { value: "certificate", label: t("typeCertificate") },
+                { value: "procedure", label: t("typeProcedure") },
+              ]}
+            />
+          </div>
+          {createErr && <p className="text-xs text-red-500">{createErr}</p>}
+          <button onClick={handleCreate} disabled={!createName.trim() || creating}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+            <TemplatesIcon size={12} /> {creating ? t("creating") : t("createFromScratch")}
+          </button>
         </div>
-        <label className="flex items-center gap-2 text-xs text-gray-400">
-          <ToggleSwitch checked={uploadDefault} onChange={setUploadDefault} />
-          {t("setDefault")}
-        </label>
-        {uploadErr && <p className="text-xs text-red-500">{uploadErr}</p>}
-        <button onClick={handleUpload} disabled={!uploadName.trim() || uploading}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-          <UploadCloudIcon size={12} /> {uploading ? t("uploading") : t("upload")}
-        </button>
+
+        <div className="space-y-3 md:border-l md:border-og-border-md md:pl-3">
+          <p className="text-xs font-semibold text-og-text">{t("importTitle")}</p>
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">{t("importFileLabel")} <span className="text-red-400">*</span></label>
+            <input ref={importInputRef} type="file" accept=".json" className={`${IB} ${IB_OK} py-1.5!`} />
+          </div>
+          {importErr && <p className="text-xs text-red-500">{importErr}</p>}
+          <button onClick={handleImport} disabled={importing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60">
+            <ImportIcon size={12} /> {importing ? t("importing") : t("import")}
+          </button>
+        </div>
       </div>
 
       {loading && (
@@ -658,19 +848,28 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
         </div>
       )}
       {!loading && err && <div className="px-4 py-4 text-sm text-red-500">{err}</div>}
-      {!loading && !err && templates.length === 0 && (
+      {!loading && !err && rows.length === 0 && (
         <p className="px-4 py-8 text-sm text-gray-400 text-center">
           {t("empty")}
         </p>
       )}
-      {!loading && !err && templates.map((t) => (
-        <CertificateTemplateRow
-          key={t.id}
-          template={t}
-          onUpdated={(updated) => setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : (updated.is_default ? { ...x, is_default: false } : x))))}
-          onDeleted={(id) => setTemplates((prev) => prev.filter((x) => x.id !== id))}
-        />
-      ))}
+      {!loading && !err && rows.map((row) =>
+        row.kind === "certificate" ? (
+          <CertificateTemplateRow
+            key={`cert-${row.data.id}`}
+            template={row.data}
+            onUpdated={(updated) => setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : (updated.is_default ? { ...x, is_default: false } : x))))}
+            onDeleted={(id) => setTemplates((prev) => prev.filter((x) => x.id !== id))}
+          />
+        ) : (
+          <DocumentTemplateRow
+            key={`doc-${row.data.id}`}
+            template={row.data}
+            onArchived={(id) => setDocTemplates((prev) => prev.filter((x) => x.id !== id))}
+            onDuplicated={(created) => setDocTemplates((prev) => [created, ...prev])}
+          />
+        )
+      )}
     </div>
   );
 }

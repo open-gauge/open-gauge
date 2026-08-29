@@ -5,11 +5,11 @@ description: Un éditeur WYSIWYG pour concevoir des mises en page réutilisables
 
 Un **modèle de document** est une mise en page réutilisable pour un document imprimable — un
 certificat de calibration ou une procédure de calibration — conçu une seule fois et rempli avec
-des données réelles à chaque génération. Gérez-les depuis la page **Modèles de documents** dans
-la barre latérale.
-
-Cette page décrit l'éditeur de modèles lui-même. Générer un véritable PDF à partir d'un modèle est
-une étape ultérieure distincte : un modèle est la *conception*, pas le document.
+des données réelles à chaque génération. Gérez-les depuis **Panneau d'Administration → Modèles**,
+aux côtés des modèles de certificat LaTeX créés à la main (voir
+[Modèles de certificat](../calibration/certificate-templates.mdx)) — le bouton "Créer à partir de
+zéro" de cette page ouvre cet éditeur pour un nouveau modèle ; l'export/import et la génération
+sont décrits dans [Génération de PDF](#génération-de-pdf) ci-dessous.
 
 ## Deux types de modèles
 
@@ -89,3 +89,46 @@ traçable**.
 Les images (un logo d'entreprise, une marque d'accréditation, un diagramme) sont téléversées par
 modèle et stockées sous forme de références de fichiers — un bloc image contient un `file_id` et
 une URL d'aperçu résolue, pas une copie intégrée des octets du fichier.
+
+## Export et import
+
+Un modèle peut être exporté vers un fichier JSON portable (son nom, sa description, son type et
+son document complet) et réimporté ailleurs — comme un nouveau brouillon, avec son propre
+historique de versions indépendant — depuis **Panneau d'Administration → Modèles**. Contrairement
+à un téléversement `.tex` brut, un modèle exporté fait l'aller-retour par ce même éditeur :
+importez-le, continuez à l'éditer, publiez-le. Ce n'est pas du LaTeX — celui-ci est généré
+automatiquement au moment du PDF (voir ci-dessous), pas quelque chose que vous rédigez ou
+échangez directement.
+
+## Génération de PDF
+
+Un modèle de l'éditeur **publié** peut générer un véritable PDF de rapport de calibration, de la
+même manière qu'un modèle de certificat `.tex` téléversé. En interne, le document JSON structuré
+du modèle est converti en LaTeX et compilé avec le même pipeline
+[Tectonic](../calibration/certificate-templates.mdx) — pas de moteur PDF séparé, pas de règles
+d'échappement séparées à apprendre. Les blocs équation stockent déjà du LaTeX brut, donc ils
+passent directement ; tous les autres blocs (texte, tableaux, lignes répétitives liées à une
+collection, graphiques, codes QR, colonnes, …) sont traduits automatiquement.
+
+Cette résolution ne s'applique qu'aux modèles de type **Certificat de Calibration** — un modèle
+de Procédure de Calibration est un document de référence statique, pas quelque chose de généré
+par calibration.
+
+### Attribuer un modèle par défaut à une voie
+
+Ouvrez l'éditeur d'une voie de capteur (**Actifs → un actif → Aperçu → Modifier**) et définissez
+**Modèle de rapport par défaut** sur n'importe quel modèle publié, de l'un ou l'autre type
+(téléversé en `.tex` ou créé dans l'éditeur). Chaque calibration enregistrée sur cette voie
+l'utilise sauf remplacement individuel (ci-dessous). Laissez-le non défini pour se rabattre sur
+le défaut de l'organisation, puis le défaut global, puis le modèle intégré — la même chaîne
+qu'utilisent déjà les [modèles de certificat](../calibration/certificate-templates.mdx).
+
+### Remplacer le modèle pour une calibration
+
+Sur la page de détail d'une calibration, le menu du chevron du bouton **Télécharger** permet à un
+utilisateur ayant les droits de modification (tout rôle au-dessus de Visualiseur) de choisir un
+modèle spécifique pour cette seule calibration — ce choix est **persisté**, pas un rendu
+ponctuel : il devient ce que *tous* les utilisateurs téléchargent pour cette calibration à
+l'avenir, jusqu'à être changé à nouveau ou effacé en revenant à "Modèle par défaut". Un
+Visualiseur ne voit jamais ce menu — il obtient toujours le modèle résolu par le remplacement, le
+défaut de la voie, ou le repli organisation/global, sans choix propre.

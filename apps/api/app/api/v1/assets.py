@@ -13,6 +13,8 @@ from ...models.calibration import Calibration
 from ...models.stored_file import StoredFile
 from ...models.user import User, UserRole
 from ...models.calibration_method import Procedure
+from ...models.certificate_template import CertificateTemplate
+from ...models.document_template import DocumentTemplate
 from ...repositories import asset as asset_repo
 from ...repositories import calibration as cal_repo
 from ...repositories import audit_log as audit_log_repo
@@ -49,6 +51,18 @@ def _enrich(asset, db: Session) -> AssetResponse:
         methods = db.query(Procedure).filter(Procedure.id.in_(method_ids)).all()
         method_map = {m.id: m.name for m in methods}
 
+    # Resolve default report template names in one query per kind
+    cert_template_ids = {ch.default_certificate_template_id for ch in channels if ch.default_certificate_template_id}
+    cert_template_map: dict[uuid.UUID, str] = {}
+    if cert_template_ids:
+        rows = db.query(CertificateTemplate).filter(CertificateTemplate.id.in_(cert_template_ids)).all()
+        cert_template_map = {r.id: r.name for r in rows}
+    doc_template_ids = {ch.default_document_template_id for ch in channels if ch.default_document_template_id}
+    doc_template_map: dict[uuid.UUID, str] = {}
+    if doc_template_ids:
+        rows = db.query(DocumentTemplate).filter(DocumentTemplate.id.in_(doc_template_ids)).all()
+        doc_template_map = {r.id: r.name for r in rows}
+
     daq = asset_repo.get_daq_details(db, asset.id)
     data = AssetResponse.model_validate(asset)
     enriched_channels = []
@@ -56,6 +70,10 @@ def _enrich(asset, db: Session) -> AssetResponse:
         ch_data = SensorChannelResponse.model_validate(ch)
         if ch.calibration_method_id:
             ch_data.calibration_method_name = method_map.get(ch.calibration_method_id)
+        if ch.default_certificate_template_id:
+            ch_data.default_certificate_template_name = cert_template_map.get(ch.default_certificate_template_id)
+        if ch.default_document_template_id:
+            ch_data.default_document_template_name = doc_template_map.get(ch.default_document_template_id)
         enriched_channels.append(ch_data)
     data.sensor_channels = enriched_channels
     if daq:

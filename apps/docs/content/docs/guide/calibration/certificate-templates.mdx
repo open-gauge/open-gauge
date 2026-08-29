@@ -5,7 +5,11 @@ description: Uploading and authoring custom LaTeX templates for calibration cert
 
 An admin can replace the built-in certificate design with a custom `.tex` template — for
 localization, a different layout, or matching an existing accredited-lab certificate format —
-without touching any code. Templates are managed from **Admin Panel → Certificate Templates**.
+without touching any code. Templates are managed from **Admin Panel → Templates**, alongside
+templates built in the live [Document Templates](../templates/index.mdx) editor (that page's
+"Upload LaTeX" button is this same upload flow) — both kinds can be assigned as a sensor
+channel's default report template, or as a per-calibration override; see
+[Assigning a default template to a channel](../templates/index.mdx#assigning-a-default-template-to-a-channel).
 
 ## How rendering works
 
@@ -35,7 +39,7 @@ special escaping beyond the `latex` filter.
 
 ## Uploading a template
 
-From **Admin Panel → Certificate Templates**, choose a scope (a specific organization, or
+From **Admin Panel → Templates**, choose a scope (a specific organization, or
 *Global* for the fallback used by any organization without its own default — global templates
 require a superadmin, since they affect every organization), upload the `.tex` file, give it a
 name, and optionally mark it as that scope's default.

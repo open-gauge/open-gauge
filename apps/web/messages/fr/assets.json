@@ -168,7 +168,9 @@
     "responseTimeMsPlaceholder": "ex. 300",
     "bandwidthHz": "Bande passante (Hz)",
     "bandwidthHzPlaceholder": "ex. 1000",
-    "referenceStandard": "Étalon de référence"
+    "referenceStandard": "Étalon de référence",
+    "defaultReportTemplate": "Modèle de rapport par défaut",
+    "defaultReportTemplatePlaceholder": "Utiliser la valeur par défaut de l'organisation/globale"
   },
   "tips": {
     "physicalQuantity": "La grandeur physique définit le type de mesure (ex. température, pression) et détermine les unités et procédures de calibration applicables. Choisissez celle qui correspond le mieux à la mesure principale du capteur.",
@@ -579,7 +581,8 @@
     "downloadCertificate": "Télécharger le certificat",
     "chooseTemplate": "Choisir le modèle de certificat",
     "defaultTemplate": "Modèle par défaut",
-    "noCustomTemplates": "Aucun modèle personnalisé disponible"
+    "noCustomTemplates": "Aucun modèle personnalisé disponible",
+    "failedToSetTemplate": "Échec de la définition du modèle de rapport"
   },
   "files": {
     "title": "Fichiers et pièces jointes",

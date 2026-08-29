@@ -6,7 +6,12 @@ description: Téléverser et rédiger des modèles LaTeX personnalisés pour les
 Un administrateur peut remplacer le design de certificat intégré par un modèle `.tex`
 personnalisé — pour la localisation, une mise en page différente, ou pour correspondre à un
 format de certificat de laboratoire accrédité existant — sans toucher à aucun code. Les modèles
-se gèrent depuis **Panneau d'administration → Modèles de certificat**.
+se gèrent depuis **Panneau d'Administration → Modèles**, aux côtés des modèles créés dans
+l'éditeur en direct de [Modèles de documents](../templates/index.mdx) (le bouton "Téléverser
+LaTeX" de cette page est ce même flux de téléversement) — les deux types peuvent être assignés
+comme modèle de rapport par défaut d'une voie de capteur, ou en tant que remplacement par
+calibration ; voir
+[Attribuer un modèle par défaut à une voie](../templates/index.mdx#attribuer-un-modèle-par-défaut-à-une-voie).
 
 ## Comment fonctionne le rendu
 
@@ -39,7 +44,7 @@ de degré, ±, etc. s'affichent tous correctement sans échappement particulier 
 
 ## Téléverser un modèle
 
-Depuis **Panneau d'administration → Modèles de certificat**, choisissez une portée (une
+Depuis **Panneau d'Administration → Modèles**, choisissez une portée (une
 organisation spécifique, ou *Global* pour le repli utilisé par toute organisation sans son propre
 modèle par défaut — les modèles globaux nécessitent un superadmin, puisqu'ils affectent chaque
 organisation), téléversez le fichier `.tex`, donnez-lui un nom, et marquez-le éventuellement comme

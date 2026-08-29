@@ -408,6 +408,20 @@ class CalibrationCreate(BaseModel):
     points: list[CalibrationPointInline] = Field(default_factory=list)
 
 
+class CalibrationReportTemplateUpdate(BaseModel):
+    """Sets or clears this calibration's report template override. Send both fields null to
+    clear the override and fall back to the sensor's default / org-global resolution."""
+
+    certificate_template_id: uuid.UUID | None = None
+    document_template_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _at_most_one(self) -> "CalibrationReportTemplateUpdate":
+        if self.certificate_template_id and self.document_template_id:
+            raise ValueError("Set at most one of certificate_template_id / document_template_id")
+        return self
+
+
 class CalibrationUserResponse(BaseModel):
     """A candidate for the calibration wizard's Registered By / Checked By
     dropdowns — an active Technician/Admin/Super Admin member of the asset's
@@ -459,6 +473,8 @@ class CalibrationResponse(BaseModel):
     repair_date: date | None = None
     repair_description: str | None = None
     calibration_organization_id: uuid.UUID | None = None
+    report_certificate_template_id: uuid.UUID | None = None
+    report_document_template_id: uuid.UUID | None = None
     data_entry_mode: str = "raw_data"
     model_type: str = "polynomial"
     custom_formula: str | None = None

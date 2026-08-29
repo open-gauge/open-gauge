@@ -5,10 +5,11 @@ description: Ein WYSIWYG-Editor zum Gestalten wiederverwendbarer Layouts für Ka
 
 Eine **Dokumentvorlage** ist ein wiederverwendbares Layout für ein druckbares Dokument — ein
 Kalibrierzertifikat oder ein Kalibrierverfahren — einmal gestaltet und bei jeder Erstellung mit
-echten Daten befüllt. Verwalten Sie sie über die Seite **Dokumentvorlagen** in der Seitenleiste.
-
-Diese Seite behandelt den Vorlageneditor selbst. Das eigentliche Erzeugen eines PDFs aus einer
-Vorlage ist ein separater, späterer Schritt — eine Vorlage ist der *Entwurf*, nicht das Dokument.
+echten Daten befüllt. Verwalten Sie sie über **Admin-Panel → Vorlagen**, zusammen mit von Hand
+erstellten LaTeX-Zertifikatsvorlagen (siehe
+[Zertifikatsvorlagen](../calibration/certificate-templates.mdx)) — die Schaltfläche "Neu
+erstellen" auf dieser Seite öffnet diesen Editor für eine neue Vorlage; Export/Import und
+Erzeugung werden weiter unten unter [PDF-Erzeugung](#pdf-erzeugung) beschrieben.
 
 ## Zwei Vorlagentypen
 
@@ -89,3 +90,45 @@ nachvollziehbar**.
 Bilder (ein Firmenlogo, ein Akkreditierungszeichen, ein Diagramm) werden pro Vorlage hochgeladen
 und als Dateiverweise gespeichert — ein Bildblock enthält eine `file_id` und eine aufgelöste
 Vorschau-URL, keine eingebettete Kopie der Datei-Bytes.
+
+## Export und Import
+
+Eine Vorlage kann in eine portable JSON-Datei exportiert (ihr Name, Beschreibung, Typ und
+vollständiges Dokument) und anderswo wieder importiert werden — als neuer Entwurf mit eigener,
+unabhängiger Versionshistorie — über **Admin-Panel → Vorlagen**. Anders als ein roher
+`.tex`-Upload durchläuft eine exportierte Vorlage denselben Editor hin und zurück: importieren,
+weiter bearbeiten, veröffentlichen. Es ist kein LaTeX — das wird automatisch beim PDF-Zeitpunkt
+erzeugt (siehe unten), nicht etwas, das Sie selbst verfassen oder austauschen.
+
+## PDF-Erzeugung
+
+Eine **veröffentlichte** Editor-Vorlage kann einen echten Kalibrierbericht als PDF erzeugen,
+genau wie eine hochgeladene `.tex`-Zertifikatsvorlage. Intern wird das strukturierte JSON-Dokument
+der Vorlage in LaTeX umgewandelt und mit derselben
+[Tectonic](../calibration/certificate-templates.mdx)-Pipeline kompiliert — keine separate
+PDF-Engine, keine separaten Escape-Regeln zu lernen. Gleichungsblöcke enthalten bereits rohes
+LaTeX und werden direkt durchgereicht; alle anderen Blöcke (Text, Tabellen, wiederholende Zeilen
+gebunden an eine Sammlung, Diagramme, QR-Codes, Spalten, …) werden automatisch übersetzt.
+
+Diese Auflösung gilt nur für Vorlagen vom Typ **Kalibrierzertifikat** — eine
+Kalibrierverfahren-Vorlage ist ein statisches Referenzdokument, kein pro Kalibrierung erzeugtes.
+
+### Einem Kanal eine Standardvorlage zuweisen
+
+Öffnen Sie den Editor eines Sensorkanals (**Anlagen → eine Anlage → Übersicht → Bearbeiten**) und
+setzen Sie **Standard-Berichtsvorlage** auf eine beliebige veröffentlichte Vorlage, beider Art
+(hochgeladenes `.tex` oder im Editor erstellt). Jede an diesem Kanal erfasste Kalibrierung
+verwendet sie, sofern nicht einzeln überschrieben (siehe unten). Lassen Sie das Feld leer, um auf
+den Standard der Organisation zurückzugreifen, dann den globalen Standard, dann die integrierte
+Vorlage — dieselbe Kette, die [Zertifikatsvorlagen](../calibration/certificate-templates.mdx)
+bereits verwenden.
+
+### Die Vorlage für eine Kalibrierung überschreiben
+
+Auf der Detailseite einer Kalibrierung erlaubt das Chevron-Menü der Schaltfläche
+**Herunterladen** einem Nutzer mit Bearbeitungsrechten (jede Rolle oberhalb von Betrachter), eine
+bestimmte Vorlage nur für diese Kalibrierung zu wählen — diese Wahl wird **dauerhaft
+gespeichert**, kein einmaliges Rendering: Sie wird zu dem, was *alle* Nutzer künftig für diese
+Kalibrierung herunterladen, bis sie erneut geändert oder auf "Standardvorlage" zurückgesetzt
+wird. Ein Betrachter sieht dieses Menü nie — er erhält stets die Vorlage, die sich aus
+Überschreibung, Kanal-Standard oder Organisations-/globalem Fallback ergibt, ohne eigene Wahl.

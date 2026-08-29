@@ -853,6 +853,40 @@ class TestDownloadCertificateWithTemplate:
         r = client.get(f"/api/v1/calibrations/{calibration['id']}/certificate/download", headers=auth_headers)
         assert r.status_code == 400
 
+    def test_downloads_pdf_for_reference_vs_indicated_with_no_model(
+        self, client: TestClient, auth_headers: dict, asset: dict
+    ) -> None:
+        # Regression: "reference_vs_indicated" (and lookup_table) have no
+        # transference function by design — poly_coefficients stays empty —
+        # but real fit-free statistics (r_squared/rmse/max_error) ARE stored,
+        # so this must download fine, not 400 like a truly unanalyzed
+        # calibration (see test_rejects_incomplete_calibration above).
+        payload = _minimal_payload(
+            asset["id"],
+            data_entry_mode="reference_vs_indicated",
+            calibration_purpose="verification",
+            points=[
+                {
+                    "point_index": 0, "reference_value": 0.0, "measured_value": 0.05,
+                    "calculated_value": 0.05, "residual_abs": -0.05, "residual_pct": -0.1,
+                    "reference_unit": "°C", "measured_unit": "°C",
+                },
+                {
+                    "point_index": 1, "reference_value": 50.0, "measured_value": 49.9,
+                    "calculated_value": 49.9, "residual_abs": 0.1, "residual_pct": 0.2,
+                    "reference_unit": "°C", "measured_unit": "°C",
+                },
+            ],
+            r_squared=0.98,
+            rmse=0.07,
+            max_error=0.1,
+        )
+        cal = client.post("/api/v1/calibrations", json=payload, headers=auth_headers).json()
+        assert not cal["poly_coefficients"]
+        r = client.get(f"/api/v1/calibrations/{cal['id']}/certificate/download", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.content.startswith(b"%PDF-")
+
     def test_downloads_pdf_with_default_template(
         self, client: TestClient, auth_headers: dict, asset: dict
     ) -> None:

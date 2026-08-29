@@ -244,6 +244,16 @@ class TestDecisionRules:
         assert "2.0" in result.conformity_statement["specification"]
         assert "full scale" in result.conformity_statement["specification"].lower()
 
+    def test_specification_includes_unit_for_absolute_type(self) -> None:
+        # Regression: an "absolute" spec (e.g. "±0.75") is meaningless without
+        # the unit it's expressed in — the certificate template renders this
+        # string as-is, so the unit must be baked in here, not left to the
+        # reader to infer.
+        result = run_analysis(
+            **_OUTLIER_LINEAR, channel_accuracy_value=0.75, channel_accuracy_type="absolute",
+        )
+        assert _OUTLIER_LINEAR["reference_unit"] in result.conformity_statement["specification"]
+
     def test_tolerance_value_none_when_no_spec(self) -> None:
         result = run_analysis(**PERFECT_LINEAR)
         assert result.conformity_statement["tolerance_value"] is None
@@ -294,6 +304,10 @@ class TestToleranceOverride:
         assert result.conformity_statement["specification"] is not None
         assert "manual" in result.conformity_statement["specification"].lower()
         assert result.passed is True
+
+    def test_override_specification_includes_unit(self) -> None:
+        result = run_analysis(**_OUTLIER_LINEAR, tolerance_override=1000.0)
+        assert _OUTLIER_LINEAR["reference_unit"] in result.conformity_statement["specification"]
 
     def test_override_wins_over_channel_accuracy_spec(self) -> None:
         # A channel spec is present but should be ignored entirely once an
