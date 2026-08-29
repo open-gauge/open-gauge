@@ -188,6 +188,8 @@ def dummy_context() -> dict:
         "dataset_rows": [
             {"index": "0", "measured": "1.0", "reference": "1.1", "fit": "1.1", "residual_abs": "0.0", "residual_pct": "0.0"},
         ],
+        "is_indicated_style": False,
+        "measured_or_indicated_label": "Measured",
         "measured_unit": "bar",
         "reference_unit": "bar",
         "qr_path": "qr.png",

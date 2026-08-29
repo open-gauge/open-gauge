@@ -15,6 +15,25 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.14.0
+
+### Ajouté
+
+- **Le contexte du modèle de certificat expose désormais `is_indicated_style`/
+  `measured_or_indicated_label`**, reflétant le `isIndicatedStyle` de l'application web
+  (asset-detail-client.tsx) — vrai pour « reference_vs_indicated » et pour
+  « reference_vs_as_found_as_left » sans modèle. Le tableau de jeu de données du modèle DAI de
+  base utilise désormais cela pour afficher les mêmes colonnes, dans le même ordre, que la vue de
+  détail de la calibration : une colonne « Indiqué » (pas « Mesuré »), et aucune colonne
+  « Ajusté » du tout dans ces cas — la valeur « ajustée » d'une calibration skip_fit n'est que la
+  valeur mesurée répétée, pas un véritable ajustement, l'afficher était donc trompeur.
+
+### Modifié
+
+- **Le pavé de signature dessine désormais dans une teinte bleu stylo (`#1e3a8a`) au lieu du
+  quasi-noir (`#151f28`)** — n'affecte que les signatures capturées à partir de maintenant ; les
+  signatures déjà enregistrées ne sont pas concernées.
+
 ## 4.13.0
 
 ### Ajouté

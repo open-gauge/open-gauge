@@ -80,6 +80,38 @@ def _coefficient_name(power: int) -> str:
 # directly unit-testable against plain Calibration-like objects)
 # ---------------------------------------------------------------------------
 
+def _has_model(cal: "Calibration") -> bool:
+    """Mirrors the web app's hasModel (asset-detail-client.tsx) exactly, so the
+    certificate agrees with the calibration detail view on whether this
+    calibration has a real transfer function. False for frequency_response
+    even though it stores an internal [gain, 0] poly_coefficients
+    representation (see Calibration.data_entry_mode) — that's not a model in
+    the usual sense, it gets its own dedicated results panel on the web app.
+    """
+    if cal.data_entry_mode == "frequency_response":
+        return False
+    return bool(cal.poly_coefficients) or (cal.model_type == "custom_formula" and bool(cal.custom_formula))
+
+
+def _has_evaluable_curve(cal: "Calibration") -> bool:
+    """Mirrors the web app's hasEvaluableCurve — broader than _has_model: a
+    Lookup Table has no formula/coefficients but its own points (linearly
+    interpolated) still make a perfectly good curve to draw."""
+    return _has_model(cal) or cal.model_type == "lookup_table"
+
+
+def _is_indicated_style(cal: "Calibration") -> bool:
+    """Mirrors the web app's isIndicatedStyle: reference_vs_indicated, or a
+    reference_vs_as_found_as_left calibration with no model, has no real
+    transfer function to fit — the dataset shows an "Indicated" column
+    instead of "Measured" and has no Fitted column at all (the "fitted"
+    value on those points is just the measured value echoed back, not an
+    actual fit — see calibration_analysis.run_analysis's skip_fit path)."""
+    return cal.data_entry_mode == "reference_vs_indicated" or (
+        cal.data_entry_mode == "reference_vs_as_found_as_left" and not _has_model(cal)
+    )
+
+
 def _fmt(v: object, decimals: int = 5) -> str:
     if v is None:
         return "—"
@@ -495,6 +527,13 @@ def _build_template_context(
         "valid_range": valid_range,
         "notes": calibration.notes,
         "dataset_rows": _build_dataset_rows(points) if points else [],
+        # Mirrors the web app's isIndicatedStyle (see asset-detail-client.tsx) so the dataset
+        # table's column labels/shape match the calibration detail view exactly. A skip_fit
+        # calibration's "fitted" value is just the measured value echoed back (no real fit was
+        # computed — see calibration_analysis.run_analysis), so templates should hide that
+        # column entirely for these rather than show a misleading duplicate of "measured".
+        "is_indicated_style": _is_indicated_style(calibration),
+        "measured_or_indicated_label": "Indicated" if _is_indicated_style(calibration) else "Measured",
         "measured_unit": measured_unit or "—",
         "reference_unit": reference_unit or "—",
         "qr_path": None,
@@ -979,16 +1018,12 @@ def generate_certificate(
 
     measured_vals = [float(p.measured_value) for p in points if p.measured_value is not None]
     reference_vals = [float(p.reference_value) for p in points if p.reference_value is not None]
-    # Mirrors the web app's hasEvaluableCurve (asset-detail-client.tsx): a
-    # skip_fit calibration (reference_vs_indicated, or
+    # A skip_fit calibration (reference_vs_indicated, or
     # reference_vs_as_found_as_left with no model) has no transfer function
     # to plot, and the web app shows only the residuals chart for those —
     # drawing a "fit" line there would be fabricating a curve that was never
-    # computed.
-    has_evaluable_curve = bool(calibration.poly_coefficients) or (
-        calibration.model_type == "custom_formula" and bool(calibration.custom_formula)
-    ) or calibration.model_type == "lookup_table"
-    if has_evaluable_curve and measured_vals and reference_vals:
+    # computed. See _has_evaluable_curve.
+    if _has_evaluable_curve(calibration) and measured_vals and reference_vals:
         chart_bytes = _render_chart_png(
             measured_vals, reference_vals, calibration.poly_coefficients or [],
             context["measured_unit"], context["reference_unit"],

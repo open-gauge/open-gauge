@@ -71,7 +71,7 @@ export function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
     const { x, y } = pointerPos(e);
     ctx.lineTo(x, y);
     ctx.globalCompositeOperation = isErasing ? "destination-out" : "source-over";
-    ctx.strokeStyle = "#151f28";
+    ctx.strokeStyle = "#1e3a8a";
     ctx.lineWidth = isErasing ? ERASER_WIDTH : PEN_WIDTH;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -115,7 +115,7 @@ export function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
     <div className="space-y-3">
       {/* Fixed white, not bg-og-surface-alt — the canvas itself stays transparent
           (its exported PNG must remain transparent-background), but the ink is a
-          fixed dark navy, so it needs a fixed light backdrop to stay visible in
+          fixed blue-pen tone, so it needs a fixed light backdrop to stay visible in
           dark mode instead of going dark-on-near-black. Same reasoning as the
           PDF thumbnail's bg-white: this surface always represents "paper". */}
       <div className="rounded-lg border border-dashed border-og-border-md bg-white overflow-hidden touch-none">

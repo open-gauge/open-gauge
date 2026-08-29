@@ -9,6 +9,23 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.14.0
+
+### Added
+
+- **The certificate template context now exposes `is_indicated_style`/`measured_or_indicated_label`**,
+  mirroring the web app's `isIndicatedStyle` (asset-detail-client.tsx) — true for
+  "reference_vs_indicated" and for "reference_vs_as_found_as_left" with no model. The built-in
+  DAI-based dataset table now uses this to show the same columns, in the same order, as the
+  calibration detail view: an "Indicated" (not "Measured") column, and no "Fitted" column at all
+  for these — a skip_fit calibration's "fitted" value is just the measured value echoed back, not
+  a real fit, so showing it was misleading.
+
+### Changed
+
+- **The signature pad now draws in a blue-pen tone (`#1e3a8a`) instead of near-black
+  (`#151f28`)** — new signature captures only; already-saved signatures are unaffected.
+
 ## 4.13.0
 
 ### Added

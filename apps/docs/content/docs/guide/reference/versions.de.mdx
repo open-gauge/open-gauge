@@ -15,6 +15,25 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.14.0
+
+### Hinzugefügt
+
+- **Der Kontext der Zertifikatsvorlage stellt jetzt `is_indicated_style`/
+  `measured_or_indicated_label` bereit**, passend zum `isIndicatedStyle` der Web-App
+  (asset-detail-client.tsx) — wahr für „reference_vs_indicated" und für
+  „reference_vs_as_found_as_left" ohne Modell. Die Datensatztabelle der DAI-Basisvorlage zeigt
+  damit jetzt dieselben Spalten in derselben Reihenfolge wie die Detailansicht der Kalibrierung:
+  eine Spalte „Angezeigt" (nicht „Gemessen") und für diese Fälle überhaupt keine
+  „Angepasst"-Spalte — der „angepasste" Wert einer Skip-Fit-Kalibrierung ist nur der
+  wiederholte Messwert, keine echte Anpassung, ihn anzuzeigen war also irreführend.
+
+### Geändert
+
+- **Das Unterschriften-Pad zeichnet jetzt in einem blauen Stiftton (`#1e3a8a`) statt in
+  Beinahe-Schwarz (`#151f28`)** — betrifft nur künftig erfasste Unterschriften; bereits
+  gespeicherte Unterschriften bleiben unverändert.
+
 ## 4.13.0
 
 ### Hinzugefügt

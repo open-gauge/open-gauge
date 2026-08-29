@@ -28,6 +28,9 @@ from app.services.certificate_service import (
     _coefficient_name,
     _fmt,
     _fmt_accuracy,
+    _has_evaluable_curve,
+    _has_model,
+    _is_indicated_style,
     _normalize_to_png,
     build_random_preview_context,
     resolve_performer_user_id,
@@ -36,8 +39,10 @@ from app.services.certificate_service import (
 
 def _cal(**overrides) -> SimpleNamespace:
     base = dict(
+        data_entry_mode="raw_data",
         model_type="polynomial",
         poly_coefficients=[1.0, 0.5],
+        custom_formula=None,
         r_squared=0.999,
         rmse=0.01,
         max_error=0.02,
@@ -113,6 +118,57 @@ class TestUncertaintySummaryRows:
         budget = [{"source": "fit_residuals", "standard_uncertainty": None}]
         cal = _cal(uncertainty_budget=budget, combined_uncertainty=None, expanded_uncertainty=None)
         assert _build_uncertainty_summary_rows(cal, "bar") == []
+
+
+class TestDataEntryModeHelpers:
+    """_has_model / _has_evaluable_curve / _is_indicated_style mirror the web app's identically-
+    named functions in asset-detail-client.tsx exactly — these tests exist to keep certificate
+    output (dataset table columns, which charts render) agreeing with what the calibration detail
+    view shows, not just to test the certificate service in isolation."""
+
+    def test_has_model_true_for_polynomial_fit(self) -> None:
+        assert _has_model(_cal(data_entry_mode="raw_data", poly_coefficients=[1.0, 0.5])) is True
+
+    def test_has_model_true_for_custom_formula(self) -> None:
+        cal = _cal(data_entry_mode="raw_data", model_type="custom_formula", poly_coefficients=None, custom_formula="a*x+b")
+        assert _has_model(cal) is True
+
+    def test_has_model_false_for_lookup_table(self) -> None:
+        # Lookup Table has no formula/coefficients — hasEvaluableCurve covers it, not hasModel.
+        cal = _cal(data_entry_mode="raw_data", model_type="lookup_table", poly_coefficients=None)
+        assert _has_model(cal) is False
+
+    def test_has_model_false_for_skip_fit_reference_vs_indicated(self) -> None:
+        cal = _cal(data_entry_mode="reference_vs_indicated", poly_coefficients=None)
+        assert _has_model(cal) is False
+
+    def test_has_model_false_for_frequency_response_despite_poly_coefficients(self) -> None:
+        # frequency_response stores an internal [gain, 0] representation — not a "model" for
+        # display purposes, same carve-out as the web app.
+        cal = _cal(data_entry_mode="frequency_response", poly_coefficients=[12.0, 0.0])
+        assert _has_model(cal) is False
+
+    def test_has_evaluable_curve_true_for_lookup_table(self) -> None:
+        cal = _cal(data_entry_mode="raw_data", model_type="lookup_table", poly_coefficients=None)
+        assert _has_evaluable_curve(cal) is True
+
+    def test_has_evaluable_curve_false_for_reference_vs_indicated(self) -> None:
+        cal = _cal(data_entry_mode="reference_vs_indicated", poly_coefficients=None)
+        assert _has_evaluable_curve(cal) is False
+
+    def test_is_indicated_style_true_for_reference_vs_indicated(self) -> None:
+        assert _is_indicated_style(_cal(data_entry_mode="reference_vs_indicated", poly_coefficients=None)) is True
+
+    def test_is_indicated_style_true_for_as_found_as_left_with_no_model(self) -> None:
+        cal = _cal(data_entry_mode="reference_vs_as_found_as_left", poly_coefficients=None)
+        assert _is_indicated_style(cal) is True
+
+    def test_is_indicated_style_false_for_as_found_as_left_with_model(self) -> None:
+        cal = _cal(data_entry_mode="reference_vs_as_found_as_left", poly_coefficients=[1.0, 0.5])
+        assert _is_indicated_style(cal) is False
+
+    def test_is_indicated_style_false_for_ordinary_raw_data(self) -> None:
+        assert _is_indicated_style(_cal(data_entry_mode="raw_data")) is False
 
 
 class TestConformity:

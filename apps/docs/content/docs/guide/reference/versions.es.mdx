@@ -14,6 +14,25 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.14.0
+
+### Añadido
+
+- **El contexto de la plantilla de certificado ahora expone `is_indicated_style`/
+  `measured_or_indicated_label`**, reflejando el `isIndicatedStyle` de la aplicación web
+  (asset-detail-client.tsx) — verdadero para "reference_vs_indicated" y para
+  "reference_vs_as_found_as_left" sin modelo. La tabla de conjunto de datos del DAI base ahora
+  usa esto para mostrar las mismas columnas, en el mismo orden, que la vista de detalle de la
+  calibración: una columna "Indicado" (no "Medido"), y sin ninguna columna "Ajustado" para estos
+  casos — el valor "ajustado" de una calibración skip_fit es solo el valor medido repetido, no un
+  ajuste real, así que mostrarlo era engañoso.
+
+### Cambiado
+
+- **El panel de firma ahora dibuja en un tono azul de bolígrafo (`#1e3a8a`) en lugar de casi
+  negro (`#151f28`)** — solo afecta a las firmas capturadas de ahora en adelante; las ya
+  guardadas no se ven afectadas.
+
 ## 4.13.0
 
 ### Añadido
