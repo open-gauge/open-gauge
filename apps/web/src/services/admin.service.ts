@@ -70,6 +70,8 @@ export interface CertificateTemplate {
   description: string | null;
   is_default: boolean;
   is_active: boolean;
+  is_enabled: boolean;
+  is_builtin: boolean;
   version: number;
   created_at: string;
   updated_at: string;
@@ -119,6 +121,14 @@ export async function deleteCertificateTemplate(templateId: string): Promise<voi
   return apiFetch<void>(`/api/v1/certificate-templates/${templateId}`, {
     method: "DELETE",
     headers: tokenHeader(),
+  });
+}
+
+export async function setCertificateTemplateEnabled(templateId: string, enabled: boolean): Promise<CertificateTemplate> {
+  return apiFetch<CertificateTemplate>(`/api/v1/certificate-templates/${templateId}/set-enabled`, {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
   });
 }
 

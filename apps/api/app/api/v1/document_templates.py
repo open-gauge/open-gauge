@@ -18,10 +18,13 @@ from ...schemas.document_template import (
     DocumentTemplateListItem,
     DocumentTemplateResponse,
     DocumentTemplateUpdate,
+    SetEnabledRequest,
     _validate_document_shape,
 )
 from ...schemas.stored_file import StoredFileResponse
 from ...services import storage as storage_svc
+from ...services import template_defaults_service
+from ...services.template_defaults_service import BaseTemplateError
 from ...utils.audit_diff import diff_snapshots, snapshot
 
 router = APIRouter(prefix="/document-templates", tags=["Document Templates"])
@@ -72,8 +75,12 @@ def list_document_templates(
     q: str | None = None,
     include_archived: bool = False,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[DocumentTemplate]:
+    # Procedures have no legacy .tex fallback the way certificates do — their base template only
+    # exists as a lazily-created DocumentTemplate row (see template_defaults_service.py).
+    if type is None or type == "procedure":
+        template_defaults_service.ensure_builtin_procedure_template(db, current_user.id)
     return template_repo.list_latest(db, type=type, status=status_, q=q, include_archived=include_archived)
 
 
@@ -197,12 +204,16 @@ def preview_document_template(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> Response:
-    from ...services import certificate_service, latex_service
+    from ...services import certificate_service, latex_service, procedure_document
     from ...services.document_template_latex import document_to_latex
     from ...services.latex_service import LatexCompileError
 
     template = _get_or_404(db, template_id)
-    context, images = certificate_service.build_sample_document_context()
+    context, images = (
+        procedure_document.build_sample_procedure_context()
+        if template.type == "procedure"
+        else certificate_service.build_sample_document_context()
+    )
     images_by_file_id = certificate_service.resolve_uploaded_images(db, template.document)
     try:
         tex_source = document_to_latex(template.document, context, images, images_by_file_id)
@@ -274,6 +285,8 @@ def branch_new_version(
     current_user: User = Depends(require_not_viewer),
 ) -> DocumentTemplate:
     source = _get_or_404(db, template_id)
+    if source.is_builtin:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The base template cannot be edited")
     existing_draft = template_repo.get_draft_in_group(db, source.template_group_id)
     if existing_draft:
         return existing_draft
@@ -324,11 +337,87 @@ def archive_document_template(
     current_user: User = Depends(require_not_viewer),
 ) -> DocumentTemplate:
     template = _get_or_404(db, template_id)
+    if template.is_builtin:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The base template cannot be deleted")
     if template.status == "archived":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Template is already archived")
+    was_default = template.is_default
     template = template_repo.archive(db, template)
+    if was_default:
+        fallback = (
+            template_defaults_service.ensure_procedure_default_fallback
+            if template.type == "procedure"
+            else template_defaults_service.ensure_report_default_fallback
+        )
+        fallback(db, current_user.id)
     _audit(db, request, current_user, action="document_template.archived", template=template)
     return template
+
+
+@router.post(
+    "/{template_id}/set-default",
+    response_model=DocumentTemplateResponse,
+    summary="Mark a published template as the default",
+    description="For a \"procedure\" template, this is the default used whenever a procedure is "
+    "downloaded without an explicit template choice. For a \"certificate\" template, it competes "
+    "with legacy .tex certificate templates for the same global default — see "
+    "template_defaults_service.set_report_default.",
+)
+def set_document_template_default(
+    template_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> DocumentTemplate:
+    template = _get_or_404(db, template_id)
+    if template.status != "published":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only a published template can be marked default")
+    if not template.is_enabled:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A disabled template cannot be marked default")
+    if template.type == "procedure":
+        template_repo.set_default(db, template)
+    else:
+        template_defaults_service.set_report_default(db, document_template_id=template_id)
+    db.refresh(template)
+    _audit(db, request, current_user, action="document_template.set_default", template=template)
+    return template
+
+
+@router.post(
+    "/{template_id}/set-enabled",
+    response_model=DocumentTemplateResponse,
+    summary="Enable or disable a template for selection when downloading",
+    description="Distinct from archive (above), which soft-removes a template from the admin list "
+    "entirely — a disabled template stays visible/editable but drops out of the download picker.",
+)
+def set_document_template_enabled(
+    template_id: uuid.UUID,
+    body: SetEnabledRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_not_viewer),
+) -> DocumentTemplate:
+    template = _get_or_404(db, template_id)
+    if not body.enabled:
+        try:
+            template_defaults_service.assert_can_disable(template.is_builtin, template.is_default)
+        except BaseTemplateError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    was_default = template.is_default
+    updated = template_repo.set_enabled(db, template, body.enabled)
+    if not body.enabled and was_default:
+        fallback = (
+            template_defaults_service.ensure_procedure_default_fallback
+            if template.type == "procedure"
+            else template_defaults_service.ensure_report_default_fallback
+        )
+        fallback(db, current_user.id)
+    _audit(
+        db, request, current_user,
+        action="document_template.set_enabled", template=updated, after_state={"is_enabled": body.enabled},
+    )
+    return updated
 
 
 @router.post(

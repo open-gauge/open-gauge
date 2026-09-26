@@ -31,6 +31,30 @@ jedes Mal neu einzutippen.
 | Schritte | Die geordneten Verfahrensschritte selbst. |
 | Abnahmekriterien | Was für dieses Verfahren als bestanden gilt, direkt daneben dokumentiert. |
 
+## Ein Verfahren als PDF herunterladen
+
+Jedes Verfahren hat auf seiner Detailseite eine Schaltfläche **PDF herunterladen** neben
+**Bearbeiten** — sie erstellt live ein PDF mit den aktuellen Daten des Verfahrens (Metadaten,
+erforderliche Ausrüstung, Materialien, Umgebungsbedingungen, Sicherheitshinweise, Schritte und
+Abnahmekriterien), bereit zum Ausdrucken und Mitnehmen ins Feld.
+
+Das PDF stammt aus einer veröffentlichten, aktiven Dokumentvorlage vom Typ **Kalibrierverfahren**
+(siehe [Dokumentvorlagen](../templates/index.mdx)) — demselben WYSIWYG-Editor, der auch für
+Zertifikatsvorlagen verwendet wird, nur mit einem verfahrensspezifischen Variablensatz
+(Ausrüstung, Verfahrensmetadaten, Umgebung, Schritte, Abnahmekriterien, Sicherheitshinweise,
+Daten). Standardmäßig wird mit der Vorlage erzeugt, die in **Admin → Vorlagen → Verfahren** als
+**Standard** markiert ist; über das Auswahlmenü der Download-Schaltfläche können Sie für diesen
+einen Download eine andere wählen — eine einmalige Wahl, die die gespeicherte Standardvorlage
+nicht ändert. Jede Installation startet mit einer permanenten, integrierten **Basisvorlage** (siehe
+[Vorlagen verwalten](../templates/index.mdx#vorlagen-verwalten-basis-standard-und-aktiv)), die
+jedes Feld des Verfahrensmodells abdeckt und so lange die Standardvorlage bleibt, bis ein
+Administrator eine andere markiert — der Download funktioniert also bereits beim ersten Verfahren,
+bevor jemand eine eigene Vorlage entworfen hat.
+
+Anders als ein Kalibrierzertifikat dokumentiert ein Verfahrens-PDF die *Methode*, nicht ein
+einzelnes Kalibrierereignis — es wird nicht digital signiert und enthält keinen
+Techniker-/Prüfer-Unterschriftenblock.
+
 ## Ein Verfahren mit einem Kanal verknüpfen
 
 Legen Sie bei einem Sensorkanal die **Kalibriermethode** auf ein gespeichertes Verfahren fest — dies

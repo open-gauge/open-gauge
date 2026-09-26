@@ -275,6 +275,7 @@
       "page": "Página",
       "equipment": "Equipo",
       "procedure": "Procedimiento",
+      "materials": "Materiales",
       "environment": "Condiciones Ambientales",
       "steps": "Pasos",
       "acceptance_criteria": "Criterios de Aceptación",
@@ -293,6 +294,7 @@
       "page": "Se completa automáticamente según la página en la que aparece.",
       "equipment": "Se completa automáticamente desde el registro del activo/equipo.",
       "procedure": "Se completa automáticamente desde el registro del procedimiento.",
+      "materials": "Se completa automáticamente desde los materiales requeridos del procedimiento.",
       "environment": "Se completa automáticamente desde las condiciones ambientales del procedimiento.",
       "steps": "Se completa automáticamente desde los pasos del procedimiento.",
       "acceptance_criteria": "Se completa automáticamente desde los criterios de aceptación del procedimiento.",
@@ -304,6 +306,7 @@
       "asset_channels": "Canales",
       "measurements": "Mediciones",
       "required_equipment": "Equipo Requerido",
+      "materials": "Materiales",
       "environmental_conditions": "Condiciones Ambientales",
       "steps": "Pasos",
       "acceptance_criteria": "Criterios de Aceptación",
@@ -396,7 +399,17 @@
         "number": "Número de Procedimiento",
         "revision": "Revisión del Procedimiento",
         "title": "Título del Procedimiento",
-        "standard_ref": "Referencia de Norma"
+        "standard_ref": "Referencia de Norma",
+        "description": "Descripción",
+        "author": "Autor",
+        "duration_min": "Duración Estimada (min)",
+        "tags": "Etiquetas",
+        "physical_quantity": "Magnitud Física",
+        "difficulty": "Dificultad"
+      },
+      "material": {
+        "name": "Nombre",
+        "quantity": "Cantidad"
       },
       "approval": {
         "approver_name": "Nombre del Aprobador",

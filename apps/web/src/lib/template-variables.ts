@@ -204,6 +204,28 @@ const PROCEDURE_CATEGORY: TemplateVariableCategoryDef = {
     { key: "procedure.revision", sample: "Rev. C" },
     { key: "procedure.title", sample: "Pressure Gauge Calibration Procedure" },
     { key: "procedure.standard_ref", sample: "ISO 5171" },
+    { key: "procedure.description", sample: "Comparison calibration of a pressure gauge against a reference pressure standard across its full scale." },
+    { key: "procedure.author", sample: "Casey Morgan" },
+    { key: "procedure.duration_min", sample: 45 },
+    { key: "procedure.tags", sample: "pressure, comparison, field" },
+    { key: "procedure.physical_quantity", sample: "Pressure" },
+    { key: "procedure.difficulty", sample: "Intermediate" },
+  ],
+};
+
+const MATERIALS_CATEGORY: TemplateVariableCategoryDef = {
+  key: "materials",
+  variables: [],
+  collections: [
+    {
+      key: "materials",
+      itemScope: "material",
+      rowCount: 2,
+      fields: [
+        { key: "name", sample: "Thread sealant tape" },
+        { key: "quantity", sample: "1 roll" },
+      ],
+    },
   ],
 };
 
@@ -300,6 +322,7 @@ const REVISION_HISTORY_CATEGORY: TemplateVariableCategoryDef = {
 export const PROCEDURE_VARIABLE_CATEGORIES: TemplateVariableCategoryDef[] = [
   EQUIPMENT_CATEGORY,
   PROCEDURE_CATEGORY,
+  MATERIALS_CATEGORY,
   ENVIRONMENT_CATEGORY,
   STEPS_CATEGORY,
   ACCEPTANCE_CATEGORY,

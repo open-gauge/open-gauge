@@ -12,6 +12,60 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.17.0
+
+### Added
+
+- **Unified template management: base, default, and active/inactive.** The admin **Templates**
+  section is now a collapsible sidebar group with two panels — **Calibration Reports** and
+  **Procedures** — sharing one row layout and one set of actions instead of the previous flat,
+  certificate-only section. Every kind now has a permanent, non-deletable, non-editable **base**
+  template ("Open Gauge (default)"), lazily created the first time its panel is opened or its kind
+  is generated with nothing configured — no migration seeding, so it works on a fresh install with
+  zero setup. Every template — base or custom, LaTeX or editor-authored — has two independent
+  controls: **Default** (exactly one per kind is used when a document is generated without an
+  explicit template choice; for Calibration Reports this is a single default shared across legacy
+  `.tex` and editor templates) and **Active** (an inactive template drops out of every download
+  picker while staying in the list, editable — distinct from Delete, which removes it from the
+  list entirely). Disabling or deleting the current default falls back to the base template
+  automatically; the base template itself can't be disabled while it's the only default.
+- **Calibration report resolution now includes the admin-set default from either template
+  system.** Previously the org/global fallback (the last step before the built-in template, when
+  nothing is assigned to the calibration or its sensor channel) only ever considered legacy `.tex`
+  certificate templates — an editor (WYSIWYG) certificate template could never be the fallback
+  default. It now resolves to whichever template (either kind) is marked default in Admin →
+  Templates → Calibration Reports.
+- Procedure downloads gained the same treatment: downloading with no template chosen now renders
+  with the template marked default in Admin → Templates → Procedures (falling back to the base
+  template) instead of always using an in-code fallback document with no way to change it.
+
+## 4.16.0
+
+### Added
+
+- **Download a procedure as PDF.** Every procedure's detail page gained a **Download PDF** button
+  next to **Edit** — it live-renders the procedure's current data (metadata, required equipment,
+  materials, environmental conditions, safety instructions, steps, and acceptance criteria) into a
+  PDF, using a published **Calibration Procedure** document template (the same WYSIWYG editor
+  certificate templates use). If one or more procedure templates are published, the button's
+  chevron menu lets you pick which one to render with for that download (a one-off choice, not a
+  saved default); with none published yet, it falls back to a new **built-in default procedure
+  template** that covers every field on the Procedure model, the same way certificate generation
+  has always had a built-in fallback — so the button works on a fresh install before anyone has
+  designed a custom layout. New endpoint: `GET /procedures/{id}/download` (optional
+  `document_template_id` query param).
+- **The document template editor's "Calibration Procedure" variable catalog is now complete.**
+  Added the procedure fields it was missing (`procedure.description`, `procedure.author`,
+  `procedure.duration_min`, `procedure.tags`, `procedure.physical_quantity`,
+  `procedure.difficulty`) and a new **Materials** collection (`material.name`/`material.quantity`,
+  matching the procedure's `materials` list) that had no variable representation at all before.
+  The server-side renderer's collection support was extended to match — `required_equipment`,
+  `materials`, `environmental_conditions`, `steps`, `acceptance_criteria`, and
+  `safety_instructions` now all resolve to real repeating-table rows (previously only
+  `measurements`, a certificate-only collection, was wired up server-side), and the admin "Preview
+  Data" mode for a procedure template now uses real procedure-shaped sample data instead of
+  certificate sample data.
+
 ## 4.15.1
 
 ### Fixed

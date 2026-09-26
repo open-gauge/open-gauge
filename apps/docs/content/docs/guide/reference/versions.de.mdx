@@ -15,6 +15,67 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.17.0
+
+### Hinzugefügt
+
+- **Einheitliche Vorlagenverwaltung: Basis, Standard und aktiv/inaktiv.** Der Admin-Bereich
+  **Vorlagen** ist jetzt eine einklappbare Seitenleistengruppe mit zwei Bereichen —
+  **Kalibrierberichte** und **Verfahren** — die sich dasselbe Zeilenlayout und denselben
+  Aktionssatz teilen, statt des bisherigen flachen, zertifikatsspezifischen Bereichs. Jeder Typ
+  hat jetzt eine permanente, nicht löschbare, nicht bearbeitbare **Basis**-Vorlage
+  („Open Gauge (default)"), die beim ersten Öffnen ihres Bereichs oder bei der ersten Erzeugung
+  dieses Typs ohne jede Konfiguration verzögert erstellt wird — keine Migrations-Seed-Daten
+  nötig, sodass es auf einer frischen Installation ohne jede Einrichtung funktioniert. Jede
+  Vorlage — Basis oder eigene, LaTeX oder im Editor erstellt — hat zwei unabhängige Regler:
+  **Standard** (genau eine pro Typ wird verwendet, wenn ein Dokument ohne ausdrückliche
+  Vorlagenwahl erzeugt wird; bei Kalibrierberichten ist dies ein einziger Standard, der sich
+  Legacy-`.tex`- und Editor-Vorlagen teilt) und **Aktiv** (eine inaktive Vorlage fällt aus jeder
+  Download-Auswahl heraus, bleibt aber in der Liste und bearbeitbar — anders als Löschen, das sie
+  vollständig aus der Liste entfernt). Das Deaktivieren oder Löschen der aktuellen Standardvorlage
+  greift automatisch auf die Basisvorlage zurück; die Basisvorlage selbst kann nicht deaktiviert
+  werden, solange sie die einzige Standardvorlage ist.
+- **Die Auflösung von Kalibrierberichten berücksichtigt jetzt die vom Administrator festgelegte
+  Standardvorlage aus beiden Vorlagensystemen.** Zuvor berücksichtigte der
+  Organisations-/globale Rückgriff (der letzte Schritt vor der integrierten Vorlage, wenn der
+  Kalibrierung oder ihrem Sensorkanal nichts zugewiesen ist) nur Legacy-`.tex`-Zertifikatsvorlagen
+  — eine Editor-Zertifikatsvorlage (WYSIWYG) konnte nie die Rückgriff-Standardvorlage sein. Er
+  löst jetzt zu der Vorlage (beider Art) auf, die in Admin → Vorlagen → Kalibrierberichte als
+  Standard markiert ist.
+- Verfahrens-Downloads erhalten dieselbe Behandlung: Ein Download ohne gewählte Vorlage erzeugt
+  das PDF jetzt mit der in Admin → Vorlagen → Verfahren als Standard markierten Vorlage (mit
+  Rückgriff auf die Basisvorlage), statt stets ein fest im Code hinterlegtes Rückgriffsdokument
+  ohne Änderungsmöglichkeit zu verwenden.
+
+## 4.16.0
+
+### Hinzugefügt
+
+- **Ein Verfahren als PDF herunterladen.** Die Detailseite jedes Verfahrens hat jetzt eine
+  Schaltfläche **PDF herunterladen** neben **Bearbeiten** — sie erstellt live ein PDF mit den
+  aktuellen Daten des Verfahrens (Metadaten, erforderliche Ausrüstung, Materialien,
+  Umgebungsbedingungen, Sicherheitshinweise, Schritte und Abnahmekriterien), mithilfe einer
+  veröffentlichten Dokumentvorlage vom Typ **Kalibrierverfahren** (demselben WYSIWYG-Editor, der
+  auch für Zertifikatsvorlagen verwendet wird). Sind eine oder mehrere Verfahrensvorlagen
+  veröffentlicht, lässt das Auswahlmenü der Schaltfläche wählen, mit welcher Vorlage dieser
+  Download erstellt wird (eine einmalige Wahl, kein gespeicherter Standard); ist noch keine
+  veröffentlicht, greift eine neue **integrierte Standard-Verfahrensvorlage**, die jedes Feld des
+  Verfahrensmodells abdeckt — die Schaltfläche funktioniert also auch bei einer frischen
+  Installation, bevor jemand eine eigene Vorlage entworfen hat. Neuer Endpunkt:
+  `GET /procedures/{id}/download` (optionaler Abfrageparameter `document_template_id`).
+- **Der Variablenkatalog „Kalibrierverfahren" des Vorlagen-Editors ist jetzt vollständig.**
+  Ergänzt um die fehlenden Verfahrensfelder (`procedure.description`, `procedure.author`,
+  `procedure.duration_min`, `procedure.tags`, `procedure.physical_quantity`,
+  `procedure.difficulty`) sowie eine neue Sammlung **Materialien**
+  (`material.name`/`material.quantity`, entsprechend der `materials`-Liste des Verfahrens), die
+  zuvor gar keine Variablenrepräsentation hatte. Die serverseitige Renderer-Unterstützung wurde
+  entsprechend erweitert — `required_equipment`, `materials`, `environmental_conditions`, `steps`,
+  `acceptance_criteria` und `safety_instructions` lösen jetzt alle zu echten sich wiederholenden
+  Tabellenzeilen auf (zuvor war serverseitig nur `measurements`, eine reine
+  Zertifikats-Sammlung, verdrahtet), und der Admin-Modus „Vorschaudaten" für eine
+  Verfahrensvorlage verwendet jetzt realistische verfahrensförmige Beispieldaten statt
+  Zertifikat-Beispieldaten.
+
 ## 4.15.1
 
 ### Behoben

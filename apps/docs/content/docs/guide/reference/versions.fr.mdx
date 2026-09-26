@@ -15,6 +15,68 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.17.0
+
+### Ajouté
+
+- **Gestion unifiée des modèles : base, par défaut et actif/inactif.** La section
+  d'administration **Modèles** est désormais un groupe repliable dans la barre latérale avec deux
+  panneaux — **Rapports de Calibration** et **Procédures** — partageant la même disposition de
+  ligne et le même ensemble d'actions, au lieu de l'ancienne section plate réservée aux
+  certificats. Chaque type dispose désormais d'un modèle **de base** permanent, non supprimable
+  et non modifiable (« Open Gauge (default) »), créé paresseusement la première fois que son
+  panneau est ouvert ou qu'un document de ce type est généré sans rien configuré — sans
+  amorçage par migration, ce qui fonctionne donc sur une installation neuve sans aucune
+  configuration préalable. Chaque modèle — de base ou personnalisé, LaTeX ou créé dans l'éditeur
+  — dispose de deux contrôles indépendants : **Par défaut** (exactement un par type est utilisé
+  lors de la génération d'un document sans choix explicite de modèle ; pour les Rapports de
+  Calibration, il s'agit d'un unique modèle par défaut partagé entre les modèles `.tex` hérités et
+  ceux de l'éditeur) et **Actif** (un modèle inactif est exclu de tous les sélecteurs de
+  téléchargement tout en restant dans la liste, modifiable — à ne pas confondre avec Supprimer,
+  qui le retire complètement de la liste). Désactiver ou supprimer le modèle par défaut actuel
+  bascule automatiquement vers le modèle de base ; ce dernier ne peut pas être désactivé tant
+  qu'il est le seul modèle par défaut.
+- **La résolution des rapports de calibration inclut désormais le modèle par défaut défini par
+  l'administrateur, quel que soit le système de modèles.** Auparavant, le repli
+  organisation/global (la dernière étape avant le modèle intégré, quand rien n'est attribué à la
+  calibration ni à sa voie de capteur) ne considérait que les modèles de certificat `.tex`
+  hérités — un modèle de certificat de l'éditeur (WYSIWYG) ne pouvait jamais être le modèle par
+  défaut de repli. Il se résout désormais vers le modèle (de l'un ou l'autre type) marqué par
+  défaut dans Admin → Modèles → Rapports de Calibration.
+- Les téléchargements de procédures bénéficient du même traitement : télécharger sans choisir de
+  modèle génère désormais le PDF avec le modèle marqué par défaut dans Admin → Modèles →
+  Procédures (avec repli sur le modèle de base), plutôt que d'utiliser systématiquement un
+  document de repli intégré au code, sans possibilité de le changer.
+
+## 4.16.0
+
+### Ajouté
+
+- **Télécharger une procédure en PDF.** La page de détail de chaque procédure a désormais un
+  bouton **Télécharger le PDF** à côté de **Modifier** — il génère à la volée un PDF avec les
+  données actuelles de la procédure (métadonnées, équipement requis, matériaux, conditions
+  environnementales, consignes de sécurité, étapes et critères d'acceptation), à partir d'un modèle
+  de document de type **Procédure de Calibration** publié (le même éditeur WYSIWYG que les modèles
+  de certificats). Si un ou plusieurs modèles de procédure sont publiés, le menu déroulant du
+  bouton permet de choisir lequel utiliser pour ce téléchargement (un choix ponctuel, pas une
+  valeur par défaut enregistrée) ; si aucun n'est encore publié, un nouveau **modèle de procédure
+  par défaut intégré** couvrant tous les champs du modèle de Procédure prend le relais — le bouton
+  fonctionne donc dès une installation neuve, avant même qu'un modèle personnalisé ait été conçu.
+  Nouveau point de terminaison : `GET /procedures/{id}/download` (paramètre de requête optionnel
+  `document_template_id`).
+- **Le catalogue de variables « Procédure de Calibration » de l'éditeur de modèles est désormais
+  complet.** Ajout des champs de procédure qui manquaient (`procedure.description`,
+  `procedure.author`, `procedure.duration_min`, `procedure.tags`, `procedure.physical_quantity`,
+  `procedure.difficulty`) et d'une nouvelle collection **Matériaux**
+  (`material.name`/`material.quantity`, correspondant à la liste `materials` de la procédure) qui
+  n'avait auparavant aucune représentation en tant que variable. Le rendu côté serveur a été
+  étendu en conséquence — `required_equipment`, `materials`, `environmental_conditions`, `steps`,
+  `acceptance_criteria` et `safety_instructions` se résolvent désormais tous en véritables lignes
+  de tableau répétitif (seul `measurements`, une collection propre aux certificats, était câblé
+  côté serveur auparavant), et le mode « Données d'aperçu » de l'administration pour un modèle de
+  procédure utilise désormais des données d'exemple à forme de procédure réelle plutôt que des
+  données d'exemple de certificat.
+
 ## 4.15.1
 
 ### Corrigé

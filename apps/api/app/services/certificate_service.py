@@ -948,7 +948,7 @@ def resolve_template_source(
     """
     if template_id is not None:
         row = certtpl_repo.get_by_id(db, template_id)
-        if not row or not row.is_active:
+        if not row or not row.is_active or not row.is_enabled:
             raise ValueError(f"Certificate template {template_id} not found")
         text = _read_file_text(db, row.template_file_id)
         if text is None:
@@ -1209,8 +1209,8 @@ def generate_certificate_from_document_template(
     from .document_template_latex import document_to_latex
 
     template = doctpl_repo.get_by_id(db, document_template_id)
-    if not template or template.status != "published":
-        raise ValueError(f"Document template {document_template_id} not found or not published")
+    if not template or template.status != "published" or not template.is_enabled:
+        raise ValueError(f"Document template {document_template_id} not found, not published, or disabled")
 
     organization = resolve_organization(db, asset, calibration)
     certificate_number = f"OG-CAL-{asset.asset_id}-v{version}"

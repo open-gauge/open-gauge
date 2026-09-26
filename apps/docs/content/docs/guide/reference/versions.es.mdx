@@ -14,6 +14,67 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.17.0
+
+### Añadido
+
+- **Gestión unificada de plantillas: base, predeterminada y activa/inactiva.** La sección de
+  administración **Plantillas** es ahora un grupo desplegable en la barra lateral con dos
+  paneles — **Informes de Calibración** y **Procedimientos** — que comparten el mismo diseño de
+  fila y el mismo conjunto de acciones, en lugar de la anterior sección plana, exclusiva de
+  certificados. Cada tipo tiene ahora una plantilla **base** permanente, no eliminable ni
+  editable ("Open Gauge (default)"), creada de forma perezosa la primera vez que se abre su panel
+  o se genera un documento de ese tipo sin nada configurado — sin siembra por migración, por lo
+  que funciona en una instalación nueva sin ninguna configuración previa. Cada plantilla — base o
+  personalizada, LaTeX o creada en el editor — tiene dos controles independientes:
+  **Predeterminada** (exactamente una por tipo se usa al generar un documento sin elegir una
+  plantilla explícita; para Informes de Calibración esta es una única opción predeterminada
+  compartida entre plantillas `.tex` heredadas y del editor) y **Activa** (una plantilla inactiva
+  se excluye de todos los selectores de descarga mientras permanece en la lista, editable —
+  distinto de Eliminar, que la retira de la lista por completo). Desactivar o eliminar la
+  predeterminada actual recurre automáticamente a la plantilla base; la propia plantilla base no
+  se puede desactivar mientras sea la única predeterminada.
+- **La resolución de informes de calibración ahora incluye la predeterminada definida por el
+  administrador desde cualquiera de los dos sistemas de plantillas.** Antes, el respaldo de
+  organización/global (el último paso antes de la plantilla integrada, cuando no hay nada
+  asignado a la calibración ni a su canal de sensor) solo consideraba plantillas de certificado
+  `.tex` heredadas — una plantilla de certificado del editor (WYSIWYG) nunca podía ser la
+  predeterminada de respaldo. Ahora se resuelve a cualquiera de los dos tipos de plantilla que
+  esté marcado como predeterminado en Admin → Plantillas → Informes de Calibración.
+- Las descargas de procedimientos reciben el mismo tratamiento: descargar sin elegir plantilla
+  ahora genera el PDF con la plantilla marcada como predeterminada en Admin → Plantillas →
+  Procedimientos (recurriendo a la plantilla base), en lugar de usar siempre un documento de
+  respaldo interno sin forma de cambiarlo.
+
+## 4.16.0
+
+### Añadido
+
+- **Descargar un procedimiento como PDF.** La página de detalle de cada procedimiento incorpora un
+  botón **Descargar PDF** junto a **Editar** — genera al momento un PDF con los datos actuales del
+  procedimiento (metadatos, equipo requerido, materiales, condiciones ambientales, instrucciones
+  de seguridad, pasos y criterios de aceptación), usando una plantilla de documento de tipo
+  **Procedimiento de Calibración** publicada (el mismo editor WYSIWYG que usan las plantillas de
+  certificados). Si hay una o más plantillas de procedimiento publicadas, el menú desplegable del
+  botón permite elegir con cuál generar esa descarga (una elección puntual, no un valor
+  predeterminado guardado); si aún no hay ninguna publicada, se usa una nueva **plantilla
+  predeterminada incorporada** que cubre todos los campos del modelo de Procedimiento — de modo
+  que el botón funciona en una instalación nueva antes de que nadie haya diseñado una plantilla
+  propia. Nuevo endpoint: `GET /procedures/{id}/download` (parámetro de consulta opcional
+  `document_template_id`).
+- **El catálogo de variables "Procedimiento de Calibración" del editor de plantillas ya está
+  completo.** Se añadieron los campos del procedimiento que faltaban (`procedure.description`,
+  `procedure.author`, `procedure.duration_min`, `procedure.tags`, `procedure.physical_quantity`,
+  `procedure.difficulty`) y una nueva colección **Materiales**
+  (`material.name`/`material.quantity`, correspondiente a la lista `materials` del procedimiento)
+  que antes no tenía ninguna representación como variable. El renderizado del lado del servidor se
+  extendió para que coincida — `required_equipment`, `materials`, `environmental_conditions`,
+  `steps`, `acceptance_criteria` y `safety_instructions` ahora se resuelven todas como filas reales
+  de tabla repetitiva (antes solo `measurements`, una colección exclusiva de certificados, estaba
+  implementada del lado del servidor), y el modo "Vista previa con datos" del panel de
+  administración para una plantilla de procedimiento ahora usa datos de ejemplo con forma de
+  procedimiento real en lugar de datos de ejemplo de certificado.
+
 ## 4.15.1
 
 ### Corregido

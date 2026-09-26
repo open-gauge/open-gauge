@@ -693,6 +693,8 @@ export function duplicateTemplate(sourceId: string, name?: string): Template | u
     version: 1,
     status: "draft",
     document: cloneValue(source.document),
+    is_default: false,
+    is_builtin: false,
     created_at: now,
     updated_at: now,
     published_at: null,

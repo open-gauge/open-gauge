@@ -275,6 +275,7 @@
       "page": "Page",
       "equipment": "Équipement",
       "procedure": "Procédure",
+      "materials": "Matériaux",
       "environment": "Conditions Environnementales",
       "steps": "Étapes",
       "acceptance_criteria": "Critères d'Acceptation",
@@ -293,6 +294,7 @@
       "page": "Rempli automatiquement selon la page sur laquelle il apparaît.",
       "equipment": "Rempli automatiquement depuis la fiche de l'actif/équipement.",
       "procedure": "Rempli automatiquement depuis la fiche de la procédure.",
+      "materials": "Rempli automatiquement depuis les matériaux requis de la procédure.",
       "environment": "Rempli automatiquement depuis les conditions environnementales de la procédure.",
       "steps": "Rempli automatiquement depuis les étapes de la procédure.",
       "acceptance_criteria": "Rempli automatiquement depuis les critères d'acceptation de la procédure.",
@@ -304,6 +306,7 @@
       "asset_channels": "Voies",
       "measurements": "Mesures",
       "required_equipment": "Équipement Requis",
+      "materials": "Matériaux",
       "environmental_conditions": "Conditions Environnementales",
       "steps": "Étapes",
       "acceptance_criteria": "Critères d'Acceptation",
@@ -396,7 +399,17 @@
         "number": "Numéro de Procédure",
         "revision": "Révision de la Procédure",
         "title": "Titre de la Procédure",
-        "standard_ref": "Référence Normative"
+        "standard_ref": "Référence Normative",
+        "description": "Description",
+        "author": "Auteur",
+        "duration_min": "Durée Estimée (min)",
+        "tags": "Étiquettes",
+        "physical_quantity": "Grandeur Physique",
+        "difficulty": "Difficulté"
+      },
+      "material": {
+        "name": "Nom",
+        "quantity": "Quantité"
       },
       "approval": {
         "approver_name": "Nom de l'Approbateur",

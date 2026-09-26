@@ -320,6 +320,9 @@ export interface Template {
   version: number;
   document: TemplateDocument;
   is_active: boolean;
+  is_default: boolean;
+  is_builtin: boolean;
+  is_enabled: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -334,6 +337,9 @@ export interface TemplateListItem {
   type: TemplateType;
   status: TemplateStatus;
   version: number;
+  is_default: boolean;
+  is_builtin: boolean;
+  is_enabled: boolean;
   updated_at: string;
   created_by: string;
 }

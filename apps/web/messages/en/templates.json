@@ -275,6 +275,7 @@
       "page": "Page",
       "equipment": "Equipment",
       "procedure": "Procedure",
+      "materials": "Materials",
       "environment": "Environmental Conditions",
       "steps": "Steps",
       "acceptance_criteria": "Acceptance Criteria",
@@ -293,6 +294,7 @@
       "page": "Filled in automatically based on the page it appears on.",
       "equipment": "Filled automatically from the asset/equipment record.",
       "procedure": "Filled automatically from the procedure record.",
+      "materials": "Filled automatically from the procedure's required materials.",
       "environment": "Filled automatically from the procedure's environmental conditions.",
       "steps": "Filled automatically from the procedure's steps.",
       "acceptance_criteria": "Filled automatically from the procedure's acceptance criteria.",
@@ -304,6 +306,7 @@
       "asset_channels": "Channels",
       "measurements": "Measurements",
       "required_equipment": "Required Equipment",
+      "materials": "Materials",
       "environmental_conditions": "Environmental Conditions",
       "steps": "Steps",
       "acceptance_criteria": "Acceptance Criteria",
@@ -396,7 +399,17 @@
         "number": "Procedure Number",
         "revision": "Procedure Revision",
         "title": "Procedure Title",
-        "standard_ref": "Standard Reference"
+        "standard_ref": "Standard Reference",
+        "description": "Description",
+        "author": "Author",
+        "duration_min": "Estimated Duration (min)",
+        "tags": "Tags",
+        "physical_quantity": "Physical Quantity",
+        "difficulty": "Difficulty"
+      },
+      "material": {
+        "name": "Name",
+        "quantity": "Quantity"
       },
       "approval": {
         "approver_name": "Approver Name",

@@ -24,7 +24,8 @@ def list_templates(
     else:
         # organization_id=None means "global scope" — not "no filter at all".
         q = q.filter(CertificateTemplate.organization_id.is_(None))
-    return q.order_by(CertificateTemplate.name).all()
+    # Builtin row first (it's the permanent, always-present fallback), then alphabetical.
+    return q.order_by(CertificateTemplate.is_builtin.desc(), CertificateTemplate.name).all()
 
 
 def get_active_default(db: Session, organization_id: uuid.UUID | None) -> CertificateTemplate | None:
@@ -86,6 +87,58 @@ def update(db: Session, template: CertificateTemplate, **kwargs) -> CertificateT
 def deactivate(db: Session, template: CertificateTemplate) -> CertificateTemplate:
     template.is_active = False
     template.is_default = False
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+def get_builtin(db: Session) -> CertificateTemplate | None:
+    return db.query(CertificateTemplate).filter(CertificateTemplate.is_builtin.is_(True)).first()
+
+
+def create_builtin(db: Session, *, name: str, description: str | None, template_file_id: uuid.UUID, created_by: uuid.UUID) -> CertificateTemplate:
+    """Creates the one seeded "Open Gauge style" certificate template row — lazily, on first use
+    (see document_template.create_builtin's docstring for why not migration-seeded)."""
+    template = CertificateTemplate(
+        organization_id=None,
+        name=name,
+        description=description,
+        template_file_id=template_file_id,
+        is_builtin=True,
+        created_by=created_by,
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+def get_default(db: Session) -> CertificateTemplate | None:
+    return (
+        db.query(CertificateTemplate)
+        .filter(
+            CertificateTemplate.organization_id.is_(None),
+            CertificateTemplate.is_default.is_(True),
+            CertificateTemplate.is_active.is_(True),
+            CertificateTemplate.is_enabled.is_(True),
+        )
+        .first()
+    )
+
+
+def set_default(db: Session, template: CertificateTemplate) -> CertificateTemplate:
+    unset_default(db, template.organization_id)
+    template.is_default = True
+    template.is_enabled = True
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+def set_enabled(db: Session, template: CertificateTemplate, enabled: bool) -> CertificateTemplate:
+    template.is_enabled = enabled
+    if not enabled:
+        template.is_default = False
     db.commit()
     db.refresh(template)
     return template

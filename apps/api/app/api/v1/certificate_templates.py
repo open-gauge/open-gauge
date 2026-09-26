@@ -7,12 +7,15 @@ from ...core.database import get_db
 from ...dependencies.deps import get_current_user, require_admin, require_superadmin
 from ...models.user import User
 from ...repositories import certificate_template as certtpl_repo
+from ...repositories import document_template as doctpl_repo
 from ...repositories import stored_file as file_repo
-from ...schemas.certificate_template import CertificateTemplateResponse, CertificateTemplateUpdate
+from ...schemas.certificate_template import CertificateTemplateResponse, CertificateTemplateUpdate, SetEnabledRequest
 from ...services import certificate_service
 from ...services import latex_service
 from ...services import storage as storage_svc
+from ...services import template_defaults_service
 from ...services.latex_service import LatexCompileError
+from ...services.template_defaults_service import BaseTemplateError
 
 router = APIRouter(prefix="/certificate-templates", tags=["Certificate Templates"])
 
@@ -21,8 +24,9 @@ router = APIRouter(prefix="/certificate-templates", tags=["Certificate Templates
 def list_templates(
     organization_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[CertificateTemplateResponse]:
+    template_defaults_service.ensure_builtin_certificate_template(db, current_user.id)
     return certtpl_repo.list_templates(db, organization_id=organization_id)
 
 
@@ -75,6 +79,8 @@ async def upload_template(
 
     if is_default:
         certtpl_repo.unset_default(db, organization_id)
+        if organization_id is None:
+            doctpl_repo.clear_default(db, "certificate")
 
     template = certtpl_repo.create(
         db,
@@ -107,14 +113,49 @@ def update_template(
     else:
         require_admin(current_user)
 
+    if template.is_builtin and (body.name is not None or body.description is not None):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The base template cannot be edited")
+
     if body.is_default:
-        certtpl_repo.unset_default(db, template.organization_id)
+        template_defaults_service.set_report_default(db, certificate_template_id=template_id)
+        db.refresh(template)
 
     return certtpl_repo.update(
         db, template,
         name=body.name, description=body.description,
         is_default=body.is_default, is_active=body.is_active,
     )
+
+
+@router.post("/{template_id}/set-enabled", response_model=CertificateTemplateResponse)
+def set_template_enabled(
+    template_id: uuid.UUID,
+    body: SetEnabledRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CertificateTemplateResponse:
+    """Toggles availability in the calibration-report download picker without deleting the
+    template — distinct from DELETE below, which soft-removes it from the admin list entirely."""
+    template = certtpl_repo.get_by_id(db, template_id)
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+
+    if template.organization_id is None:
+        require_superadmin(current_user)
+    else:
+        require_admin(current_user)
+
+    if not body.enabled:
+        try:
+            template_defaults_service.assert_can_disable(template.is_builtin, template.is_default)
+        except BaseTemplateError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    was_default = template.is_default
+    updated = certtpl_repo.set_enabled(db, template, body.enabled)
+    if not body.enabled and was_default and template.organization_id is None:
+        template_defaults_service.ensure_report_default_fallback(db, current_user.id)
+    return updated
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -135,7 +176,13 @@ def delete_template(
     else:
         require_admin(current_user)
 
+    if template.is_builtin:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The base template cannot be deleted")
+
+    was_default = template.is_default
     certtpl_repo.deactivate(db, template)
+    if was_default and template.organization_id is None:
+        template_defaults_service.ensure_report_default_fallback(db, current_user.id)
 
 
 @router.get("/{template_id}/download", summary="Download a certificate template's raw .tex source")
@@ -200,8 +247,9 @@ def preview_template(
 def preview_builtin_template(
     _: User = Depends(get_current_user),
 ) -> Response:
-    """Preview the app's built-in default template (no DB row exists for it)
-    with a freshly randomized 10-row sample dataset."""
+    """Preview the app's built-in default template straight off disk, independent of the lazily
+    created builtin CertificateTemplate row (see template_defaults_service.py), with a freshly
+    randomized 10-row sample dataset."""
     tex_source = latex_service.BUILTIN_TEMPLATE_PATH.read_text(encoding="utf-8")
     context, images = certificate_service.build_random_preview_context()
     try:

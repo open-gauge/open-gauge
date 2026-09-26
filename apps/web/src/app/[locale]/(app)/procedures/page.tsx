@@ -14,12 +14,12 @@ import {
   ClockIcon,
   CopyIcon,
   DocumentIcon,
+  DownloadIcon,
   EditIcon,
   ExportIcon,
   ImportIcon,
   PaperclipIcon,
   PlusIcon,
-  PrinterIcon,
   ProceduresIcon,
   SearchIcon,
   ShieldIcon,
@@ -34,12 +34,14 @@ import {
   createProcedure,
   deleteProcedure,
   deleteProcedureFile,
+  downloadProcedurePdfBlob,
   fetchBulkExportBlob,
   getProcedure,
   importProceduresZip,
   importProcedureZip,
   listProcedureFiles,
   listProcedures,
+  listProcedureTemplates,
   updateProcedure,
   uploadProcedureStepFile,
   validateProcedureImportZip,
@@ -53,7 +55,7 @@ import type {
   ProcedureMaterialItem,
   ProcedureStep,
 } from "@/types/procedure";
-import type { ProcedureImportPreview, ProcedureImportResult } from "@/services/procedure.service";
+import type { ProcedureImportPreview, ProcedureImportResult, ProcedureTemplateOption } from "@/services/procedure.service";
 import type { StoredFile } from "@/types/stored_file";
 
 // ---------------------------------------------------------------------------
@@ -455,6 +457,104 @@ function SafetyEditor({ notes, onAdd, onUpdate, onRemove }: {
 }
 
 // ---------------------------------------------------------------------------
+// Download as PDF
+// ---------------------------------------------------------------------------
+
+function ProcedureDownloadButton({ procId, procTag }: { procId: string; procTag: string }) {
+  const t = useTranslations("procedures.detail");
+  const [templates, setTemplates] = useState<ProcedureTemplateOption[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listProcedureTemplates().then(setTemplates).catch(() => setTemplates([]));
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [menuOpen]);
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const blob = await downloadProcedurePdfBlob(procId, selectedTemplateId);
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${procTag}.pdf`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      alert(t("downloadFailed"));
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  const showPicker = templates.length > 0;
+
+  return (
+    <div ref={menuRef} className="relative flex items-stretch shrink-0">
+      <button
+        type="button"
+        disabled={downloading}
+        onClick={handleDownload}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md hover:bg-og-surface-alt transition-colors disabled:opacity-50 ${showPicker ? "rounded-l-lg" : "rounded-lg"}`}
+      >
+        {downloading ? (
+          <span className="inline-block w-3 h-3 border-2 border-og-accent/30 border-t-og-accent rounded-full animate-spin" />
+        ) : (
+          <DownloadIcon size={12} />
+        )}
+        {downloading ? t("generatingPdf") : t("downloadPdf")}
+      </button>
+      {showPicker && (
+        <button
+          type="button"
+          disabled={downloading}
+          onClick={() => setMenuOpen((v) => !v)}
+          title={t("chooseTemplate")}
+          className="flex items-center px-1.5 py-1.5 text-gray-600 dark:text-gray-300 border border-l-0 border-og-border-md rounded-r-lg hover:bg-og-surface-alt transition-colors disabled:opacity-50"
+        >
+          <ChevronDownIcon size={12} />
+        </button>
+      )}
+      {showPicker && menuOpen && (
+        <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-og-surface border border-og-border rounded-lg shadow-lg py-1">
+          <button
+            type="button"
+            onClick={() => { setSelectedTemplateId(null); setMenuOpen(false); }}
+            className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
+          >
+            {t("defaultTemplate")}
+            {selectedTemplateId === null && <CheckIcon size={12} className="text-og-accent shrink-0" />}
+          </button>
+          <div className="my-1 border-t border-og-border" />
+          {templates.map((tpl) => (
+            <button
+              key={tpl.id}
+              type="button"
+              onClick={() => { setSelectedTemplateId(tpl.id); setMenuOpen(false); }}
+              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs text-left text-og-text hover:bg-og-surface-alt transition-colors"
+            >
+              <span className="truncate">{tpl.name}</span>
+              {selectedTemplateId === tpl.id && <CheckIcon size={12} className="text-og-accent shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Procedure detail
 // ---------------------------------------------------------------------------
 
@@ -715,10 +815,7 @@ function ProcedureDetail({ proc, initialEditing = false, onSaved, onDeleted }: P
               </>
             ) : (
               <>
-                <button type="button"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-                  <PrinterIcon size={12} />{t("print")}
-                </button>
+                <ProcedureDownloadButton procId={proc.id} procTag={proc.proc_id ?? proc.id} />
                 {canEdit && (
                   <button type="button" onClick={handleStartEdit}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors">

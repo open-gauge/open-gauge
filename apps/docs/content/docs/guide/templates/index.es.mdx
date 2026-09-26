@@ -6,11 +6,16 @@ description: Un editor WYSIWYG para diseñar diseños reutilizables de certifica
 Una **plantilla de documento** es un diseño reutilizable para un documento imprimible —un
 certificado de calibración o un procedimiento de calibración— diseñado una sola vez y completado
 con datos reales cada vez que se genera. Gestiónalas desde **Panel de Administración → Plantillas**,
-junto con las plantillas LaTeX de certificado creadas a mano (ver
-[Plantillas de certificado](../calibration/certificate-templates.mdx)) — el botón **"Nueva
-plantilla"** de esa sección abre un modal con tres opciones, y "Crear nueva plantilla" es la que
-abre este editor para una plantilla en blanco; la exportación/importación y la generación se
-describen en [Generación de PDF](#generación-de-pdf) más abajo.
+un grupo desplegable en la barra lateral de administración con dos paneles: **Informes de
+Calibración** (las plantillas de tipo certificado de este editor, junto con las creadas a mano en
+LaTeX — ver [Plantillas de certificado](../calibration/certificate-templates.mdx)) y
+**Procedimientos**. Ambos paneles comparten el mismo diseño y acciones — ver
+[Gestionar plantillas: base, predeterminada y activa](#gestionar-plantillas-base-predeterminada-y-activa)
+más abajo. El botón **"+ Nueva plantilla"** de cada panel abre un modal (la opción de importar
+LaTeX solo aparece en el panel de Informes de Calibración, ya que los procedimientos no tienen un
+sistema LaTeX heredado); "Crear nueva plantilla" es la opción que abre este editor para una
+plantilla en blanco. La exportación/importación y la generación se describen en
+[Generación de PDF](#generación-de-pdf) más abajo.
 
 ## Dos tipos de plantilla
 
@@ -21,6 +26,35 @@ describen en [Generación de PDF](#generación-de-pdf) más abajo.
   aprobación e historial de revisiones.
 
 Solo se muestran las variables relevantes para el tipo de la plantilla mientras se edita.
+
+## Gestionar plantillas: base, predeterminada y activa
+
+Cada panel (Informes de Calibración, Procedimientos) lista todas las plantillas de ese tipo como
+una fila — las plantillas LaTeX y las del editor comparten el mismo diseño de fila — con tres
+conceptos que funcionan igual en ambos paneles:
+
+- **Base** — cada tipo incluye una fila permanente "Open Gauge (default)", listada siempre primero.
+  Se crea automáticamente la primera vez que abres ese panel (o la primera vez que se genera un
+  documento de ese tipo sin nada configurado) — nada que preparar en una instalación nueva. No se
+  puede editar ni eliminar, pero su estado **Predeterminada**/**Activa** se cambia como el de
+  cualquier otra fila.
+- **Predeterminada** — exactamente una plantilla activa por tipo es la predeterminada, usada
+  siempre que se genera un documento sin elegir una plantilla específica (ver
+  [Generación de PDF](#generación-de-pdf) y
+  [Descargar un procedimiento como PDF](../procedures/index.mdx#descargar-un-procedimiento-como-pdf)).
+  Haz clic en la marca de verificación de cualquier otra fila para convertirla en la
+  predeterminada — la anterior se desmarca automáticamente. Si nunca se marca ninguna como
+  predeterminada, lo es la plantilla base. En el panel de Informes de Calibración esta es una
+  *única* opción predeterminada compartida entre plantillas LaTeX y del editor — marcar una
+  plantilla del editor como predeterminada quita la marca a una plantilla LaTeX, y viceversa.
+- **Activa** — cada plantilla también tiene un interruptor Activa, independiente de
+  Predeterminada. Desactivar una plantilla la quita del selector de descarga (ya no se puede
+  elegir, ni por defecto ni explícitamente) mientras permanece exactamente donde está en la
+  lista — sigue siendo visible, editable y fácil de reactivar. Esto es distinto de **Eliminar**,
+  que retira una plantilla de la lista por completo. La plantilla base no se puede desactivar
+  mientras sea la predeterminada actual (no quedaría nada a lo que recurrir) — marca otra
+  plantilla como predeterminada primero. Desactivar (o eliminar) la predeterminada actual recurre
+  automáticamente a la plantilla base.
 
 ## El diseño del editor
 
@@ -113,18 +147,27 @@ de escape separadas que aprender. Los bloques de ecuación ya almacenan LaTeX en
 pasan directamente; el resto de bloques (texto, tablas, filas repetitivas vinculadas a una
 colección, gráficos, códigos QR, columnas, …) se traducen automáticamente.
 
-Esta resolución solo aplica a las plantillas de tipo **Certificado de Calibración** — una
-plantilla de Procedimiento de Calibración es un documento de referencia estático, no algo que se
-genera por calibración.
+Una plantilla de tipo **Procedimiento de Calibración** publicada se genera de la misma forma, pero
+para un [procedimiento](../procedures/index.mdx) en lugar de una calibración — ver [Descargar un
+procedimiento como PDF](../procedures/index.mdx#descargar-un-procedimiento-como-pdf). Los
+procedimientos no tienen una cadena de resolución por canal/organización (un procedimiento no está
+ligado a un canal de sensor de la forma en que lo está un informe de calibración): el botón
+**Descargar PDF** de la página de detalle de un procedimiento permite elegir directamente cualquier
+plantilla de procedimiento publicada y activa, o dejarlo en la que esté marcada actualmente como
+**Predeterminada** en Admin → Plantillas → Procedimientos (ver
+[Gestionar plantillas](#gestionar-plantillas-base-predeterminada-y-activa) arriba).
 
 ### Asignar una plantilla predeterminada a un canal
 
+El resto de esta sección (asignación a nivel de canal/calibración) aplica solo a plantillas de
+tipo **Certificado de Calibración**.
+
 Abre el editor de un canal de sensor (**Activos → un activo → Resumen → Editar**) y establece
-**Plantilla de informe predeterminada** a cualquier plantilla publicada, de cualquiera de los dos
-tipos (subida `.tex` o creada en el editor). Cada calibración registrada en ese canal la usa a
-menos que se anule individualmente (abajo). Déjala sin definir para recurrir al valor
-predeterminado de la organización, luego al valor predeterminado global, luego a la plantilla
-integrada — la misma cadena que ya usan las [plantillas de certificado](../calibration/certificate-templates.mdx).
+**Plantilla de informe predeterminada** a cualquier plantilla publicada y activa, de cualquiera de
+los dos tipos (subida `.tex` o creada en el editor). Cada calibración registrada en ese canal la
+usa a menos que se anule individualmente (abajo). Déjala sin definir para recurrir al valor
+predeterminado de la organización, luego a la plantilla marcada como **Predeterminada** en
+Admin → Plantillas → Informes de Calibración (la plantilla base, si no se ha marcado ninguna otra).
 
 ### Anular la plantilla para una calibración
 

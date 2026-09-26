@@ -135,3 +135,33 @@ export async function importProcedureZip(file: File): Promise<ProcedureImportRes
     headers: tokenHeader(),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Download as PDF
+// ---------------------------------------------------------------------------
+
+export interface ProcedureTemplateOption {
+  id: string;
+  name: string;
+  is_enabled: boolean;
+}
+
+/** Every published, enabled "procedure"-type document template, for the download button's
+ * template picker — includes the built-in Open Gauge template once it's been lazily created
+ * (see Admin -> Templates -> Procedures), like any other row. */
+export async function listProcedureTemplates(): Promise<ProcedureTemplateOption[]> {
+  const all = await apiFetch<ProcedureTemplateOption[]>(`/api/v1/document-templates?type=procedure&status=published`, {
+    headers: tokenHeader(),
+  });
+  return all.filter((t) => t.is_enabled);
+}
+
+/** Live-generates and downloads the procedure as PDF, optionally with a specific published
+ * template. Omitting `documentTemplateId` renders with whichever template is currently marked
+ * default in Admin -> Templates -> Procedures. */
+export async function downloadProcedurePdfBlob(procId: string, documentTemplateId?: string | null): Promise<Blob> {
+  const qs = documentTemplateId ? `?document_template_id=${encodeURIComponent(documentTemplateId)}` : "";
+  return apiBlob(`/api/v1/procedures/${procId}/download${qs}`, {
+    headers: tokenHeader(),
+  });
+}

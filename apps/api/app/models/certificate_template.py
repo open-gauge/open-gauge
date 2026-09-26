@@ -27,6 +27,13 @@ class CertificateTemplate(Base):
     template_file_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("files.id"), nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Distinct from is_active (= not soft-deleted): a disabled template stays visible/editable in
+    # the admin list but drops out of the download picker. See template_defaults_service.py.
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # The one seeded "Open Gauge style" row per kind — lazily created (see
+    # template_defaults_service.ensure_builtin_certificate_template), immutable (name/description/
+    # file), undeletable, but its is_default/is_enabled can still be toggled like any other row.
+    is_builtin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     change_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

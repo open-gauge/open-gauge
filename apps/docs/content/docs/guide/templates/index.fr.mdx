@@ -6,11 +6,16 @@ description: Un éditeur WYSIWYG pour concevoir des mises en page réutilisables
 Un **modèle de document** est une mise en page réutilisable pour un document imprimable — un
 certificat de calibration ou une procédure de calibration — conçu une seule fois et rempli avec
 des données réelles à chaque génération. Gérez-les depuis **Panneau d'Administration → Modèles**,
-aux côtés des modèles de certificat LaTeX créés à la main (voir
-[Modèles de certificat](../calibration/certificate-templates.mdx)) — le bouton **« Nouveau
-modèle »** de cette section ouvre une fenêtre modale avec trois options, et « Créer un nouveau
-modèle » est celle qui ouvre cet éditeur pour un modèle vierge ; l'export/import et la génération
-sont décrits dans [Génération de PDF](#génération-de-pdf) ci-dessous.
+un groupe repliable dans la barre latérale d'administration avec deux panneaux : **Rapports de
+Calibration** (les modèles de type certificat de cet éditeur, aux côtés des modèles LaTeX créés à
+la main — voir [Modèles de certificat](../calibration/certificate-templates.mdx)) et
+**Procédures**. Les deux panneaux partagent la même disposition et les mêmes actions — voir
+[Gérer les modèles : base, par défaut et actif](#gérer-les-modèles-base-par-défaut-et-actif)
+ci-dessous. Le bouton **« + Nouveau modèle »** de chaque panneau ouvre une fenêtre modale
+(l'import LaTeX n'apparaît que sur le panneau Rapports de Calibration, les procédures n'ayant
+aucun système LaTeX hérité) ; « Créer un nouveau modèle » est l'option qui ouvre cet éditeur pour
+un modèle vierge. L'export/import et la génération sont décrits dans
+[Génération de PDF](#génération-de-pdf) ci-dessous.
 
 ## Deux types de modèles
 
@@ -22,6 +27,35 @@ sont décrits dans [Génération de PDF](#génération-de-pdf) ci-dessous.
   de technicien, d'approbation et d'historique de révisions.
 
 Seules les variables pertinentes pour le type du modèle sont affichées lors de son édition.
+
+## Gérer les modèles : base, par défaut et actif
+
+Chaque panneau (Rapports de Calibration, Procédures) liste tous les modèles de ce type sous forme
+d'une ligne — les modèles LaTeX et ceux de l'éditeur partagent la même disposition de ligne —
+avec trois concepts qui fonctionnent de façon identique dans les deux panneaux :
+
+- **Base** — chaque type est livré avec une ligne permanente « Open Gauge (default) », toujours
+  affichée en premier. Elle est créée automatiquement la première fois que vous ouvrez ce panneau
+  (ou la première fois qu'un document de ce type est généré sans rien configuré) — rien à préparer
+  sur une installation neuve. Elle ne peut être ni modifiée ni supprimée, mais son état
+  **Par défaut**/**Actif** se change comme celui de n'importe quelle autre ligne.
+- **Par défaut** — exactement un modèle actif par type est le modèle par défaut, utilisé chaque
+  fois qu'un document est généré sans choix de modèle explicite (voir
+  [Génération de PDF](#génération-de-pdf) et
+  [Télécharger une procédure en PDF](../procedures/index.mdx#télécharger-une-procédure-en-pdf)).
+  Cliquez sur la coche d'une autre ligne pour en faire le modèle par défaut — l'ancien est
+  désélectionné automatiquement. Si aucun modèle n'est jamais marqué par défaut, c'est le modèle
+  de base qui l'est. Sur le panneau Rapports de Calibration, il s'agit d'un *unique* modèle par
+  défaut partagé entre les modèles LaTeX et ceux de l'éditeur — marquer un modèle de l'éditeur par
+  défaut désélectionne un modèle LaTeX, et inversement.
+- **Actif** — chaque modèle a aussi un interrupteur Actif, indépendant de Par défaut. Désactiver
+  un modèle le retire du sélecteur de téléchargement (il ne peut plus être choisi, ni par défaut
+  ni explicitement) tout en restant exactement à sa place dans la liste — toujours visible,
+  modifiable, facile à réactiver. C'est différent de **Supprimer**, qui retire complètement un
+  modèle de la liste. Le modèle de base ne peut pas être désactivé tant qu'il est le modèle par
+  défaut actuel (il n'y aurait plus rien vers quoi se replier) — marquez d'abord un autre modèle
+  par défaut. Désactiver (ou supprimer) le modèle par défaut actuel bascule automatiquement vers
+  le modèle de base.
 
 ## La disposition de l'éditeur
 
@@ -113,18 +147,26 @@ d'échappement séparées à apprendre. Les blocs équation stockent déjà du L
 passent directement ; tous les autres blocs (texte, tableaux, lignes répétitives liées à une
 collection, graphiques, codes QR, colonnes, …) sont traduits automatiquement.
 
-Cette résolution ne s'applique qu'aux modèles de type **Certificat de Calibration** — un modèle
-de Procédure de Calibration est un document de référence statique, pas quelque chose de généré
-par calibration.
+Un modèle de type **Procédure de Calibration** publié est généré de la même façon, mais pour une
+[procédure](../procedures/index.mdx) plutôt qu'une calibration — voir [Télécharger une procédure en
+PDF](../procedures/index.mdx#télécharger-une-procédure-en-pdf). Il n'y a pas de chaîne de
+résolution par voie/organisation pour les procédures (une procédure n'est pas liée à une voie de
+capteur comme l'est un rapport de calibration) : le bouton **Télécharger le PDF** sur la page de
+détail d'une procédure permet de choisir directement n'importe quel modèle de procédure publié et
+actif, ou de le laisser sur celui actuellement marqué **Par défaut** dans Admin → Modèles →
+Procédures (voir [Gérer les modèles](#gérer-les-modèles-base-par-défaut-et-actif) ci-dessus).
 
 ### Attribuer un modèle par défaut à une voie
 
+Le reste de cette section (attribution au niveau voie/calibration) ne s'applique qu'aux modèles
+de type **Certificat de Calibration**.
+
 Ouvrez l'éditeur d'une voie de capteur (**Actifs → un actif → Aperçu → Modifier**) et définissez
-**Modèle de rapport par défaut** sur n'importe quel modèle publié, de l'un ou l'autre type
-(téléversé en `.tex` ou créé dans l'éditeur). Chaque calibration enregistrée sur cette voie
-l'utilise sauf remplacement individuel (ci-dessous). Laissez-le non défini pour se rabattre sur
-le défaut de l'organisation, puis le défaut global, puis le modèle intégré — la même chaîne
-qu'utilisent déjà les [modèles de certificat](../calibration/certificate-templates.mdx).
+**Modèle de rapport par défaut** sur n'importe quel modèle publié et actif, de l'un ou l'autre
+type (téléversé en `.tex` ou créé dans l'éditeur). Chaque calibration enregistrée sur cette voie
+l'utilise sauf remplacement individuel (ci-dessous). Laissez-le non défini pour se rabattre sur le
+défaut de l'organisation, puis sur le modèle marqué **Par défaut** dans Admin → Modèles → Rapports
+de Calibration (le modèle de base, si aucun autre n'est marqué).
 
 ### Remplacer le modèle pour une calibration
 

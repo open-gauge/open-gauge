@@ -679,8 +679,13 @@ def list_certificate_templates_for_calibration(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
     organization = resolve_organization(db, asset, cal)
-    cert_templates = certtpl_repo.list_templates(db, organization_id=organization.id if organization else None)
-    doc_templates = doctpl_repo.list_latest(db, status="published")
+    cert_templates = [
+        t for t in certtpl_repo.list_templates(db, organization_id=organization.id if organization else None)
+        if t.is_enabled
+    ]
+    doc_templates = [
+        t for t in doctpl_repo.list_latest(db, type="certificate", status="published") if t.is_enabled
+    ]
     return [
         *[{"id": str(t.id), "name": t.name, "kind": "certificate"} for t in cert_templates],
         *[{"id": str(t.id), "name": t.name, "kind": "document"} for t in doc_templates],
@@ -801,7 +806,7 @@ def _build_certificate_pdf(
         sensor = db.query(Sensor).filter(Sensor.id == cal.sensor_id).first()
 
     if document_template_id is None and certificate_template_id is None:
-        resolved = resolve_report_template(cal, sensor)
+        resolved = resolve_report_template(db, cal, sensor)
         if resolved.kind == "document":
             document_template_id = resolved.template_id
         else:

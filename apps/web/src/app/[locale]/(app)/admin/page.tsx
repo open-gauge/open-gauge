@@ -40,11 +40,11 @@ import {
   importDatabase,
   listAdminUsers,
   listCertificateTemplates,
-  previewBuiltinCertificateTemplate,
   previewCertificateTemplate,
   previewDocumentTemplate,
   resetDatabase,
   sendTestEmail,
+  setCertificateTemplateEnabled,
   updateAdminUser,
   updateCertificateTemplate,
   updateEmailSettings,
@@ -64,8 +64,10 @@ import {
   exportTemplate,
   importTemplate,
   listTemplates,
+  setTemplateDefault,
+  setTemplateEnabled,
 } from "@/services/template.service";
-import type { TemplateListItem, TemplateType } from "@/types/template";
+import type { Template, TemplateListItem } from "@/types/template";
 import { ROLE_COLORS } from "@/lib/roles";
 import { TEMPLATE_STATUS_STYLE } from "@/lib/tokens";
 import { translateDynamic } from "@/lib/translate-dynamic";
@@ -496,6 +498,10 @@ function slugifyTemplateName(name: string): string {
   return name.trim().replace(/\s+/g, "_") || "template";
 }
 
+// "certificate" also covers editor (WYSIWYG) certificate templates — only "procedure" templates
+// are exclusively DocumentTemplate rows with no legacy .tex counterpart.
+type TemplateKind = "certificate" | "procedure";
+
 type TemplateRowData =
   | { kind: "certificate"; data: CertificateTemplate }
   | { kind: "document"; data: TemplateListItem };
@@ -504,12 +510,14 @@ function TemplateRow({
   row,
   onCertUpdated,
   onCertDeleted,
+  onDocUpdated,
   onDocArchived,
   onDocDuplicated,
 }: {
   row: TemplateRowData;
   onCertUpdated: (updated: CertificateTemplate) => void;
   onCertDeleted: (id: string) => void;
+  onDocUpdated: (updated: TemplateListItem | Template) => void;
   onDocArchived: (id: string) => void;
   onDocDuplicated: (created: TemplateListItem) => void;
 }) {
@@ -518,8 +526,10 @@ function TemplateRow({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [settingDefault, setSettingDefault] = useState(false);
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
 
-  const { name, version } = row.data;
+  const { name, version, is_default: isDefault, is_builtin: isBuiltin, is_enabled: isEnabled } = row.data;
 
   async function handleDownload() {
     try {
@@ -534,11 +544,32 @@ function TemplateRow({
   }
 
   async function handleSetDefault() {
-    if (row.kind !== "certificate") return;
+    setSettingDefault(true);
     try {
-      onCertUpdated(await updateCertificateTemplate(row.data.id, { is_default: true }));
+      if (row.kind === "certificate") {
+        onCertUpdated(await updateCertificateTemplate(row.data.id, { is_default: true }));
+      } else {
+        onDocUpdated(await setTemplateDefault(row.data.id));
+      }
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : t("failedToSetDefault"));
+    } finally {
+      setSettingDefault(false);
+    }
+  }
+
+  async function handleToggleEnabled(next: boolean) {
+    setTogglingEnabled(true);
+    try {
+      if (row.kind === "certificate") {
+        onCertUpdated(await setCertificateTemplateEnabled(row.data.id, next));
+      } else {
+        onDocUpdated(await setTemplateEnabled(row.data.id, next));
+      }
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : t("failedToToggleEnabled"));
+    } finally {
+      setTogglingEnabled(false);
     }
   }
 
@@ -573,7 +604,7 @@ function TemplateRow({
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
+    <div className={`flex items-center justify-between px-4 py-3 border-b border-og-border gap-3 ${!isEnabled ? "opacity-50" : ""}`}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <PdfThumbnail
           fetchPdf={() => (row.kind === "certificate" ? previewCertificateTemplate(row.data.id) : previewDocumentTemplate(row.data.id))}
@@ -588,7 +619,12 @@ function TemplateRow({
         <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-surface-alt border border-og-border-md text-gray-500">
           v{version}
         </span>
-        {row.kind === "certificate" && row.data.is_default && (
+        {isBuiltin && (
+          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-surface-alt border border-og-border-md text-gray-500">
+            {t("base")}
+          </span>
+        )}
+        {isDefault && (
           <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-accent/10 text-og-accent">
             {t("default")}
           </span>
@@ -599,28 +635,38 @@ function TemplateRow({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        {row.kind === "certificate" && !row.data.is_default && (
-          <button onClick={handleSetDefault} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("setAsDefault")}>
-            <CheckIcon size={13} />
+      <div className="flex items-center gap-3 shrink-0">
+        <label className="flex items-center gap-1.5 text-xs text-gray-400" title={t("enabledHint")}>
+          <ToggleSwitch checked={isEnabled} onChange={handleToggleEnabled} disabled={togglingEnabled} size="sm" />
+          {t("enabled")}
+        </label>
+        <div className="flex items-center gap-1">
+          {!isDefault && (
+            <button onClick={handleSetDefault} disabled={settingDefault || !isEnabled} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-40" title={t("setAsDefault")}>
+              <CheckIcon size={13} />
+            </button>
+          )}
+          <button onClick={handleDownload} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("download")}>
+            <ExportIcon size={13} />
           </button>
-        )}
-        <button onClick={handleDownload} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("download")}>
-          <ExportIcon size={13} />
-        </button>
-        {row.kind === "document" && (
-          <>
-            <button onClick={() => router.push(`/templates/${row.data.id}`)} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("editInEditor")}>
-              <EditIcon size={13} />
+          {row.kind === "document" && (
+            <>
+              {!isBuiltin && (
+                <button onClick={() => router.push(`/templates/${row.data.id}`)} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("editInEditor")}>
+                  <EditIcon size={13} />
+                </button>
+              )}
+              <button onClick={handleDuplicate} disabled={duplicating} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-50" title={t("duplicate")}>
+                <CopyIcon size={13} />
+              </button>
+            </>
+          )}
+          {!isBuiltin && (
+            <button onClick={handleDelete} disabled={busy} className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors disabled:opacity-50" title={t("delete")}>
+              <TrashIcon size={13} />
             </button>
-            <button onClick={handleDuplicate} disabled={duplicating} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-50" title={t("duplicate")}>
-              <CopyIcon size={13} />
-            </button>
-          </>
-        )}
-        <button onClick={handleDelete} disabled={busy} className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors disabled:opacity-50" title={t("delete")}>
-          <TrashIcon size={13} />
-        </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -637,12 +683,14 @@ function ImportPreviewPane({ text }: { text: string }) {
 }
 
 function NewTemplateModal({
+  kind,
   scope,
   orgs,
   onClose,
   onCertCreated,
   onDocCreated,
 }: {
+  kind: TemplateKind;
   scope: string;
   orgs: OrganizationListItem[];
   onClose: () => void;
@@ -662,11 +710,10 @@ function NewTemplateModal({
   const [err, setErr] = useState("");
 
   const [createName, setCreateName] = useState("");
-  const [createType, setCreateType] = useState<TemplateType>("certificate");
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState("");
 
-  const organizationId = scope === "global" ? undefined : scope;
+  const organizationId = kind === "certificate" && scope !== "global" ? scope : undefined;
 
   function backToChoose() {
     setStep("choose");
@@ -718,7 +765,7 @@ function NewTemplateModal({
     setCreating(true);
     setCreateErr("");
     try {
-      const created = await createTemplate({ name: createName.trim(), type: createType });
+      const created = await createTemplate({ name: createName.trim(), type: kind });
       router.push(`/templates/${created.id}`);
     } catch (e: unknown) {
       setCreateErr(e instanceof Error ? e.message : t("failedToCreate"));
@@ -743,13 +790,15 @@ function NewTemplateModal({
         </div>
 
         {step === "choose" && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button onClick={() => setStep("latex")}
-              className="flex flex-col items-start gap-2 p-4 rounded-lg border border-og-border-md hover:border-og-accent hover:bg-og-surface-alt transition-colors text-left">
-              <UploadCloudIcon size={20} className="text-og-accent" />
-              <p className="text-sm font-semibold text-og-text">{t("modal.importLatexTitle")}</p>
-              <p className="text-xs text-gray-400">{t("modal.importLatexDesc")}</p>
-            </button>
+          <div className={`grid grid-cols-1 gap-3 ${kind === "certificate" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            {kind === "certificate" && (
+              <button onClick={() => setStep("latex")}
+                className="flex flex-col items-start gap-2 p-4 rounded-lg border border-og-border-md hover:border-og-accent hover:bg-og-surface-alt transition-colors text-left">
+                <UploadCloudIcon size={20} className="text-og-accent" />
+                <p className="text-sm font-semibold text-og-text">{t("modal.importLatexTitle")}</p>
+                <p className="text-xs text-gray-400">{t("modal.importLatexDesc")}</p>
+              </button>
+            )}
             <button onClick={() => setStep("json")}
               className="flex flex-col items-start gap-2 p-4 rounded-lg border border-og-border-md hover:border-og-accent hover:bg-og-surface-alt transition-colors text-left">
               <DocumentIcon size={20} className="text-og-accent" />
@@ -820,17 +869,6 @@ function NewTemplateModal({
               <input value={createName} onChange={(e) => setCreateName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
                 placeholder={t("namePlaceholder")} autoFocus />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-gray-400">{t("typeLabel")}</label>
-              <Select
-                value={createType}
-                onChange={(v) => setCreateType(v as TemplateType)}
-                options={[
-                  { value: "certificate", label: t("typeCertificate") },
-                  { value: "procedure", label: t("typeProcedure") },
-                ]}
-              />
-            </div>
             {createErr && <p className="text-xs text-red-500">{createErr}</p>}
             <div className="flex items-center justify-between pt-2">
               <button onClick={() => setStep("choose")}
@@ -849,7 +887,7 @@ function NewTemplateModal({
   );
 }
 
-function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] }) {
+function TemplateManagementSection({ kind, orgs }: { kind: TemplateKind; orgs: OrganizationListItem[] }) {
   const t = useTranslations("admin.certificates");
   const [scope, setScope] = useState<string>("global");
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
@@ -858,47 +896,67 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
   const [err, setErr] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
-  const organizationId = scope === "global" ? undefined : scope;
+  // Procedures have no legacy .tex system and no per-organization scoping — only the WYSIWYG
+  // editor, and only a single global list (see apps/api/app/models/document_template.py).
+  const organizationId = kind === "certificate" && scope !== "global" ? scope : undefined;
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      listCertificateTemplates(organizationId).then((all) =>
-        all.filter((tpl) => (organizationId ? tpl.organization_id === organizationId : tpl.organization_id === null))
-      ),
-      // Editor templates aren't org-scoped yet — shown regardless of the selected scope.
-      listTemplates({}),
-    ])
+    const certPromise = kind === "certificate"
+      ? listCertificateTemplates(organizationId).then((all) =>
+          all.filter((tpl) => (organizationId ? tpl.organization_id === organizationId : tpl.organization_id === null))
+        )
+      : Promise.resolve<CertificateTemplate[]>([]);
+    Promise.all([certPromise, listTemplates({ type: kind })])
       .then(([cert, doc]) => {
         setTemplates(cert);
         setDocTemplates(doc);
       })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : t("failedToLoad")))
       .finally(() => setLoading(false));
-  }, [organizationId, t]);
+  }, [kind, organizationId, t]);
 
   const rows: TemplateRowData[] = [
     ...templates.map((tpl): TemplateRowData => ({ kind: "certificate", data: tpl })),
     ...docTemplates.map((tpl): TemplateRowData => ({ kind: "document", data: tpl })),
   ];
   const rowUpdatedAt = (row: TemplateRowData) => (row.kind === "certificate" ? (row.data.updated_at ?? "") : row.data.updated_at);
-  rows.sort((a, b) => (rowUpdatedAt(a) < rowUpdatedAt(b) ? 1 : -1));
+  // The base template always leads the table (never sorted away by recency) — see AGENTS.md
+  // discussion in MODIFICATIONS.md: "listed on the first place of the table".
+  rows.sort((a, b) => {
+    if (a.data.is_builtin !== b.data.is_builtin) return a.data.is_builtin ? -1 : 1;
+    return rowUpdatedAt(a) < rowUpdatedAt(b) ? 1 : -1;
+  });
+
+  function handleCertUpdated(updated: CertificateTemplate) {
+    setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : (updated.is_default ? { ...x, is_default: false } : x))));
+    if (updated.is_default) {
+      setDocTemplates((prev) => prev.map((x) => (x.is_default ? { ...x, is_default: false } : x)));
+    }
+  }
+
+  function handleDocUpdated(updated: TemplateListItem | Template) {
+    setDocTemplates((prev) =>
+      prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : (updated.is_default ? { ...x, is_default: false } : x)))
+    );
+    if (updated.is_default) {
+      setTemplates((prev) => prev.map((x) => ({ ...x, is_default: false })));
+    }
+  }
 
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
       <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
-        <p className="text-xs font-semibold text-og-text">{t("title")}</p>
+        <p className="text-xs font-semibold text-og-text">{t(kind === "certificate" ? "title" : "titleProcedures")}</p>
         <div className="flex items-center gap-3">
-          <Select
-            value={scope}
-            onChange={setScope}
-            options={[{ value: "global", label: t("global") }, ...orgs.map((org) => ({ value: org.id, label: org.name }))]}
-            className="w-44"
-          />
-          <div className="flex items-center gap-2 pl-3 border-l border-og-border-md">
-            <PdfThumbnail fetchPdf={previewBuiltinCertificateTemplate} title={t("builtinDefault")} />
-            <span className="text-xs text-gray-400">{t("builtinDefault")}</span>
-          </div>
+          {kind === "certificate" && (
+            <Select
+              value={scope}
+              onChange={setScope}
+              options={[{ value: "global", label: t("global") }, ...orgs.map((org) => ({ value: org.id, label: org.name }))]}
+              className="w-44"
+            />
+          )}
           <button
             onClick={() => setModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
@@ -924,8 +982,9 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
         <TemplateRow
           key={`${row.kind}-${row.data.id}`}
           row={row}
-          onCertUpdated={(updated) => setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : (updated.is_default ? { ...x, is_default: false } : x))))}
+          onCertUpdated={handleCertUpdated}
           onCertDeleted={(id) => setTemplates((prev) => prev.filter((x) => x.id !== id))}
+          onDocUpdated={handleDocUpdated}
           onDocArchived={(id) => setDocTemplates((prev) => prev.filter((x) => x.id !== id))}
           onDocDuplicated={(created) => setDocTemplates((prev) => [created, ...prev])}
         />
@@ -933,6 +992,7 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
 
       {modalOpen && (
         <NewTemplateModal
+          kind={kind}
           scope={scope}
           orgs={orgs}
           onClose={() => setModalOpen(false)}
@@ -1383,22 +1443,24 @@ function DangerZone() {
 // Page
 // ---------------------------------------------------------------------------
 
-type Section = "dashboard" | "users" | "certificates" | "email";
+type Section = "dashboard" | "users" | "reportTemplates" | "procedureTemplates" | "email";
+
+const TEMPLATE_SECTIONS: Section[] = ["reportTemplates", "procedureTemplates"];
 
 export default function AdminPage() {
   const t = useTranslations("admin");
   const { user } = useAuth();
   const router = useRouter();
   const [section, setSection] = useState<Section>("dashboard");
+  const [templatesOpen, setTemplatesOpen] = useState(() => TEMPLATE_SECTIONS.includes(section));
 
   const nav: { id: Section; label: string }[] = [
-    { id: "dashboard",    label: t("nav.dashboard") },
-    { id: "users",        label: t("nav.users") },
-    { id: "certificates", label: t("nav.certificates") },
-    { id: "email",        label: t("nav.email") },
+    { id: "dashboard", label: t("nav.dashboard") },
+    { id: "users",     label: t("nav.users") },
+    { id: "email",     label: t("nav.email") },
   ];
 
-  // Org list used by the Certificate Templates section's scope selector —
+  // Org list used by the Calibration Reports panel's scope selector —
   // org management itself now lives on each organization's own page.
   const [orgs, setOrgs] = useState<OrganizationListItem[]>([]);
 
@@ -1432,7 +1494,53 @@ export default function AdminPage() {
             <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{t("nav.administration")}</p>
           </div>
           <div className="p-2">
-            {nav.map((item) => (
+            {nav.slice(0, 2).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSection(item.id)}
+                className={`w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                  section === item.id
+                    ? "bg-og-border text-og-text"
+                    : "text-gray-400 hover:bg-og-border/50 hover:text-og-text"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setTemplatesOpen((v) => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
+                TEMPLATE_SECTIONS.includes(section)
+                  ? "text-og-text"
+                  : "text-gray-400 hover:bg-og-border/50 hover:text-og-text"
+              }`}
+            >
+              <span>{t("nav.templates")}</span>
+              {templatesOpen ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+            </button>
+            {templatesOpen && (
+              <div className="ml-3 pl-2 border-l border-og-border space-y-0.5">
+                {(["reportTemplates", "procedureTemplates"] as Section[]).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSection(id)}
+                    className={`w-full flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-left ${
+                      section === id
+                        ? "bg-og-border text-og-text"
+                        : "text-gray-400 hover:bg-og-border/50 hover:text-og-text"
+                    }`}
+                  >
+                    {t(id === "reportTemplates" ? "nav.reportTemplates" : "nav.procedureTemplates")}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {nav.slice(2).map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -1453,7 +1561,8 @@ export default function AdminPage() {
         <div className="flex-1 min-w-0 space-y-4">
           {section === "dashboard" && <DashboardSection />}
           {section === "users" && <UsersSection />}
-          {section === "certificates" && <CertificateTemplatesSection orgs={orgs} />}
+          {section === "reportTemplates" && <TemplateManagementSection kind="certificate" orgs={orgs} />}
+          {section === "procedureTemplates" && <TemplateManagementSection kind="procedure" orgs={orgs} />}
           {section === "email" && <EmailSettingsSection />}
         </div>
       </div>

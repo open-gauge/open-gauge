@@ -33,6 +33,13 @@ class DocumentTemplate(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     document: Mapped[dict] = mapped_column(JSONB, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # Default/builtin/enabled — same semantics as CertificateTemplate's (see that model's
+    # docstrings for is_enabled/is_builtin); is_default is scoped per `type` (certificate vs
+    # procedure), not per template_group_id, since only one *published version's group* can be the
+    # default at a time. See template_defaults_service.py.
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_builtin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

@@ -30,6 +30,27 @@ every calibration performed the same way, rather than re-typing methodology note
 | Steps | The ordered procedure steps themselves. |
 | Acceptance criteria | What counts as a pass for this procedure, documented alongside it. |
 
+## Downloading a procedure as PDF
+
+Every procedure has a **Download PDF** button next to **Edit** on its detail page — it live-renders
+the procedure's current data (metadata, required equipment, materials, environmental conditions,
+safety instructions, steps, and acceptance criteria) into a PDF, ready to print and carry into the
+field.
+
+The PDF comes from a published, active **Calibration Procedure** [document
+template](../templates/index.mdx) — the same WYSIWYG editor used for certificate templates, just
+with a procedure-specific set of variables (equipment, procedure metadata, environment, steps,
+acceptance criteria, safety instructions, dates). By default it renders with whichever template is
+marked **Default** in **Admin → Templates → Procedures**; the download button's chevron lets you
+pick a different one for that download alone, a one-off choice that doesn't change the saved
+default. Every install starts with a permanent, built-in **base template** (see [Managing
+templates](../templates/index.mdx#managing-templates-base-default-and-enabled)) that covers every
+field on the Procedure model and is the default until an admin marks something else — so
+downloading works from the very first procedure, before anyone has designed a custom layout.
+
+Unlike a calibration certificate, a procedure PDF documents the *method*, not one calibration
+event — it isn't digitally signed and carries no technician/checked-by signature block.
+
 ## Linking a procedure to a channel
 
 On a sensor channel, set **calibration method** to a saved procedure — this becomes the

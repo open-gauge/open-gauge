@@ -78,6 +78,21 @@ export async function archiveTemplate(id: string): Promise<Template> {
   });
 }
 
+export async function setTemplateDefault(id: string): Promise<Template> {
+  return apiFetch<Template>(`/api/v1/document-templates/${id}/set-default`, {
+    method: "POST",
+    headers: tokenHeader(),
+  });
+}
+
+export async function setTemplateEnabled(id: string, enabled: boolean): Promise<Template> {
+  return apiFetch<Template>(`/api/v1/document-templates/${id}/set-enabled`, {
+    method: "POST",
+    headers: { ...tokenHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+}
+
 export async function duplicateTemplate(id: string, name?: string): Promise<Template> {
   return apiFetch<Template>(`/api/v1/document-templates/${id}/duplicate`, {
     method: "POST",

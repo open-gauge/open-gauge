@@ -14,9 +14,11 @@ from ...repositories import stored_file as file_repo
 from ...schemas.procedure import ProcedureBulkExportRequest, ProcedureCreate, ProcedureResponse, ProcedureUpdate
 from ...schemas.procedure_import import ProcedureImportPreview, ProcedureImportResponse
 from ...schemas.stored_file import StoredFileResponse
+from ...services import procedure_document
 from ...services import procedure_export as export_svc
 from ...services import procedure_import as import_svc
 from ...services import storage as storage_svc
+from ...services.latex_service import LatexCompileError
 from ...utils.audit_diff import diff_snapshots, snapshot
 
 router = APIRouter(prefix="/procedures", tags=["Procedures"])
@@ -279,6 +281,52 @@ def export_procedure(
         content=zip_bytes,
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}.zip"'},
+    )
+
+
+@router.get(
+    "/{proc_pk}/download",
+    summary="Download a procedure as PDF",
+    description="Live-renders the procedure's current data (metadata, equipment, materials, "
+    "environment, safety notes, steps, acceptance criteria) into a PDF, using a published "
+    "\"procedure\" document template. Pass `document_template_id` to render with a specific "
+    "published template; omit it to use the built-in default procedure template, so this works "
+    "even before any custom template has been created.",
+    tags=["Procedures"],
+)
+def download_procedure_pdf(
+    proc_pk: uuid.UUID,
+    request: Request,
+    document_template_id: uuid.UUID | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    proc = db.query(Procedure).filter(Procedure.id == proc_pk).first()
+    if not proc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
+
+    try:
+        pdf_bytes = procedure_document.generate_procedure_pdf(db, proc, document_template_id, current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except LatexCompileError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    audit_log_repo.create(
+        db,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        action="procedure.downloaded",
+        entity_type="procedure",
+        entity_id=proc.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    filename = f"{proc.proc_id or proc.id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

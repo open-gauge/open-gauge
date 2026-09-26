@@ -275,6 +275,7 @@
       "page": "Seite",
       "equipment": "Ausrüstung",
       "procedure": "Verfahren",
+      "materials": "Materialien",
       "environment": "Umgebungsbedingungen",
       "steps": "Schritte",
       "acceptance_criteria": "Abnahmekriterien",
@@ -293,6 +294,7 @@
       "page": "Wird automatisch anhand der Seite ausgefüllt, auf der es erscheint.",
       "equipment": "Wird automatisch aus dem Anlagen-/Ausrüstungsdatensatz ausgefüllt.",
       "procedure": "Wird automatisch aus dem Verfahrensdatensatz ausgefüllt.",
+      "materials": "Wird automatisch aus den erforderlichen Materialien des Verfahrens ausgefüllt.",
       "environment": "Wird automatisch aus den Umgebungsbedingungen des Verfahrens ausgefüllt.",
       "steps": "Wird automatisch aus den Schritten des Verfahrens ausgefüllt.",
       "acceptance_criteria": "Wird automatisch aus den Abnahmekriterien des Verfahrens ausgefüllt.",
@@ -304,6 +306,7 @@
       "asset_channels": "Kanäle",
       "measurements": "Messwerte",
       "required_equipment": "Erforderliche Ausrüstung",
+      "materials": "Materialien",
       "environmental_conditions": "Umgebungsbedingungen",
       "steps": "Schritte",
       "acceptance_criteria": "Abnahmekriterien",
@@ -396,7 +399,17 @@
         "number": "Verfahrensnummer",
         "revision": "Verfahrensrevision",
         "title": "Verfahrenstitel",
-        "standard_ref": "Normreferenz"
+        "standard_ref": "Normreferenz",
+        "description": "Beschreibung",
+        "author": "Autor",
+        "duration_min": "Geschätzte Dauer (Min.)",
+        "tags": "Schlagwörter",
+        "physical_quantity": "Messgröße",
+        "difficulty": "Schwierigkeitsgrad"
+      },
+      "material": {
+        "name": "Name",
+        "quantity": "Menge"
       },
       "approval": {
         "approver_name": "Name des Genehmigers",

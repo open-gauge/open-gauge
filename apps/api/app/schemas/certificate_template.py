@@ -11,6 +11,8 @@ class CertificateTemplateResponse(BaseModel):
     description: str | None
     is_default: bool
     is_active: bool
+    is_enabled: bool
+    is_builtin: bool
     version: int
     created_at: datetime
     updated_at: datetime
@@ -23,3 +25,7 @@ class CertificateTemplateUpdate(BaseModel):
     description: str | None = None
     is_default: bool | None = None
     is_active: bool | None = None
+
+
+class SetEnabledRequest(BaseModel):
+    enabled: bool

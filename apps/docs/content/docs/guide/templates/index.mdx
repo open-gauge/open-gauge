@@ -5,11 +5,15 @@ description: A WYSIWYG editor for designing reusable calibration certificate and
 
 A **document template** is a reusable layout for a printable document — a calibration
 certificate or a calibration procedure — designed once and populated with real data every time
-it's generated. Manage them from **Admin Panel → Templates**, alongside hand-authored LaTeX
-certificate templates (see [Certificate templates](../calibration/certificate-templates.mdx)) —
-the section's **"+ New template"** button opens a modal with three options, and "Create new
-template" is the one that opens this editor for a blank template; export/import and generation
-are covered in [PDF generation](#pdf-generation) below.
+it's generated. Manage them from **Admin Panel → Templates**, a collapsible group in the admin
+sidebar with two panels: **Calibration Reports** (this editor's certificate-type templates,
+alongside hand-authored LaTeX ones — see [Certificate templates](../calibration/certificate-templates.mdx))
+and **Procedures**. Both panels share the same layout and actions — see
+[Managing templates: base, default, and enabled](#managing-templates-base-default-and-enabled)
+below. Each panel's **"+ New template"** button opens a modal (LaTeX import only appears on the
+Calibration Reports panel, since procedures have no legacy `.tex` system); "Create new template"
+is the option that opens this editor for a blank template. Export/import and generation are
+covered in [PDF generation](#pdf-generation) below.
 
 ## Two template types
 
@@ -20,6 +24,31 @@ are covered in [PDF generation](#pdf-generation) below.
   variables.
 
 Only the variables relevant to a template's type are shown while editing it.
+
+## Managing templates: base, default, and enabled
+
+Each panel (Calibration Reports, Procedures) lists every template of that kind as one row —
+LaTeX and editor templates share the same row layout — with three concepts that work identically
+in both panels:
+
+- **Base** — every kind ships with one permanent "Open Gauge (default)" row, always listed first.
+  It's created automatically the first time you open that panel (or the first time a document of
+  that kind is generated with nothing configured) — nothing to set up on a fresh install. It can't
+  be edited or deleted, but its **Default**/**Active** state toggles like any other row.
+- **Default** — exactly one enabled template per kind is the default, used whenever a document is
+  generated without a specific template chosen (see [PDF generation](#pdf-generation) and
+  [Downloading a procedure as PDF](../procedures/index.mdx#downloading-a-procedure-as-pdf)). Click
+  the checkmark on any other row to make it the default instead — the previous default is cleared
+  automatically. If nothing is ever marked default, the base template is. On the Calibration
+  Reports panel this is a *single* default shared across both LaTeX and editor templates — marking
+  an editor template default clears a LaTeX default and vice versa.
+- **Active** — every template also has an Active toggle, independent of Default. Switching a
+  template off removes it from the download picker (it can no longer be selected, by default or
+  explicitly) while leaving it exactly where it is in the list — still visible, still editable,
+  still easy to switch back on. This is different from **Delete**, which soft-removes a template
+  from the list entirely. The base template can't be switched off while it's the current default
+  (there would be nothing left to fall back to) — mark another template default first. Switching
+  off (or deleting) the current default falls back to the base template automatically.
 
 ## The editor layout
 
@@ -101,16 +130,26 @@ no separate PDF engine, no separate escaping rules to learn. Equation blocks alr
 LaTeX, so they pass straight through; every other block (text, tables, repeating rows bound to a
 collection, graphs, QR codes, columns, …) is translated automatically.
 
-This resolution only applies to **Calibration Certificate** templates — a Calibration Procedure
-template is a static reference document, not something generated per calibration.
+A published **Calibration Procedure** template renders the same way, but for a
+[procedure](../procedures/index.mdx) rather than a calibration — see
+[Downloading a procedure as PDF](../procedures/index.mdx#downloading-a-procedure-as-pdf). There's
+no channel/organization resolution chain for procedures (a procedure isn't tied to a sensor
+channel the way a calibration report is): the **Download PDF** button on a procedure's detail page
+lets you pick any published, active procedure template directly, or leave it on whichever one is
+currently marked **Default** in Admin → Templates → Procedures (see
+[Managing templates](#managing-templates-base-default-and-enabled) above).
 
 ### Assigning a default template to a channel
 
+The rest of this section (channel/calibration-level assignment) applies to **Calibration
+Certificate** templates only.
+
 Open a sensor channel's editor (**Assets → an asset → Overview → Edit**) and set **Default report
-template** to any published template, of either kind (uploaded `.tex` or editor-authored). Every
-calibration recorded against that channel uses it unless overridden individually (below). Leave
-it unset to fall back to the organization's default, then the global default, then the built-in
-template — the same chain [certificate templates](certificate-templates.mdx) already use.
+template** to any published, active template, of either kind (uploaded `.tex` or
+editor-authored). Every calibration recorded against that channel uses it unless overridden
+individually (below). Leave it unset to fall back to the organization's default, then whichever
+template is marked **Default** in Admin → Templates → Calibration Reports (the base template, if
+nothing else has been marked).
 
 ### Overriding the template for one calibration
 

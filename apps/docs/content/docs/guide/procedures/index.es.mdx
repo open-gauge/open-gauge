@@ -31,6 +31,29 @@ metodología cada vez.
 | Pasos | Los pasos ordenados del procedimiento en sí. |
 | Criterios de aceptación | Qué cuenta como aprobado para este procedimiento, documentado junto a él. |
 
+## Descargar un procedimiento como PDF
+
+Cada procedimiento tiene un botón **Descargar PDF** junto a **Editar** en su página de detalle:
+genera al momento un PDF con los datos actuales del procedimiento (metadatos, equipo requerido,
+materiales, condiciones ambientales, instrucciones de seguridad, pasos y criterios de aceptación),
+listo para imprimir y llevar al campo.
+
+El PDF proviene de una plantilla de documento de tipo **Procedimiento de Calibración** publicada y
+activa (ver [Plantillas de documento](../templates/index.mdx)) — el mismo editor WYSIWYG usado
+para las plantillas de certificados, con un conjunto de variables propio del procedimiento
+(equipo, metadatos del procedimiento, entorno, pasos, criterios de aceptación, instrucciones de
+seguridad, fechas). Por defecto se genera con la plantilla marcada como **Predeterminada** en
+**Admin → Plantillas → Procedimientos**; el menú desplegable del botón de descarga te permite
+elegir otra solo para esa descarga, una elección puntual que no cambia la predeterminada guardada.
+Cada instalación comienza con una **plantilla base** permanente e incorporada (ver
+[Gestionar plantillas](../templates/index.mdx#gestionar-plantillas-base-predeterminada-y-activa))
+que cubre todos los campos del modelo de Procedimiento y es la predeterminada hasta que un
+administrador marque otra — de modo que la descarga funciona desde el primer procedimiento, antes
+de que nadie haya diseñado una plantilla propia.
+
+A diferencia de un certificado de calibración, un PDF de procedimiento documenta el *método*, no un
+evento de calibración concreto: no lleva firma digital ni bloque de firma del técnico/verificador.
+
 ## Vincular un procedimiento a un canal
 
 En un canal de sensor, establece **método de calibración** a un procedimiento guardado — esto se convierte en el

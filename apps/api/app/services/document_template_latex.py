@@ -11,17 +11,28 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 from typing import Any
 
 from .latex_service import latex_escape
 
 logger = logging.getLogger(__name__)
 
-# Collection key -> item scope, for the (small) set of collections a calibration REPORT can
-# actually resolve — see certificate_service._build_document_template_context. Procedure-only
-# collections (steps, criteria, ...) never apply here; a template referencing one just renders
-# its template row zero times.
-_COLLECTION_ITEM_SCOPE = {"measurements": "measurement"}
+# Collection key -> item scope, mirroring apps/web/src/lib/template-variables.ts's collection
+# catalog key-for-key. "measurements" is the only one a calibration REPORT context populates
+# (see certificate_service._build_document_template_context); the rest back a Calibration
+# Procedure template (see procedure_document.build_procedure_document_context). Either way, a
+# template referencing a collection its context doesn't populate just renders its template row
+# zero times — no error, no unresolved placeholder.
+_COLLECTION_ITEM_SCOPE = {
+    "measurements": "measurement",
+    "required_equipment": "item",
+    "materials": "material",
+    "environmental_conditions": "condition",
+    "steps": "step",
+    "acceptance_criteria": "criterion",
+    "safety_instructions": "instruction",
+}
 
 _MM = "mm"
 
@@ -459,16 +470,32 @@ _PREAMBLE = r"""\documentclass[%(fontsize)spt]{article}
 """
 
 
+
+# Matches a bare `\par` control word (not the prefix of `\parbox`/`\parskip`/...).
+_STANDALONE_PAR_RE = re.compile(r"\\par(?![a-zA-Z])")
+
+
+def _header_footer_zone(inner: str) -> str:
+    """fancyhdr's `\\fancyhead`/`\\fancyfoot` collects its argument as a non-`\\long` macro
+    argument — TeX aborts that collection with "Paragraph ended before \\f@nch@fancyhf was
+    complete" the moment it sees a `\\par` token anywhere in the raw stream, *before* any nested
+    grouping (braces, `\\parbox`, minipages, ...) gets a chance to matter. Every text block ends
+    with `\\par` (see `_rich_text`), so a header/footer zone — always a compact one-line strip, not
+    real body copy — has every standalone `\\par` stripped before being wrapped in a `parbox` (for
+    the `\\vspace`/minipage content that's still perfectly fine, just not multi-paragraph text)."""
+    return f"\\parbox[t]{{\\linewidth}}{{{_STANDALONE_PAR_RE.sub('', inner)}}}"
+
+
 def _header_footer_preamble(document: dict, context: dict, images_by_file_id: dict[str, bytes], images: dict[str, bytes]) -> str:
     settings = document["settings"]
     lines = [r"\pagestyle{fancy}", r"\fancyhf{}", r"\renewcommand{\headrulewidth}{0pt}", r"\renewcommand{\footrulewidth}{0.4pt}"]
     if settings.get("header_enabled") and document["header"].get("enabled"):
         inner = "".join(_render_block(b, context, images_by_file_id, images) for b in document["header"]["blocks"])
-        lines.append(f"\\fancyhead[C]{{\\footnotesize {inner}}}")
+        lines.append(f"\\fancyhead[C]{{\\footnotesize {_header_footer_zone(inner)}}}")
         lines.append(r"\renewcommand{\headrulewidth}{0.4pt}")
     if settings.get("footer_enabled") and document["footer"].get("enabled"):
         inner = "".join(_render_block(b, context, images_by_file_id, images) for b in document["footer"]["blocks"])
-        lines.append(f"\\fancyfoot[C]{{\\footnotesize {inner}}}")
+        lines.append(f"\\fancyfoot[C]{{\\footnotesize {_header_footer_zone(inner)}}}")
     lines.append(r"\fancyfoot[R]{\footnotesize\color{gray}\thepage\ / \pageref{LastPage}}")
     return "\n".join(lines)
 

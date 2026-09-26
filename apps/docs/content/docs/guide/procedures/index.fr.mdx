@@ -31,6 +31,30 @@ manière, plutôt que de retaper des notes de méthodologie à chaque fois.
 | Étapes | Les étapes ordonnées de la procédure elle-même. |
 | Critères d'acceptation | Ce qui constitue une réussite pour cette procédure, documenté à ses côtés. |
 
+## Télécharger une procédure en PDF
+
+Chaque procédure a un bouton **Télécharger le PDF** à côté de **Modifier** sur sa page de détail —
+il génère à la volée un PDF avec les données actuelles de la procédure (métadonnées, équipement
+requis, matériaux, conditions environnementales, consignes de sécurité, étapes et critères
+d'acceptation), prêt à imprimer et à emporter sur le terrain.
+
+Le PDF provient d'un modèle de document **Procédure de Calibration** publié et actif (voir
+[Modèles de document](../templates/index.mdx)) — le même éditeur WYSIWYG que pour les modèles de
+certificats, avec un ensemble de variables propre à la procédure (équipement, métadonnées de la
+procédure, environnement, étapes, critères d'acceptation, consignes de sécurité, dates). Par
+défaut, il est généré avec le modèle marqué **Par défaut** dans **Admin → Modèles → Procédures** ;
+le menu déroulant du bouton de téléchargement permet d'en choisir un autre pour ce seul
+téléchargement, un choix ponctuel qui ne modifie pas le modèle par défaut enregistré. Chaque
+installation démarre avec un **modèle de base** permanent et intégré (voir
+[Gérer les modèles](../templates/index.mdx#gérer-les-modèles-base-par-défaut-et-actif)) qui
+couvre tous les champs du modèle de Procédure et qui est le modèle par défaut tant qu'un
+administrateur n'en marque pas un autre — le téléchargement fonctionne donc dès la première
+procédure, avant même qu'un modèle personnalisé ait été conçu.
+
+Contrairement à un certificat de calibration, un PDF de procédure documente la *méthode*, pas un
+événement de calibration précis — il n'est pas signé numériquement et ne comporte pas de bloc de
+signature technicien/vérificateur.
+
 ## Lier une procédure à une voie
 
 Sur une voie de capteur, définissez **méthode de calibration** sur une procédure enregistrée —

@@ -5,12 +5,16 @@ description: Ein WYSIWYG-Editor zum Gestalten wiederverwendbarer Layouts für Ka
 
 Eine **Dokumentvorlage** ist ein wiederverwendbares Layout für ein druckbares Dokument — ein
 Kalibrierzertifikat oder ein Kalibrierverfahren — einmal gestaltet und bei jeder Erstellung mit
-echten Daten befüllt. Verwalten Sie sie über **Admin-Panel → Vorlagen**, zusammen mit von Hand
-erstellten LaTeX-Zertifikatsvorlagen (siehe
-[Zertifikatsvorlagen](../calibration/certificate-templates.mdx)) — die Schaltfläche **„Neue
-Vorlage"** dieses Bereichs öffnet ein Modal mit drei Optionen, und „Neue Vorlage erstellen" ist
-diejenige, die diesen Editor für eine leere Vorlage öffnet; Export/Import und Erzeugung werden
-weiter unten unter [PDF-Erzeugung](#pdf-erzeugung) beschrieben.
+echten Daten befüllt. Verwalten Sie sie über **Admin-Panel → Vorlagen**, eine einklappbare Gruppe
+in der Admin-Seitenleiste mit zwei Bereichen: **Kalibrierberichte** (die Zertifikatsvorlagen
+dieses Editors, zusammen mit von Hand erstellten LaTeX-Vorlagen — siehe
+[Zertifikatsvorlagen](../calibration/certificate-templates.mdx)) und **Verfahren**. Beide Bereiche
+teilen sich dasselbe Layout und dieselben Aktionen — siehe
+[Vorlagen verwalten: Basis, Standard und aktiv](#vorlagen-verwalten-basis-standard-und-aktiv)
+weiter unten. Die Schaltfläche **„+ Neue Vorlage"** jedes Bereichs öffnet ein Modal (der
+LaTeX-Import erscheint nur im Bereich Kalibrierberichte, da Verfahren kein Legacy-LaTeX-System
+haben); „Neue Vorlage erstellen" ist die Option, die diesen Editor für eine leere Vorlage öffnet.
+Export/Import und Erzeugung werden weiter unten unter [PDF-Erzeugung](#pdf-erzeugung) beschrieben.
 
 ## Zwei Vorlagentypen
 
@@ -21,6 +25,36 @@ weiter unten unter [PDF-Erzeugung](#pdf-erzeugung) beschrieben.
   und Revisionshistorie bereit.
 
 Beim Bearbeiten werden nur die für den Vorlagentyp relevanten Variablen angezeigt.
+
+## Vorlagen verwalten: Basis, Standard und aktiv
+
+Jeder Bereich (Kalibrierberichte, Verfahren) listet jede Vorlage dieses Typs als eine Zeile —
+LaTeX- und Editor-Vorlagen teilen sich dasselbe Zeilenlayout — mit drei Konzepten, die in beiden
+Bereichen identisch funktionieren:
+
+- **Basis** — jeder Typ enthält eine permanente Zeile „Open Gauge (default)", die immer zuerst
+  aufgeführt wird. Sie wird automatisch beim ersten Öffnen dieses Bereichs erstellt (oder beim
+  ersten Erzeugen eines Dokuments dieses Typs ohne jede Konfiguration) — auf einer frischen
+  Installation ist nichts einzurichten. Sie kann weder bearbeitet noch gelöscht werden, aber ihr
+  **Standard**-/**Aktiv**-Status lässt sich wie bei jeder anderen Zeile umschalten.
+- **Standard** — genau eine aktive Vorlage pro Typ ist die Standardvorlage, die verwendet wird,
+  wenn ein Dokument ohne ausdrückliche Vorlagenwahl erzeugt wird (siehe
+  [PDF-Erzeugung](#pdf-erzeugung) und [Ein Verfahren als PDF
+  herunterladen](../procedures/index.mdx#ein-verfahren-als-pdf-herunterladen)). Klicken Sie auf
+  das Häkchen einer anderen Zeile, um sie stattdessen zur Standardvorlage zu machen — die
+  bisherige wird automatisch abgewählt. Wird nie eine Vorlage als Standard markiert, ist es die
+  Basisvorlage. Im Bereich Kalibrierberichte ist dies ein *einziger* Standard, der sich LaTeX- und
+  Editor-Vorlagen teilen — eine Editor-Vorlage als Standard zu markieren hebt einen
+  LaTeX-Standard auf und umgekehrt.
+- **Aktiv** — jede Vorlage hat außerdem einen Aktiv-Schalter, unabhängig vom Standard. Eine
+  Vorlage auszuschalten entfernt sie aus der Download-Auswahl (sie kann weder standardmäßig noch
+  ausdrücklich ausgewählt werden), während sie genau an ihrer Stelle in der Liste bleibt —
+  weiterhin sichtbar, bearbeitbar und leicht wieder einzuschalten. Das unterscheidet sich von
+  **Löschen**, was eine Vorlage vollständig aus der Liste entfernt. Die Basisvorlage kann nicht
+  ausgeschaltet werden, solange sie die aktuelle Standardvorlage ist (es gäbe dann nichts mehr,
+  worauf zurückgegriffen werden könnte) — markieren Sie zuerst eine andere Vorlage als Standard.
+  Das Ausschalten (oder Löschen) der aktuellen Standardvorlage greift automatisch auf die
+  Basisvorlage zurück.
 
 ## Das Editor-Layout
 
@@ -113,18 +147,27 @@ PDF-Engine, keine separaten Escape-Regeln zu lernen. Gleichungsblöcke enthalten
 LaTeX und werden direkt durchgereicht; alle anderen Blöcke (Text, Tabellen, wiederholende Zeilen
 gebunden an eine Sammlung, Diagramme, QR-Codes, Spalten, …) werden automatisch übersetzt.
 
-Diese Auflösung gilt nur für Vorlagen vom Typ **Kalibrierzertifikat** — eine
-Kalibrierverfahren-Vorlage ist ein statisches Referenzdokument, kein pro Kalibrierung erzeugtes.
+Eine veröffentlichte Vorlage vom Typ **Kalibrierverfahren** wird genauso erzeugt, aber für ein
+[Verfahren](../procedures/index.mdx) statt für eine Kalibrierung — siehe [Ein Verfahren als PDF
+herunterladen](../procedures/index.mdx#ein-verfahren-als-pdf-herunterladen). Für Verfahren gibt es
+keine Kanal-/Organisations-Auflösungskette (ein Verfahren ist nicht wie ein Kalibrierbericht an
+einen Sensorkanal gebunden): Die Schaltfläche **PDF herunterladen** auf der Detailseite eines
+Verfahrens lässt Sie direkt jede veröffentlichte, aktive Verfahrensvorlage auswählen, oder es bei
+der Vorlage belassen, die gerade in Admin → Vorlagen → Verfahren als **Standard** markiert ist
+(siehe [Vorlagen verwalten](#vorlagen-verwalten-basis-standard-und-aktiv) oben).
 
 ### Einem Kanal eine Standardvorlage zuweisen
 
+Der Rest dieses Abschnitts (Zuweisung auf Kanal-/Kalibrierungsebene) gilt nur für Vorlagen vom
+Typ **Kalibrierzertifikat**.
+
 Öffnen Sie den Editor eines Sensorkanals (**Anlagen → eine Anlage → Übersicht → Bearbeiten**) und
-setzen Sie **Standard-Berichtsvorlage** auf eine beliebige veröffentlichte Vorlage, beider Art
-(hochgeladenes `.tex` oder im Editor erstellt). Jede an diesem Kanal erfasste Kalibrierung
+setzen Sie **Standard-Berichtsvorlage** auf eine beliebige veröffentlichte, aktive Vorlage, beider
+Art (hochgeladenes `.tex` oder im Editor erstellt). Jede an diesem Kanal erfasste Kalibrierung
 verwendet sie, sofern nicht einzeln überschrieben (siehe unten). Lassen Sie das Feld leer, um auf
-den Standard der Organisation zurückzugreifen, dann den globalen Standard, dann die integrierte
-Vorlage — dieselbe Kette, die [Zertifikatsvorlagen](../calibration/certificate-templates.mdx)
-bereits verwenden.
+den Standard der Organisation zurückzugreifen, dann auf die Vorlage, die in Admin → Vorlagen →
+Kalibrierberichte als **Standard** markiert ist (die Basisvorlage, falls keine andere markiert
+ist).
 
 ### Die Vorlage für eine Kalibrierung überschreiben
 
