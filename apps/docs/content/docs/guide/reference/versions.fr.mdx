@@ -15,6 +15,16 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.15.1
+
+### Corrigé
+
+- **La variable de certificat/rapport `channel.accuracy` ne répète plus l'unité.** Elle
+  s'affichait par ex. comme `±1 %FS % of full scale` — `accuracy_unit` (`%FS`) et un libellé
+  humain de `accuracy_type` (`% of full scale`) étaient tous deux ajoutés, décrivant la même
+  chose deux fois. Elle s'affiche désormais comme `±1 %FS`, comme l'affichage de précision déjà
+  utilisé sur la page de détail de l'actif.
+
 ## 4.15.0
 
 ### Modifié

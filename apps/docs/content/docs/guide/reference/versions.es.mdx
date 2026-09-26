@@ -14,6 +14,16 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.15.1
+
+### Corregido
+
+- **La variable de certificado/informe `channel.accuracy` ya no repite la unidad.** Se
+  renderizaba como p. ej. `±1 %FS % of full scale` — se añadían tanto `accuracy_unit` (`%FS`)
+  como una etiqueta humana de `accuracy_type` (`% of full scale`), describiendo lo mismo dos
+  veces. Ahora se renderiza como `±1 %FS`, igual que la visualización de precisión ya usada en la
+  página de detalle del activo.
+
 ## 4.15.0
 
 ### Cambiado

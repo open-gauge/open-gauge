@@ -15,6 +15,16 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.15.1
+
+### Behoben
+
+- **Die Zertifikat-/Berichtsvariable `channel.accuracy` wiederholt die Einheit nicht mehr.** Sie
+  wurde z. B. als `±1 %FS % of full scale` gerendert — sowohl `accuracy_unit` (`%FS`) als auch
+  eine lesbare Bezeichnung von `accuracy_type` (`% of full scale`) wurden angehängt, was
+  dasselbe zweimal beschrieb. Sie wird jetzt als `±1 %FS` gerendert, passend zur bereits auf der
+  Anlagen-Detailseite verwendeten Genauigkeitsanzeige.
+
 ## 4.15.0
 
 ### Geändert

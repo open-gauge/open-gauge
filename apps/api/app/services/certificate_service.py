@@ -50,15 +50,6 @@ _DECISION_RULE_LABEL = {
     "shared_risk": "Shared-risk acceptance (acceptance zone expanded by expanded uncertainty)",
 }
 
-# Sensor.accuracy_type is a free-text field (see app/models/sensor.py) whose
-# values come from the frontend's ACCURACY_TYPE_OPTIONS — displayed here as
-# plain words rather than the raw stored token (e.g. "percent_of_reading").
-_ACCURACY_TYPE_LABEL = {
-    "percent_of_reading": "% of reading",
-    "percent_of_full_scale": "% of full scale",
-    "absolute": "absolute",
-}
-
 # Human names for low-order polynomial coefficients, paired with a subscripted
 # symbol (a0, a1, ...) for cross-reference with the function formula shown
 # alongside the coefficient table. The symbol is rendered via LaTeX math-mode
@@ -132,12 +123,16 @@ def _fmt_date(d: object) -> str:
 
 
 def _fmt_accuracy(sensor: "Sensor") -> str:
+    """Mirrors the web app's own accuracy display (asset-detail-client.tsx's
+    SpecRow for "Accuracy": `±${value}${unit}`) — accuracy_unit already says
+    everything accuracy_type would ("%FS", "%RDG", or a physical unit like
+    "°C"), so appending a human label of accuracy_type too would just repeat
+    the unit's meaning a second time (e.g. "±1 %FS % of full scale")."""
     if sensor.accuracy_value is None:
         return "—"
     val = _fmt(sensor.accuracy_value, 4)
-    t = f" {_ACCURACY_TYPE_LABEL.get(sensor.accuracy_type, sensor.accuracy_type)}" if sensor.accuracy_type else ""
     u = f" {sensor.accuracy_unit}" if sensor.accuracy_unit else ""
-    return f"±{val}{u}{t}"
+    return f"±{val}{u}"
 
 
 def _build_function_formula(degree: int) -> str:
@@ -1099,6 +1094,101 @@ def generate_certificate(
     )
 
 
+def resolve_uploaded_images(db: Session, document: dict) -> dict[str, bytes]:
+    """Fetches and PNG-normalizes every "image" block's uploaded file in a document template,
+    keyed by file id — shared by real report generation and the sample-data admin preview, both
+    of which pass the result straight to `document_template_latex.document_to_latex` as
+    `images_by_file_id`."""
+    from .document_template_latex import collect_image_file_ids
+
+    images_by_file_id: dict[str, bytes] = {}
+    for file_id in collect_image_file_ids(document):
+        img_file = file_repo.get_by_id(db, uuid.UUID(file_id))
+        img_bytes = storage_svc.download_file(img_file.storage_path, img_file.bucket) if img_file else None
+        img_png = _normalize_to_png(img_bytes) if img_bytes else None
+        if img_png:
+            images_by_file_id[file_id] = img_png
+    return images_by_file_id
+
+
+def build_sample_document_context() -> tuple[dict, dict[str, bytes]]:
+    """Static dot-path sample values for previewing an editor (JSON) document template with no
+    real calibration on hand — mirrors apps/web/src/lib/template-variables.ts's sample catalog
+    key-for-key, so an admin's preview here looks like the editor's own "Preview Data" mode
+    instead of a differently-shaped placeholder. Deterministic (not randomized, unlike
+    `build_random_preview_context`) since it backs many small list-row thumbnails at once — no
+    value in generating a fresh dataset per row."""
+    ctx: dict = {
+        "asset.id": "OG-000123",
+        "asset.name": "PT100 Temperature Sensor",
+        "asset.serial_number": "SN-2026-00421",
+        "asset.manufacturer": "Fluke",
+        "asset.model": "5628",
+        "asset.type": "Temperature Sensor",
+        "asset.description": "Reference PT100 probe used for tank calibration.",
+        "asset.location": "Lab A / Bench 3",
+        "asset.status": "Active",
+        "asset.public_url": "https://opengauge.example/assets/OG-000123",
+        "channel.id": "TT",
+        "channel.physical_quantity": "Temperature",
+        "channel.unit": "°C",
+        "channel.technology": "RTD Pt100",
+        "channel.range_min": "-20",
+        "channel.range_max": "600",
+        "channel.measurement_range": "-20 to 600 °C",
+        "channel.accuracy": "± 0.048 °C",
+        "channel.resolution": "0.31",
+        "channel.uncertainty": "0.124",
+        "channel.output_signal_min": "4",
+        "channel.output_signal_max": "20",
+        "channel.output_signal_unit": "mA",
+        "channel.output_signal_range": "4 to 20 mA",
+        "calibration.id": "CAL-2026-04471",
+        "calibration.date": "28 Aug 2026",
+        "calibration.next_date": "28 Aug 2027",
+        "calibration.type": "Periodic",
+        "calibration.method": "Comparison to reference standard",
+        "calibration.status": "Valid",
+        "calibration.laboratory": "Open Gauge Calibration Lab",
+        "calibration.certificate_number": "CERT-2026-01187",
+        "calibration.certificate_url": "https://opengauge.example/certificates/CERT-2026-01187",
+        "calibration.technician": "Jordan Reyes",
+        "calibration.coefficients": "a0=0.1023, a1=0.9987, a2=-0.00004",
+        "calibration.polynomial_order": 2,
+        "calibration.statistics.r_squared": "0.9998",
+        "calibration.statistics.rmse": "0.304 °C",
+        "calibration.statistics.max_error": "0.612 °C",
+        "calibration.statistics.full_scale_error": "0.15 %FS",
+        "calibration.statistics.non_linearity": "0.08 %FS",
+        "calibration.statistics.hysteresis": "0.04 %FS",
+        "calibration.uncertainty.combined": "0.18 °C",
+        "calibration.uncertainty.expanded": "0.36 °C (k=2)",
+        "organization.name": "Open Gauge Metrology",
+        "organization.address": "1200 Industrial Ave, Springfield",
+        "organization.email": "lab@opengauge.example",
+        "organization.website": "opengauge.example",
+        "organization.accreditation_number": "ISO/IEC 17025 - 4471",
+        "user.name": "Jordan Reyes",
+        "user.email": "jordan.reyes@opengauge.example",
+        "user.role": "Calibration Technician",
+        "date.current": "28 Aug 2026",
+        "date.calibration": "28 Aug 2026",
+        "date.issue": "28 Aug 2026",
+        "date.expiration": "28 Aug 2027",
+        "_checked_by_name": "Alex Morgan",
+        "_collections": {
+            "measurements": [
+                {"index": "1", "reference": "0.000", "measured": "0.021", "fitted": "0.006", "residual": "0.015", "uncertainty": "0.021"},
+                {"index": "2", "reference": "100.000", "measured": "100.041", "fitted": "100.006", "residual": "0.035", "uncertainty": "0.021"},
+                {"index": "3", "reference": "200.000", "measured": "200.038", "fitted": "200.011", "residual": "0.027", "uncertainty": "0.021"},
+                {"index": "4", "reference": "300.000", "measured": "300.052", "fitted": "300.019", "residual": "0.033", "uncertainty": "0.021"},
+                {"index": "5", "reference": "400.000", "measured": "400.047", "fitted": "400.024", "residual": "0.023", "uncertainty": "0.021"},
+            ],
+        },
+    }
+    return ctx, {}
+
+
 def generate_certificate_from_document_template(
     db: Session,
     asset: "Asset",
@@ -1116,7 +1206,7 @@ def generate_certificate_from_document_template(
     `document_template_latex.document_to_latex` and compiles it the same way. Shares this
     function's image-gathering (QR/signatures) and PAdES signing steps for parity between the
     two template kinds."""
-    from .document_template_latex import collect_image_file_ids, document_to_latex
+    from .document_template_latex import document_to_latex
 
     template = doctpl_repo.get_by_id(db, document_template_id)
     if not template or template.status != "published":
@@ -1154,13 +1244,7 @@ def generate_certificate_from_document_template(
             if sig_png:
                 context["_signature_checked_by_bytes"] = sig_png
 
-    images_by_file_id: dict[str, bytes] = {}
-    for file_id in collect_image_file_ids(template.document):
-        img_file = file_repo.get_by_id(db, uuid.UUID(file_id))
-        img_bytes = storage_svc.download_file(img_file.storage_path, img_file.bucket) if img_file else None
-        img_png = _normalize_to_png(img_bytes) if img_bytes else None
-        if img_png:
-            images_by_file_id[file_id] = img_png
+    images_by_file_id = resolve_uploaded_images(db, template.document)
 
     images: dict[str, bytes] = {}
     tex_source = document_to_latex(template.document, context, images, images_by_file_id)

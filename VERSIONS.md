@@ -9,6 +9,15 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.15.1
+
+### Fixed
+
+- **The `channel.accuracy` certificate/report variable no longer repeats the unit.** It rendered
+  as e.g. `±1 %FS % of full scale` — `accuracy_unit` (`%FS`) and a human label of
+  `accuracy_type` (`% of full scale`) were both appended, describing the same thing twice. It now
+  renders as `±1 %FS`, matching the accuracy display already used on the asset detail page.
+
 ## 4.15.0
 
 ### Changed

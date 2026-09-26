@@ -347,9 +347,17 @@ class TestFormatHelpers:
     def test_fmt_none_returns_placeholder(self) -> None:
         assert _fmt(None) == "—"
 
+    def test_fmt_accuracy_does_not_repeat_the_unit(self) -> None:
+        """Regression test: accuracy_unit ("%FS") and accuracy_type
+        ("percent_of_full_scale") describe the same thing — appending a human
+        label of accuracy_type after the unit used to render both, e.g.
+        "±1 %FS % of full scale". Only the unit should appear."""
+        sensor = SimpleNamespace(accuracy_value=1, accuracy_type="percent_of_full_scale", accuracy_unit="%FS")
+        assert _fmt_accuracy(sensor) == "±1 %FS"
+
     def test_fmt_accuracy_maps_raw_type_to_human_label(self) -> None:
         sensor = SimpleNamespace(accuracy_value=0.8, accuracy_type="percent_of_reading", accuracy_unit="%RH")
-        assert _fmt_accuracy(sensor) == "±0.8 %RH % of reading"
+        assert _fmt_accuracy(sensor) == "±0.8 %RH"
 
     def test_fmt_scientific_for_small_values(self) -> None:
         assert "e" in _fmt(0.0000001)
