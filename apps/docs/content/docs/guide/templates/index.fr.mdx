@@ -7,8 +7,9 @@ Un **modèle de document** est une mise en page réutilisable pour un document i
 certificat de calibration ou une procédure de calibration — conçu une seule fois et rempli avec
 des données réelles à chaque génération. Gérez-les depuis **Panneau d'Administration → Modèles**,
 aux côtés des modèles de certificat LaTeX créés à la main (voir
-[Modèles de certificat](../calibration/certificate-templates.mdx)) — le bouton "Créer à partir de
-zéro" de cette page ouvre cet éditeur pour un nouveau modèle ; l'export/import et la génération
+[Modèles de certificat](../calibration/certificate-templates.mdx)) — le bouton **« Nouveau
+modèle »** de cette section ouvre une fenêtre modale avec trois options, et « Créer un nouveau
+modèle » est celle qui ouvre cet éditeur pour un modèle vierge ; l'export/import et la génération
 sont décrits dans [Génération de PDF](#génération-de-pdf) ci-dessous.
 
 ## Deux types de modèles
@@ -94,11 +95,13 @@ une URL d'aperçu résolue, pas une copie intégrée des octets du fichier.
 
 Un modèle peut être exporté vers un fichier JSON portable (son nom, sa description, son type et
 son document complet) et réimporté ailleurs — comme un nouveau brouillon, avec son propre
-historique de versions indépendant — depuis **Panneau d'Administration → Modèles**. Contrairement
-à un téléversement `.tex` brut, un modèle exporté fait l'aller-retour par ce même éditeur :
-importez-le, continuez à l'éditer, publiez-le. Ce n'est pas du LaTeX — celui-ci est généré
-automatiquement au moment du PDF (voir ci-dessous), pas quelque chose que vous rédigez ou
-échangez directement.
+historique de versions indépendant — via **« Nouveau modèle » → « Importer un modèle JSON »**.
+Comme pour l'option d'import LaTeX, la fenêtre modale affiche un aperçu en direct du fichier
+sélectionné et permet de remplacer le nom et le numéro de version de départ avant de créer le
+brouillon. Contrairement à un téléversement `.tex` brut, un modèle exporté fait l'aller-retour
+par ce même éditeur : importez-le, continuez à l'éditer, publiez-le. Ce n'est pas du LaTeX —
+celui-ci est généré automatiquement au moment du PDF (voir ci-dessous), pas quelque chose que
+vous rédigez ou échangez directement.
 
 ## Génération de PDF
 

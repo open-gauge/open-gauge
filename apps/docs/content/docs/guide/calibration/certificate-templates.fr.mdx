@@ -7,11 +7,17 @@ Un administrateur peut remplacer le design de certificat intégré par un modèl
 personnalisé — pour la localisation, une mise en page différente, ou pour correspondre à un
 format de certificat de laboratoire accrédité existant — sans toucher à aucun code. Les modèles
 se gèrent depuis **Panneau d'Administration → Modèles**, aux côtés des modèles créés dans
-l'éditeur en direct de [Modèles de documents](../templates/index.mdx) (le bouton "Téléverser
-LaTeX" de cette page est ce même flux de téléversement) — les deux types peuvent être assignés
-comme modèle de rapport par défaut d'une voie de capteur, ou en tant que remplacement par
-calibration ; voir
+l'éditeur en direct de [Modèles de documents](../templates/index.mdx) — le bouton **« Nouveau
+modèle »** de cette section ouvre une fenêtre modale, et « Importer un fichier LaTeX » est ce même
+flux de téléversement — les deux types peuvent être assignés comme modèle de rapport par défaut
+d'une voie de capteur, ou en tant que remplacement par calibration ; voir
 [Attribuer un modèle par défaut à une voie](../templates/index.mdx#attribuer-un-modèle-par-défaut-à-une-voie).
+
+Les deux types partagent la même liste : une vignette d'aperçu (clic pour agrandir), le nom, une
+étiquette de version `v{n}` et les badges de statut/par défaut. Les modèles LaTeX y sont
+uniquement téléchargeables et supprimables — ils ne peuvent pas être modifiés ni dupliqués sur
+place, puisque les modifier implique d'en téléverser un nouveau (voir ci-dessous) ; seuls les
+modèles créés dans l'éditeur bénéficient des actions Modifier et Dupliquer.
 
 ## Comment fonctionne le rendu
 
@@ -46,19 +52,23 @@ de degré, ±, etc. s'affichent tous correctement sans échappement particulier 
 
 Depuis **Panneau d'Administration → Modèles**, choisissez une portée (une
 organisation spécifique, ou *Global* pour le repli utilisé par toute organisation sans son propre
-modèle par défaut — les modèles globaux nécessitent un superadmin, puisqu'ils affectent chaque
-organisation), téléversez le fichier `.tex`, donnez-lui un nom, et marquez-le éventuellement comme
-modèle par défaut de cette portée.
+modèle par défaut — les modèles globaux nécessitent un superadmin), puis cliquez sur
+**« + Nouveau modèle » → « Importer un fichier LaTeX »**. Choisissez le fichier `.tex` — son
+contenu s'affiche dans un aperçu en direct au sein même de la fenêtre modale — donnez-lui un nom
+et, éventuellement, un numéro de version de départ (par défaut `1` ; purement informatif, affiché
+comme l'étiquette `v{n}` de la ligne). Le marquer comme modèle par défaut de cette portée est une
+étape distincte, après sa création, via l'action **« Définir par défaut »** de la ligne.
 
 **Chaque téléversement est validé par une compilation d'essai** (données factices) avant d'être
 enregistré — un modèle avec une erreur de syntaxe LaTeX ou un espace réservé mal orthographié est
 rejeté immédiatement, avec le message d'erreur du compilateur, plutôt que d'échouer seulement la
 prochaine fois qu'un vrai certificat est généré.
 
-Remplacer le contenu d'un modèle n'est pas une modification sur place — téléversez-le à nouveau
+Remplacer le contenu d'un modèle n'est pas une modification sur place — importez-le à nouveau
 comme un nouveau modèle et promouvez-le comme modèle par défaut. L'ancienne version reste présente
 (supprimée en douceur, non par défaut) afin que les certificats passés qui y font conceptuellement
-référence restent traçables jusqu'à ce qui les a générés.
+référence restent traçables jusqu'à ce qui les a générés. La ligne de chaque modèle dispose aussi
+d'une action **Télécharger**, qui renvoie la source `.tex` d'origine telle que téléversée.
 
 ## Prévisualiser un modèle
 

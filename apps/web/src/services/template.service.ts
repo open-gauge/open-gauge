@@ -103,8 +103,10 @@ export async function exportTemplate(id: string): Promise<Blob> {
   return apiBlob(`/api/v1/document-templates/${id}/export`, { headers: tokenHeader() });
 }
 
-export async function importTemplate(file: File): Promise<Template> {
+export async function importTemplate(file: File, options?: { name?: string; version?: number }): Promise<Template> {
   const form = new FormData();
   form.append("file", file);
+  if (options?.name) form.append("name", options.name);
+  if (options?.version != null) form.append("version", String(options.version));
   return apiUpload<Template>(`/api/v1/document-templates/import`, form, { headers: tokenHeader() });
 }

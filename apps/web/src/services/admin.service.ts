@@ -86,6 +86,7 @@ export async function uploadCertificateTemplate(body: {
   description?: string;
   organizationId?: string | null;
   isDefault?: boolean;
+  version?: number;
 }): Promise<CertificateTemplate> {
   const form = new FormData();
   form.append("file", body.file);
@@ -93,9 +94,14 @@ export async function uploadCertificateTemplate(body: {
   if (body.description) form.append("description", body.description);
   if (body.organizationId) form.append("organization_id", body.organizationId);
   form.append("is_default", String(body.isDefault ?? false));
+  if (body.version != null) form.append("version", String(body.version));
   return apiUpload<CertificateTemplate>("/api/v1/certificate-templates", form, {
     headers: tokenHeader(),
   });
+}
+
+export async function downloadCertificateTemplateBlob(templateId: string): Promise<Blob> {
+  return apiBlob(`/api/v1/certificate-templates/${templateId}/download`, { headers: tokenHeader() });
 }
 
 export async function updateCertificateTemplate(
@@ -122,6 +128,10 @@ export async function previewCertificateTemplate(templateId: string): Promise<Bl
 
 export async function previewBuiltinCertificateTemplate(): Promise<Blob> {
   return apiBlobPost("/api/v1/certificate-templates/preview-builtin", {}, { headers: tokenHeader() });
+}
+
+export async function previewDocumentTemplate(templateId: string): Promise<Blob> {
+  return apiBlobPost(`/api/v1/document-templates/${templateId}/preview`, {}, { headers: tokenHeader() });
 }
 
 // ---------------------------------------------------------------------------

@@ -6,10 +6,16 @@ description: Uploading and authoring custom LaTeX templates for calibration cert
 An admin can replace the built-in certificate design with a custom `.tex` template — for
 localization, a different layout, or matching an existing accredited-lab certificate format —
 without touching any code. Templates are managed from **Admin Panel → Templates**, alongside
-templates built in the live [Document Templates](../templates/index.mdx) editor (that page's
-"Upload LaTeX" button is this same upload flow) — both kinds can be assigned as a sensor
-channel's default report template, or as a per-calibration override; see
+templates built in the live [Document Templates](../templates/index.mdx) editor — the section's
+**"+ New template"** button opens a modal, and "Import LaTeX file" is this same upload flow —
+both kinds can be assigned as a sensor channel's default report template, or as a per-calibration
+override; see
 [Assigning a default template to a channel](../templates/index.mdx#assigning-a-default-template-to-a-channel).
+
+Both kinds share the same list: a preview thumbnail (click to enlarge), name, a `v{n}` version
+tag, and status/default badges. LaTeX templates are download- and delete-only in that list — they
+can't be edited or duplicated in place, since editing means uploading a new one (see below); only
+editor-authored templates get Edit and Duplicate actions.
 
 ## How rendering works
 
@@ -41,17 +47,21 @@ special escaping beyond the `latex` filter.
 
 From **Admin Panel → Templates**, choose a scope (a specific organization, or
 *Global* for the fallback used by any organization without its own default — global templates
-require a superadmin, since they affect every organization), upload the `.tex` file, give it a
-name, and optionally mark it as that scope's default.
+require a superadmin), then click **"+ New template" → "Import LaTeX file"**. Pick the `.tex`
+file — its contents show in a live preview right in the modal — give it a name and, optionally, a
+starting version number (defaults to `1`; purely informational, shown as the row's `v{n}` tag).
+Marking it as that scope's default is a separate step after it's created, via the row's
+**"Set as default"** action.
 
 **Every upload is validated with a dry-run compile** (dummy data) before being saved — a
 template with a LaTeX syntax error or a typo'd placeholder is rejected immediately, with the
 compiler's error message, rather than only failing the next time a real certificate is
 generated.
 
-Replacing a template's content isn't an in-place edit — upload it again as a new template and
+Replacing a template's content isn't an in-place edit — import it again as a new template and
 promote it to default. The old version stays around (soft-deleted, not default) so past
-certificates that reference it conceptually remain traceable to what generated them.
+certificates that reference it conceptually remain traceable to what generated them. Any
+template's row also has a **Download** action, returning the original `.tex` source as uploaded.
 
 ## Previewing a template
 

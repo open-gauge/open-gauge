@@ -12,6 +12,35 @@ impact (`0.x` while the product was pre-release/unstable, `1.0.0` at the point i
 documented, licensed, self-hostable product). Patch releases (`x.y.Z`) break out the smaller
 fixes and incremental additions that landed between each minor version.
 
+## 4.15.0
+
+### Changed
+
+- **Redesigned the Admin → Templates section's creation flow.** The three stacked inline forms
+  (upload LaTeX / create from scratch / import JSON) are replaced by a single **"+ New
+  template"** button opening a modal with three clear options — Import LaTeX file, Import JSON
+  template, Create new template — each importer showing a live, client-side preview of the
+  selected file's contents plus Name/Version fields before submitting.
+- **The template list now uses one unified row layout for both LaTeX and editor (JSON)
+  templates**: preview thumbnail, name, a `v{n}` version tag, and right-aligned actions. Edit and
+  Duplicate now only appear for editor templates — LaTeX templates are download/delete only,
+  matching that they can't be opened in the live editor. A **Download** action was added to every
+  row (raw `.tex` for LaTeX templates, exported `.json` for editor templates); clicking a row's
+  preview thumbnail still opens the existing enlarge-to-modal PDF preview for either kind.
+- **LaTeX certificate template uploads can now set a starting version number** (defaults to 1,
+  as before) via a new `version` field on `POST /certificate-templates`.
+
+### Added
+
+- **`GET /certificate-templates/{id}/download`** — streams a LaTeX template's original `.tex`
+  source as an attachment.
+- **`POST /document-templates/{id}/preview`** — renders an editor (JSON) template to PDF using a
+  static sample dataset, the same shape as the live editor's own "Preview Data" mode, so an admin
+  can preview a document template (including unpublished drafts) without generating a real
+  calibration report first.
+- Document-template import (`POST /document-templates/import`) can now override the imported
+  template's `name` and starting `version`.
+
 ## 4.14.0
 
 ### Added

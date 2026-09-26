@@ -15,6 +15,38 @@ lizenzierten, selbst hostbaren Produkt wurde). Patch-Releases (`x.y.Z`) gliedern
 Korrekturen und inkrementellen Ergänzungen auf, die zwischen den einzelnen Minor-Versionen
 eingeflossen sind.
 
+## 4.15.0
+
+### Geändert
+
+- **Der Erstellungsablauf im Bereich Admin → Vorlagen wurde überarbeitet.** Die drei
+  übereinander angeordneten Inline-Formulare (LaTeX hochladen / von Grund auf erstellen / JSON
+  importieren) werden durch eine einzige Schaltfläche **„Neue Vorlage"** ersetzt, die ein Modal
+  mit drei klaren Optionen öffnet — LaTeX-Datei importieren, JSON-Vorlage importieren, Neue
+  Vorlage erstellen —, wobei jeder Importer vor dem Absenden eine Live-Vorschau des Inhalts der
+  ausgewählten Datei sowie die Felder Name/Version anzeigt.
+- **Die Vorlagenliste verwendet jetzt ein einheitliches Zeilenlayout für LaTeX- und
+  Editor-(JSON-)Vorlagen**: Vorschaubild, Name, ein `v{n}`-Versions-Tag und rechtsbündige
+  Aktionen. Bearbeiten und Duplizieren erscheinen jetzt nur noch bei Editor-Vorlagen — LaTeX-
+  Vorlagen können nur heruntergeladen oder gelöscht werden, da sie nicht im Live-Editor geöffnet
+  werden können. Jeder Zeile wurde eine **Herunterladen**-Aktion hinzugefügt (rohe `.tex`-Quelle
+  bei LaTeX-Vorlagen, exportierte `.json` bei Editor-Vorlagen); ein Klick auf das Vorschaubild
+  einer Zeile öffnet weiterhin die bestehende, vergrößerte PDF-Vorschau für beide Arten.
+- **Beim Hochladen von LaTeX-Zertifikatsvorlagen kann jetzt eine Start-Versionsnummer**
+  (Standard weiterhin 1) über ein neues `version`-Feld bei `POST /certificate-templates`
+  festgelegt werden.
+
+### Hinzugefügt
+
+- **`GET /certificate-templates/{id}/download`** — liefert die ursprüngliche `.tex`-Quelle einer
+  LaTeX-Vorlage als Anhang.
+- **`POST /document-templates/{id}/preview`** — rendert eine Editor-(JSON-)Vorlage mit einem
+  statischen Beispieldatensatz zu PDF, in derselben Form wie der eigene „Vorschaudaten"-Modus des
+  Live-Editors, sodass ein Administrator eine Dokumentvorlage (einschließlich unveröffentlichter
+  Entwürfe) vorschauen kann, ohne vorher einen echten Kalibrierbericht zu erzeugen.
+- Der Dokumentvorlagen-Import (`POST /document-templates/import`) kann jetzt `name` und die
+  Start-`version` der importierten Vorlage überschreiben.
+
 ## 4.14.0
 
 ### Hinzugefügt

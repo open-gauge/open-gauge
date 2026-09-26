@@ -7,8 +7,9 @@ A **document template** is a reusable layout for a printable document — a cali
 certificate or a calibration procedure — designed once and populated with real data every time
 it's generated. Manage them from **Admin Panel → Templates**, alongside hand-authored LaTeX
 certificate templates (see [Certificate templates](../calibration/certificate-templates.mdx)) —
-that page's "Create from scratch" button opens this editor for a new template; export/import and
-generation are covered in [PDF generation](#pdf-generation) below.
+the section's **"+ New template"** button opens a modal with three options, and "Create new
+template" is the one that opens this editor for a blank template; export/import and generation
+are covered in [PDF generation](#pdf-generation) below.
 
 ## Two template types
 
@@ -84,8 +85,10 @@ copy of the file's bytes.
 ## Export and import
 
 A template can be exported to a portable JSON file (its name, description, type, and full
-document) and re-imported elsewhere — as a new draft, its own independent version history — from
-**Admin Panel → Templates**. Unlike a raw `.tex` upload, an exported template round-trips through
+document) and re-imported elsewhere — as a new draft, its own independent version history — via
+**"+ New template" → "Import JSON template"**. As with the LaTeX import option, the modal shows a
+live preview of the selected file and lets you override the name and starting version number
+before creating the draft. Unlike a raw `.tex` upload, an exported template round-trips through
 this same editor: import it, keep editing, publish. It isn't LaTeX — that's generated
 automatically at PDF time (see below), not something you author or exchange directly.
 

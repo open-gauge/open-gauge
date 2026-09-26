@@ -14,6 +14,39 @@ lanzamiento/inestable, `1.0.0` en el punto en que se convirtió en un producto d
 licencia y autoalojable). Las versiones de parche (`x.y.Z`) desglosan las correcciones más
 pequeñas y las adiciones incrementales que llegaron entre cada versión menor.
 
+## 4.15.0
+
+### Cambiado
+
+- **Rediseñada la creación de plantillas en Admin → Plantillas.** Los tres formularios en línea
+  apilados (subir LaTeX / crear desde cero / importar JSON) se sustituyen por un único botón
+  **"Nueva plantilla"** que abre un modal con tres opciones claras — Importar archivo LaTeX,
+  Importar plantilla JSON, Crear nueva plantilla — cada importador muestra una vista previa en
+  vivo, en el cliente, del contenido del archivo seleccionado, junto con los campos Nombre/Versión
+  antes de enviar.
+- **La lista de plantillas ahora usa un único diseño de fila unificado para plantillas LaTeX y de
+  editor (JSON)**: miniatura de vista previa, nombre, una etiqueta de versión `v{n}` y acciones
+  alineadas a la derecha. Editar y Duplicar ahora solo aparecen para plantillas de editor — las
+  plantillas LaTeX son solo de descarga/eliminación, ya que no se pueden abrir en el editor en
+  vivo. Se añadió una acción de **Descargar** a cada fila (fuente `.tex` original para plantillas
+  LaTeX, `.json` exportado para plantillas de editor); al hacer clic en la miniatura de vista
+  previa de una fila se sigue abriendo la vista previa PDF ampliada existente, para ambos tipos.
+- **Las cargas de plantillas de certificado LaTeX ahora pueden establecer un número de versión
+  inicial** (por defecto 1, como antes) mediante un nuevo campo `version` en
+  `POST /certificate-templates`.
+
+### Añadido
+
+- **`GET /certificate-templates/{id}/download`** — transmite la fuente `.tex` original de una
+  plantilla LaTeX como archivo adjunto.
+- **`POST /document-templates/{id}/preview`** — renderiza una plantilla de editor (JSON) a PDF
+  usando un conjunto de datos de ejemplo estático, con la misma forma que el propio modo "Vista
+  previa de datos" del editor en vivo, para que un administrador pueda previsualizar una plantilla
+  de documento (incluidos borradores no publicados) sin generar antes un informe de calibración
+  real.
+- La importación de plantillas de documento (`POST /document-templates/import`) ahora puede
+  sobrescribir el `name` y la `version` inicial de la plantilla importada.
+
 ## 4.14.0
 
 ### Añadido

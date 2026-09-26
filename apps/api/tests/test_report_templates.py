@@ -31,6 +31,20 @@ def _viewer_headers(db: Session) -> dict:
     return {"Authorization": f"Bearer {create_access_token({'sub': str(viewer.id)})}"}
 
 
+def _superadmin_headers(db: Session) -> dict:
+    user = User(
+        id=uuid.uuid4(),
+        email=f"super_{uuid.uuid4().hex[:8]}@opengauge.test",
+        name="Super Admin",
+        hashed_password=hash_password("Testpass123!"),
+        role=UserRole.superadmin,
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+    return {"Authorization": f"Bearer {create_access_token({'sub': str(user.id)})}"}
+
+
 @pytest.fixture()
 def asset(client: TestClient, auth_headers: dict) -> dict:
     payload = {
@@ -307,3 +321,111 @@ class TestDocumentTemplateReportGeneration:
         matches = [t for t in r.json() if t["id"] == template["id"]]
         assert len(matches) == 1
         assert matches[0]["kind"] == "document"
+
+
+# ---------------------------------------------------------------------------
+# Admin "Templates" section UI rework: versioned upload/import, raw download,
+# and a static-sample-data preview for editor templates.
+# ---------------------------------------------------------------------------
+
+def _default_tex_source() -> str:
+    from pathlib import Path
+
+    return (
+        Path(__file__).resolve().parent.parent / "app" / "templates" / "certificates" / "default.tex.jinja"
+    ).read_text(encoding="utf-8")
+
+
+class TestCertificateTemplateVersionAndDownload:
+    def test_upload_with_version_round_trips(self, client: TestClient, db: Session) -> None:
+        headers = _superadmin_headers(db)
+        r = client.post(
+            "/api/v1/certificate-templates",
+            files={"file": ("template.tex", _default_tex_source().encode("utf-8"), "text/x-tex")},
+            data={"name": "Versioned Cert", "is_default": "false", "version": "7"},
+            headers=headers,
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["version"] == 7
+
+    def test_upload_without_version_defaults_to_one(self, client: TestClient, db: Session) -> None:
+        headers = _superadmin_headers(db)
+        r = client.post(
+            "/api/v1/certificate-templates",
+            files={"file": ("template.tex", _default_tex_source().encode("utf-8"), "text/x-tex")},
+            data={"name": "Default Version Cert", "is_default": "false"},
+            headers=headers,
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["version"] == 1
+
+    def test_download_returns_original_bytes(self, client: TestClient, db: Session) -> None:
+        headers = _superadmin_headers(db)
+        source = _default_tex_source()
+        created = client.post(
+            "/api/v1/certificate-templates",
+            files={"file": ("template.tex", source.encode("utf-8"), "text/x-tex")},
+            data={"name": "Download Me", "is_default": "false"},
+            headers=headers,
+        ).json()
+        r = client.get(f"/api/v1/certificate-templates/{created['id']}/download", headers=headers)
+        assert r.status_code == 200, r.text
+        assert r.content.decode("utf-8") == source
+        assert "attachment" in r.headers["content-disposition"]
+
+    def test_download_unknown_template_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.get(f"/api/v1/certificate-templates/{uuid.uuid4()}/download", headers=auth_headers)
+        assert r.status_code == 404
+
+
+class TestDocumentTemplatePreviewAndImportVersion:
+    def test_preview_renders_pdf_for_a_draft(self, client: TestClient, auth_headers: dict) -> None:
+        created = client.post(
+            "/api/v1/document-templates", json={"name": "Draft Preview", "type": "certificate"}, headers=auth_headers
+        ).json()
+        r = client.post(f"/api/v1/document-templates/{created['id']}/preview", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.headers["content-type"] == "application/pdf"
+        assert r.content.startswith(b"%PDF-")
+
+    def test_preview_renders_pdf_for_a_published_template_with_content(
+        self, client: TestClient, auth_headers: dict
+    ) -> None:
+        template = _create_published_document_template(client, auth_headers, name="Preview With Content")
+        r = client.post(f"/api/v1/document-templates/{template['id']}/preview", headers=auth_headers)
+        assert r.status_code == 200, r.text
+        assert r.content.startswith(b"%PDF-")
+
+    def test_preview_unknown_template_returns_404(self, client: TestClient, auth_headers: dict) -> None:
+        r = client.post(f"/api/v1/document-templates/{uuid.uuid4()}/preview", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_import_with_version_sets_starting_version(self, client: TestClient, auth_headers: dict) -> None:
+        created = client.post(
+            "/api/v1/document-templates", json={"name": "Export Then Reimport", "type": "certificate"}, headers=auth_headers
+        ).json()
+        exported = client.get(f"/api/v1/document-templates/{created['id']}/export", headers=auth_headers)
+
+        imported = client.post(
+            "/api/v1/document-templates/import",
+            files={"file": ("template.json", io.BytesIO(exported.content), "application/json")},
+            data={"version": "3"},
+            headers=auth_headers,
+        )
+        assert imported.status_code == 201, imported.text
+        assert imported.json()["version"] == 3
+
+    def test_import_with_name_override(self, client: TestClient, auth_headers: dict) -> None:
+        created = client.post(
+            "/api/v1/document-templates", json={"name": "Original Name", "type": "certificate"}, headers=auth_headers
+        ).json()
+        exported = client.get(f"/api/v1/document-templates/{created['id']}/export", headers=auth_headers)
+
+        imported = client.post(
+            "/api/v1/document-templates/import",
+            files={"file": ("template.json", io.BytesIO(exported.content), "application/json")},
+            data={"name": "Renamed On Import"},
+            headers=auth_headers,
+        )
+        assert imported.status_code == 201, imported.text
+        assert imported.json()["name"] == "Renamed On Import"

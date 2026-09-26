@@ -7,9 +7,10 @@ Eine **Dokumentvorlage** ist ein wiederverwendbares Layout für ein druckbares D
 Kalibrierzertifikat oder ein Kalibrierverfahren — einmal gestaltet und bei jeder Erstellung mit
 echten Daten befüllt. Verwalten Sie sie über **Admin-Panel → Vorlagen**, zusammen mit von Hand
 erstellten LaTeX-Zertifikatsvorlagen (siehe
-[Zertifikatsvorlagen](../calibration/certificate-templates.mdx)) — die Schaltfläche "Neu
-erstellen" auf dieser Seite öffnet diesen Editor für eine neue Vorlage; Export/Import und
-Erzeugung werden weiter unten unter [PDF-Erzeugung](#pdf-erzeugung) beschrieben.
+[Zertifikatsvorlagen](../calibration/certificate-templates.mdx)) — die Schaltfläche **„Neue
+Vorlage"** dieses Bereichs öffnet ein Modal mit drei Optionen, und „Neue Vorlage erstellen" ist
+diejenige, die diesen Editor für eine leere Vorlage öffnet; Export/Import und Erzeugung werden
+weiter unten unter [PDF-Erzeugung](#pdf-erzeugung) beschrieben.
 
 ## Zwei Vorlagentypen
 
@@ -95,10 +96,12 @@ Vorschau-URL, keine eingebettete Kopie der Datei-Bytes.
 
 Eine Vorlage kann in eine portable JSON-Datei exportiert (ihr Name, Beschreibung, Typ und
 vollständiges Dokument) und anderswo wieder importiert werden — als neuer Entwurf mit eigener,
-unabhängiger Versionshistorie — über **Admin-Panel → Vorlagen**. Anders als ein roher
-`.tex`-Upload durchläuft eine exportierte Vorlage denselben Editor hin und zurück: importieren,
-weiter bearbeiten, veröffentlichen. Es ist kein LaTeX — das wird automatisch beim PDF-Zeitpunkt
-erzeugt (siehe unten), nicht etwas, das Sie selbst verfassen oder austauschen.
+unabhängiger Versionshistorie — über **„Neue Vorlage" → „JSON-Vorlage importieren"**. Wie bei der
+LaTeX-Import-Option zeigt das Modal eine Live-Vorschau der ausgewählten Datei und erlaubt es, vor
+dem Erstellen des Entwurfs den Namen und die Start-Versionsnummer zu überschreiben. Anders als
+ein roher `.tex`-Upload durchläuft eine exportierte Vorlage denselben Editor hin und zurück:
+importieren, weiter bearbeiten, veröffentlichen. Es ist kein LaTeX — das wird automatisch beim
+PDF-Zeitpunkt erzeugt (siehe unten), nicht etwas, das Sie selbst verfassen oder austauschen.
 
 ## PDF-Erzeugung
 

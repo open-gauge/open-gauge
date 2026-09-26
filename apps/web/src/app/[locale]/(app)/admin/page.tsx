@@ -32,6 +32,7 @@ import {
 import {
   countAdminUsers,
   deleteCertificateTemplate,
+  downloadCertificateTemplateBlob,
   exportDatabase,
   getAdminStats,
   getAdminSystem,
@@ -41,6 +42,7 @@ import {
   listCertificateTemplates,
   previewBuiltinCertificateTemplate,
   previewCertificateTemplate,
+  previewDocumentTemplate,
   resetDatabase,
   sendTestEmail,
   updateAdminUser,
@@ -481,132 +483,70 @@ function UsersSection() {
 // Certificate templates section
 // ---------------------------------------------------------------------------
 
-function CertificateTemplateRow({
-  template,
-  onUpdated,
-  onDeleted,
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function slugifyTemplateName(name: string): string {
+  return name.trim().replace(/\s+/g, "_") || "template";
+}
+
+type TemplateRowData =
+  | { kind: "certificate"; data: CertificateTemplate }
+  | { kind: "document"; data: TemplateListItem };
+
+function TemplateRow({
+  row,
+  onCertUpdated,
+  onCertDeleted,
+  onDocArchived,
+  onDocDuplicated,
 }: {
-  template: CertificateTemplate;
-  onUpdated: (updated: CertificateTemplate) => void;
-  onDeleted: (id: string) => void;
+  row: TemplateRowData;
+  onCertUpdated: (updated: CertificateTemplate) => void;
+  onCertDeleted: (id: string) => void;
+  onDocArchived: (id: string) => void;
+  onDocDuplicated: (created: TemplateListItem) => void;
 }) {
   const t = useTranslations("admin.certificates");
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(template.name);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState("");
+  const tStatus = useTranslations("tokens.templateStatus");
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
-  async function handleSave() {
-    if (!name.trim()) return;
-    setSaving(true);
-    setErr("");
+  const { name, version } = row.data;
+
+  async function handleDownload() {
     try {
-      onUpdated(await updateCertificateTemplate(template.id, { name: name.trim() }));
-      setEditing(false);
+      if (row.kind === "certificate") {
+        downloadBlob(await downloadCertificateTemplateBlob(row.data.id), `${slugifyTemplateName(row.data.name)}.tex`);
+      } else {
+        downloadBlob(await exportTemplate(row.data.id), `${slugifyTemplateName(row.data.name)}.json`);
+      }
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : t("failedToSave"));
-    } finally {
-      setSaving(false);
+      alert(e instanceof Error ? e.message : t("failedToDownload"));
     }
   }
 
   async function handleSetDefault() {
+    if (row.kind !== "certificate") return;
     try {
-      onUpdated(await updateCertificateTemplate(template.id, { is_default: true }));
+      onCertUpdated(await updateCertificateTemplate(row.data.id, { is_default: true }));
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : t("failedToSetDefault"));
     }
   }
 
-  async function handleDelete() {
-    if (!confirm(t("deleteConfirm", { name: template.name }))) return;
-    try {
-      await deleteCertificateTemplate(template.id);
-      onDeleted(template.id);
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : t("failedToDelete"));
-    }
-  }
-
-  if (editing) {
-    return (
-      <div className="px-4 py-4 space-y-3 bg-og-surface-alt border-b border-og-border">
-        <input value={name} onChange={(e) => setName(e.target.value)} className={`${IB} ${IB_OK}`} autoFocus />
-        {err && <p className="text-xs text-red-500">{err}</p>}
-        <div className="flex gap-2">
-          <button onClick={() => { setEditing(false); setName(template.name); setErr(""); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
-            <XIcon size={12} /> {t("cancel")}
-          </button>
-          <button onClick={handleSave} disabled={!name.trim() || saving}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-            <CheckIcon size={12} /> {saving ? t("saving") : t("save")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <PdfThumbnail fetchPdf={() => previewCertificateTemplate(template.id)} title={template.name} />
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-og-text truncate">{template.name}</p>
-          {template.description && <p className="text-xs text-gray-400 truncate">{template.description}</p>}
-        </div>
-        {template.is_default && (
-          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-accent/10 text-og-accent">
-            {t("default")}
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-1 shrink-0">
-        {!template.is_default && (
-          <button onClick={handleSetDefault} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("setAsDefault")}>
-            <CheckIcon size={13} />
-          </button>
-        )}
-        <button onClick={() => setEditing(true)} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("rename")}>
-          <EditIcon size={13} />
-        </button>
-        <button onClick={handleDelete} className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors" title={t("delete")}>
-          <TrashIcon size={13} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DocumentTemplateRow({
-  template,
-  onArchived,
-  onDuplicated,
-}: {
-  template: TemplateListItem;
-  onArchived: (id: string) => void;
-  onDuplicated: (created: TemplateListItem) => void;
-}) {
-  const t = useTranslations("admin.certificates");
-  const tStatus = useTranslations("tokens.templateStatus");
-  const router = useRouter();
-  const [archiving, setArchiving] = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
-
-  async function handleExport() {
-    const blob = await exportTemplate(template.id);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${template.name.trim().replace(/\s+/g, "_") || "template"}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   async function handleDuplicate() {
+    if (row.kind !== "document") return;
     setDuplicating(true);
     try {
-      onDuplicated(await duplicateTemplate(template.id));
+      onDocDuplicated(await duplicateTemplate(row.data.id));
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : t("failedToCreate"));
     } finally {
@@ -614,47 +554,71 @@ function DocumentTemplateRow({
     }
   }
 
-  async function handleArchive() {
-    if (!confirm(t("deleteConfirm", { name: template.name }))) return;
-    setArchiving(true);
+  async function handleDelete() {
+    if (!confirm(t("deleteConfirm", { name }))) return;
+    setBusy(true);
     try {
-      await archiveTemplate(template.id);
-      onArchived(template.id);
+      if (row.kind === "certificate") {
+        await deleteCertificateTemplate(row.data.id);
+        onCertDeleted(row.data.id);
+      } else {
+        await archiveTemplate(row.data.id);
+        onDocArchived(row.data.id);
+      }
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : t("failedToDelete"));
     } finally {
-      setArchiving(false);
+      setBusy(false);
     }
   }
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-og-border gap-3">
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="w-10 h-10 shrink-0 rounded-lg bg-og-surface-alt border border-og-border flex items-center justify-center">
-          <TemplatesIcon size={18} className="text-og-accent" />
-        </div>
+        <PdfThumbnail
+          fetchPdf={() => (row.kind === "certificate" ? previewCertificateTemplate(row.data.id) : previewDocumentTemplate(row.data.id))}
+          title={name}
+        />
         <div className="min-w-0">
-          <p className="text-sm font-medium text-og-text truncate">{template.name}</p>
-          {template.description && <p className="text-xs text-gray-400 truncate">{template.description}</p>}
+          <p className="text-sm font-medium text-og-text truncate">{name}</p>
+          {row.kind === "certificate" && row.data.description && (
+            <p className="text-xs text-gray-400 truncate">{row.data.description}</p>
+          )}
         </div>
-        <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm border ${TEMPLATE_STATUS_STYLE[template.status]}`}>
-          {translateDynamic(tStatus, template.status)}
+        <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-surface-alt border border-og-border-md text-gray-500">
+          v{version}
         </span>
-        <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-accent/10 text-og-accent">
-          {t("kindEditor")}
-        </span>
+        {row.kind === "certificate" && row.data.is_default && (
+          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm bg-og-accent/10 text-og-accent">
+            {t("default")}
+          </span>
+        )}
+        {row.kind === "document" && (
+          <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded-sm border ${TEMPLATE_STATUS_STYLE[row.data.status]}`}>
+            {translateDynamic(tStatus, row.data.status)}
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => router.push(`/templates/${template.id}`)} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("editInEditor")}>
-          <EditIcon size={13} />
-        </button>
-        <button onClick={handleExport} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("export")}>
+        {row.kind === "certificate" && !row.data.is_default && (
+          <button onClick={handleSetDefault} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("setAsDefault")}>
+            <CheckIcon size={13} />
+          </button>
+        )}
+        <button onClick={handleDownload} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("download")}>
           <ExportIcon size={13} />
         </button>
-        <button onClick={handleDuplicate} disabled={duplicating} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-50" title={t("duplicate")}>
-          <CopyIcon size={13} />
-        </button>
-        <button onClick={handleArchive} disabled={archiving} className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors disabled:opacity-50" title={t("delete")}>
+        {row.kind === "document" && (
+          <>
+            <button onClick={() => router.push(`/templates/${row.data.id}`)} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors" title={t("editInEditor")}>
+              <EditIcon size={13} />
+            </button>
+            <button onClick={handleDuplicate} disabled={duplicating} className="p-1.5 text-gray-400 hover:text-og-text rounded-sm transition-colors disabled:opacity-50" title={t("duplicate")}>
+              <CopyIcon size={13} />
+            </button>
+          </>
+        )}
+        <button onClick={handleDelete} disabled={busy} className="p-1.5 text-gray-400 hover:text-red-500 rounded-sm transition-colors disabled:opacity-50" title={t("delete")}>
           <TrashIcon size={13} />
         </button>
       </div>
@@ -662,29 +626,237 @@ function DocumentTemplateRow({
   );
 }
 
-function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] }) {
+type NewTemplateStep = "choose" | "latex" | "json" | "create";
+
+function ImportPreviewPane({ text }: { text: string }) {
+  return (
+    <pre className="h-64 overflow-auto rounded-lg border border-og-border-md bg-og-surface-alt p-3 text-xs font-mono text-og-text whitespace-pre-wrap break-all">
+      {text}
+    </pre>
+  );
+}
+
+function NewTemplateModal({
+  scope,
+  orgs,
+  onClose,
+  onCertCreated,
+  onDocCreated,
+}: {
+  scope: string;
+  orgs: OrganizationListItem[];
+  onClose: () => void;
+  onCertCreated: (created: CertificateTemplate) => void;
+  onDocCreated: (created: TemplateListItem) => void;
+}) {
   const t = useTranslations("admin.certificates");
   const router = useRouter();
-  const [scope, setScope] = useState<string>("global");
-  const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
-  const [docTemplates, setDocTemplates] = useState<TemplateListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [step, setStep] = useState<NewTemplateStep>("choose");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadName, setUploadName] = useState("");
-  const [uploadDefault, setUploadDefault] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadErr, setUploadErr] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [previewText, setPreviewText] = useState("");
+  const [name, setName] = useState("");
+  const [version, setVersion] = useState("1");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState("");
 
   const [createName, setCreateName] = useState("");
   const [createType, setCreateType] = useState<TemplateType>("certificate");
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState("");
 
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [importErr, setImportErr] = useState("");
+  const organizationId = scope === "global" ? undefined : scope;
+
+  function backToChoose() {
+    setStep("choose");
+    setFileName("");
+    setPreviewText("");
+    setName("");
+    setVersion("1");
+    setErr("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    setPreviewText("");
+    setFileName(file?.name ?? "");
+    if (!file) return;
+    if (!name.trim()) setName(file.name.replace(/\.(tex|json)$/i, ""));
+    const reader = new FileReader();
+    reader.onload = () => setPreviewText(typeof reader.result === "string" ? reader.result : "");
+    reader.readAsText(file);
+  }
+
+  async function handleImportSubmit() {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file || !name.trim()) return;
+    setSubmitting(true);
+    setErr("");
+    const parsedVersion = parseInt(version, 10) || 1;
+    try {
+      if (step === "latex") {
+        const created = await uploadCertificateTemplate({
+          file, name: name.trim(), organizationId, isDefault: false, version: parsedVersion,
+        });
+        onCertCreated(created);
+      } else {
+        const created = await importTemplate(file, { name: name.trim(), version: parsedVersion });
+        onDocCreated(created);
+      }
+      onClose();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : t("failedToImport"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCreateSubmit() {
+    if (!createName.trim()) return;
+    setCreating(true);
+    setCreateErr("");
+    try {
+      const created = await createTemplate({ name: createName.trim(), type: createType });
+      router.push(`/templates/${created.id}`);
+    } catch (e: unknown) {
+      setCreateErr(e instanceof Error ? e.message : t("failedToCreate"));
+      setCreating(false);
+    }
+  }
+
+  const title =
+    step === "choose" ? t("modal.title")
+    : step === "latex" ? t("modal.importLatexTitle")
+    : step === "json" ? t("modal.importJsonTitle")
+    : t("modal.createTitle");
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className={`bg-og-surface rounded-xl border border-og-border shadow-xl w-full ${step === "choose" ? "max-w-2xl" : "max-w-lg"} p-6`}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-og-text">{title}</h2>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-og-text rounded-sm transition-colors">
+            <XIcon size={16} />
+          </button>
+        </div>
+
+        {step === "choose" && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button onClick={() => setStep("latex")}
+              className="flex flex-col items-start gap-2 p-4 rounded-lg border border-og-border-md hover:border-og-accent hover:bg-og-surface-alt transition-colors text-left">
+              <UploadCloudIcon size={20} className="text-og-accent" />
+              <p className="text-sm font-semibold text-og-text">{t("modal.importLatexTitle")}</p>
+              <p className="text-xs text-gray-400">{t("modal.importLatexDesc")}</p>
+            </button>
+            <button onClick={() => setStep("json")}
+              className="flex flex-col items-start gap-2 p-4 rounded-lg border border-og-border-md hover:border-og-accent hover:bg-og-surface-alt transition-colors text-left">
+              <DocumentIcon size={20} className="text-og-accent" />
+              <p className="text-sm font-semibold text-og-text">{t("modal.importJsonTitle")}</p>
+              <p className="text-xs text-gray-400">{t("modal.importJsonDesc")}</p>
+            </button>
+            <button onClick={() => setStep("create")}
+              className="flex flex-col items-start gap-2 p-4 rounded-lg border border-og-border-md hover:border-og-accent hover:bg-og-surface-alt transition-colors text-left">
+              <TemplatesIcon size={20} className="text-og-accent" />
+              <p className="text-sm font-semibold text-og-text">{t("modal.createTitle")}</p>
+              <p className="text-xs text-gray-400">{t("modal.createDesc")}</p>
+            </button>
+          </div>
+        )}
+
+        {(step === "latex" || step === "json") && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">
+                {step === "latex" ? t("modal.latexFileLabel") : t("modal.jsonFileLabel")} <span className="text-red-400">*</span>
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={step === "latex" ? ".tex" : ".json"}
+                onChange={handleFileChange}
+                className={`${IB} ${IB_OK} py-1.5!`}
+              />
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-gray-400">{t("nameLabel")} <span className="text-red-400">*</span></label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`} placeholder={t("namePlaceholder")} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400">{t("modal.versionLabel")}</label>
+                <NumberInput value={version} onChange={setVersion} min={1} step={1} className="w-16" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">{t("modal.previewLabel")}</label>
+              {fileName ? (
+                <ImportPreviewPane text={previewText} />
+              ) : (
+                <div className="h-64 flex items-center justify-center rounded-lg border border-dashed border-og-border-md text-xs text-gray-400">
+                  {t("modal.previewPlaceholder")}
+                </div>
+              )}
+            </div>
+            {err && <p className="text-xs text-red-500">{err}</p>}
+            <div className="flex items-center justify-between pt-2">
+              <button onClick={backToChoose}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                {t("modal.back")}
+              </button>
+              <button onClick={handleImportSubmit} disabled={!fileName || !name.trim() || submitting}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+                <ImportIcon size={12} /> {submitting ? t("importing") : t("import")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "create" && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">{t("nameLabel")} <span className="text-red-400">*</span></label>
+              <input value={createName} onChange={(e) => setCreateName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
+                placeholder={t("namePlaceholder")} autoFocus />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">{t("typeLabel")}</label>
+              <Select
+                value={createType}
+                onChange={(v) => setCreateType(v as TemplateType)}
+                options={[
+                  { value: "certificate", label: t("typeCertificate") },
+                  { value: "procedure", label: t("typeProcedure") },
+                ]}
+              />
+            </div>
+            {createErr && <p className="text-xs text-red-500">{createErr}</p>}
+            <div className="flex items-center justify-between pt-2">
+              <button onClick={() => setStep("choose")}
+                className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors">
+                {t("modal.back")}
+              </button>
+              <button onClick={handleCreateSubmit} disabled={!createName.trim() || creating}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
+                <TemplatesIcon size={12} /> {creating ? t("creating") : t("createFromScratch")}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] }) {
+  const t = useTranslations("admin.certificates");
+  const [scope, setScope] = useState<string>("global");
+  const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+  const [docTemplates, setDocTemplates] = useState<TemplateListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
 
   const organizationId = scope === "global" ? undefined : scope;
 
@@ -705,59 +877,12 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
       .finally(() => setLoading(false));
   }, [organizationId, t]);
 
-  async function handleUpload() {
-    const file = fileInputRef.current?.files?.[0];
-    if (!file || !uploadName.trim()) return;
-    setUploading(true);
-    setUploadErr("");
-    try {
-      const created = await uploadCertificateTemplate({
-        file, name: uploadName.trim(), organizationId, isDefault: uploadDefault,
-      });
-      setTemplates((prev) => (uploadDefault ? prev.map((t) => ({ ...t, is_default: false })) : prev).concat(created));
-      setUploadName("");
-      setUploadDefault(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (e: unknown) {
-      setUploadErr(e instanceof Error ? e.message : t("failedToUpload"));
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handleCreate() {
-    if (!createName.trim()) return;
-    setCreating(true);
-    setCreateErr("");
-    try {
-      const created = await createTemplate({ name: createName.trim(), type: createType });
-      router.push(`/templates/${created.id}`);
-    } catch (e: unknown) {
-      setCreateErr(e instanceof Error ? e.message : t("failedToCreate"));
-      setCreating(false);
-    }
-  }
-
-  async function handleImport() {
-    const file = importInputRef.current?.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    setImportErr("");
-    try {
-      const created = await importTemplate(file);
-      setDocTemplates((prev) => [{ ...created, description: created.description ?? null }, ...prev]);
-      if (importInputRef.current) importInputRef.current.value = "";
-    } catch (e: unknown) {
-      setImportErr(e instanceof Error ? e.message : t("failedToImport"));
-    } finally {
-      setImporting(false);
-    }
-  }
-
-  const rows = [
-    ...templates.map((tpl) => ({ kind: "certificate" as const, updatedAt: tpl.updated_at ?? "", data: tpl })),
-    ...docTemplates.map((tpl) => ({ kind: "document" as const, updatedAt: tpl.updated_at, data: tpl })),
-  ].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  const rows: TemplateRowData[] = [
+    ...templates.map((tpl): TemplateRowData => ({ kind: "certificate", data: tpl })),
+    ...docTemplates.map((tpl): TemplateRowData => ({ kind: "document", data: tpl })),
+  ];
+  const rowUpdatedAt = (row: TemplateRowData) => (row.kind === "certificate" ? (row.data.updated_at ?? "") : row.data.updated_at);
+  rows.sort((a, b) => (rowUpdatedAt(a) < rowUpdatedAt(b) ? 1 : -1));
 
   return (
     <div className="bg-og-surface rounded-xl border border-og-border shadow-xs">
@@ -774,69 +899,11 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
             <PdfThumbnail fetchPdf={previewBuiltinCertificateTemplate} title={t("builtinDefault")} />
             <span className="text-xs text-gray-400">{t("builtinDefault")}</span>
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 py-4 border-b border-og-border bg-og-surface-alt">
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-og-text">
-            {scope === "global" ? t("uploadTitleGlobal") : t("uploadTitleOrg", { org: orgs.find((o) => o.id === scope)?.name ?? "" })}
-          </p>
-          <div className="space-y-1">
-            <label className="text-xs text-gray-400">{t("fileLabel")} <span className="text-red-400">*</span></label>
-            <input ref={fileInputRef} type="file" accept=".tex" className={`${IB} ${IB_OK} py-1.5!`} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-gray-400">{t("nameLabel")} <span className="text-red-400">*</span></label>
-            <input value={uploadName} onChange={(e) => setUploadName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
-              placeholder={t("namePlaceholder")} />
-          </div>
-          <label className="flex items-center gap-2 text-xs text-gray-400">
-            <ToggleSwitch checked={uploadDefault} onChange={setUploadDefault} />
-            {t("setDefault")}
-          </label>
-          {uploadErr && <p className="text-xs text-red-500">{uploadErr}</p>}
-          <button onClick={handleUpload} disabled={!uploadName.trim() || uploading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-            <UploadCloudIcon size={12} /> {uploading ? t("uploading") : t("upload")}
-          </button>
-        </div>
-
-        <div className="space-y-3 md:border-l md:border-og-border-md md:pl-3">
-          <p className="text-xs font-semibold text-og-text">{t("createTitle")}</p>
-          <div className="space-y-1">
-            <label className="text-xs text-gray-400">{t("nameLabel")} <span className="text-red-400">*</span></label>
-            <input value={createName} onChange={(e) => setCreateName(e.target.value)} className={`${IB} ${IB_OK} py-1.5!`}
-              placeholder={t("namePlaceholder")} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-gray-400">{t("typeLabel")}</label>
-            <Select
-              value={createType}
-              onChange={(v) => setCreateType(v as TemplateType)}
-              options={[
-                { value: "certificate", label: t("typeCertificate") },
-                { value: "procedure", label: t("typeProcedure") },
-              ]}
-            />
-          </div>
-          {createErr && <p className="text-xs text-red-500">{createErr}</p>}
-          <button onClick={handleCreate} disabled={!createName.trim() || creating}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-60">
-            <TemplatesIcon size={12} /> {creating ? t("creating") : t("createFromScratch")}
-          </button>
-        </div>
-
-        <div className="space-y-3 md:border-l md:border-og-border-md md:pl-3">
-          <p className="text-xs font-semibold text-og-text">{t("importTitle")}</p>
-          <div className="space-y-1">
-            <label className="text-xs text-gray-400">{t("importFileLabel")} <span className="text-red-400">*</span></label>
-            <input ref={importInputRef} type="file" accept=".json" className={`${IB} ${IB_OK} py-1.5!`} />
-          </div>
-          {importErr && <p className="text-xs text-red-500">{importErr}</p>}
-          <button onClick={handleImport} disabled={importing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-og-border-md rounded-lg hover:bg-og-surface-alt transition-colors disabled:opacity-60">
-            <ImportIcon size={12} /> {importing ? t("importing") : t("import")}
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-og-action hover:bg-og-action-dark text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            <PlusIcon size={12} /> {t("modal.newTemplate")}
           </button>
         </div>
       </div>
@@ -853,22 +920,27 @@ function CertificateTemplatesSection({ orgs }: { orgs: OrganizationListItem[] })
           {t("empty")}
         </p>
       )}
-      {!loading && !err && rows.map((row) =>
-        row.kind === "certificate" ? (
-          <CertificateTemplateRow
-            key={`cert-${row.data.id}`}
-            template={row.data}
-            onUpdated={(updated) => setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : (updated.is_default ? { ...x, is_default: false } : x))))}
-            onDeleted={(id) => setTemplates((prev) => prev.filter((x) => x.id !== id))}
-          />
-        ) : (
-          <DocumentTemplateRow
-            key={`doc-${row.data.id}`}
-            template={row.data}
-            onArchived={(id) => setDocTemplates((prev) => prev.filter((x) => x.id !== id))}
-            onDuplicated={(created) => setDocTemplates((prev) => [created, ...prev])}
-          />
-        )
+      {!loading && !err && rows.map((row) => (
+        <TemplateRow
+          key={`${row.kind}-${row.data.id}`}
+          row={row}
+          onCertUpdated={(updated) => setTemplates((prev) => prev.map((x) => (x.id === updated.id ? updated : (updated.is_default ? { ...x, is_default: false } : x))))}
+          onCertDeleted={(id) => setTemplates((prev) => prev.filter((x) => x.id !== id))}
+          onDocArchived={(id) => setDocTemplates((prev) => prev.filter((x) => x.id !== id))}
+          onDocDuplicated={(created) => setDocTemplates((prev) => [created, ...prev])}
+        />
+      ))}
+
+      {modalOpen && (
+        <NewTemplateModal
+          scope={scope}
+          orgs={orgs}
+          onClose={() => setModalOpen(false)}
+          onCertCreated={(created) =>
+            setTemplates((prev) => (created.is_default ? prev.map((x) => ({ ...x, is_default: false })) : prev).concat(created))
+          }
+          onDocCreated={(created) => setDocTemplates((prev) => [{ ...created, description: created.description ?? null }, ...prev])}
+        />
       )}
     </div>
   );

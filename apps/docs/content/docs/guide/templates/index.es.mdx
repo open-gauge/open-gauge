@@ -7,9 +7,10 @@ Una **plantilla de documento** es un diseño reutilizable para un documento impr
 certificado de calibración o un procedimiento de calibración— diseñado una sola vez y completado
 con datos reales cada vez que se genera. Gestiónalas desde **Panel de Administración → Plantillas**,
 junto con las plantillas LaTeX de certificado creadas a mano (ver
-[Plantillas de certificado](../calibration/certificate-templates.mdx)) — el botón "Crear desde
-cero" de esa página abre este editor para una plantilla nueva; la exportación/importación y la
-generación se describen en [Generación de PDF](#generación-de-pdf) más abajo.
+[Plantillas de certificado](../calibration/certificate-templates.mdx)) — el botón **"Nueva
+plantilla"** de esa sección abre un modal con tres opciones, y "Crear nueva plantilla" es la que
+abre este editor para una plantilla en blanco; la exportación/importación y la generación se
+describen en [Generación de PDF](#generación-de-pdf) más abajo.
 
 ## Dos tipos de plantilla
 
@@ -94,10 +95,13 @@ una URL de vista previa resuelta, no una copia incrustada de los bytes del archi
 
 Una plantilla puede exportarse a un archivo JSON portátil (su nombre, descripción, tipo y
 documento completo) y volver a importarse en otro lugar — como un nuevo borrador, con su propio
-historial de versiones independiente — desde **Panel de Administración → Plantillas**. A
-diferencia de una subida `.tex` en bruto, una plantilla exportada recorre este mismo editor de
-ida y vuelta: impórtala, sigue editando, publica. No es LaTeX — eso se genera automáticamente al
-crear el PDF (ver abajo), no algo que redactes o intercambies directamente.
+historial de versiones independiente — mediante **"Nueva plantilla" → "Importar plantilla
+JSON"**. Igual que con la opción de importar LaTeX, el modal muestra una vista previa en vivo del
+archivo seleccionado y permite sobrescribir el nombre y el número de versión inicial antes de
+crear el borrador. A diferencia de una subida `.tex` en bruto, una plantilla exportada recorre
+este mismo editor de ida y vuelta: impórtala, sigue editando, publica. No es LaTeX — eso se
+genera automáticamente al crear el PDF (ver abajo), no algo que redactes o intercambies
+directamente.
 
 ## Generación de PDF
 

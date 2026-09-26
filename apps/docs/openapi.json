@@ -3,7 +3,7 @@
   "info": {
     "title": "Open Gauge API",
     "description": "Open Gauge API",
-    "version": "4.9.0"
+    "version": "4.15.0"
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -4759,6 +4759,52 @@
         }
       }
     },
+    "/api/v1/certificate-templates/{template_id}/download": {
+      "get": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "Download a certificate template's raw .tex source",
+        "operationId": "download_template_api_v1_certificate_templates__template_id__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/certificate-templates/{template_id}/preview": {
       "post": {
         "tags": [
@@ -5137,6 +5183,53 @@
         "summary": "Export a document template as a JSON file",
         "description": "Downloads this version's name/description/type/document as a JSON file, importable again via POST /import — round-trips through the live editor.",
         "operationId": "export_document_template_api_v1_document_templates__template_id__export_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/preview": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Preview a document template as PDF, with static sample data",
+        "description": "Compiles the template with the same sample catalog the editor's own \"Preview Data\" mode uses (not real calibration data) — works for any status, including a draft, so an admin can see the rendered result while iterating, before publishing.",
+        "operationId": "preview_document_template_api_v1_document_templates__template_id__preview_post",
         "security": [
           {
             "HTTPBearer": []
@@ -11091,6 +11184,22 @@
             "type": "string",
             "format": "binary",
             "title": "File"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
           }
         },
         "type": "object",
@@ -11310,6 +11419,11 @@
             "type": "boolean",
             "title": "Is Default",
             "default": false
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
           }
         },
         "type": "object",

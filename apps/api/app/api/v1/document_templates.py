@@ -1,7 +1,7 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -113,6 +113,8 @@ def create_document_template(
 async def import_document_template(
     request: Request,
     file: UploadFile = File(...),
+    name: str | None = Form(None),
+    version: int = Form(1),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_not_viewer),
 ) -> DocumentTemplate:
@@ -124,10 +126,12 @@ async def import_document_template(
 
     if not isinstance(payload, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected a JSON object")
-    name = payload.get("name")
+    # `name` (form field) lets the picker override the file's own embedded name — falls back to it
+    # when not given, same as picking "keep the imported name" in the UI.
+    resolved_name = (name or "").strip() or payload.get("name")
     template_type = payload.get("type")
     document = payload.get("document")
-    if not name or template_type not in ("certificate", "procedure") or not isinstance(document, dict):
+    if not resolved_name or template_type not in ("certificate", "procedure") or not isinstance(document, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is missing name/type/document")
     try:
         _validate_document_shape(document)
@@ -135,9 +139,9 @@ async def import_document_template(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     template = template_repo.create(
-        db, name=name, description=payload.get("description"), type=template_type, created_by=current_user.id
+        db, name=resolved_name, description=payload.get("description"), type=template_type, created_by=current_user.id
     )
-    template = template_repo.update(db, template, document=document)
+    template = template_repo.update(db, template, document=document, version=version)
     _audit(
         db, request, current_user,
         action="document_template.imported", template=template,
@@ -179,6 +183,33 @@ def export_document_template(
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post(
+    "/{template_id}/preview",
+    summary="Preview a document template as PDF, with static sample data",
+    description="Compiles the template with the same sample catalog the editor's own \"Preview "
+    "Data\" mode uses (not real calibration data) — works for any status, including a draft, so "
+    "an admin can see the rendered result while iterating, before publishing.",
+)
+def preview_document_template(
+    template_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Response:
+    from ...services import certificate_service, latex_service
+    from ...services.document_template_latex import document_to_latex
+    from ...services.latex_service import LatexCompileError
+
+    template = _get_or_404(db, template_id)
+    context, images = certificate_service.build_sample_document_context()
+    images_by_file_id = certificate_service.resolve_uploaded_images(db, template.document)
+    try:
+        tex_source = document_to_latex(template.document, context, images, images_by_file_id)
+        pdf_bytes = latex_service.compile_tex(tex_source, images)
+    except LatexCompileError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Template failed to compile: {e}")
+    return Response(content=pdf_bytes, media_type="application/pdf")
 
 
 @router.get(

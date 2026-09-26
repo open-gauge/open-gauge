@@ -495,4 +495,8 @@ def document_to_latex(document: dict, context: dict, images: dict[str, bytes], i
         "headerfooter": _header_footer_preamble(document, context, images_by_file_id, images),
     }
     body = "".join(_render_block(b, context, images_by_file_id, images) for b in document["blocks"])
+    if not body.strip():
+        # An empty page still needs some content, or Tectonic emits "did not
+        # produce ...xdv; document may be empty" instead of a blank PDF page.
+        body = "\\strut"
     return preamble + body + "\n\\end{document}\n"

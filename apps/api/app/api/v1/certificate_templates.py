@@ -33,6 +33,7 @@ async def upload_template(
     description: str | None = Form(None),
     organization_id: uuid.UUID | None = Form(None),
     is_default: bool = Form(False),
+    version: int = Form(1),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CertificateTemplateResponse:
@@ -83,6 +84,7 @@ async def upload_template(
         template_file_id=file_record.id,
         is_default=is_default,
         created_by=current_user.id,
+        version=version,
     )
     return template
 
@@ -134,6 +136,32 @@ def delete_template(
         require_admin(current_user)
 
     certtpl_repo.deactivate(db, template)
+
+
+@router.get("/{template_id}/download", summary="Download a certificate template's raw .tex source")
+def download_template(
+    template_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Response:
+    template = certtpl_repo.get_by_id(db, template_id)
+    if not template:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+
+    file_record = file_repo.get_by_id(db, template.template_file_id)
+    if not file_record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template file not found")
+
+    data = storage_svc.download_file(file_record.storage_path, file_record.bucket)
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Storage unavailable")
+
+    filename = file_record.original_filename or "template.tex"
+    return Response(
+        content=data,
+        media_type="text/x-tex",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/{template_id}/preview")

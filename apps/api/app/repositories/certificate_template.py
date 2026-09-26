@@ -48,6 +48,7 @@ def create(
     template_file_id: uuid.UUID,
     is_default: bool,
     created_by: uuid.UUID,
+    version: int = 1,
 ) -> CertificateTemplate:
     template = CertificateTemplate(
         organization_id=organization_id,
@@ -56,6 +57,7 @@ def create(
         template_file_id=template_file_id,
         is_default=is_default,
         created_by=created_by,
+        version=version,
     )
     db.add(template)
     db.commit()

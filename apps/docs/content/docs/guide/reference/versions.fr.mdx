@@ -15,6 +15,40 @@ pré-version/instable, `1.0.0` au moment où il est devenu un produit documenté
 auto-hébergeable). Les versions correctives (`x.y.Z`) détaillent les correctifs plus petits et
 les ajouts incrémentaux survenus entre chaque version mineure.
 
+## 4.15.0
+
+### Modifié
+
+- **Refonte du flux de création de la section Admin → Modèles.** Les trois formulaires en ligne
+  empilés (téléverser LaTeX / créer à partir de zéro / importer JSON) sont remplacés par un
+  unique bouton **« Nouveau modèle »** ouvrant une fenêtre modale avec trois options claires —
+  Importer un fichier LaTeX, Importer un modèle JSON, Créer un nouveau modèle — chaque importateur
+  affichant un aperçu en direct, côté client, du contenu du fichier sélectionné, ainsi que les
+  champs Nom/Version avant l'envoi.
+- **La liste des modèles utilise désormais une mise en page de ligne unifiée pour les modèles
+  LaTeX et éditeur (JSON)** : vignette d'aperçu, nom, une étiquette de version `v{n}` et des
+  actions alignées à droite. Modifier et Dupliquer n'apparaissent désormais que pour les modèles
+  éditeur — les modèles LaTeX sont uniquement téléchargeables/supprimables, puisqu'ils ne peuvent
+  pas être ouverts dans l'éditeur en direct. Une action **Télécharger** a été ajoutée à chaque
+  ligne (source `.tex` brute pour les modèles LaTeX, `.json` exporté pour les modèles éditeur) ;
+  cliquer sur la vignette d'aperçu d'une ligne ouvre toujours l'aperçu PDF agrandi existant, pour
+  les deux types.
+- **Les téléversements de modèles de certificat LaTeX peuvent désormais définir un numéro de
+  version de départ** (par défaut 1, comme avant) via un nouveau champ `version` sur
+  `POST /certificate-templates`.
+
+### Ajouté
+
+- **`GET /certificate-templates/{id}/download`** — diffuse la source `.tex` d'origine d'un modèle
+  LaTeX en pièce jointe.
+- **`POST /document-templates/{id}/preview`** — restitue un modèle éditeur (JSON) en PDF à l'aide
+  d'un jeu de données d'exemple statique, de la même forme que le propre mode « Aperçu des
+  données » de l'éditeur en direct, afin qu'un administrateur puisse prévisualiser un modèle de
+  document (y compris les brouillons non publiés) sans générer au préalable un rapport de
+  calibration réel.
+- L'import de modèles de document (`POST /document-templates/import`) peut désormais remplacer le
+  `name` et la `version` de départ du modèle importé.
+
 ## 4.14.0
 
 ### Ajouté

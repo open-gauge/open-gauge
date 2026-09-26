@@ -7,11 +7,17 @@ Ein Admin kann das eingebaute Zertifikatsdesign durch eine benutzerdefinierte `.
 ersetzen — für Lokalisierung, ein anderes Layout oder um ein bestehendes Zertifikatsformat eines
 akkreditierten Labors nachzubilden — ohne jeglichen Code anzufassen. Vorlagen werden über
 **Admin-Panel → Vorlagen** verwaltet, zusammen mit im Live-Editor der
-[Dokumentvorlagen](../templates/index.mdx) erstellten Vorlagen (die Schaltfläche "LaTeX
-hochladen" auf dieser Seite ist derselbe Upload-Ablauf) — beide Arten können als
-Standard-Berichtsvorlage eines Sensorkanals oder als Überschreibung pro Kalibrierung zugewiesen
-werden; siehe
+[Dokumentvorlagen](../templates/index.mdx) erstellten Vorlagen — die Schaltfläche **„Neue
+Vorlage"** dieses Bereichs öffnet ein Modal, und „LaTeX-Datei importieren" ist derselbe
+Upload-Ablauf — beide Arten können als Standard-Berichtsvorlage eines Sensorkanals oder als
+Überschreibung pro Kalibrierung zugewiesen werden; siehe
 [Einem Kanal eine Standardvorlage zuweisen](../templates/index.mdx#einem-kanal-eine-standardvorlage-zuweisen).
+
+Beide Arten teilen sich dieselbe Liste: ein Vorschaubild (Klick zum Vergrößern), Name, ein
+`v{n}`-Versions-Tag sowie Status-/Standard-Badges. LaTeX-Vorlagen sind in dieser Liste nur
+herunterladbar und löschbar — sie können nicht an Ort und Stelle bearbeitet oder dupliziert
+werden, da eine Bearbeitung das Hochladen einer neuen Vorlage bedeutet (siehe unten); nur im
+Editor erstellte Vorlagen erhalten die Aktionen Bearbeiten und Duplizieren.
 
 ## Wie das Rendering funktioniert
 
@@ -44,18 +50,23 @@ werden, ohne besonderes Escaping über den `latex`-Filter hinaus.
 
 Wählen Sie unter **Admin-Panel → Vorlagen** einen Geltungsbereich (eine bestimmte
 Organisation, oder *Global* für das Fallback, das von jeder Organisation ohne eigene Standardvorlage
-verwendet wird — globale Vorlagen erfordern einen Superadmin, da sie jede Organisation betreffen),
-laden Sie die `.tex`-Datei hoch, geben Sie ihr einen Namen und markieren Sie sie optional als
-Standardvorlage dieses Geltungsbereichs.
+verwendet wird — globale Vorlagen erfordern einen Superadmin), und klicken Sie dann auf
+**„+ Neue Vorlage" → „LaTeX-Datei importieren"**. Wählen Sie die `.tex`-Datei aus — ihr Inhalt wird
+in einer Live-Vorschau direkt im Modal angezeigt — geben Sie ihr einen Namen und optional eine
+Start-Versionsnummer (Standard `1`; rein informativ, als `v{n}`-Tag der Zeile angezeigt). Das
+Markieren als Standardvorlage dieses Geltungsbereichs ist ein separater Schritt nach dem
+Erstellen, über die Zeilenaktion **„Als Standard festlegen"**.
 
 **Jeder Upload wird mit einer Probekompilierung validiert** (Testdaten), bevor er gespeichert wird —
 eine Vorlage mit einem LaTeX-Syntaxfehler oder einem falsch getippten Platzhalter wird sofort mit
 der Fehlermeldung des Compilers abgelehnt, statt erst beim nächsten echten Zertifikat zu scheitern.
 
-Das Ersetzen des Inhalts einer Vorlage ist keine Bearbeitung an Ort und Stelle — laden Sie sie
-erneut als neue Vorlage hoch und befördern Sie sie zur Standardvorlage. Die alte Version bleibt
+Das Ersetzen des Inhalts einer Vorlage ist keine Bearbeitung an Ort und Stelle — importieren Sie
+sie erneut als neue Vorlage und befördern Sie sie zur Standardvorlage. Die alte Version bleibt
 erhalten (weich gelöscht, nicht Standard), sodass vergangene Zertifikate, die konzeptionell darauf
-verweisen, weiterhin darauf zurückverfolgbar bleiben, was sie erzeugt hat.
+verweisen, weiterhin darauf zurückverfolgbar bleiben, was sie erzeugt hat. Die Zeile jeder Vorlage
+verfügt außerdem über eine **Herunterladen**-Aktion, die die ursprüngliche `.tex`-Quelle wie
+hochgeladen zurückgibt.
 
 ## Eine Vorlage in der Vorschau ansehen
 

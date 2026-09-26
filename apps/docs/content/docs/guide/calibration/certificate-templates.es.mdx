@@ -7,10 +7,17 @@ Un administrador puede reemplazar el diseño de certificado integrado con una pl
 personalizada — para localización, un diseño diferente, o para coincidir con el formato de certificado
 de un laboratorio acreditado existente — sin tocar ningún código. Las plantillas se gestionan desde
 **Panel de Administración → Plantillas**, junto con las plantillas creadas en el editor en vivo de
-[Plantillas de documentos](../templates/index.mdx) (el botón "Subir LaTeX" de esa página es este
-mismo flujo de subida) — ambos tipos pueden asignarse como plantilla de informe predeterminada de
-un canal de sensor, o como anulación por calibración; ver
+[Plantillas de documentos](../templates/index.mdx) — el botón **"Nueva plantilla"** de esa sección
+abre un modal, y "Importar archivo LaTeX" es este mismo flujo de subida — ambos tipos pueden
+asignarse como plantilla de informe predeterminada de un canal de sensor, o como anulación por
+calibración; ver
 [Asignar una plantilla predeterminada a un canal](../templates/index.mdx#asignar-una-plantilla-predeterminada-a-un-canal).
+
+Ambos tipos comparten la misma lista: una miniatura de vista previa (clic para ampliar), nombre,
+una etiqueta de versión `v{n}` y las insignias de estado/predeterminada. Las plantillas LaTeX son
+solo de descarga y eliminación en esa lista — no se pueden editar ni duplicar in situ, ya que
+editarlas implica subir una nueva (ver abajo); solo las plantillas creadas en el editor tienen las
+acciones Editar y Duplicar.
 
 ## Cómo funciona el renderizado
 
@@ -43,19 +50,23 @@ renderizan todos correctamente sin ningún escapado especial más allá del filt
 
 Desde **Panel de Administración → Plantillas**, elige un ámbito (una organización
 específica, o *Global* para el respaldo usado por cualquier organización sin su propia plantilla
-predeterminada — las plantillas globales requieren un superadministrador, ya que afectan a cada
-organización), sube el archivo `.tex`, dale un nombre, y opcionalmente márcala como la predeterminada
-de ese ámbito.
+predeterminada — las plantillas globales requieren un superadministrador), luego haz clic en
+**"+ Nueva plantilla" → "Importar archivo LaTeX"**. Elige el archivo `.tex` — su contenido se
+muestra en una vista previa en vivo dentro del propio modal — dale un nombre y, opcionalmente, un
+número de versión inicial (por defecto `1`; puramente informativo, mostrado como la etiqueta
+`v{n}` de la fila). Marcarla como predeterminada de ese ámbito es un paso aparte, después de
+crearla, mediante la acción **"Establecer como predeterminada"** de la fila.
 
 **Cada subida se valida con una compilación de prueba (dry-run)** (con datos ficticios) antes de
 guardarse — una plantilla con un error de sintaxis LaTeX o un marcador de posición mal escrito se
 rechaza de inmediato, con el mensaje de error del compilador, en lugar de fallar solo la próxima vez que
 se genere un certificado real.
 
-Reemplazar el contenido de una plantilla no es una edición en el mismo lugar — vuelve a subirla como
-una plantilla nueva y promuévela a predeterminada. La versión anterior permanece (con borrado suave, no
-predeterminada) para que los certificados pasados que la referencian conceptualmente sigan siendo
-trazables a lo que los generó.
+Reemplazar el contenido de una plantilla no es una edición en el mismo lugar — impórtala de nuevo
+como una plantilla nueva y promuévela a predeterminada. La versión anterior permanece (con
+borrado suave, no predeterminada) para que los certificados pasados que la referencian
+conceptualmente sigan siendo trazables a lo que los generó. La fila de cualquier plantilla también
+tiene una acción **Descargar**, que devuelve la fuente `.tex` original tal como se subió.
 
 ## Previsualizar una plantilla
 
