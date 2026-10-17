@@ -3,7 +3,7 @@
   "info": {
     "title": "Open Gauge API",
     "description": "Open Gauge API",
-    "version": "4.15.0"
+    "version": "4.17.0"
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -4759,6 +4759,65 @@
         }
       }
     },
+    "/api/v1/certificate-templates/{template_id}/set-enabled": {
+      "post": {
+        "tags": [
+          "Certificate Templates"
+        ],
+        "summary": "Set Template Enabled",
+        "description": "Toggles availability in the calibration-report download picker without deleting the\ntemplate — distinct from DELETE below, which soft-removes it from the admin list entirely.",
+        "operationId": "set_template_enabled_api_v1_certificate_templates__template_id__set_enabled_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEnabledRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/certificate-templates/{template_id}/download": {
       "get": {
         "tags": [
@@ -4858,7 +4917,7 @@
           "Certificate Templates"
         ],
         "summary": "Preview Builtin Template",
-        "description": "Preview the app's built-in default template (no DB row exists for it)\nwith a freshly randomized 10-row sample dataset.",
+        "description": "Preview the app's built-in default template straight off disk, independent of the lazily\ncreated builtin CertificateTemplate row (see template_defaults_service.py), with a freshly\nrandomized 10-row sample dataset.",
         "operationId": "preview_builtin_template_api_v1_certificate_templates_preview_builtin_post",
         "responses": {
           "200": {
@@ -5444,6 +5503,114 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/set-default": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Mark a published template as the default",
+        "description": "For a \"procedure\" template, this is the default used whenever a procedure is downloaded without an explicit template choice. For a \"certificate\" template, it competes with legacy .tex certificate templates for the same global default — see template_defaults_service.set_report_default.",
+        "operationId": "set_document_template_default_api_v1_document_templates__template_id__set_default_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/document-templates/{template_id}/set-enabled": {
+      "post": {
+        "tags": [
+          "Document Templates"
+        ],
+        "summary": "Enable or disable a template for selection when downloading",
+        "description": "Distinct from archive (above), which soft-removes a template from the admin list entirely — a disabled template stays visible/editable but drops out of the download picker.",
+        "operationId": "set_document_template_enabled_api_v1_document_templates__template_id__set_enabled_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEnabledRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -6112,6 +6279,71 @@
               "type": "string",
               "format": "uuid",
               "title": "Proc Pk"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/procedures/{proc_pk}/download": {
+      "get": {
+        "tags": [
+          "Procedures",
+          "Procedures"
+        ],
+        "summary": "Download a procedure as PDF",
+        "description": "Live-renders the procedure's current data (metadata, equipment, materials, environment, safety notes, steps, acceptance criteria) into a PDF, using a published \"procedure\" document template. Pass `document_template_id` to render with a specific published template; omit it to use the built-in default procedure template, so this works even before any custom template has been created.",
+        "operationId": "download_procedure_pdf_api_v1_procedures__proc_pk__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "proc_pk",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Proc Pk"
+            }
+          },
+          {
+            "name": "document_template_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Template Id"
             }
           }
         ],
@@ -13377,6 +13609,14 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "is_enabled": {
+            "type": "boolean",
+            "title": "Is Enabled"
+          },
+          "is_builtin": {
+            "type": "boolean",
+            "title": "Is Builtin"
+          },
           "version": {
             "type": "integer",
             "title": "Version"
@@ -13400,6 +13640,8 @@
           "description",
           "is_default",
           "is_active",
+          "is_enabled",
+          "is_builtin",
           "version",
           "created_at",
           "updated_at"
@@ -14305,6 +14547,18 @@
             "type": "integer",
             "title": "Version"
           },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "is_builtin": {
+            "type": "boolean",
+            "title": "Is Builtin"
+          },
+          "is_enabled": {
+            "type": "boolean",
+            "title": "Is Enabled"
+          },
           "updated_at": {
             "type": "string",
             "format": "date-time",
@@ -14325,6 +14579,9 @@
           "type",
           "status",
           "version",
+          "is_default",
+          "is_builtin",
+          "is_enabled",
           "updated_at",
           "created_by"
         ],
@@ -14377,6 +14634,18 @@
             "type": "boolean",
             "title": "Is Active"
           },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "is_builtin": {
+            "type": "boolean",
+            "title": "Is Builtin"
+          },
+          "is_enabled": {
+            "type": "boolean",
+            "title": "Is Enabled"
+          },
           "created_by": {
             "type": "string",
             "format": "uuid",
@@ -14416,6 +14685,9 @@
           "version",
           "document",
           "is_active",
+          "is_default",
+          "is_builtin",
+          "is_enabled",
           "created_by",
           "created_at",
           "updated_at",
@@ -18383,6 +18655,19 @@
           "updated_at"
         ],
         "title": "SensorChannelResponse"
+      },
+      "SetEnabledRequest": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "SetEnabledRequest"
       },
       "SignatureVerifyResponse": {
         "properties": {
